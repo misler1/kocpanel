@@ -310,18 +310,18 @@ function GunlukAccordion({ studentId }: { studentId: string }) {
 
   async function load() {
     if (loaded) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
+    const { data, error } = await (supabase as any)
       .from('daily_logs')
       .select('*')
       .eq('student_id', studentId)
       .order('log_date', { ascending: false })
       .limit(30);
+    console.log("daily_logs data:", data);
+    console.log("daily_logs error:", error);
     setLogs(data ?? []);
     setLoaded(true);
     if (data && data.length > 0) setSelectedLog(data[0]);
   }
-
   return (
     <Accordion icon={<IconNotebook size={16} />} title="Günlük">
       {!loaded ? (
