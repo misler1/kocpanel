@@ -27,7 +27,7 @@ export const MAIN_NAV: NavItem[] = [
 
 export const TAKIP_NAV: NavItem[] = [
   { href: '/gorusmeler', label: 'Görüşme kayıtları', icon: IconNotes, section: 'Takip' },
-  { href: '/soru-takibi', label: 'Soru takibi', icon: IconChecklist },
+  { href: '/haftalik-takip', label: 'Haftalık Takip', icon: IconChecklist },
   { href: '/konu-ilerleyisi', label: 'Konu ilerleyişi', icon: IconBooks },
   { href: '/denemeler', label: 'Deneme sonuçları', icon: IconChartBar },
 ];

@@ -11,8 +11,9 @@ import {
   calcNetYKS, calcNetLGS,
   emptyResult, type ResultMap, type SubjectDef,
 } from '../examConstants';
-
+import { useExamFilter } from '@/lib/exam-filter-context';
 type ExamType = 'TYT' | 'AYT' | 'LGS';
+
 
 function initResults(subjects: SubjectDef[]): ResultMap {
   return Object.fromEntries(subjects.map((s) => [s.key, emptyResult()]));
@@ -45,7 +46,7 @@ function YeniDenemeForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
-
+  const { matchesFilter } = useExamFilter();
   const [students, setStudents] = useState<{ id: string; full_name: string; track: string }[]>([]);
   const [studentId, setStudentId] = useState(searchParams.get('ogrenci') ?? '');
   const [examType, setExamType] = useState<ExamType>('TYT');
@@ -74,7 +75,7 @@ function YeniDenemeForm() {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
+  const filteredStudents = students.filter((s) => matchesFilter(s.track));
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -186,7 +187,7 @@ function YeniDenemeForm() {
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Öğrenci <span className="text-red-500">*</span></label>
               <select required value={studentId} onChange={(e) => setStudentId(e.target.value)} className={inputCls}>
-                {students.map((s) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+                {filteredStudents.map((s) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
               </select>
             </div>
             <div>

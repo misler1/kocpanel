@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { IconPlus, IconChartBar, IconEdit, IconTrash } from '@tabler/icons-react';
 import { StudentFilter } from '@/components/StudentFilter';
+import { useExamFilter } from '@/lib/exam-filter-context';
 
 const TYPE_BADGE: Record<string, string> = {
   TYT: 'bg-blue-50 text-blue-700',
@@ -28,12 +29,14 @@ interface Props {
 
 export function DenemelerClient({ initialExams, students, initialFilter }: Props) {
   const supabase = createClient();
+  const { matchesFilter } = useExamFilter();
   const [exams, setExams] = useState<any[]>(initialExams);
   const [filter, setFilter] = useState(initialFilter ?? '');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-
-  const filtered = filter ? exams.filter((e) => e.student_id === filter) : exams;
+  
+  const globallyFiltered = exams.filter((e) => matchesFilter(e.students?.track ?? ''));
+  const filtered = filter ? globallyFiltered.filter((e) => e.student_id === filter) : globallyFiltered;
 
   // ── Analiz toggle ──
   async function handleToggleAnalysis(exam: any) {
@@ -73,14 +76,17 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
       </div>
 
       {/* Filtre */}
-      {students.length > 0 && (
-        <StudentFilter
-          students={students}
-          selectedId={filter}
-          onSelect={setFilter}
-          showAll
-        />
-      )}
+           {(() => {
+        const filteredStudents = students.filter((s: any) => matchesFilter(s.track));
+        return filteredStudents.length > 0 && (
+          <StudentFilter
+            students={filteredStudents}
+            selectedId={filter}
+            onSelect={setFilter}
+            showAll
+          />
+        );
+      })()}
 
       {/* Liste */}
       {filtered.length === 0 ? (

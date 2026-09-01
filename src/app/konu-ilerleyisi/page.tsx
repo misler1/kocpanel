@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { useExamFilter } from '@/lib/exam-filter-context';
 
 interface Topic {
   id: string;
@@ -40,6 +41,7 @@ function getTopicProgress(t: Topic): { pct: number; color: string } {
 
 export default function KonuIlerleyisiPage() {
   const supabase = createClient();
+  const { matchesFilter } = useExamFilter();
   const [students, setStudents] = useState<any[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -47,6 +49,7 @@ export default function KonuIlerleyisiPage() {
   const [newSubject, setNewSubject] = useState('');
   const [newTopic, setNewTopic] = useState('');
   const [loading, setLoading] = useState(true);
+  const filteredStudents = students.filter((s) => matchesFilter(s.track));
 
   useEffect(() => {
     async function load() {
@@ -54,7 +57,7 @@ export default function KonuIlerleyisiPage() {
       if (!user) return;
       const { data } = await (supabase as any)
         .from('students')
-        .select('id, full_name, resources')
+        .select('id, full_name, resources, track')
         .eq('coach_id', user.id)
         .neq('status', 'pasif')
         .order('full_name');
@@ -76,7 +79,17 @@ export default function KonuIlerleyisiPage() {
     loadTopics(selectedStudentId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStudentId, students]);
-
+    // Filtre değişince, seçili öğrenci artık filtreye uymuyorsa ilkine geç
+  useEffect(() => {
+    if (filteredStudents.length === 0) {
+      setSelectedStudentId('');
+      return;
+    }
+    if (!filteredStudents.some((s) => s.id === selectedStudentId)) {
+      setSelectedStudentId(filteredStudents[0].id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredStudents]);
   async function loadTopics(studentId: string) {
     const { data } = await (supabase as any)
       .from('topic_progress')
@@ -141,13 +154,13 @@ export default function KonuIlerleyisiPage() {
         <p className="mt-0.5 text-[13px] text-gray-500">Konuları ders bazında takip edin</p>
       </div>
 
-      {students.length === 0 ? (
+     {filteredStudents.length === 0 ? (
         <p className="text-sm text-gray-400">Henüz öğrenci eklenmemiş.</p>
       ) : (
         <>
           {/* Öğrenci seçimi */}
           <div className="mb-4 flex flex-wrap gap-2">
-            {students.map((s) => (
+            {filteredStudents.map((s) => (
               <button
                 key={s.id}
                 onClick={() => setSelectedStudentId(s.id)}

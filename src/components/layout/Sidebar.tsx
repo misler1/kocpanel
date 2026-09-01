@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { IconSchool } from '@tabler/icons-react';
 import { MAIN_NAV, TAKIP_NAV, BAGLANTI_NAV, HESAP_NAV } from '@/lib/navigation';
+import { ExamFilterBar } from './ExamFilterBar';
+import { useExamFilter } from '@/lib/exam-filter-context';
 
 export function Sidebar({ studentCount }: { studentCount?: number }) {
   const pathname = usePathname();
-
+  const { filteredStudentCount } = useExamFilter();
   const isActive = (href: string) => pathname === href;
 
   const groups = [
@@ -23,7 +25,7 @@ export function Sidebar({ studentCount }: { studentCount?: number }) {
         <IconSchool className="text-blue-600" size={22} />
         <span className="text-[15px] font-medium text-gray-900">KoçPanel</span>
       </div>
-
+        <ExamFilterBar />
       <nav className="flex flex-col gap-0.5">
         {groups.map((group, gi) => (
           <div key={gi}>
@@ -49,7 +51,7 @@ export function Sidebar({ studentCount }: { studentCount?: number }) {
                     {item.label}
                     {item.href === '/ogrenciler' && studentCount !== undefined && (
                       <span className="ml-auto rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-700">
-                        {studentCount}
+                        {filteredStudentCount}
                       </span>
                     )}
                   </Link>

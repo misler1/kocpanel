@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { IconPlus, IconCalendar, IconEdit, IconTrash } from '@tabler/icons-react';
-
+import { useExamFilter } from '@/lib/exam-filter-context';
 // ─── Tipler ──────────────────────────────────────────────────
 
 interface Props {
@@ -28,14 +28,15 @@ function toLocalDatetime(iso: string) {
 export function GorusmelerClient({ initialMeetings, students, initialFilter }: Props) {
   const router = useRouter();
   const supabase = createClient();
-
+  const { matchesFilter } = useExamFilter();
   const [meetings, setMeetings] = useState<any[]>(initialMeetings);
   const [filter, setFilter] = useState(initialFilter ?? '');
   const [editing, setEditing] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const filtered = filter ? meetings.filter((m) => m.student_id === filter) : meetings;
+  const globallyFiltered = meetings.filter((m) => matchesFilter(m.students?.track ?? ''));
+  const filtered = filter ? globallyFiltered.filter((m) => m.student_id === filter) : globallyFiltered;
   const now = new Date();
   const upcoming = filtered.filter((m) => new Date(m.scheduled_at) >= now);
   const past = filtered.filter((m) => new Date(m.scheduled_at) < now);
@@ -89,7 +90,7 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
       </div>
 
       {/* Öğrenci filtresi */}
-      {students.length > 0 && (
+      {students.filter((s: any) => matchesFilter(s.track)).length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             onClick={() => { setFilter(''); router.push('/gorusmeler'); }}
@@ -97,7 +98,7 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
           >
             Tümü
           </button>
-          {students.map((s: any) => (
+          {students.filter((s: any) => matchesFilter(s.track)).map((s: any) => (
             <button
               key={s.id}
               onClick={() => { setFilter(s.id); router.push(`/gorusmeler?ogrenci=${s.id}`); }}

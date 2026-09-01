@@ -18,14 +18,13 @@ export default async function DenemelerPage({
   const studentIds: string[] = (rawIds ?? []).map((s: any) => s.id);
 
   const { data: rawStudents } = await (supabase as any)
-    .from('students').select('id, full_name').eq('coach_id', user.id).order('full_name');
-
+    .from('students').select('id, full_name, track').eq('coach_id', user.id).order('full_name');
   let exams: any[] = [];
   if (studentIds.length > 0) {
     const ids = ogrenciFilter ? [ogrenciFilter] : studentIds;
     const { data } = await (supabase as any)
       .from('exams')
-      .select('*, students(full_name), linked:linked_exam_id(exam_name, net_score, exam_type)')
+      .select('*, students(full_name, track), linked:linked_exam_id(exam_name, net_score, exam_type)')
       .in('student_id', ids)
       .order('exam_date', { ascending: false });
     exams = data ?? [];
