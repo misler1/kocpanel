@@ -15,7 +15,8 @@ export default async function GorusmelerPage({
 
   let query = (supabase as any)
     .from('meetings')
-    .select('*, students(full_name, track)')
+    .select('*, students(full_name, track, kurum, donem)')
+    
     .eq('coach_id', user.id)
     .order('scheduled_at', { ascending: false });
 
@@ -25,7 +26,7 @@ export default async function GorusmelerPage({
 
     const { data: rawStudents } = await (supabase as any)
     .from('students')
-    .select('id, full_name, track')
+    .select('id, full_name, track, kurum, donem')
     .eq('coach_id', user.id)
     .neq('status', 'pasif')
     .order('full_name');

@@ -14,9 +14,9 @@ export default async function DersProgramiPage({
   if (!user) redirect('/giris');
 
   // Aktif öğrencileri getir
-  const { data: rawStudents } = await (supabase as any)
+    const { data: rawStudents } = await (supabase as any)
     .from('students')
-    .select('id, full_name')
+    .select('id, full_name, track, kurum, donem')
     .eq('coach_id', user.id)
     .neq('status', 'pasif')
     .order('full_name');
@@ -44,7 +44,7 @@ export default async function DersProgramiPage({
 
   return (
     <DersProgramiClient
-      students={students.map((s: any) => ({ id: s.id, full_name: s.full_name }))}
+      students={students.map((s: any) => ({ id: s.id, full_name: s.full_name, track: s.track, kurum: s.kurum, donem: s.donem }))}
       initialStudentId={firstId}
       initialRows={initialRows}
     />

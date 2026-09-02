@@ -26,18 +26,10 @@ const TRACK_LABELS: Record<string, string> = {
 };
 
 export function OgrencilerClient({ students }: { students: Student[] }) {
-  const { examGroup, yksTrack } = useExamFilter();
+  const { matchesFilter } = useExamFilter();
 
   // Filtreleme
-  const filtered = students.filter((s) => {
-    if (!examGroup) return true;
-    if (examGroup === 'LGS') return s.track === 'LGS';
-    if (examGroup === 'YKS') {
-      if (yksTrack) return s.track === yksTrack;
-      return s.track.startsWith('YKS');
-    }
-    return true;
-  });
+  const filtered = students.filter((s) => matchesFilter(s));
 
   const active = filtered.filter((s) => s.status !== 'pasif');
   const passive = filtered.filter((s) => s.status === 'pasif');

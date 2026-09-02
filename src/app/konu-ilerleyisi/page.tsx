@@ -49,7 +49,7 @@ export default function KonuIlerleyisiPage() {
   const [newSubject, setNewSubject] = useState('');
   const [newTopic, setNewTopic] = useState('');
   const [loading, setLoading] = useState(true);
-  const filteredStudents = students.filter((s) => matchesFilter(s.track));
+  const filteredStudents = students.filter((s) => matchesFilter(s));
 
   useEffect(() => {
     async function load() {
@@ -57,7 +57,7 @@ export default function KonuIlerleyisiPage() {
       if (!user) return;
       const { data } = await (supabase as any)
         .from('students')
-        .select('id, full_name, resources, track')
+        .select('id, full_name, resources, track, kurum, donem')
         .eq('coach_id', user.id)
         .neq('status', 'pasif')
         .order('full_name');

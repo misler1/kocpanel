@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { ExamTrack } from '@/types/database';
 import { IconArrowLeft, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { useExamFilter } from '@/lib/exam-filter-context';
+
 
 // ─── Sabitler ────────────────────────────────────────────────
 
@@ -104,7 +106,7 @@ const inputCls = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm foc
 export default function YeniOgrenciPage() {
   const router = useRouter();
   const supabase = createClient();
-
+  const { availableKurumlar, availableDonemler, donem: currentDonem, refreshOptions } = useExamFilter();
   // Temel bilgiler
   const [fullName, setFullName] = useState('');
   const [track, setTrack] = useState<ExamTrack>('YKS_SAY');
@@ -113,7 +115,8 @@ export default function YeniOgrenciPage() {
   const [birthDate, setBirthDate] = useState('');
   const [gradeLevel, setGradeLevel] = useState('');
   const [notes, setNotes] = useState('');
-
+  const [kurum, setKurum] = useState('');
+  const [donem, setDonem] = useState(currentDonem ?? '');
   // Aile bilgileri
   const [motherName, setMotherName] = useState('');
   const [motherJob, setMotherJob] = useState('');
@@ -147,7 +150,10 @@ export default function YeniOgrenciPage() {
   const [showResources, setShowResources] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
+  useEffect(() => {
+    if (!donem && currentDonem) setDonem(currentDonem);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDonem]);
   // Veli kaynağı değişince otomatik doldur
   function handleGuardianSource(src: 'anne' | 'baba' | 'diger') {
     setGuardianSource(src);
@@ -198,6 +204,8 @@ export default function YeniOgrenciPage() {
       birth_date: birthDate || null,
       grade_level: gradeLevel || null,
       notes: notes.trim() || null,
+      kurum: kurum.trim() || null,
+      donem: donem || null,
       mother_name: motherName.trim() || null,
       mother_job: motherJob.trim() || null,
       mother_phone: motherPhone.trim() || null,
@@ -224,7 +232,7 @@ export default function YeniOgrenciPage() {
       setLoading(false);
       return;
     }
-
+    refreshOptions();
     router.push('/ogrenciler');
     router.refresh();
   }
@@ -283,6 +291,25 @@ export default function YeniOgrenciPage() {
             <Field label="Sınav Türü" required>
               <select value={track} onChange={(e) => setTrack(e.target.value as ExamTrack)} className={inputCls}>
                 {TRACKS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </Field>
+                        <Field label="Kurum">
+              <input
+                type="text"
+                list="kurum-onerileri"
+                value={kurum}
+                onChange={(e) => setKurum(e.target.value)}
+                placeholder="Bilgiçler Okulu, Özel Ders vb."
+                className={inputCls}
+              />
+              <datalist id="kurum-onerileri">
+                {availableKurumlar.map((k) => <option key={k} value={k} />)}
+              </datalist>
+            </Field>
+            <Field label="Dönem">
+              <select value={donem} onChange={(e) => setDonem(e.target.value)} className={inputCls}>
+                {availableDonemler.length === 0 && <option value="">Dönem yok</option>}
+                {availableDonemler.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </Field>
           </div>

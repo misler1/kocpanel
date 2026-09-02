@@ -65,7 +65,7 @@ export default function HaftalikTakipPage() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [resourceMap, setResourceMap] = useState<Record<string, string[]>>({});
-  const filteredStudents = students.filter((s) => matchesFilter(s.track));
+  const filteredStudents = students.filter((s) => matchesFilter(s));
 
   // Yeni hedef formu
   const [newSubject, setNewSubject] = useState('');
@@ -86,7 +86,7 @@ export default function HaftalikTakipPage() {
       if (!user) return;
       const { data } = await (supabase as any)
         .from('students')
-        .select('id, full_name, resources, week_start_day, track')
+        .select('id, full_name, resources, week_start_day, track, kurum, donem')
         .eq('coach_id', user.id)
         .neq('status', 'pasif')
         .order('full_name');

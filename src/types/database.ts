@@ -21,10 +21,11 @@ export interface Student {
   status: StudentStatus;
   avatar_color: string;
   notes: string | null;
+  kurum: string | null;
+  donem: string | null;
   created_at: string;
   updated_at: string;
 }
-
 export interface Meeting {
   id: string;
   student_id: string;
@@ -108,6 +109,13 @@ export interface Database {
       topic_progress: { Row: TopicProgress; Insert: Partial<TopicProgress>; Update: Partial<TopicProgress> };
       conversations: { Row: Conversation; Insert: Partial<Conversation>; Update: Partial<Conversation> };
       messages: { Row: Message; Insert: Partial<Message>; Update: Partial<Message> };
+      donemler: { Row: Donem; Insert: Partial<Donem>; Update: Partial<Donem> };
     };
   };
+}
+export interface Donem {
+  id: string;
+  coach_id: string;
+  donem_adi: string;
+  created_at: string;
 }

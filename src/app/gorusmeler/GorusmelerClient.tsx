@@ -35,7 +35,7 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const globallyFiltered = meetings.filter((m) => matchesFilter(m.students?.track ?? ''));
+  const globallyFiltered = meetings.filter((m) => matchesFilter(m.students));
   const filtered = filter ? globallyFiltered.filter((m) => m.student_id === filter) : globallyFiltered;
   const now = new Date();
   const upcoming = filtered.filter((m) => new Date(m.scheduled_at) >= now);
@@ -90,7 +90,7 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
       </div>
 
       {/* Öğrenci filtresi */}
-      {students.filter((s: any) => matchesFilter(s.track)).length > 0 && (
+      {students.filter((s: any) => matchesFilter(s)).length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             onClick={() => { setFilter(''); router.push('/gorusmeler'); }}
@@ -98,7 +98,7 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
           >
             Tümü
           </button>
-          {students.filter((s: any) => matchesFilter(s.track)).map((s: any) => (
+          {students.filter((s: any) => matchesFilter(s)).map((s: any) => (
             <button
               key={s.id}
               onClick={() => { setFilter(s.id); router.push(`/gorusmeler?ogrenci=${s.id}`); }}

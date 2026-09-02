@@ -35,7 +35,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   
-  const globallyFiltered = exams.filter((e) => matchesFilter(e.students?.track ?? ''));
+  const globallyFiltered = exams.filter((e) => matchesFilter(e.students));
   const filtered = filter ? globallyFiltered.filter((e) => e.student_id === filter) : globallyFiltered;
 
   // ── Analiz toggle ──
@@ -77,7 +77,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
 
       {/* Filtre */}
            {(() => {
-        const filteredStudents = students.filter((s: any) => matchesFilter(s.track));
+        const filteredStudents = students.filter((s: any) => matchesFilter(s));
         return filteredStudents.length > 0 && (
           <StudentFilter
             students={filteredStudents}

@@ -75,14 +75,14 @@ function YeniDenemeForm() {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const filteredStudents = students.filter((s) => matchesFilter(s.track));
+  const filteredStudents = students.filter((s) => matchesFilter(s));
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase as any)
-        .from('students').select('id, full_name, track')
+        .from('students').select('id, full_name, track, kurum, donem')
         .eq('coach_id', user.id).neq('status', 'pasif').order('full_name');
       setStudents(data ?? []);
       const firstId = searchParams.get('ogrenci') ?? data?.[0]?.id ?? '';

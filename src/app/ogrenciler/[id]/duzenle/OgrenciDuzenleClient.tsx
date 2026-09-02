@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { ExamTrack, StudentStatus } from '@/types/database';
 import { IconArrowLeft, IconChevronDown, IconChevronUp, IconTrash } from '@tabler/icons-react';
+import { useExamFilter } from '@/lib/exam-filter-context';
 
 // ─── Sabitler ────────────────────────────────────────────────
 
@@ -105,7 +106,7 @@ const inputCls = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm foc
 export function OgrenciDuzenleClient({ student }: { student: any }) {
   const router = useRouter();
   const supabase = createClient();
-
+  const { availableKurumlar, availableDonemler, refreshOptions } = useExamFilter();
   const res: Resources = student.resources ?? {};
 
   // Temel
@@ -117,7 +118,8 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
   const [birthDate, setBirthDate] = useState(student.birth_date ?? '');
   const [gradeLevel, setGradeLevel] = useState(student.grade_level ?? '');
   const [notes, setNotes] = useState(student.notes ?? '');
-
+  const [kurum, setKurum] = useState(student.kurum ?? '');
+  const [donem, setDonem] = useState(student.donem ?? '');
   // Aile
   const [motherName, setMotherName] = useState(student.mother_name ?? '');
   const [motherJob, setMotherJob] = useState(student.mother_job ?? '');
@@ -192,6 +194,8 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
         birth_date: birthDate || null,
         grade_level: gradeLevel || null,
         notes: notes.trim() || null,
+        kurum: kurum.trim() || null,
+        donem: donem || null,
         mother_name: motherName.trim() || null,
         mother_job: motherJob.trim() || null,
         mother_phone: motherPhone.trim() || null,
@@ -220,7 +224,7 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
       setLoading(false);
       return;
     }
-
+    refreshOptions();
     router.push(`/ogrenciler/${student.id}`);
     router.refresh();
   }
@@ -299,6 +303,25 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
             <Field label="Durum">
               <select value={status} onChange={(e) => setStatus(e.target.value as StudentStatus)} className={inputCls}>
                 {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </Field>
+                        <Field label="Kurum">
+              <input
+                type="text"
+                list="kurum-onerileri-duzenle"
+                value={kurum}
+                onChange={(e) => setKurum(e.target.value)}
+                placeholder="Bilgiçler Okulu, Özel Ders vb."
+                className={inputCls}
+              />
+              <datalist id="kurum-onerileri-duzenle">
+                {availableKurumlar.map((k) => <option key={k} value={k} />)}
+              </datalist>
+            </Field>
+            <Field label="Dönem">
+              <select value={donem} onChange={(e) => setDonem(e.target.value)} className={inputCls}>
+                {availableDonemler.length === 0 && <option value="">Dönem yok</option>}
+                {availableDonemler.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </Field>
           </div>

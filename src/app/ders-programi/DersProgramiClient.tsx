@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { IconPlus, IconTrash, IconCopy, IconDeviceFloppy } from '@tabler/icons-react';
+import { useExamFilter } from '@/lib/exam-filter-context';
 
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
@@ -150,13 +151,13 @@ export default function DersProgramiClient({
   initialStudentId,
   initialRows,
 }: {
-  students: { id: string; full_name: string }[];
+  students: { id: string; full_name: string; track?: string }[];
   initialStudentId: string;
   initialRows: ProgramRow[];
 }) {
   const router = useRouter();
   const supabase = createClient();
-
+  const { matchesFilter } = useExamFilter();
   const [studentId, setStudentId] = useState(initialStudentId);
   const [saving, setSaving] = useState(false);
   const [loadingStudent, setLoadingStudent] = useState(false);
@@ -170,7 +171,7 @@ export default function DersProgramiClient({
   }
 
   const [programMap, setProgramMap] = useState<ProgramMap>(buildMap(initialRows));
-
+  const filteredStudents = students.filter((s) => matchesFilter(s));
   async function handleStudentChange(id: string) {
     setStudentId(id);
     setLoadingStudent(true);
@@ -192,6 +193,17 @@ export default function DersProgramiClient({
       return next;
     });
   }
+
+    useEffect(() => {
+    if (filteredStudents.length === 0) {
+      setStudentId('');
+      return;
+    }
+    if (!filteredStudents.some((s) => s.id === studentId)) {
+      handleStudentChange(filteredStudents[0].id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredStudents]);
 
   function handleDelete(id: string) {
     setProgramMap((prev) => {
@@ -275,11 +287,11 @@ export default function DersProgramiClient({
       </div>
 
       {/* Öğrenci seçimi */}
-      {students.length === 0 ? (
+      {filteredStudents.length === 0 ? (
         <p className="text-sm text-gray-400">Henüz öğrenci eklenmemiş.</p>
       ) : (
         <div className="mb-5 flex flex-wrap gap-2">
-          {students.map((s) => (
+          {filteredStudents.map((s) => (
             <button key={s.id} onClick={() => handleStudentChange(s.id)}
               className={`rounded-full px-3.5 py-1.5 text-[13px] font-medium transition ${
                 studentId === s.id ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'

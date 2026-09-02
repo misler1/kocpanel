@@ -22,21 +22,37 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const isAuthPage = request.nextUrl.pathname.startsWith('/giris') ||
-                      request.nextUrl.pathname.startsWith('/kayit');
-
+                     request.nextUrl.pathname.startsWith('/kayit');
   const isWebhook = request.nextUrl.pathname.startsWith('/api/whatsapp');
+  const isOnayPage = request.nextUrl.pathname.startsWith('/onay-bekleniyor');
 
-  if (!user && !isAuthPage && !isWebhook && request.nextUrl.pathname !== '/') {
-    
+  // Giriş yapmamış → giriş sayfasına
+  if (!user && !isAuthPage && !isWebhook && !isOnayPage && request.nextUrl.pathname !== '/') {
     const url = request.nextUrl.clone();
     url.pathname = '/giris';
     return NextResponse.redirect(url);
   }
 
+  // Giriş yapmış + auth sayfasındaysa → onay kontrolü yap
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/anasayfa';
     return NextResponse.redirect(url);
+  }
+
+  // Giriş yapmış ama onay bekleniyor sayfası değilse → onay kontrolü
+  if (user && !isAuthPage && !isWebhook && !isOnayPage) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_approved')
+      .eq('id', user.id)
+      .single();
+
+    if (profile && !profile.is_approved) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/onay-bekleniyor';
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;
