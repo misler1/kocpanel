@@ -75,7 +75,11 @@ export default function GirisPage() {
             {loading ? 'Giriş yapılıyor...' : 'Giriş yap'}
           </button>
         </form>
-
+         <p className="mt-3 text-center text-sm">
+          <Link href="/sifremi-unuttum" className="text-gray-500 hover:underline">
+            Şifremi unuttum
+          </Link>
+        </p>
         <p className="mt-5 text-center text-sm text-gray-500">
           Hesabınız yok mu?{' '}
           <Link href="/kayit" className="font-medium text-blue-600 hover:underline">

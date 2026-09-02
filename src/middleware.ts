@@ -22,7 +22,9 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const isAuthPage = request.nextUrl.pathname.startsWith('/giris') ||
-                     request.nextUrl.pathname.startsWith('/kayit');
+                     request.nextUrl.pathname.startsWith('/kayit') ||
+                     request.nextUrl.pathname.startsWith('/sifremi-unuttum') ||
+                     request.nextUrl.pathname.startsWith('/sifre-sifirla');
   const isWebhook = request.nextUrl.pathname.startsWith('/api/whatsapp');
   const isOnayPage = request.nextUrl.pathname.startsWith('/onay-bekleniyor');
 

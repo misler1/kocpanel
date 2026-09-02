@@ -43,7 +43,8 @@ export function OgretmenYonetimiClient({ teachers, currentUserId }: { teachers: 
                 {isMe && <span className="text-[10px] text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-full">Sen</span>}
                 {t.is_admin && <span className="text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full">Admin</span>}
               </div>
-              <div className="text-[11px] text-gray-400">{date}</div>
+                <div className="text-[11px] text-gray-400">{t.email}</div>
+                <div className="text-[11px] text-gray-400">{date}</div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {/* Onay butonu */}
