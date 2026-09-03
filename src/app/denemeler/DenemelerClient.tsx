@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { IconPlus, IconChartBar, IconEdit, IconTrash, IconChevronDown, IconChevronUp, IconArrowsRightLeft, IconX } from '@tabler/icons-react';
+import { IconPlus, IconChartBar, IconEdit, IconTrash, IconChevronDown, IconChevronUp, IconArrowsRightLeft, IconX, IconSparkles, IconLoader2 } from '@tabler/icons-react';
 import { StudentFilter } from '@/components/StudentFilter';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS } from './examConstants';
@@ -351,6 +351,22 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   );
 }
 
+// ─── Yapay zeka analiz sonucu tipleri ──────────────────────────
+
+interface StudentAnalysis {
+  student_name: string;
+  guclu_dersler: string[];
+  zayif_dersler: string[];
+  trend: string;
+  capraz_degerlendirme: string | null;
+  oneriler: string[];
+}
+
+interface ExamAnalysisResult {
+  ogrenciler: StudentAnalysis[];
+  karsilastirma: string | null;
+}
+
 // ─── Karşılaştırma modalı ──────────────────────────────────────
 
 function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => void }) {
@@ -364,6 +380,38 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
   }, [exams]);
 
   const maxNet = Math.max(...exams.map((e) => e.net_score), 1);
+
+  const [includeMeetings, setIncludeMeetings] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<ExamAnalysisResult | null>(null);
+
+  const studentCount = useMemo(
+    () => new Set(exams.map((e) => e.student_id)).size,
+    [exams]
+  );
+
+  async function handleAnalyze() {
+    setAnalyzing(true);
+    setAnalysisError(null);
+    try {
+      const res = await fetch('/api/analiz/deneme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          examIds: exams.map((e) => e.id),
+          includeMeetings,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Analiz başarısız oldu.');
+      setAnalysisResult(data.analysis);
+    } catch (err: any) {
+      setAnalysisError(err.message ?? 'Bir hata oluştu.');
+    } finally {
+      setAnalyzing(false);
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8">
@@ -440,6 +488,122 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Yapay zeka analizi bölümü */}
+        <div className="mt-6 rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50/50 to-purple-50/50 p-4">
+          {!analysisResult && (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <IconSparkles size={16} className="text-blue-600" />
+                  <span className="text-[13px] font-medium text-gray-800">Yapay zeka ile analiz et</span>
+                </div>
+                <label className="flex items-center gap-1.5 text-[12px] text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={includeMeetings}
+                    onChange={(ev) => setIncludeMeetings(ev.target.checked)}
+                    className="h-3.5 w-3.5 accent-blue-600"
+                  />
+                  Görüşme notlarını da dahil et
+                </label>
+              </div>
+              <p className="mt-1.5 text-[11px] text-gray-500">
+                {studentCount > 1
+                  ? `${studentCount} farklı öğrencinin denemeleri ayrı ayrı analiz edilip aralarında kıyaslama yapılacak.`
+                  : 'Güçlü/zayıf dersler, trend ve öneriler oluşturulacak.'}
+              </p>
+              <button
+                onClick={handleAnalyze}
+                disabled={analyzing}
+                className="mt-3 flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {analyzing ? (
+                  <>
+                    <IconLoader2 size={15} className="animate-spin" />
+                    Analiz ediliyor...
+                  </>
+                ) : (
+                  <>
+                    <IconSparkles size={15} />
+                    Yapay Zeka ile Analiz Et
+                  </>
+                )}
+              </button>
+              {analysisError && (
+                <p className="mt-2 text-[12px] text-red-600">{analysisError}</p>
+              )}
+            </>
+          )}
+
+          {analysisResult && (
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <IconSparkles size={16} className="text-blue-600" />
+                  <span className="text-[13px] font-medium text-gray-800">Yapay Zeka Analizi</span>
+                </div>
+                <button
+                  onClick={() => setAnalysisResult(null)}
+                  className="text-[11px] text-gray-400 hover:text-gray-600"
+                >
+                  Temizle
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {analysisResult.ogrenciler.map((o, i) => (
+                  <div key={i} className="rounded-lg border border-gray-100 bg-white p-3.5">
+                    <div className="mb-2 text-[13px] font-semibold text-gray-900">{o.student_name}</div>
+
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {o.guclu_dersler.map((d) => (
+                        <span key={d} className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                          + {d}
+                        </span>
+                      ))}
+                      {o.zayif_dersler.map((d) => (
+                        <span key={d} className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">
+                          − {d}
+                        </span>
+                      ))}
+                    </div>
+
+                    <p className="text-[12px] text-gray-600">
+                      <span className="font-medium text-gray-700">Trend: </span>
+                      {o.trend}
+                    </p>
+
+                    {o.capraz_degerlendirme && (
+                      <p className="mt-1.5 text-[12px] text-gray-600">
+                        <span className="font-medium text-gray-700">Görüşme değerlendirmesi: </span>
+                        {o.capraz_degerlendirme}
+                      </p>
+                    )}
+
+                    {o.oneriler.length > 0 && (
+                      <div className="mt-2">
+                        <span className="text-[12px] font-medium text-gray-700">Öneriler:</span>
+                        <ul className="mt-1 list-inside list-disc space-y-0.5">
+                          {o.oneriler.map((oneri, oi) => (
+                            <li key={oi} className="text-[12px] text-gray-600">{oneri}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {analysisResult.karsilastirma && (
+                  <div className="rounded-lg border border-purple-100 bg-purple-50/50 p-3.5">
+                    <div className="mb-1.5 text-[12px] font-semibold text-purple-800">Öğrenciler Arası Kıyaslama</div>
+                    <p className="text-[12px] text-purple-900">{analysisResult.karsilastirma}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
