@@ -4,9 +4,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { IconPlus, IconChartBar, IconEdit, IconTrash } from '@tabler/icons-react';
+import { IconPlus, IconChartBar, IconEdit, IconTrash, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
 import { StudentFilter } from '@/components/StudentFilter';
 import { useExamFilter } from '@/lib/exam-filter-context';
+import { TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS } from './examConstants';
 
 const TYPE_BADGE: Record<string, string> = {
   TYT: 'bg-blue-50 text-blue-700',
@@ -16,9 +17,60 @@ const TYPE_BADGE: Record<string, string> = {
 
 function scoreColor(net: number, max: number) {
   const pct = (net / max) * 100;
-  if (pct >= 70) return { bar: 'bg-emerald-500', text: 'text-emerald-700' };
-  if (pct >= 45) return { bar: 'bg-amber-400', text: 'text-amber-700' };
-  return { bar: 'bg-red-400', text: 'text-red-700' };
+  if (pct >= 70) return { bar: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' };
+  if (pct >= 45) return { bar: 'bg-amber-400', text: 'text-amber-700', bg: 'bg-amber-50' };
+  return { bar: 'bg-red-400', text: 'text-red-700', bg: 'bg-red-50' };
+}
+
+function getSubjectNet(result: any, examType: string): number {
+  if (!result) return 0;
+  const d = Number(result.dogru) || 0;
+  const y = Number(result.yanlis) || 0;
+  return examType === 'LGS' ? calcNetLGS(d, y) : calcNetYKS(d, y);
+}
+
+function SubjectResults({ subjectResults, examType }: { subjectResults: any; examType: string }) {
+  const subjects = examType === 'TYT' ? TYT_SUBJECTS : examType === 'AYT' ? AYT_SUBJECTS : LGS_SUBJECTS;
+  const maxNet = examType === 'TYT' ? 120 : examType === 'AYT' ? 160 : 90;
+
+  if (!subjectResults) return null;
+
+  return (
+    <div className="mt-3 rounded-xl bg-gray-50 p-3">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+        {subjects.map((s) => {
+          const result = subjectResults[s.key];
+          const net = getSubjectNet(result, examType);
+          const d = Number(result?.dogru) || 0;
+          const y = Number(result?.yanlis) || 0;
+          const pct = (net / s.total) * 100;
+          const barColor = pct >= 70 ? 'bg-emerald-400' : pct >= 45 ? 'bg-amber-400' : 'bg-red-400';
+
+          return (
+            <div key={s.key} className="rounded-lg bg-white border border-gray-100 px-3 py-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-medium text-gray-600 truncate">{s.label}</span>
+                <span className="text-[12px] font-bold text-gray-800 ml-1 flex-shrink-0">{net}</span>
+              </div>
+              <div className="h-1 w-full rounded-full bg-gray-100">
+                <div
+                  className={`h-full rounded-full ${barColor} transition-all`}
+                  style={{ width: `${Math.min(pct, 100)}%` }}
+                />
+              </div>
+              <div className="mt-1 flex justify-between text-[10px] text-gray-400">
+                <span>{d}D · {y}Y</span>
+                <span>/{s.total}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 text-right text-[11px] text-gray-400">
+        Toplam: {examType === 'TYT' ? '120' : examType === 'AYT' ? '160' : '90'} soru
+      </div>
+    </div>
+  );
 }
 
 interface Props {
@@ -34,11 +86,11 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   const [filter, setFilter] = useState(initialFilter ?? '');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   const globallyFiltered = exams.filter((e) => matchesFilter(e.students));
   const filtered = filter ? globallyFiltered.filter((e) => e.student_id === filter) : globallyFiltered;
 
-  // ── Analiz toggle ──
   async function handleToggleAnalysis(exam: any) {
     setTogglingId(exam.id);
     const newValue = !exam.analysis_done;
@@ -53,7 +105,6 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
     setTogglingId(null);
   }
 
-  // ── Sil ──
   async function handleDelete(id: string) {
     await (supabase.from('exams') as any).delete().eq('id', id);
     setExams((prev) => prev.filter((e) => e.id !== id));
@@ -76,7 +127,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
       </div>
 
       {/* Filtre */}
-           {(() => {
+      {(() => {
         const filteredStudents = students.filter((s: any) => matchesFilter(s));
         return filteredStudents.length > 0 && (
           <StudentFilter
@@ -98,7 +149,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
           </Link>
         </div>
       ) : (
-        <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+        <div className="space-y-3">
           {filtered.map((e: any) => {
             const colors = scoreColor(e.net_score, e.max_score);
             const pct = Math.round((e.net_score / e.max_score) * 100);
@@ -119,73 +170,102 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
             ].filter(Boolean).join(' · ');
 
             const isToggling = togglingId === e.id;
-
+            const isExpanded = expandedId === e.id;
+            const hasSubjectResults = e.subject_results && Object.keys(e.subject_results).length > 0;
             return (
-              <div key={e.id} className="px-4 py-4">
-                <div className="flex items-start gap-3">
-                  <span className={`mt-0.5 flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${typeBadge}`}>
-                    {e.exam_type}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-medium text-gray-900">
-                      {e.students?.full_name} — {e.exam_name}
-                    </div>
-                    <div className="text-[12px] text-gray-400">{date}</div>
-                    {puanlar && (
-                      <div className="mt-0.5 text-[12px] text-gray-500">{puanlar}</div>
-                    )}
-                    {linked && e.exam_type === 'AYT' && (
-                      <div className="mt-0.5 text-[11px] text-purple-600">
-                        🔗 {linked.exam_name} · Kombine: {combineNet} net
+              <div key={e.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                {/* Üst kısım */}
+                <div className="px-4 py-4">
+                  <div className="flex items-start gap-3">
+                    <span className={`mt-0.5 flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${typeBadge}`}>
+                      {e.exam_type}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] font-medium text-gray-900">
+                        {e.students?.full_name} — {e.exam_name}
                       </div>
-                    )}
-                    <div className="mt-2 h-1.5 w-full rounded-full bg-gray-100">
-                      <div className={`h-full rounded-full ${colors.bar}`} style={{ width: `${pct}%` }} />
+                      <div className="text-[12px] text-gray-400">{date}</div>
+                      {puanlar && (
+                        <div className="mt-0.5 text-[12px] text-gray-500">{puanlar}</div>
+                      )}
+                      {linked && e.exam_type === 'AYT' && (
+                        <div className="mt-0.5 text-[11px] text-purple-600">
+                          🔗 {linked.exam_name} · Kombine: {combineNet} net
+                        </div>
+                      )}
+                      {/* İlerleme çubuğu */}
+                      <div className="mt-2 h-1.5 w-full rounded-full bg-gray-100">
+                        <div className={`h-full rounded-full ${colors.bar}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+
+                    {/* Sağ: net + butonlar */}
+                    <div className="flex-shrink-0 text-right">
+                      <div className={`text-[16px] font-bold ${colors.text}`}>{e.net_score}</div>
+                      <div className="text-[11px] text-gray-400">/{e.max_score} net</div>
+                      <div className={`mt-0.5 text-[11px] font-semibold ${colors.text}`}>%{pct}</div>
+                      <button
+                        onClick={() => handleToggleAnalysis(e)}
+                        disabled={isToggling}
+                        className={`mt-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-70 disabled:opacity-40 cursor-pointer ${
+                          e.analysis_done
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                        }`}>
+                        {isToggling ? '...' : e.analysis_done ? 'Analiz ✓' : 'Analiz yok'}
+                      </button>
+                    </div>
+
+                    {/* Aksiyonlar */}
+                    <div className="flex flex-shrink-0 flex-col gap-1">
+                      <Link
+                        href={`/denemeler/${e.id}/duzenle`}
+                        className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-blue-600">
+                        <IconEdit size={15} />
+                      </Link>
+                      <button onClick={() => setDeletingId(e.id)}
+                        className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-500">
+                        <IconTrash size={15} />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex-shrink-0 text-right">
-                    <div className={`text-[16px] font-bold ${colors.text}`}>{e.net_score}</div>
-                    <div className="text-[11px] text-gray-400">/{e.max_score} net</div>
-                    {/* Tıklanabilir analiz badge */}
+
+                  {/* Ders detayları toggle butonu */}
+                  {hasSubjectResults && (
                     <button
-                      onClick={() => handleToggleAnalysis(e)}
-                      disabled={isToggling}
-                      title={e.analysis_done ? 'Analizi kaldır' : 'Analiz yapıldı olarak işaretle'}
-                      className={`mt-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-70 disabled:opacity-40 cursor-pointer ${
-                        e.analysis_done
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                      }`}>
-                      {isToggling ? '...' : e.analysis_done ? 'Analiz ✓' : 'Analiz yok'}
+                      onClick={() => setExpandedId(isExpanded ? null : e.id)}
+                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-100 py-1.5 text-[11px] text-gray-400 hover:bg-gray-50 transition-colors"
+                    >
+                      {isExpanded ? (
+                        <>Ders detaylarını gizle <IconChevronUp size={12} /></>
+                      ) : (
+                        <>Ders bazlı netleri gör <IconChevronDown size={12} /></>
+                      )}
                     </button>
-                  </div>
-                  {/* Aksiyonlar */}
-                  <div className="flex flex-shrink-0 flex-col gap-1">
-                    <Link
-                      href={`/denemeler/${e.id}/duzenle`}
-                      title="Düzenle"
-                      className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-blue-600">
-                      <IconEdit size={15} />
-                    </Link>
-                    <button onClick={() => setDeletingId(e.id)}
-                      title="Sil"
-                      className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-500">
-                      <IconTrash size={15} />
-                    </button>
-                  </div>
+                  )}
                 </div>
+
+                {/* Ders detayları — açılır panel */}
+                {isExpanded && hasSubjectResults && (
+                  <div className="border-t border-gray-100 px-4 pb-4">
+                    <SubjectResults
+                      subjectResults={e.subject_results}
+                      examType={e.exam_type}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* ── Silme onayı ── */}
+      {/* Silme onayı */}
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
             <h3 className="mb-2 text-base font-semibold text-gray-900">Denemeyi sil?</h3>
-            <p className="mb-5 text-sm text-gray-500">Bu deneme kaydı kalıcı olarak silinecek. Geri alınamaz.</p>
+            <p className="mb-5 text-sm text-gray-500">Bu deneme kaydı kalıcı olarak silinecek.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeletingId(null)}
                 className="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-50">
