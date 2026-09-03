@@ -1,10 +1,10 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { IconPlus, IconChartBar, IconEdit, IconTrash, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { IconPlus, IconChartBar, IconEdit, IconTrash, IconChevronDown, IconChevronUp, IconArrowsRightLeft, IconX } from '@tabler/icons-react';
 import { StudentFilter } from '@/components/StudentFilter';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS } from './examConstants';
@@ -87,6 +87,26 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
+
+  const MAX_COMPARE = 5;
+
+  function toggleCompareSelect(id: string) {
+    setSelectedCompareIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= MAX_COMPARE) return prev;
+      return [...prev, id];
+    });
+  }
+
+  function exitCompareMode() {
+    setCompareMode(false);
+    setSelectedCompareIds([]);
+  }
+
+  const compareExams = exams.filter((e) => selectedCompareIds.includes(e.id));
 
   const globallyFiltered = exams.filter((e) => matchesFilter(e.students));
   const filtered = filter ? globallyFiltered.filter((e) => e.student_id === filter) : globallyFiltered;
@@ -119,11 +139,24 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
           <h1 className="text-[18px] font-medium text-gray-900">Deneme sonuçları</h1>
           <p className="mt-0.5 text-[13px] text-gray-500">{filtered.length} kayıt</p>
         </div>
-        <Link href="/denemeler/yeni"
-          className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3.5 py-2 text-[13px] font-medium text-blue-700 hover:bg-blue-100">
-          <IconPlus size={15} />
-          Deneme gir
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => (compareMode ? exitCompareMode() : setCompareMode(true))}
+            className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-medium transition ${
+              compareMode
+                ? 'bg-gray-900 text-white'
+                : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <IconArrowsRightLeft size={15} />
+            {compareMode ? 'İptal' : 'Karşılaştır'}
+          </button>
+          <Link href="/denemeler/yeni"
+            className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3.5 py-2 text-[13px] font-medium text-blue-700 hover:bg-blue-100">
+            <IconPlus size={15} />
+            Deneme gir
+          </Link>
+        </div>
       </div>
 
       {/* Filtre */}
@@ -173,10 +206,21 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
             const isExpanded = expandedId === e.id;
             const hasSubjectResults = e.subject_results && Object.keys(e.subject_results).length > 0;
             return (
-              <div key={e.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+              <div key={e.id} className={`rounded-xl border bg-white overflow-hidden transition ${
+                compareMode && selectedCompareIds.includes(e.id) ? 'border-blue-400 ring-1 ring-blue-200' : 'border-gray-200'
+              }`}>
                 {/* Üst kısım */}
                 <div className="px-4 py-4">
                   <div className="flex items-start gap-3">
+                    {compareMode && (
+                      <input
+                        type="checkbox"
+                        checked={selectedCompareIds.includes(e.id)}
+                        onChange={() => toggleCompareSelect(e.id)}
+                        disabled={!selectedCompareIds.includes(e.id) && selectedCompareIds.length >= MAX_COMPARE}
+                        className="mt-1 h-4 w-4 flex-shrink-0 accent-blue-600 disabled:opacity-30"
+                      />
+                    )}
                     <span className={`mt-0.5 flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${typeBadge}`}>
                       {e.exam_type}
                     </span>
@@ -260,6 +304,25 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
         </div>
       )}
 
+      {/* Karşılaştırma alt çubuğu */}
+      {compareMode && selectedCompareIds.length > 0 && (
+        <div className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+          <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-white px-4 py-2.5 shadow-lg">
+            <span className="text-[13px] text-gray-600">{selectedCompareIds.length} deneme seçildi</span>
+            <button
+              onClick={() => setShowCompare(true)}
+              disabled={selectedCompareIds.length < 2}
+              className="rounded-full bg-blue-600 px-4 py-1.5 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+            >
+              Karşılaştır
+            </button>
+            <button onClick={exitCompareMode} className="text-[12px] text-gray-400 hover:text-gray-600">
+              Vazgeç
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Silme onayı */}
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -279,6 +342,106 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
           </div>
         </div>
       )}
+
+      {/* Karşılaştırma modalı */}
+      {showCompare && compareExams.length >= 2 && (
+        <ExamCompareModal exams={compareExams} onClose={() => setShowCompare(false)} />
+      )}
+    </div>
+  );
+}
+
+// ─── Karşılaştırma modalı ──────────────────────────────────────
+
+function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => void }) {
+  const subjectRows = useMemo(() => {
+    const map = new Map<string, string>();
+    exams.forEach((e) => {
+      const subjects = e.exam_type === 'TYT' ? TYT_SUBJECTS : e.exam_type === 'AYT' ? AYT_SUBJECTS : LGS_SUBJECTS;
+      subjects.forEach((s) => { if (!map.has(s.key)) map.set(s.key, s.label); });
+    });
+    return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+  }, [exams]);
+
+  const maxNet = Math.max(...exams.map((e) => e.net_score), 1);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8">
+      <div className="w-full max-w-5xl rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
+        <div className="mb-5 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-gray-900">Deneme Karşılaştırma</h3>
+          <button onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
+            <IconX size={18} />
+          </button>
+        </div>
+
+        {/* Toplam net karşılaştırma çubukları */}
+        <div className="mb-6 space-y-2.5">
+          {exams.map((e) => {
+            const pct = Math.round((e.net_score / maxNet) * 100);
+            const colors = scoreColor(e.net_score, e.max_score);
+            return (
+              <div key={e.id}>
+                <div className="mb-1 flex items-center justify-between text-[12px]">
+                  <span className="truncate font-medium text-gray-700">
+                    {e.students?.full_name} — {e.exam_name}
+                    <span className="ml-1.5 text-[10px] font-normal text-gray-400">
+                      {new Date(e.exam_date).toLocaleDateString('tr-TR')}
+                    </span>
+                  </span>
+                  <span className={`flex-shrink-0 font-semibold ${colors.text}`}>{e.net_score} net</span>
+                </div>
+                <div className="h-2.5 w-full rounded-full bg-gray-100">
+                  <div className={`h-full rounded-full ${colors.bar} transition-all`} style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Ders bazlı tablo */}
+        <div className="overflow-x-auto rounded-xl border border-gray-100">
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                <th className="sticky left-0 z-10 bg-gray-50 px-3 py-2 text-left font-medium text-gray-500">Ders</th>
+                {exams.map((e) => (
+                  <th key={e.id} className="min-w-[120px] px-3 py-2 text-center font-medium text-gray-500">
+                    <div className="truncate">{e.students?.full_name}</div>
+                    <div className="text-[10px] font-normal text-gray-400">{e.exam_name} · {e.exam_type}</div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              <tr className="bg-blue-50/50 font-semibold">
+                <td className="sticky left-0 z-10 bg-blue-50/50 px-3 py-2 text-gray-700">Toplam Net</td>
+                {exams.map((e) => (
+                  <td key={e.id} className="px-3 py-2 text-center text-blue-700">{e.net_score}</td>
+                ))}
+              </tr>
+              {subjectRows.map((row) => (
+                <tr key={row.key}>
+                  <td className="sticky left-0 z-10 bg-white px-3 py-2 text-gray-600">{row.label}</td>
+                  {exams.map((e) => {
+                    const r = e.subject_results?.[row.key];
+                    if (!r) return <td key={e.id} className="px-3 py-2 text-center text-gray-300">—</td>;
+                    const net = getSubjectNet(r, e.exam_type);
+                    const d = Number(r.dogru) || 0;
+                    const y = Number(r.yanlis) || 0;
+                    return (
+                      <td key={e.id} className="px-3 py-2 text-center">
+                        <div className="font-medium text-gray-800">{net}</div>
+                        <div className="text-[10px] text-gray-400">{d}D · {y}Y</div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
