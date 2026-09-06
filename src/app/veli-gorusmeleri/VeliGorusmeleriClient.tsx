@@ -16,12 +16,12 @@ export function VeliGorusmeleriClient({ meetings }: { meetings: any[] }) {
     <div className="mx-auto max-w-3xl">
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-[18px] font-medium text-gray-900">Veli görüşmeleri</h1>
-          <p className="mt-0.5 text-[13px] text-gray-500">{filtered.length} veli görüşmesi</p>
+          <h1 className="text-[18px] font-semibold text-[var(--ink)]">Veli görüşmeleri</h1>
+          <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">{filtered.length} veli görüşmesi</p>
         </div>
         <Link
           href="/gorusmeler/yeni"
-          className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3.5 py-2 text-[13px] font-medium text-blue-700 hover:bg-blue-100"
+          className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
         >
           <IconPlus size={15} />
           Görüşme ekle
@@ -29,10 +29,10 @@ export function VeliGorusmeleriClient({ meetings }: { meetings: any[] }) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-white py-20">
-          <IconUsersGroup size={32} className="text-gray-300" />
-          <p className="text-sm text-gray-400">Henüz veli görüşmesi eklenmemiş.</p>
-          <Link href="/gorusmeler/yeni" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20">
+          <IconUsersGroup size={32} className="text-[var(--ink-muted)]" />
+          <p className="text-[13px] text-[var(--ink-muted)]">Henüz veli görüşmesi eklenmemiş.</p>
+          <Link href="/gorusmeler/yeni" className="rounded-lg bg-[var(--accent)] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[var(--accent-dark)]">
             Veli görüşmesi ekle
           </Link>
         </div>
@@ -40,13 +40,13 @@ export function VeliGorusmeleriClient({ meetings }: { meetings: any[] }) {
         <div className="space-y-4">
           {upcoming.length > 0 && (
             <section>
-              <h2 className="mb-2 text-[12px] font-medium uppercase tracking-wide text-gray-400">Yaklaşan</h2>
+              <h2 className="mb-2 text-[12px] font-medium text-[var(--ink-muted)]">Yaklaşan</h2>
               <VeliList meetings={upcoming} />
             </section>
           )}
           {past.length > 0 && (
             <section>
-              <h2 className="mb-2 text-[12px] font-medium uppercase tracking-wide text-gray-400">Geçmiş</h2>
+              <h2 className="mb-2 text-[12px] font-medium text-[var(--ink-muted)]">Geçmiş</h2>
               <VeliList meetings={past} />
             </section>
           )}
@@ -58,20 +58,57 @@ export function VeliGorusmeleriClient({ meetings }: { meetings: any[] }) {
 
 function VeliList({ meetings }: { meetings: any[] }) {
   return (
-    <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+    <div className="flex flex-col gap-2">
       {meetings.map((m: any) => {
         const dt = new Date(m.scheduled_at);
-        const dateStr = dt.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+        const monthShort = dt.toLocaleDateString('tr-TR', { month: 'short' });
+        const dayNum = dt.getDate();
+        const weekdayStr = dt.toLocaleDateString('tr-TR', { weekday: 'short' });
         const timeStr = dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
         return (
-          <div key={m.id} className="flex items-center gap-3 px-4 py-3.5">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-amber-50 text-[11px] font-medium text-amber-700">VELİ</div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-medium text-gray-900">{m.students?.full_name} — Veli</div>
-              <div className="text-[12px] text-gray-500">{dateStr} · {timeStr} · {m.duration_minutes} dk</div>
-              {m.topic && <div className="mt-0.5 text-[12px] text-gray-400">{m.topic}</div>}
+          <div
+            key={m.id}
+            className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3"
+          >
+            {/* Tarih bloğu */}
+            <div className="flex w-12 flex-shrink-0 flex-col items-center justify-center rounded-lg bg-[var(--paper)] py-1.5 leading-none">
+              <span className="text-[10px] font-medium text-[var(--ink-muted)]">{monthShort}</span>
+              <span className="mt-0.5 text-[16px] font-semibold text-[var(--ink)]">{dayNum}</span>
             </div>
-            <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${m.completed ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+
+            {/* İsim + tür + saat */}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="truncate text-[14px] font-medium text-[var(--ink)]">
+                  {m.students?.full_name}
+                </span>
+                <span className="flex-shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent-dark)]">
+                  Veli
+                </span>
+              </div>
+              <div className="mt-0.5 text-[12px] text-[var(--ink-muted)]">
+                {weekdayStr} · {timeStr} · {m.duration_minutes} dk
+              </div>
+            </div>
+
+            {/* Konu — ayrı sütun */}
+            <div className="hidden w-36 flex-shrink-0 border-l border-[var(--border)] pl-4 md:block">
+              {m.topic ? (
+                <span className="line-clamp-2 text-[12.5px] text-[var(--ink)]">{m.topic}</span>
+              ) : (
+                <span className="text-[12.5px] text-[var(--ink-muted)]">Konu yok</span>
+              )}
+            </div>
+
+            {/* Durum */}
+            <span
+              className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                m.completed
+                  ? 'bg-[var(--success-soft)] text-[var(--success)]'
+                  : 'bg-[var(--accent-soft)] text-[var(--accent-dark)]'
+              }`}
+            >
               {m.completed ? 'Tamamlandı' : 'Bekliyor'}
             </span>
           </div>

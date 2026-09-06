@@ -3,3 +3,35 @@
 html, body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
+:root {
+  /* KoçPanel design tokens */
+  --paper: #F6F5F1;
+  --card: #FFFFFF;
+  --border: #E6E3DA;
+  --ink: #171A22;
+  --ink-muted: #6B6F7A;
+
+  --accent: #C1791F;
+  --accent-dark: #A2630F;
+  --accent-soft: #FBEEDA;
+
+  --track-yks: #3752CC;
+  --track-yks-soft: #E9EDFC;
+  --track-lgs: #7C4FD1;
+  --track-lgs-soft: #F1EAFB;
+
+  --success: #2E8B62;
+  --success-soft: #E4F3EB;
+  --danger: #C0392B;
+  --danger-soft: #FBEAE7;
+
+  --navy-900: #2A3454;  
+  --navy-700: #3B4670;  
+  
+  --track-ara: #0E8074;
+  --track-ara-soft: #E1F3F0;
+}
+
+body {
+  background-color: var(--paper);
+}

@@ -13,9 +13,9 @@ import { createClient } from '@/lib/supabase/client';
 import type { Task } from '@/types/database';
 
 const PRIORITY_DOT: Record<string, string> = {
-  yuksek: 'bg-[#E24B4A]',
-  orta: 'bg-[#EF9F27]',
-  dusuk: 'bg-[#378ADD]',
+  yuksek: 'bg-[var(--danger)]',
+  orta: 'bg-[var(--accent)]',
+  dusuk: 'bg-[var(--track-yks)]',
 };
 
 export function TodoCard({ tasks, coachId }: { tasks: Task[]; coachId: string }) {
@@ -48,12 +48,12 @@ export function TodoCard({ tasks, coachId }: { tasks: Task[]; coachId: string })
   const done = items.filter((t) => t.completed);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-gray-900">Yapılacaklar</h2>
+        <h2 className="text-[14px] font-semibold text-[var(--ink)]">Yapılacaklar</h2>
         <button
           onClick={() => setAdding((v) => !v)}
-          className="rounded p-0.5 text-gray-400 hover:text-blue-600"
+          className="rounded-md p-1 text-[var(--ink-muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent-dark)]"
         >
           <IconPlus size={15} />
         </button>
@@ -67,11 +67,11 @@ export function TodoCard({ tasks, coachId }: { tasks: Task[]; coachId: string })
             onChange={(e) => setNewTitle(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addTask()}
             placeholder="Yeni görev..."
-            className="flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+            className="flex-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--accent)]"
           />
           <button
             onClick={addTask}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+            className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
           >
             Ekle
           </button>
@@ -79,9 +79,9 @@ export function TodoCard({ tasks, coachId }: { tasks: Task[]; coachId: string })
       )}
 
       {pending.length === 0 && done.length === 0 ? (
-        <p className="py-6 text-center text-sm text-gray-400">Yapılacak görev yok 🎉</p>
+        <p className="py-6 text-center text-[13px] text-[var(--ink-muted)]">Yapılacak görev yok 🎉</p>
       ) : (
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-[var(--border)]">
           {pending.map((t) => (
             <TodoRow key={t.id} task={t} onToggle={toggleTask} />
           ))}
@@ -102,29 +102,29 @@ function TodoRow({ task, onToggle }: { task: Task; onToggle: (id: string, done: 
 
   return (
     <div
-      className={`flex items-center gap-2.5 py-2 ${task.completed ? 'opacity-40' : ''}`}
+      className={`flex cursor-pointer items-center gap-2.5 py-2 ${task.completed ? 'opacity-40' : ''}`}
       onClick={() => onToggle(task.id, task.completed)}
     >
-      <div className={`h-2 w-2 flex-shrink-0 cursor-pointer rounded-full ${dotClass}`} />
-      <span className={`flex-1 cursor-pointer text-[13px] ${task.completed ? 'line-through' : 'text-gray-900'}`}>
+      <div className={`h-2 w-2 flex-shrink-0 rounded-full ${dotClass}`} />
+      <span className={`flex-1 text-[13px] ${task.completed ? 'text-[var(--ink-muted)] line-through' : 'text-[var(--ink)]'}`}>
         {task.title}
       </span>
-      {dueLabel && <span className="flex-shrink-0 text-[11px] text-gray-400">{dueLabel}</span>}
+      {dueLabel && <span className="flex-shrink-0 text-[11px] text-[var(--ink-muted)]">{dueLabel}</span>}
     </div>
   );
 }
 
 const QUICK_ACTIONS = [
-  { href: '/gorusmeler/yeni', label: 'Görüşme ekle', icon: IconNotes },
-  { href: '/denemeler/yeni', label: 'Deneme gir', icon: IconChartBar },
-  { href: '/soru-takibi', label: 'Soru takibi', icon: IconCheckbox },
-  { href: '/konu-ilerleyisi', label: 'Konu güncelle', icon: IconBooks },
+  { href: '/gorusmeler/yeni', label: 'Görüşme ekle', icon: IconNotes, bg: 'bg-[var(--accent-soft)]', chip: 'bg-[var(--accent)]' },
+  { href: '/denemeler/yeni', label: 'Deneme gir', icon: IconChartBar, bg: 'bg-[var(--track-lgs-soft)]', chip: 'bg-[var(--track-lgs)]' },
+  { href: '/soru-takibi', label: 'Soru takibi', icon: IconCheckbox, bg: 'bg-[var(--success-soft)]', chip: 'bg-[var(--success)]' },
+  { href: '/konu-ilerleyisi', label: 'Konu güncelle', icon: IconBooks, bg: 'bg-[var(--track-yks-soft)]', chip: 'bg-[var(--track-yks)]' },
 ];
 
 export function QuickActionsCard() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
-      <h2 className="mb-3 text-sm font-medium text-gray-900">Hızlı eylem</h2>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
+      <h2 className="mb-3 text-[14px] font-semibold text-[var(--ink)]">Hızlı eylem</h2>
       <div className="grid grid-cols-2 gap-2">
         {QUICK_ACTIONS.map((a) => {
           const Icon = a.icon;
@@ -132,9 +132,11 @@ export function QuickActionsCard() {
             <Link
               key={a.href}
               href={a.href}
-              className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2.5 text-[13px] text-gray-700 hover:bg-gray-50"
+              className={`flex items-center gap-2 rounded-lg ${a.bg} px-3 py-2.5 text-[12.5px] font-medium text-[var(--ink)] transition-opacity hover:opacity-80`}
             >
-              <Icon size={16} className="text-gray-500" />
+              <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md ${a.chip} text-white`}>
+                <Icon size={13} />
+              </span>
               {a.label}
             </Link>
           );

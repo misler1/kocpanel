@@ -36,19 +36,20 @@ function ProgressBar({ done, target }: { done: number; target: number }) {
   if (target === 0) return null;
   const normalPct = Math.min((done / target) * 100, 100);
   const extraPct = done > target ? Math.min(((done - target) / target) * 100, 100) : 0;
-  const color = normalPct >= 80 ? 'bg-emerald-500' : normalPct >= 50 ? 'bg-amber-400' : 'bg-red-400';
+  const color =
+    normalPct >= 80 ? 'bg-[var(--success)]' : normalPct >= 50 ? 'bg-[var(--accent)]' : 'bg-[var(--danger)]';
 
   return (
-    <div className="relative h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+    <div className="relative h-2 w-full overflow-hidden rounded-full bg-[var(--paper)]">
       {/* Normal ilerleme */}
       <div
-        className={`absolute left-0 top-0 h-full rounded-full ${color} transition-all`}
+        className={`absolute left-0 top-0 h-full rounded-full transition-all ${color}`}
         style={{ width: `${normalPct}%` }}
       />
       {/* Ekstra ilerleme (farklı renk, normalin üstüne) */}
       {extraPct > 0 && (
         <div
-          className="absolute top-0 h-full rounded-full bg-purple-400 opacity-70 transition-all"
+          className="absolute top-0 h-full rounded-full bg-[var(--track-lgs)] opacity-70 transition-all"
           style={{ left: `${normalPct - extraPct * (normalPct / 100)}%`, width: `${extraPct}%` }}
         />
       )}
@@ -140,7 +141,7 @@ export default function HaftalikTakipPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredStudents]);
-  
+
   // Hafta değişince logları çek
   useEffect(() => {
     if (!selectedStudentId || !weekStart) return;
@@ -301,26 +302,26 @@ export default function HaftalikTakipPage() {
 
   const subjects = Object.keys(resourceMap);
 
-  if (loading) return <div className="p-8 text-sm text-gray-400">Yükleniyor...</div>;
+  if (loading) return <div className="p-8 text-[13px] text-[var(--ink-muted)]">Yükleniyor...</div>;
 
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-5 flex items-start justify-between">
         <div>
-          <h1 className="text-[18px] font-medium text-gray-900">Haftalık Program Takibi</h1>
-          {weekLabel && <p className="mt-0.5 text-[13px] text-gray-500">{weekLabel}</p>}
+          <h1 className="text-[18px] font-semibold text-[var(--ink)]">Haftalık Program Takibi</h1>
+          {weekLabel && <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">{weekLabel}</p>}
         </div>
         <div className="flex gap-2">
           <button
             onClick={syncFromDailyLogs}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] text-gray-600 hover:bg-gray-50"
+            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] transition-colors hover:bg-[var(--paper)] hover:text-[var(--ink)]"
           >
-            🔄 WhatsApp'tan güncelle
+            🔄 WhatsApp&apos;tan güncelle
           </button>
           {logs.length > 0 && (
             <button
               onClick={generateReport}
-              className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] text-gray-600 hover:bg-gray-50"
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] transition-colors hover:bg-[var(--paper)] hover:text-[var(--ink)]"
             >
               <IconDownload size={13} /> Rapor al
             </button>
@@ -329,7 +330,7 @@ export default function HaftalikTakipPage() {
       </div>
 
         {filteredStudents.length === 0 ? (
-        <p className="text-sm text-gray-400">Henüz öğrenci eklenmemiş.</p>
+        <p className="text-[13px] text-[var(--ink-muted)]">Henüz öğrenci eklenmemiş.</p>
       ) : (
         <>
           {/* Öğrenci seçimi */}
@@ -338,24 +339,24 @@ export default function HaftalikTakipPage() {
               <button
                 key={s.id}
                 onClick={() => setSelectedStudentId(s.id)}
-                className={`rounded-full px-3 py-1 text-[12px] font-medium ${selectedStudentId === s.id ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${selectedStudentId === s.id ? 'bg-[var(--ink)] text-white' : 'bg-[var(--paper)] text-[var(--ink-muted)] hover:bg-[var(--border)]'}`}
               >
                 {s.full_name}
               </button>
             ))}
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-4 space-y-4">
+          <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
 
             {/* Hafta başlangıç günü ayarı */}
             <div className="flex items-center gap-3">
-              <span className="text-[12px] text-gray-500 flex-shrink-0">Hafta başlangıcı:</span>
+              <span className="flex-shrink-0 text-[12px] text-[var(--ink-muted)]">Hafta başlangıcı:</span>
               <div className="flex flex-wrap gap-1">
                 {DAYS_TR.map((day, i) => (
                   <button
                     key={i}
                     onClick={() => updateWeekStartDay(i)}
-                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${(selectedStudent?.week_start_day ?? 0) === i ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${(selectedStudent?.week_start_day ?? 0) === i ? 'bg-[var(--accent)] text-white' : 'bg-[var(--paper)] text-[var(--ink-muted)] hover:bg-[var(--border)]'}`}
                   >
                     {day.slice(0, 3)}
                   </button>
@@ -363,13 +364,13 @@ export default function HaftalikTakipPage() {
               </div>
             </div>
 
-            <div className="border-t border-gray-100" />
+            <div className="border-t border-[var(--border)]" />
 
             {/* Hedef ekleme formu */}
             <div>
               <button
                 onClick={() => setShowForm((v) => !v)}
-                className="flex items-center gap-1.5 text-[12px] text-blue-600 hover:underline"
+                className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--accent-dark)] hover:underline"
               >
                 <IconPlus size={13} />
                 Hedef ekle
@@ -377,26 +378,26 @@ export default function HaftalikTakipPage() {
               </button>
 
               {showForm && (
-                <div className="mt-3 rounded-lg bg-gray-50 p-3 space-y-3">
+                <div className="mt-3 space-y-3 rounded-lg bg-[var(--paper)] p-3">
                   {subjects.length === 0 && (
-                    <p className="text-[12px] text-amber-700">Önce öğrenciye kaynak ekle.</p>
+                    <p className="text-[12px] text-[var(--accent-dark)]">Önce öğrenciye kaynak ekle.</p>
                   )}
                   {subjects.length > 0 && (
                     <>
                       <div className="flex flex-wrap gap-2">
                         {/* Ders */}
-                        <div className="flex-1 min-w-[130px]">
-                          <label className="mb-1 block text-[11px] font-medium text-gray-500">Ders</label>
+                        <div className="min-w-[130px] flex-1">
+                          <label className="mb-1 block text-[11px] font-medium text-[var(--ink-muted)]">Ders</label>
                           <select value={newSubject} onChange={(e) => setNewSubject(e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-[13px] focus:outline-none focus:border-blue-500">
+                            className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--accent)]">
                             {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </div>
                         {/* Kaynak */}
-                        <div className="flex-1 min-w-[130px]">
-                          <label className="mb-1 block text-[11px] font-medium text-gray-500">Kaynak</label>
+                        <div className="min-w-[130px] flex-1">
+                          <label className="mb-1 block text-[11px] font-medium text-[var(--ink-muted)]">Kaynak</label>
                           <select value={newResource} onChange={(e) => setNewResource(e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-[13px] focus:outline-none focus:border-blue-500">
+                            className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--accent)]">
                             {(resourceMap[newSubject] ?? []).map((r) => (
                               <option key={r} value={r}>{r}</option>
                             ))}
@@ -405,31 +406,33 @@ export default function HaftalikTakipPage() {
                       </div>
                       {/* Konu (opsiyonel) */}
                       <div>
-                        <label className="mb-1 block text-[11px] font-medium text-gray-500">Konu <span className="text-gray-400">(opsiyonel)</span></label>
+                        <label className="mb-1 block text-[11px] font-medium text-[var(--ink-muted)]">
+                          Konu <span className="text-[var(--ink-muted)]">(opsiyonel)</span>
+                        </label>
                         <input type="text" value={newTopic} onChange={(e) => setNewTopic(e.target.value)}
                           placeholder="örn. Üslü Sayılar"
-                          className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-[13px] focus:outline-none focus:border-blue-500" />
+                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {/* Soru hedefi */}
-                        <div className="flex-1 min-w-[100px]">
-                          <label className="mb-1 block text-[11px] font-medium text-gray-500">Haftalık soru hedefi</label>
+                        <div className="min-w-[100px] flex-1">
+                          <label className="mb-1 block text-[11px] font-medium text-[var(--ink-muted)]">Haftalık soru hedefi</label>
                           <input type="number" value={newTarget} onChange={(e) => setNewTarget(e.target.value)}
                             placeholder="140"
-                            className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-[13px] focus:outline-none focus:border-blue-500" />
+                            className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
                         </div>
                         {/* Konu çalışma süresi (opsiyonel) */}
                         {newTopic && (
-                          <div className="flex-1 min-w-[100px]">
-                            <label className="mb-1 block text-[11px] font-medium text-gray-500">Çalışma süresi hedefi (dk)</label>
+                          <div className="min-w-[100px] flex-1">
+                            <label className="mb-1 block text-[11px] font-medium text-[var(--ink-muted)]">Çalışma süresi hedefi (dk)</label>
                             <input type="number" value={newTopicTarget} onChange={(e) => setNewTopicTarget(e.target.value)}
                               placeholder="120"
-                              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-[13px] focus:outline-none focus:border-blue-500" />
+                              className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
                           </div>
                         )}
                       </div>
                       <button onClick={addLog}
-                        className="w-full rounded-lg bg-blue-600 py-2 text-[13px] font-medium text-white hover:bg-blue-700">
+                        className="w-full rounded-lg bg-[var(--accent)] py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]">
                         Ekle
                       </button>
                     </>
@@ -438,13 +441,13 @@ export default function HaftalikTakipPage() {
               )}
             </div>
 
-            <div className="border-t border-gray-100" />
+            <div className="border-t border-[var(--border)]" />
 
             {/* Log listesi */}
             {logs.length === 0 ? (
-              <p className="py-4 text-center text-sm text-gray-400">Bu hafta için henüz hedef eklenmemiş.</p>
+              <p className="py-4 text-center text-[13px] text-[var(--ink-muted)]">Bu hafta için henüz hedef eklenmemiş.</p>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-[var(--border)]">
                 {logs.map((log) => {
                   const pct = log.target_count > 0 ? Math.round((log.done_count / log.target_count) * 100) : 0;
                   const isOver = log.done_count > log.target_count;
@@ -456,23 +459,23 @@ export default function HaftalikTakipPage() {
                     <div key={log.id} className="py-3">
                       <div className="mb-2 flex items-start justify-between">
                         <div>
-                          <span className="text-[13px] font-medium text-gray-900">{log.subject}</span>
+                          <span className="text-[13px] font-medium text-[var(--ink)]">{log.subject}</span>
                           {log.topic && (
-                            <span className="ml-2 text-[11px] text-gray-500">· {log.topic}</span>
+                            <span className="ml-2 text-[11px] text-[var(--ink-muted)]">· {log.topic}</span>
                           )}
                           {log.resource_name && (
-                            <span className="ml-2 text-[11px] text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">
+                            <span className="ml-2 rounded-full bg-[var(--paper)] px-2 py-0.5 text-[11px] text-[var(--ink-muted)]">
                               {log.resource_name}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className={`text-[12px] font-medium ${isOver ? 'text-purple-600' : pct >= 100 ? 'text-emerald-600' : 'text-gray-500'}`}>
+                        <div className="flex flex-shrink-0 items-center gap-2">
+                          <span className={`text-[12px] font-medium ${isOver ? 'text-[var(--track-lgs)]' : pct >= 100 ? 'text-[var(--success)]' : 'text-[var(--ink-muted)]'}`}>
                             {log.done_count}/{log.target_count}
                             {isOver && <span className="ml-1 text-[10px]">+{log.done_count - log.target_count}</span>}
                           </span>
-                          <span className="text-[11px] text-gray-400">%{pct}</span>
-                          <button onClick={() => deleteLog(log.id)} className="text-gray-300 hover:text-red-500">
+                          <span className="text-[11px] text-[var(--ink-muted)]">%{pct}</span>
+                          <button onClick={() => deleteLog(log.id)} className="text-[var(--ink-muted)] hover:text-[var(--danger)]">
                             <IconTrash size={13} />
                           </button>
                         </div>
@@ -484,7 +487,7 @@ export default function HaftalikTakipPage() {
                       {/* Konu çalışma süresi */}
                       {log.topic_target_minutes > 0 && (
                         <div className="mt-2">
-                          <div className="mb-1 flex justify-between text-[11px] text-gray-400">
+                          <div className="mb-1 flex justify-between text-[11px] text-[var(--ink-muted)]">
                             <span>Konu çalışma</span>
                             <span>{log.topic_done_minutes ?? 0}/{log.topic_target_minutes} dk {topicPct !== null ? `(%${topicPct})` : ''}</span>
                           </div>

@@ -44,12 +44,12 @@ export default async function DersProgramiPage() {
     <div className="mx-auto max-w-4xl">
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-[18px] font-medium text-gray-900">Ders programı</h1>
-          <p className="mt-0.5 text-[13px] text-gray-500">Bu haftaki görüşmeler</p>
+          <h1 className="text-[18px] font-semibold text-[var(--ink)]">Ders programı</h1>
+          <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">Bu haftaki görüşmeler</p>
         </div>
         <Link
           href="/gorusmeler/yeni"
-          className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3.5 py-2 text-[13px] font-medium text-blue-700 hover:bg-blue-100"
+          className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
         >
           <IconPlus size={15} />
           Görüşme ekle
@@ -65,11 +65,18 @@ export default async function DersProgramiPage() {
           });
 
           return (
-            <div key={i} className={`min-h-[120px] rounded-xl border p-2 md:p-3 ${isToday ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-              <div className={`mb-1 text-[11px] font-medium ${isToday ? 'text-blue-700' : 'text-gray-500'}`}>
+            <div
+              key={i}
+              className={`min-h-[120px] rounded-xl border p-2 md:p-3 ${
+                isToday
+                  ? 'border-[var(--accent)]/30 bg-[var(--accent-soft)]'
+                  : 'border-[var(--border)] bg-[var(--card)]'
+              }`}
+            >
+              <div className={`mb-1 text-[11px] font-medium ${isToday ? 'text-[var(--accent-dark)]' : 'text-[var(--ink-muted)]'}`}>
                 {DAYS[i].slice(0, 3)}
               </div>
-              <div className={`mb-2 text-[15px] font-semibold ${isToday ? 'text-blue-700' : 'text-gray-900'}`}>
+              <div className={`mb-2 text-[15px] font-semibold ${isToday ? 'text-[var(--accent-dark)]' : 'text-[var(--ink)]'}`}>
                 {date.getDate()}
               </div>
               <div className="space-y-1">
@@ -77,7 +84,14 @@ export default async function DersProgramiPage() {
                   const time = new Date(m.scheduled_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
                   const isVeli = m.meeting_type === 'veli';
                   return (
-                    <div key={m.id} className={`rounded px-1.5 py-1 text-[10px] leading-tight ${isVeli ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
+                    <div
+                      key={m.id}
+                      className={`rounded px-1.5 py-1 text-[10px] leading-tight ${
+                        isVeli
+                          ? 'bg-[var(--accent-soft)] text-[var(--accent-dark)]'
+                          : 'bg-[var(--track-yks-soft)] text-[var(--track-yks)]'
+                      }`}
+                    >
                       <div className="font-medium">{time}</div>
                       <div className="truncate">{m.students?.full_name}</div>
                     </div>
@@ -89,9 +103,13 @@ export default async function DersProgramiPage() {
         })}
       </div>
 
-      <div className="mt-4 flex gap-3 text-[12px] text-gray-500">
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-blue-100" /> Koç görüşmesi</span>
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-amber-100" /> Veli görüşmesi</span>
+      <div className="mt-4 flex gap-3 text-[12px] text-[var(--ink-muted)]">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-[var(--track-yks)]" /> Koç görüşmesi
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-[var(--accent)]" /> Veli görüşmesi
+        </span>
       </div>
     </div>
   );

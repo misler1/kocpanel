@@ -65,19 +65,26 @@ export function AnasayfaClient({
       : 0;
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-4 flex items-start justify-between">
+    <div className="mx-auto w-full max-w-6xl px-1">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-[18px] font-medium text-gray-900">{getGreeting(firstName)}</h1>
-          <p className="mt-0.5 text-[13px] text-gray-500">
-            {getTodayLabel()} · {filteredStudents.length} öğrenci aktif
-          </p>
+          <h1 className="text-[22px] font-semibold tracking-tight text-[var(--ink)]">
+            {getGreeting(firstName)}
+          </h1>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <span className="text-[13px] text-[var(--ink-muted)]">
+              {getTodayLabel()}
+            </span>
+            <span className="inline-flex items-center rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[12px] font-medium text-[var(--accent-dark)]">
+              {filteredStudents.length} öğrenci aktif
+            </span>
+          </div>
         </div>
         <Link
           href="/ogrenciler/yeni"
-          className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3.5 py-2 text-[13px] font-medium text-blue-700 hover:bg-blue-100"
+          className="flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-[var(--accent-dark)]"
         >
-          <IconPlus size={15} />
+          <IconPlus size={16} strokeWidth={2.5} />
           Yeni öğrenci
         </Link>
       </div>
@@ -92,15 +99,15 @@ export function AnasayfaClient({
         weeklyQuestionCompletion={avgCompletion}
       />
 
-      <div className="mb-3 grid gap-3 md:grid-cols-[1fr_320px]">
+      <div className="mb-4 grid gap-4 md:grid-cols-[1fr_320px]">
         <StudentStatusCard students={topStudents} />
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           <TodoCard tasks={filteredTasks} coachId={coachId} />
           <QuickActionsCard />
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <RecentExamsCard exams={recentExams} />
         <WeeklyMeetingsCard meetings={filteredMeetings} />
       </div>

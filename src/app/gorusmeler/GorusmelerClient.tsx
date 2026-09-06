@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { IconPlus, IconCalendar, IconEdit, IconTrash } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
+
 // ─── Tipler ──────────────────────────────────────────────────
 
 interface Props {
@@ -77,12 +78,12 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
       {/* Başlık */}
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-[18px] font-medium text-gray-900">Görüşme kayıtları</h1>
-          <p className="mt-0.5 text-[13px] text-gray-500">{filtered.length} görüşme</p>
+          <h1 className="text-[18px] font-semibold text-[var(--ink)]">Görüşme kayıtları</h1>
+          <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">{filtered.length} görüşme</p>
         </div>
         <Link
           href="/gorusmeler/yeni"
-          className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3.5 py-2 text-[13px] font-medium text-blue-700 hover:bg-blue-100"
+          className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
         >
           <IconPlus size={15} />
           Görüşme ekle
@@ -94,7 +95,7 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             onClick={() => { setFilter(''); router.push('/gorusmeler'); }}
-            className={`rounded-full px-3 py-1 text-[12px] font-medium ${!filter ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${!filter ? 'bg-[var(--ink)] text-white' : 'bg-[var(--paper)] text-[var(--ink-muted)] hover:bg-[var(--border)]'}`}
           >
             Tümü
           </button>
@@ -102,7 +103,7 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
             <button
               key={s.id}
               onClick={() => { setFilter(s.id); router.push(`/gorusmeler?ogrenci=${s.id}`); }}
-              className={`rounded-full px-3 py-1 text-[12px] font-medium ${filter === s.id ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${filter === s.id ? 'bg-[var(--ink)] text-white' : 'bg-[var(--paper)] text-[var(--ink-muted)] hover:bg-[var(--border)]'}`}
             >
               {s.full_name}
             </button>
@@ -112,10 +113,10 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
 
       {/* Liste */}
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-white py-20">
-          <IconCalendar size={32} className="text-gray-300" />
-          <p className="text-sm text-gray-400">Henüz görüşme eklenmemiş.</p>
-          <Link href="/gorusmeler/yeni" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20">
+          <IconCalendar size={32} className="text-[var(--ink-muted)]" />
+          <p className="text-[13px] text-[var(--ink-muted)]">Henüz görüşme eklenmemiş.</p>
+          <Link href="/gorusmeler/yeni" className="rounded-lg bg-[var(--accent)] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[var(--accent-dark)]">
             İlk görüşmeyi ekle
           </Link>
         </div>
@@ -123,7 +124,7 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
         <div className="space-y-4">
           {upcoming.length > 0 && (
             <section>
-              <h2 className="mb-2 text-[12px] font-medium uppercase tracking-wide text-gray-400">Yaklaşan</h2>
+              <h2 className="mb-2 text-[12px] font-medium text-[var(--ink-muted)]">Yaklaşan</h2>
               <MeetingGroup
                 meetings={upcoming}
                 onEdit={(m) => setEditing({ ...m, scheduled_at_local: toLocalDatetime(m.scheduled_at) })}
@@ -133,7 +134,7 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
           )}
           {past.length > 0 && (
             <section>
-              <h2 className="mb-2 text-[12px] font-medium uppercase tracking-wide text-gray-400">Geçmiş</h2>
+              <h2 className="mb-2 text-[12px] font-medium text-[var(--ink-muted)]">Geçmiş</h2>
               <MeetingGroup
                 meetings={past}
                 onEdit={(m) => setEditing({ ...m, scheduled_at_local: toLocalDatetime(m.scheduled_at) })}
@@ -146,69 +147,69 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
 
       {/* ── Düzenleme modalı ── */}
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-base font-semibold text-gray-900">Görüşmeyi düzenle</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink)]/40 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-xl">
+            <h3 className="mb-4 text-base font-semibold text-[var(--ink)]">Görüşmeyi düzenle</h3>
             <form onSubmit={handleUpdate} className="space-y-3">
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Görüşme türü</label>
+                <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Görüşme türü</label>
                 <div className="flex gap-4">
                   {[{ value: 'ogrenci', label: 'Öğrenci' }, { value: 'veli', label: 'Veli' }].map((t) => (
                     <label key={t.value} className="flex cursor-pointer items-center gap-2">
                       <input type="radio" value={t.value} checked={editing.meeting_type === t.value}
                         onChange={() => setEditing({ ...editing, meeting_type: t.value })}
-                        className="accent-blue-600" />
-                      <span className="text-sm text-gray-700">{t.label}</span>
+                        className="accent-[var(--accent)]" />
+                      <span className="text-sm text-[var(--ink)]">{t.label}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Tarih & Saat</label>
+                <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Tarih & Saat</label>
                 <input type="datetime-local" value={editing.scheduled_at_local}
                   onChange={(e) => setEditing({ ...editing, scheduled_at_local: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                  className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Süre (dakika)</label>
+                <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Süre (dakika)</label>
                 <input type="number" min={5} max={180} value={editing.duration_minutes}
                   onChange={(e) => setEditing({ ...editing, duration_minutes: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                  className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Konu</label>
+                <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Konu</label>
                 <input type="text" value={editing.topic ?? ''}
                   onChange={(e) => setEditing({ ...editing, topic: e.target.value })}
                   placeholder="Haftalık takip, TYT değerlendirme..."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                  className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Notlar</label>
+                <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Notlar</label>
                 <textarea rows={3} value={editing.notes ?? ''}
                   onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
                   placeholder="Görüşme notları..."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+                  className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
               </div>
 
               <label className="flex cursor-pointer items-center gap-2">
                 <input type="checkbox" checked={editing.completed}
                   onChange={(e) => setEditing({ ...editing, completed: e.target.checked })}
-                  className="h-4 w-4 accent-blue-600" />
-                <span className="text-sm text-gray-700">Tamamlandı olarak işaretle</span>
+                  className="h-4 w-4 accent-[var(--accent)]" />
+                <span className="text-sm text-[var(--ink)]">Tamamlandı olarak işaretle</span>
               </label>
 
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setEditing(null)}
-                  className="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-50">
+                  className="flex-1 rounded-lg border border-[var(--border)] py-2 text-sm text-[var(--ink-muted)] hover:bg-[var(--paper)]">
                   İptal
                 </button>
                 <button type="submit" disabled={saving}
-                  className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
+                  className="flex-1 rounded-lg bg-[var(--accent)] py-2 text-sm font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-60">
                   {saving ? 'Kaydediliyor...' : 'Kaydet'}
                 </button>
               </div>
@@ -219,17 +220,17 @@ export function GorusmelerClient({ initialMeetings, students, initialFilter }: P
 
       {/* ── Silme onayı ── */}
       {deletingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
-            <h3 className="mb-2 text-base font-semibold text-gray-900">Görüşmeyi sil?</h3>
-            <p className="mb-5 text-sm text-gray-500">Bu görüşme kalıcı olarak silinecek. Geri alınamaz.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink)]/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-xl">
+            <h3 className="mb-2 text-base font-semibold text-[var(--ink)]">Görüşmeyi sil?</h3>
+            <p className="mb-5 text-sm text-[var(--ink-muted)]">Bu görüşme kalıcı olarak silinecek. Geri alınamaz.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeletingId(null)}
-                className="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-50">
+                className="flex-1 rounded-lg border border-[var(--border)] py-2 text-sm text-[var(--ink-muted)] hover:bg-[var(--paper)]">
                 Vazgeç
               </button>
               <button onClick={() => handleDelete(deletingId)}
-                className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700">
+                className="flex-1 rounded-lg bg-[var(--danger)] py-2 text-sm font-semibold text-white hover:opacity-90">
                 Evet, sil
               </button>
             </div>
@@ -252,32 +253,64 @@ function MeetingGroup({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+    <div className="flex flex-col gap-2">
       {meetings.map((m: any) => {
         const dt = new Date(m.scheduled_at);
-        const dateStr = dt.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+        const monthShort = dt.toLocaleDateString('tr-TR', { month: 'short' });
+        const dayNum = dt.getDate();
+        const weekdayStr = dt.toLocaleDateString('tr-TR', { weekday: 'short' });
         const timeStr = dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
         const isVeli = m.meeting_type === 'veli';
 
         return (
-          <div key={m.id} className="flex items-center gap-3 px-4 py-3">
-            {/* Tür rozeti */}
-            <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-[11px] font-medium ${isVeli ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
-              {isVeli ? 'VELİ' : 'KOÇ'}
+          <div
+            key={m.id}
+            className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3"
+          >
+            {/* Tarih bloğu */}
+            <div className="flex w-12 flex-shrink-0 flex-col items-center justify-center rounded-lg bg-[var(--paper)] py-1.5 leading-none">
+              <span className="text-[10px] font-medium text-[var(--ink-muted)]">{monthShort}</span>
+              <span className="mt-0.5 text-[16px] font-semibold text-[var(--ink)]">{dayNum}</span>
             </div>
 
-            {/* Bilgiler */}
+            {/* İsim + tür + saat — ayrı satırlar */}
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-medium text-gray-900">{m.students?.full_name}</div>
-              <div className="text-[12px] text-gray-500">
-                {dateStr} · {timeStr} · {m.duration_minutes} dk
+              <div className="flex items-center gap-2">
+                <span className="truncate text-[14px] font-medium text-[var(--ink)]">
+                  {m.students?.full_name}
+                </span>
+                <span
+                  className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                    isVeli
+                      ? 'bg-[var(--accent-soft)] text-[var(--accent-dark)]'
+                      : 'bg-[var(--track-yks-soft)] text-[var(--track-yks)]'
+                  }`}
+                >
+                  {isVeli ? 'Veli' : 'Koç'}
+                </span>
               </div>
-              {m.topic && <div className="mt-0.5 text-[12px] text-gray-400">{m.topic}</div>}
-              {m.notes && <div className="mt-0.5 text-[12px] text-gray-400 italic line-clamp-1">{m.notes}</div>}
+              <div className="mt-0.5 text-[12px] text-[var(--ink-muted)]">
+                {weekdayStr} · {timeStr} · {m.duration_minutes} dk
+              </div>
+            </div>
+
+            {/* Konu — ayrı bir alan, dikey çizgiyle bölünmüş */}
+            <div className="hidden w-36 flex-shrink-0 border-l border-[var(--border)] pl-4 md:block">
+              {m.topic ? (
+                <span className="line-clamp-2 text-[12.5px] text-[var(--ink)]">{m.topic}</span>
+              ) : (
+                <span className="text-[12.5px] text-[var(--ink-muted)]">Konu yok</span>
+              )}
             </div>
 
             {/* Durum */}
-            <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${m.completed ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+            <span
+              className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                m.completed
+                  ? 'bg-[var(--success-soft)] text-[var(--success)]'
+                  : 'bg-[var(--accent-soft)] text-[var(--accent-dark)]'
+              }`}
+            >
               {m.completed ? 'Tamamlandı' : 'Bekliyor'}
             </span>
 
@@ -286,14 +319,14 @@ function MeetingGroup({
               <button
                 onClick={() => onEdit(m)}
                 title="Düzenle"
-                className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
+                className="rounded p-1.5 text-[var(--ink-muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent-dark)]"
               >
                 <IconEdit size={15} />
               </button>
               <button
                 onClick={() => onDelete(m.id)}
                 title="Sil"
-                className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-500"
+                className="rounded p-1.5 text-[var(--ink-muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
               >
                 <IconTrash size={15} />
               </button>

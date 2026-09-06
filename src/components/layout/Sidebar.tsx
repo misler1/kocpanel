@@ -20,37 +20,49 @@ export function Sidebar({ studentCount }: { studentCount?: number }) {
   ];
 
   return (
-    <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-gray-200 md:bg-gray-50/60 md:px-3 md:py-4">
-      <div className="mb-3 flex items-center gap-2 border-b border-gray-200 px-1 pb-4">
-        <IconSchool className="text-blue-600" size={22} />
-        <span className="text-[15px] font-medium text-gray-900">KoçPanel</span>
+    <aside className="hidden md:flex md:w-64 md:flex-col md:bg-[var(--navy-900)] md:px-3 md:py-5">
+      <div className="mb-4 flex items-center gap-2.5 border-b border-white/10 px-2 pb-5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)]">
+          <IconSchool size={18} className="text-white" />
+        </span>
+        <span className="text-[16px] font-semibold tracking-tight text-white">
+          KoçPanel
+        </span>
       </div>
-        <ExamFilterBar />
-      <nav className="flex flex-col gap-0.5">
+
+      <ExamFilterBar />
+
+      <nav className="mt-3 flex flex-col">
         {groups.map((group, gi) => (
-          <div key={gi}>
+          <div key={gi} className={gi > 0 ? 'mt-3' : ''}>
             {group.items.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
               return (
                 <div key={item.href}>
                   {item.section && (
-                    <div className="px-2 pb-1.5 pt-2.5 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                    <div className="px-2.5 pb-1.5 pt-3 text-[12px] font-medium text-white/35">
                       {item.section}
                     </div>
                   )}
                   <Link
                     href={item.href}
-                    className={`mb-0.5 flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition ${
+                    className={`relative mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-[15px] transition-colors ${
                       active
-                        ? 'border border-gray-200 bg-white font-medium text-gray-900'
-                        : 'text-gray-600 hover:bg-white/60'
+                        ? 'bg-white/10 font-medium text-white'
+                        : 'text-white/60 hover:bg-white/5 hover:text-white/90'
                     }`}
                   >
-                    <Icon size={17} className={active ? 'text-gray-700' : 'text-gray-500'} />
+                    {active && (
+                      <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--accent)]" />
+                    )}
+                    <Icon
+                      size={19}
+                      className={active ? 'text-[var(--accent)]' : 'text-white/45'}
+                    />
                     {item.label}
                     {item.href === '/ogrenciler' && studentCount !== undefined && (
-                      <span className="ml-auto rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-700">
+                      <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/80">
                         {filteredStudentCount}
                       </span>
                     )}

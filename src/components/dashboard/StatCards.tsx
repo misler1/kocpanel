@@ -22,32 +22,44 @@ export function StatCards({
   return (
     <div className="mb-4 grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
       <StatCard
-        icon={<IconUsers size={14} className="text-gray-500" />}
+        icon={<IconUsers size={15} />}
+        bg="bg-[var(--track-yks-soft)]"
+        border="border-[var(--track-yks)]/15"
+        chipBg="bg-[var(--track-yks)]"
+        tone="text-[var(--track-yks)]"
         label="Öğrenci"
         value={String(studentCount)}
         sub={`${yksCount} YKS · ${lgsCount} LGS`}
-        subColor="text-gray-400"
       />
       <StatCard
-        icon={<IconNotes size={14} className="text-gray-500" />}
+        icon={<IconNotes size={15} />}
+        bg="bg-[var(--accent-soft)]"
+        border="border-[var(--accent)]/15"
+        chipBg="bg-[var(--accent)]"
+        tone="text-[var(--accent-dark)]"
         label="Bu hafta görüşme"
         value={String(weeklyMeetings)}
         sub={pendingMeetings > 0 ? `${pendingMeetings} bekliyor` : 'Hepsi tamam'}
-        subColor={pendingMeetings > 0 ? 'text-amber-600' : 'text-emerald-600'}
       />
       <StatCard
-        icon={<IconChartBar size={14} className="text-gray-500" />}
+        icon={<IconChartBar size={15} />}
+        bg="bg-[var(--track-lgs-soft)]"
+        border="border-[var(--track-lgs)]/15"
+        chipBg="bg-[var(--track-lgs)]"
+        tone="text-[var(--track-lgs)]"
         label="Deneme girilmedi"
         value={String(missingExamAnalysis)}
         sub="Analiz eksik"
-        subColor={missingExamAnalysis > 0 ? 'text-amber-600' : 'text-emerald-600'}
       />
       <StatCard
-        icon={<IconCheckbox size={14} className="text-gray-500" />}
+        icon={<IconCheckbox size={15} />}
+        bg="bg-[var(--success-soft)]"
+        border="border-[var(--success)]/15"
+        chipBg="bg-[var(--success)]"
+        tone="text-[var(--success)]"
         label="Haftalık soru"
         value={`${weeklyQuestionCompletion}%`}
         sub="Ortalama tamamlama"
-        subColor={weeklyQuestionCompletion >= 70 ? 'text-emerald-600' : 'text-amber-600'}
       />
     </div>
   );
@@ -55,25 +67,33 @@ export function StatCards({
 
 function StatCard({
   icon,
+  bg,
+  border,
+  chipBg,
+  tone,
   label,
   value,
   sub,
-  subColor,
 }: {
   icon: React.ReactNode;
+  bg: string;
+  border: string;
+  chipBg: string;
+  tone: string;
   label: string;
   value: string;
   sub: string;
-  subColor: string;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-3 md:rounded-lg md:px-4 md:py-3.5">
-      <div className="mb-1 flex items-center gap-1.5 text-[12px] text-gray-500">
-        {icon}
-        {label}
+    <div className={`rounded-xl border ${border} ${bg} px-3.5 py-3.5 md:px-4 md:py-4`}>
+      <div className="mb-2.5 flex items-center gap-2">
+        <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${chipBg} text-white`}>
+          {icon}
+        </span>
+        <span className={`text-[12.5px] font-medium ${tone}`}>{label}</span>
       </div>
-      <div className="text-[22px] font-medium text-gray-900">{value}</div>
-      <div className={`mt-0.5 text-[12px] ${subColor}`}>{sub}</div>
+      <div className="text-[24px] font-semibold tracking-tight text-[var(--ink)]">{value}</div>
+      <div className={`mt-1 text-[12.5px] font-medium ${tone}`}>{sub}</div>
     </div>
   );
 }
