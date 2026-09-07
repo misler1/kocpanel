@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { IconArrowLeft, IconUsers, IconChevronDown, IconArrowRight, IconCheck, IconUserPlus } from '@tabler/icons-react';
+import { IconDownload } from '@tabler/icons-react';
 
 const MATCH_LABELS: Record<string, { label: string; className: string }> = {
   matched: { label: 'Eşleşti', className: 'bg-[var(--success-soft)] text-[var(--success)]' },
@@ -33,6 +34,73 @@ export function SonuclarClient({
   students: any[];
 }) {
   const supabase = createClient();
+    function handleDownloadReport() {
+    const lines: string[] = [];
+    lines.push(`ANKET RAPORU`);
+    lines.push(`${survey.title}`);
+    lines.push(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`);
+    lines.push(`Toplam Yanıt: ${responses.length}`);
+    lines.push('');
+    lines.push('═'.repeat(60));
+    lines.push('KONU BAZLI ÖZET');
+    lines.push('═'.repeat(60));
+
+    subjects.forEach((subject: any) => {
+      lines.push('');
+      lines.push(`▶ ${subject.name}`);
+      lines.push('─'.repeat(40));
+
+      subject.topics.forEach((topic: any) => {
+        const topicMap = topicAggregate.get(topic.id);
+        if (!topicMap || topicMap.size === 0) return;
+        const total = Array.from(topicMap.values()).reduce((a, b) => a + b, 0);
+
+        lines.push(`  ${topic.name}`);
+        options.forEach((opt: any) => {
+          const count = topicMap.get(opt.id) ?? 0;
+          if (count === 0) return;
+          const pct = Math.round((count / total) * 100);
+          lines.push(`    • ${opt.label}: ${count} kişi (%${pct})`);
+        });
+      });
+    });
+
+    lines.push('');
+    lines.push('═'.repeat(60));
+    lines.push('ÖĞRENCİ BAZLI CEVAPLAR');
+    lines.push('═'.repeat(60));
+
+    responses.forEach((r: any) => {
+      lines.push('');
+      const displayName = r.students?.full_name ?? r.entered_name;
+      lines.push(`▶ ${displayName}`);
+      lines.push(`  Tarih: ${new Date(r.submitted_at).toLocaleDateString('tr-TR')}`);
+      if (r.entered_phone) lines.push(`  Tel: ${r.entered_phone}`);
+
+      const respAnswers = answersByResponse.get(r.id) ?? [];
+      const byTopic = new Map<string, any[]>();
+      respAnswers.forEach((a: any) => {
+        if (!a.topic_id) return;
+        const list = byTopic.get(a.topic_id) ?? [];
+        list.push(a);
+        byTopic.set(a.topic_id, list);
+      });
+
+      byTopic.forEach((topicAnswers, topicId) => {
+        const topicName = topicMeta.get(topicId)?.topic ?? 'Bilinmeyen';
+        const labels = topicAnswers.map((a: any) => optionById.get(a.option_id)?.label ?? '—').join(', ');
+        lines.push(`  ${topicName}: ${labels}`);
+      });
+    });
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `anket-raporu-${survey.title.slice(0, 30).replace(/\s/g, '-')}-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   const [responses, setResponses] = useState(initialResponses);
   const [tab, setTab] = useState<'cevaplar' | 'ozet'>('cevaplar');
   const [expandedResponse, setExpandedResponse] = useState<string | null>(null);
@@ -167,9 +235,17 @@ export function SonuclarClient({
 
       <div className="mb-5">
         <h1 className="text-[18px] font-semibold text-[var(--ink)]">{survey.title}</h1>
-        <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-[var(--ink-muted)]">
-          <IconUsers size={14} /> {responses.length} yanıt
-        </p>
+        <div className="mt-0.5 flex items-center justify-between">
+          <p className="flex items-center gap-1.5 text-[13px] text-[var(--ink-muted)]">
+            <IconUsers size={14} /> {responses.length} yanıt
+          </p>
+          <button
+            onClick={handleDownloadReport}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] font-medium text-gray-600 hover:bg-gray-50"
+          >
+            <IconDownload size={14} /> Rapor İndir
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 flex gap-1 rounded-lg bg-[var(--paper)] p-1">
