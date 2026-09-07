@@ -25,25 +25,26 @@ export async function middleware(request: NextRequest) {
                      request.nextUrl.pathname.startsWith('/kayit') ||
                      request.nextUrl.pathname.startsWith('/sifremi-unuttum') ||
                      request.nextUrl.pathname.startsWith('/sifre-sifirla');
+  const isPublicPage = request.nextUrl.pathname.startsWith('/anket'); 
   const isWebhook = request.nextUrl.pathname.startsWith('/api/whatsapp');
   const isOnayPage = request.nextUrl.pathname.startsWith('/onay-bekleniyor');
 
   // Giriş yapmamış → giriş sayfasına
-  if (!user && !isAuthPage && !isWebhook && !isOnayPage && request.nextUrl.pathname !== '/') {
+  if (!user && !isAuthPage && !isWebhook && !isOnayPage && !isPublicPage && request.nextUrl.pathname !== '/') {
     const url = request.nextUrl.clone();
     url.pathname = '/giris';
     return NextResponse.redirect(url);
   }
 
   // Giriş yapmış + auth sayfasındaysa → onay kontrolü yap
-  if (user && isAuthPage) {
+  if (user && isAuthPage && !isPublicPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/anasayfa';
     return NextResponse.redirect(url);
   }
 
   // Giriş yapmış ama onay bekleniyor sayfası değilse → onay kontrolü
-  if (user && !isAuthPage && !isWebhook && !isOnayPage) {
+  if (user && !isAuthPage && !isWebhook && !isOnayPage && !isPublicPage) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('is_approved')
