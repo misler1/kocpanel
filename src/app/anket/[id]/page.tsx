@@ -72,16 +72,22 @@ export default function AnketPage() {
 
   async function handleSubmit() {
     setStep('submitting');
-    const { data: response } = await (supabase as any)
+    const { data: response, error: responseError } = await (supabase as any)
       .from('survey_responses')
       .insert({
         survey_id: id,
         entered_phone: phone.trim(),
         entered_name: name.trim(),
         match_status: 'pending',
+        submitted_at: new Date().toISOString(),
       })
-      .select().single();
-    if (!response) { setStep('error'); return; }
+      .select('id').single();
+
+    if (responseError || !response) { 
+      console.error('Response error:', responseError);
+      setStep('error'); 
+      return; 
+    }
     const answerRows: any[] = [];
     Object.entries(answers).forEach(([key, optionIds]) => {
       const parts = key.split('_topic_');
