@@ -10,6 +10,7 @@ import {
   IconSettings,
   IconUserCircle,
   IconMessageCircle,
+  IconClipboardList,
 } from '@tabler/icons-react';
 
 export interface NavItem {
@@ -30,6 +31,7 @@ export const TAKIP_NAV: NavItem[] = [
   { href: '/haftalik-takip', label: 'Haftalık Takip', icon: IconChecklist },
   { href: '/konu-ilerleyisi', label: 'Konu ilerleyişi', icon: IconBooks },
   { href: '/denemeler', label: 'Deneme sonuçları', icon: IconChartBar },
+  { href: '/anketler', label: 'Anketler', icon: IconClipboardList },
 ];
 
 export const BAGLANTI_NAV: NavItem[] = [
@@ -45,7 +47,6 @@ export const HESAP_NAV: NavItem[] = [
 
 export const ALL_NAV = [...MAIN_NAV, ...TAKIP_NAV, ...BAGLANTI_NAV, ...HESAP_NAV];
 
-// Mobil alt navigasyon (5 ana sekme)
 export const MOBILE_NAV: NavItem[] = [
   { href: '/anasayfa', label: 'Ana Sayfa', icon: IconHome },
   { href: '/ogrenciler', label: 'Öğrenciler', icon: IconUsers },

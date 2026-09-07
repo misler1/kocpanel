@@ -20,7 +20,7 @@ export function Sidebar({ studentCount }: { studentCount?: number }) {
   ];
 
   return (
-    <aside className="hidden md:flex md:w-64 md:flex-col md:bg-[var(--navy-900)] md:px-3 md:py-5">
+    <aside className="hidden md:flex md:w-64 md:flex-col md:bg-[var(--navy-900)] md:px-3 md:py-5 md:overflow-y-auto md:h-full">
       <div className="mb-4 flex items-center gap-2.5 border-b border-white/10 px-2 pb-5">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)]">
           <IconSchool size={18} className="text-white" />
