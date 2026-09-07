@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { IconArrowLeft, IconUsers, IconChevronDown, IconArrowRight, IconCheck } from '@tabler/icons-react';
+import { IconArrowLeft, IconUsers, IconChevronDown, IconArrowRight, IconCheck, IconUserPlus } from '@tabler/icons-react';
 
 const MATCH_LABELS: Record<string, { label: string; className: string }> = {
   matched: { label: 'Eşleşti', className: 'bg-[var(--success-soft)] text-[var(--success)]' },
@@ -12,6 +12,7 @@ const MATCH_LABELS: Record<string, { label: string; className: string }> = {
   pending_review: { label: 'Onay bekliyor', className: 'bg-[var(--accent-soft)] text-[var(--accent-dark)]' },
   ambiguous: { label: 'Belirsiz', className: 'bg-[var(--danger-soft)] text-[var(--danger)]' },
   unmatched: { label: 'Eşleşmedi', className: 'bg-[var(--paper)] text-[var(--ink-muted)]' },
+  manual: { label: 'Elle eşleştirildi', className: 'bg-[var(--track-yks-soft)] text-[var(--track-yks)]' },
 };
 
 export function SonuclarClient({
@@ -19,8 +20,9 @@ export function SonuclarClient({
   subjects,
   options,
   openQuestions,
-  responses,
+  responses: initialResponses,
   answers,
+  students,
 }: {
   survey: any;
   subjects: any[];
@@ -28,15 +30,18 @@ export function SonuclarClient({
   openQuestions: any[];
   responses: any[];
   answers: any[];
+  students: any[];
 }) {
   const supabase = createClient();
+  const [responses, setResponses] = useState(initialResponses);
   const [tab, setTab] = useState<'cevaplar' | 'ozet'>('cevaplar');
   const [expandedResponse, setExpandedResponse] = useState<string | null>(null);
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set(subjects[0] ? [subjects[0].id] : []));
   const [pushingId, setPushingId] = useState<string | null>(null);
   const [pushedIds, setPushedIds] = useState<Set<string>>(
-    new Set(responses.filter((r: any) => r.pushed_to_topics).map((r: any) => r.id))
+    new Set(initialResponses.filter((r: any) => r.pushed_to_topics).map((r: any) => r.id))
   );
+  const [assigningId, setAssigningId] = useState<string | null>(null);
 
   const optionById = useMemo(() => new Map(options.map((o: any) => [o.id, o])), [options]);
   const answersByResponse = useMemo(() => {
@@ -49,7 +54,6 @@ export function SonuclarClient({
     return map;
   }, [answers]);
 
-  // topicId -> { subject: ders adı, topic: konu adı }
   const topicMeta = useMemo(() => {
     const map = new Map<string, { subject: string; topic: string }>();
     subjects.forEach((s: any) => {
@@ -60,7 +64,6 @@ export function SonuclarClient({
     return map;
   }, [subjects]);
 
-  // Konu bazlı özet: topicId -> optionId -> sayı
   const topicAggregate = useMemo(() => {
     const map = new Map<string, Map<string, number>>();
     answers.forEach((a: any) => {
@@ -78,6 +81,20 @@ export function SonuclarClient({
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+  }
+
+  // ── Elle öğrenci eşleştirme ──
+  async function assignStudent(responseId: string, studentId: string) {
+    if (!studentId) return;
+    const student = students.find((s: any) => s.id === studentId);
+    await (supabase.from('survey_responses') as any)
+      .update({ student_id: studentId, match_status: 'manual' })
+      .eq('id', responseId);
+
+    setResponses((prev: any[]) =>
+      prev.map((r) => r.id === responseId ? { ...r, student_id: studentId, match_status: 'manual', students: student } : r)
+    );
+    setAssigningId(null);
   }
 
   // ── Konu takibine aktarma ──
@@ -155,7 +172,6 @@ export function SonuclarClient({
         </p>
       </div>
 
-      {/* Sekmeler */}
       <div className="mb-4 flex gap-1 rounded-lg bg-[var(--paper)] p-1">
         <button
           onClick={() => setTab('cevaplar')}
@@ -175,7 +191,6 @@ export function SonuclarClient({
         </button>
       </div>
 
-      {/* ── Öğrenci bazlı cevaplar ── */}
       {tab === 'cevaplar' && (
         responses.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] py-16 text-center text-[13px] text-[var(--ink-muted)]">
@@ -190,6 +205,7 @@ export function SonuclarClient({
               const respAnswers = answersByResponse.get(r.id) ?? [];
               const isPushed = pushedIds.has(r.id);
               const isPushing = pushingId === r.id;
+              const isAssigning = assigningId === r.id;
 
               const byTopic = new Map<string, any[]>();
               const openTexts: { label: string; value: string }[] = [];
@@ -226,25 +242,54 @@ export function SonuclarClient({
 
                   {isOpen && (
                     <div className="border-t border-[var(--border)] px-4 py-3">
-                      {r.student_id && (
-                        <button
-                          onClick={() => pushToTopics(r)}
-                          disabled={isPushing}
-                          className={`mb-3 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-colors disabled:opacity-60 ${
-                            isPushed
-                              ? 'bg-[var(--success-soft)] text-[var(--success)]'
-                              : 'bg-[var(--accent)] text-white hover:bg-[var(--accent-dark)]'
-                          }`}
-                        >
-                          {isPushed ? <IconCheck size={14} /> : <IconArrowRight size={14} />}
-                          {isPushing ? 'Aktarılıyor...' : isPushed ? 'Konu takibine aktarıldı' : 'Konu takibine aktar'}
-                        </button>
-                      )}
-                      {!r.student_id && (
-                        <p className="mb-3 text-[12px] text-[var(--ink-muted)]">
-                          Bu yanıt henüz bir öğrenciyle eşleştirilmedi, aktarmadan önce eşleştirme yapılmalı.
-                        </p>
-                      )}
+                      {/* Eşleştirme alanı */}
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        {r.student_id && !isAssigning ? (
+                          <>
+                            <button
+                              onClick={() => pushToTopics(r)}
+                              disabled={isPushing}
+                              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-colors disabled:opacity-60 ${
+                                isPushed
+                                  ? 'bg-[var(--success-soft)] text-[var(--success)]'
+                                  : 'bg-[var(--accent)] text-white hover:bg-[var(--accent-dark)]'
+                              }`}
+                            >
+                              {isPushed ? <IconCheck size={14} /> : <IconArrowRight size={14} />}
+                              {isPushing ? 'Aktarılıyor...' : isPushed ? 'Konu takibine aktarıldı' : 'Konu takibine aktar'}
+                            </button>
+                            <button
+                              onClick={() => setAssigningId(r.id)}
+                              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[12px] font-medium text-[var(--ink-muted)] hover:bg-[var(--paper)]"
+                            >
+                              <IconUserPlus size={13} /> Değiştir
+                            </button>
+                          </>
+                        ) : (
+                          <div className="flex flex-1 items-center gap-2">
+                            <select
+                              defaultValue=""
+                              onChange={(e) => assignStudent(r.id, e.target.value)}
+                              className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-[12.5px] text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                            >
+                              <option value="" disabled>
+                                Öğrenci seç: &quot;{r.entered_name}&quot;{r.entered_phone ? ` (${r.entered_phone})` : ''}
+                              </option>
+                              {students.map((s: any) => (
+                                <option key={s.id} value={s.id}>{s.full_name}</option>
+                              ))}
+                            </select>
+                            {isAssigning && (
+                              <button
+                                onClick={() => setAssigningId(null)}
+                                className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)]"
+                              >
+                                Vazgeç
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
                       {byTopic.size === 0 && openTexts.length === 0 ? (
                         <p className="text-[12.5px] text-[var(--ink-muted)]">Bu yanıtta işaretlenmiş konu yok.</p>
@@ -280,7 +325,6 @@ export function SonuclarClient({
         )
       )}
 
-      {/* ── Konu bazlı özet ── */}
       {tab === 'ozet' && (
         <div className="flex flex-col gap-2">
           {subjects.map((subject: any) => {
