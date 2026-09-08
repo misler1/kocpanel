@@ -6,14 +6,6 @@ import { createClient } from '@/lib/supabase/client';
 
 type Step = 'loading' | 'info' | 'survey' | 'submitting' | 'done' | 'error' | 'inactive';
 
-const normalize = (s: string) => s.trim().toLocaleLowerCase('tr-TR');
-const KONU_YOK = normalize('Konu Eksiğim Yok');
-const KONU_VAR = normalize('Konu Eksiğim Var');
-const KAYNAK_1 = normalize('1 Kaynaktan Soru Bitirdim');
-const KAYNAK_2 = normalize('2 Kaynaktan Soru Bitirdim');
-const KAYNAK_3 = normalize('3 Kaynaktan Soru Bitirdim');
-const SORU_EKSIK = normalize('Soru Eksiğim Var');
-
 export default function AnketPage() {
   const { id } = useParams<{ id: string }>();
   const supabase = createClient();
@@ -26,7 +18,6 @@ export default function AnketPage() {
   const [name, setName] = useState('');
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
-  const [attemptedAdvance, setAttemptedAdvance] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -67,11 +58,6 @@ export default function AnketPage() {
           if (opt?.excludes_option_id === optionId || selectedOption?.excludes_option_id === id) return false;
           // Grup bazlı hariç tutma (örn. 1/2/3 kaynaktan soru bitirdim birbirini dışlar)
           if (selectedOption?.exclusive_group && opt?.exclusive_group === selectedOption.exclusive_group) return false;
-          // Konu Eksiğim Var <-> Konu Eksiğim Yok birbirini dışlar
-          const optLabel = normalize(opt?.label ?? '');
-          const selLabel = normalize(selectedOption?.label ?? '');
-          const isKonuPair = (l: string) => l === KONU_YOK || l === KONU_VAR;
-          if (isKonuPair(optLabel) && isKonuPair(selLabel)) return false;
           return true;
         });
         next = [...next, optionId];
@@ -83,37 +69,13 @@ export default function AnketPage() {
   function isOptionDisabled(questionKey: string, optionId: string): boolean {
     const current = answers[questionKey] ?? [];
     const opt = options.find((o) => o.id === optionId);
-    const optLabel = normalize(opt?.label ?? '');
     return current.some((selectedId) => {
       if (selectedId === optionId) return false;
       const sel = options.find((o) => o.id === selectedId);
       if (sel?.excludes_option_id === optionId) return true;
       if (sel?.exclusive_group && opt?.exclusive_group && sel.exclusive_group === opt.exclusive_group) return true;
-      const selLabel = normalize(sel?.label ?? '');
-      const isKonuPair = (l: string) => l === KONU_YOK || l === KONU_VAR;
-      if (isKonuPair(optLabel) && isKonuPair(selLabel)) return true;
       return false;
     });
-  }
-
-  // Bir konunun geçerli (zorunlu seçimleri tamam) olup olmadığını kontrol eder
-  function getTopicValidation(topicKey: string): { valid: boolean; message?: string } {
-    const selectedIds = answers[topicKey] ?? [];
-    const labels = selectedIds.map((oid) => normalize(options.find((o) => o.id === oid)?.label ?? ''));
-    const hasKonuYok = labels.includes(KONU_YOK);
-    const hasKonuVar = labels.includes(KONU_VAR);
-
-    if (!hasKonuYok && !hasKonuVar) {
-      return { valid: false, message: '"Konu Eksiğim Var" veya "Konu Eksiğim Yok" seçilmeli' };
-    }
-    if (hasKonuYok) {
-      const hasKaynak = labels.includes(KAYNAK_1) || labels.includes(KAYNAK_2) || labels.includes(KAYNAK_3);
-      const hasSoruEksik = labels.includes(SORU_EKSIK);
-      if (!hasKaynak && !hasSoruEksik) {
-        return { valid: false, message: 'Kaynak bilgisi (1/2/3 kaynak) ya da "Soru Eksiğim Var" seçilmeli' };
-      }
-    }
-    return { valid: true };
   }
 
   async function handleSubmit() {
@@ -277,35 +239,6 @@ export default function AnketPage() {
     ? (currentSub.survey_topics ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order)
     : [];
 
-  // Bu anket şablonu "Konu Eksiğim Var/Yok" seçeneklerini içeriyor mu?
-  const templateHasKonuOptions = templateOptions.some((o: any) => {
-    const l = normalize(o.label);
-    return l === KONU_YOK || l === KONU_VAR;
-  });
-
-  function currentSubjectValid(): boolean {
-    if (!templateHasKonuOptions) return true;
-    return topics.every((t) => getTopicValidation(`${templateQuestion?.id}_topic_${t.id}`).valid);
-  }
-
-  function goToNextSubject() {
-    if (!currentSubjectValid()) {
-      setAttemptedAdvance(true);
-      return;
-    }
-    setAttemptedAdvance(false);
-    setCurrentSubjectIndex((i) => i + 1);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function trySubmit() {
-    if (!currentSubjectValid()) {
-      setAttemptedAdvance(true);
-      return;
-    }
-    handleSubmit();
-  }
-
   return (
     <div className="min-h-screen bg-[var(--paper)] px-4 py-8">
       <div className="mx-auto max-w-lg">
@@ -351,13 +284,8 @@ export default function AnketPage() {
               {topics.map((topic) => {
                 const key = `${templateQuestion?.id}_topic_${topic.id}`;
                 const topicAnswers = answers[key] ?? [];
-                const validation = getTopicValidation(key);
-                const showError = attemptedAdvance && templateHasKonuOptions && !validation.valid;
                 return (
-                  <div
-                    key={topic.id}
-                    className={`rounded-xl ${showError ? 'border-2 border-[var(--danger)] bg-[var(--danger-soft)]/30 p-3' : ''}`}
-                  >
+                  <div key={topic.id}>
                     <p className="mb-2.5 text-[13px] font-semibold text-[var(--ink)]">{topic.name}</p>
                     <div className="grid grid-cols-1 gap-2">
                       {templateOptions.map((opt: any) => {
@@ -382,9 +310,6 @@ export default function AnketPage() {
                         );
                       })}
                     </div>
-                    {showError && (
-                      <p className="mt-2 text-[11.5px] font-medium text-[var(--danger)]">⚠ {validation.message}</p>
-                    )}
                   </div>
                 );
               })}
@@ -393,7 +318,10 @@ export default function AnketPage() {
             <div className="border-t border-[var(--border)] px-5 py-4">
               {!isLastSubject ? (
                 <button
-                  onClick={goToNextSubject}
+                  onClick={() => {
+                    setCurrentSubjectIndex((i) => i + 1);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                   className="w-full rounded-xl bg-[var(--accent)] py-3 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
                 >
                   Sonraki: {subjects[currentSubjectIndex + 1]?.name} →
@@ -439,13 +367,8 @@ export default function AnketPage() {
                       </div>
                     );
                   })}
-                  {attemptedAdvance && !currentSubjectValid() && (
-                    <p className="text-center text-[12px] font-medium text-[var(--danger)]">
-                      ⚠ Yukarıdaki konularda eksik zorunlu seçimler var, kontrol et.
-                    </p>
-                  )}
                   <button
-                    onClick={trySubmit}
+                    onClick={handleSubmit}
                     disabled={step === 'submitting'}
                     className="w-full rounded-xl bg-[var(--success)] py-3 text-[13px] font-bold text-white transition-colors hover:opacity-90 disabled:opacity-50"
                   >
@@ -466,7 +389,7 @@ export default function AnketPage() {
               return (
                 <button
                   key={sub.id}
-                  onClick={() => { setCurrentSubjectIndex(idx); setAttemptedAdvance(false); }}
+                  onClick={() => setCurrentSubjectIndex(idx)}
                   className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
                     idx === currentSubjectIndex
                       ? 'bg-[var(--accent)] text-white'

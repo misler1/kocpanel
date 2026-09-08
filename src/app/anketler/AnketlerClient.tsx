@@ -117,6 +117,15 @@ export function AnketlerClient({ initialSurveys, coachId }: { initialSurveys: an
         .eq('id', kacirmam.id);
     }
 
+    const kaynakOptions = options?.filter((o: any) =>
+      ['1 Kaynaktan Soru Bitirdim', '2 Kaynaktan Soru Bitirdim', '3 Kaynaktan Soru Bitirdim'].includes(o.label)
+    ) ?? [];
+    if (kaynakOptions.length > 0) {
+      await (supabase.from('survey_options') as any)
+        .update({ exclusive_group: 'kaynak_sayisi' })
+        .in('id', kaynakOptions.map((o: any) => o.id));
+    }
+
     await (supabase.from('surveys') as any)
       .update({ topic_option_template_question_id: question.id })
       .eq('id', survey.id);
