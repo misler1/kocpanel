@@ -12,6 +12,10 @@ import {
   IconChartBar,
   IconEdit,
   IconSparkles,
+  IconArchive,
+  IconArchiveOff,
+  IconTrash,
+  IconDotsVertical,
 } from '@tabler/icons-react';
 
 const DEFAULT_OPTIONS = [
@@ -85,6 +89,10 @@ export function AnketlerClient({ initialSurveys, coachId }: { initialSurveys: an
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deletingSurvey, setDeletingSurvey] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   // Boş anket + şablon seçenekler oluşturur, döndürür
   async function createBaseSurvey(surveyTitle: string) {
@@ -178,6 +186,56 @@ export function AnketlerClient({ initialSurveys, coachId }: { initialSurveys: an
     await navigator.clipboard.writeText(url);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  }
+
+    async function toggleArchive(survey: any) {
+    setArchivingId(survey.id);
+    const newValue = !survey.is_active;
+    const { error } = await (supabase.from('surveys') as any)
+      .update({ is_active: newValue })
+      .eq('id', survey.id);
+    if (!error) {
+      setSurveys((prev) => prev.map((s) => s.id === survey.id ? { ...s, is_active: newValue } : s));
+    }
+    setArchivingId(null);
+    setOpenMenuId(null);
+  }
+
+  async function handleDeleteSurvey() {
+    if (!deletingSurvey) return;
+    setDeleting(true);
+
+    // Bağlı verileri sırayla temizle (foreign key kısıtları için)
+    const surveyId = deletingSurvey.id;
+    const { data: responseRows } = await (supabase.from('survey_responses') as any)
+      .select('id').eq('survey_id', surveyId);
+    const responseIds = (responseRows ?? []).map((r: any) => r.id);
+    if (responseIds.length > 0) {
+      await (supabase.from('survey_answers') as any).delete().in('response_id', responseIds);
+    }
+    await (supabase.from('survey_responses') as any).delete().eq('survey_id', surveyId);
+
+    const { data: subjectRows } = await (supabase.from('survey_subjects') as any)
+      .select('id').eq('survey_id', surveyId);
+    const subjectIds = (subjectRows ?? []).map((s: any) => s.id);
+    if (subjectIds.length > 0) {
+      await (supabase.from('survey_topics') as any).delete().in('survey_subject_id', subjectIds);
+    }
+    await (supabase.from('survey_subjects') as any).delete().eq('survey_id', surveyId);
+
+    const { data: questionRows } = await (supabase.from('survey_questions') as any)
+      .select('id').eq('survey_id', surveyId);
+    const questionIds = (questionRows ?? []).map((q: any) => q.id);
+    if (questionIds.length > 0) {
+      await (supabase.from('survey_options') as any).delete().in('question_id', questionIds);
+    }
+    await (supabase.from('survey_questions') as any).delete().eq('survey_id', surveyId);
+
+    await (supabase.from('surveys') as any).delete().eq('id', surveyId);
+
+    setSurveys((prev) => prev.filter((s) => s.id !== surveyId));
+    setDeleting(false);
+    setDeletingSurvey(null);
   }
 
   return (
@@ -296,11 +354,67 @@ export function AnketlerClient({ initialSurveys, coachId }: { initialSurveys: an
                   <IconEdit size={14} />
                   Düzenle
                 </Link>
+                <div className="relative">
+                  <button
+                    onClick={() => setOpenMenuId(openMenuId === s.id ? null : s.id)}
+                    title="Diğer işlemler"
+                    className="flex items-center justify-center rounded-lg p-1.5 text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
+                  >
+                    <IconDotsVertical size={16} />
+                  </button>
+                  {openMenuId === s.id && (
+                    <div className="absolute right-0 bottom-9 z-20 w-44 rounded-xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-lg">
+                      <button
+                        onClick={() => toggleArchive(s)}
+                        disabled={archivingId === s.id}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12.5px] text-[var(--ink)] hover:bg-[var(--paper)] disabled:opacity-50"
+                      >
+                        {s.is_active ? <IconArchive size={14} /> : <IconArchiveOff size={14} />}
+                        {archivingId === s.id ? 'İşleniyor...' : s.is_active ? 'Arşivle' : 'Arşivden çıkar'}
+                      </button>
+                      <button
+                        onClick={() => { setDeletingSurvey(s); setOpenMenuId(null); }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12.5px] text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+                      >
+                        <IconTrash size={14} />
+                        Kalıcı olarak sil
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Silme onayı */}
+      {deletingSurvey && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-xl">
+            <h3 className="mb-2 text-base font-semibold text-[var(--ink)]">Anketi kalıcı olarak sil?</h3>
+            <p className="mb-5 text-sm text-[var(--ink-muted)]">
+              <strong>{deletingSurvey.title}</strong> anketine ait tüm sorular, seçenekler ve öğrenci yanıtları kalıcı olarak silinecek. Bu işlem geri alınamaz.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeletingSurvey(null)}
+                className="flex-1 rounded-lg border border-[var(--border)] py-2 text-sm text-[var(--ink-muted)] hover:bg-[var(--paper)]"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={handleDeleteSurvey}
+                disabled={deleting}
+                className="flex-1 rounded-lg bg-[var(--danger)] py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+              >
+                {deleting ? 'Siliniyor...' : 'Evet, kalıcı olarak sil'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
