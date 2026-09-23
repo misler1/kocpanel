@@ -67,6 +67,13 @@ export default function HaftalikTakipPage() {
   const [loading, setLoading] = useState(true);
   const [resourceMap, setResourceMap] = useState<Record<string, string[]>>({});
   const filteredStudents = students.filter((s) => matchesFilter(s));
+  const [sinifFilter, setSinifFilter] = useState('');
+  const availableSiniflar = Array.from(
+    new Set(filteredStudents.map((s: any) => s.sinif_sube).filter(Boolean))
+  ).sort();
+  const pickerStudents = sinifFilter
+    ? filteredStudents.filter((s: any) => s.sinif_sube === sinifFilter)
+    : filteredStudents;
 
   // Yeni hedef formu
   const [newSubject, setNewSubject] = useState('');
@@ -87,7 +94,7 @@ export default function HaftalikTakipPage() {
       if (!user) return;
       const { data } = await (supabase as any)
         .from('students')
-        .select('id, full_name, resources, week_start_day, track, kurum, donem')
+        .select('id, full_name, resources, week_start_day, track, kurum, donem, sinif_sube')
         .eq('coach_id', user.id)
         .neq('status', 'pasif')
         .order('full_name');
@@ -132,15 +139,15 @@ export default function HaftalikTakipPage() {
 
     // Filtre değişince, seçili öğrenci artık filtreye uymuyorsa ilkine geç
   useEffect(() => {
-    if (filteredStudents.length === 0) {
+    if (pickerStudents.length === 0) {
       setSelectedStudentId('');
       return;
     }
-    if (!filteredStudents.some((s) => s.id === selectedStudentId)) {
-      setSelectedStudentId(filteredStudents[0].id);
+    if (!pickerStudents.some((s) => s.id === selectedStudentId)) {
+      setSelectedStudentId(pickerStudents[0].id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredStudents]);
+  }, [pickerStudents]);
 
   // Hafta değişince logları çek
   useEffect(() => {
@@ -334,18 +341,37 @@ export default function HaftalikTakipPage() {
       ) : (
         <>
           {/* Öğrenci seçimi */}
-          <div className="mb-4 flex flex-wrap gap-2">
-            {filteredStudents.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => setSelectedStudentId(s.id)}
-                className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${selectedStudentId === s.id ? 'bg-[var(--ink)] text-white' : 'bg-[var(--paper)] text-[var(--ink-muted)] hover:bg-[var(--border)]'}`}
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+            {availableSiniflar.length > 0 && (
+              <select
+                value={sinifFilter}
+                onChange={(e) => setSinifFilter(e.target.value)}
+                className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] text-[var(--ink)] focus:outline-none sm:w-44"
               >
-                {s.full_name}
-              </button>
-            ))}
+                <option value="">Tüm sınıflar</option>
+                {availableSiniflar.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            )}
+            {pickerStudents.length === 0 ? (
+              <p className="text-[13px] text-[var(--ink-muted)]">Bu sınıfta öğrenci yok.</p>
+            ) : (
+              <select
+                value={selectedStudentId}
+                onChange={(e) => setSelectedStudentId(e.target.value)}
+                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] font-medium text-[var(--ink)] focus:outline-none"
+              >
+                {pickerStudents.map((s: any) => (
+                  <option key={s.id} value={s.id}>
+                    {s.full_name}{s.sinif_sube ? ` — ${s.sinif_sube}` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
+          {selectedStudent && (
           <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
 
             {/* Hafta başlangıç günü ayarı */}
@@ -500,6 +526,7 @@ export default function HaftalikTakipPage() {
               </div>
             )}
           </div>
+          )}
         </>
       )}
     </div>
