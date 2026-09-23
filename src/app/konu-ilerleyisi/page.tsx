@@ -64,6 +64,13 @@ export default function KonuIlerleyisiPage() {
   const [loading, setLoading] = useState(true);
 
   const filteredStudents = students.filter((student) => matchesFilter(student));
+  const [sinifFilter, setSinifFilter] = useState('');
+  const availableSiniflar = Array.from(
+    new Set(filteredStudents.map((s: any) => s.sinif_sube).filter(Boolean))
+  ).sort();
+  const pickerStudents = sinifFilter
+    ? filteredStudents.filter((s: any) => s.sinif_sube === sinifFilter)
+    : filteredStudents;
 
   useEffect(() => {
     async function load() {
@@ -78,7 +85,7 @@ export default function KonuIlerleyisiPage() {
 
       const { data } = await (supabase as any)
         .from('students')
-        .select('id, full_name, resources, track, kurum, donem')
+        .select('id, full_name, resources, track, kurum, donem, sinif_sube')
         .eq('coach_id', user.id)
         .neq('status', 'pasif')
         .order('full_name');
@@ -117,16 +124,16 @@ export default function KonuIlerleyisiPage() {
 
   // Filtre değişince, seçili öğrenci artık filtreye uymuyorsa ilk öğrenciye geç.
   useEffect(() => {
-    if (filteredStudents.length === 0) {
+    if (pickerStudents.length === 0) {
       setSelectedStudentId('');
       return;
     }
 
-    if (!filteredStudents.some((student) => student.id === selectedStudentId)) {
-      setSelectedStudentId(filteredStudents[0].id);
+    if (!pickerStudents.some((student) => student.id === selectedStudentId)) {
+      setSelectedStudentId(pickerStudents[0].id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredStudents]);
+  }, [pickerStudents]);
 
   async function loadTopics(studentId: string) {
     const { data } = await (supabase as any)
@@ -239,29 +246,45 @@ export default function KonuIlerleyisiPage() {
       ) : (
         <>
           {/* Öğrenci seçimi */}
-          <div className="mb-4 flex flex-wrap gap-2">
-            {filteredStudents.map((student) => (
-              <button
-                key={student.id}
-                onClick={() => setSelectedStudentId(student.id)}
-                className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${
-                  selectedStudentId === student.id
-                    ? 'bg-[var(--ink)] text-white'
-                    : 'bg-[var(--paper)] text-[var(--ink-muted)] hover:bg-[var(--border)]'
-                }`}
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+            {availableSiniflar.length > 0 && (
+              <select
+                value={sinifFilter}
+                onChange={(e) => setSinifFilter(e.target.value)}
+                className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] text-[var(--ink)] focus:outline-none sm:w-44"
               >
-                {student.full_name}
-              </button>
-            ))}
+                <option value="">Tüm sınıflar</option>
+                {availableSiniflar.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            )}
+            {pickerStudents.length === 0 ? (
+              <p className="text-[13px] text-[var(--ink-muted)]">Bu sınıfta öğrenci yok.</p>
+            ) : (
+              <select
+                value={selectedStudentId}
+                onChange={(e) => setSelectedStudentId(e.target.value)}
+                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] font-medium text-[var(--ink)] focus:outline-none"
+              >
+                {pickerStudents.map((student: any) => (
+                  <option key={student.id} value={student.id}>
+                    {student.full_name}{student.sinif_sube ? ` — ${student.sinif_sube}` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
-          {studentSubjects.length === 0 && (
+          {selectedStudentId && studentSubjects.length === 0 && (
             <div className="mb-4 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-2 text-[12px] text-[var(--accent-dark)]">
               Bu öğrenciye ait kayıtlı ders bulunamadı. Öğrenci düzenleme
               sayfasından &quot;Kullanılan Kaynaklar&quot; bölümünü doldur.
             </div>
           )}
 
+          {selectedStudentId && (
+          <>
           {studentSubjects.length > 0 && (
             <div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
               <h2 className="mb-3 text-sm font-medium text-[var(--ink)]">
@@ -440,6 +463,8 @@ export default function KonuIlerleyisiPage() {
               })}
             </div>
           )}
+        </>
+        )}
         </>
       )}
     </div>
