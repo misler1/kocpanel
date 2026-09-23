@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { ExamTrack } from '@/types/database';
 import { IconArrowLeft, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
-
+import { parseTurkishNumber } from '@/lib/format';
 
 // ─── Sabitler ────────────────────────────────────────────────
 
@@ -106,7 +106,7 @@ const inputCls = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm foc
 export default function YeniOgrenciPage() {
   const router = useRouter();
   const supabase = createClient();
-  const { availableKurumlar, availableDonemler, donem: currentDonem, refreshOptions } = useExamFilter();
+  const { availableKurumlar, availableDonemler, donem: currentDonem, refreshOptions, getSinifOnerileri } = useExamFilter();
   // Temel bilgiler
   const [fullName, setFullName] = useState('');
   const [track, setTrack] = useState<ExamTrack>('YKS_SAY');
@@ -114,6 +114,8 @@ export default function YeniOgrenciPage() {
   const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [gradeLevel, setGradeLevel] = useState('');
+  const [sinifSube, setSinifSube] = useState('');
+  const [okul, setOkul] = useState('');
   const [notes, setNotes] = useState('');
   const [kurum, setKurum] = useState('');
   const [donem, setDonem] = useState(currentDonem ?? '');
@@ -144,7 +146,11 @@ export default function YeniOgrenciPage() {
 
   // Kaynaklar
   const [resources, setResources] = useState<Resources>({});
-
+    // Hedef
+  const [targetUniversity, setTargetUniversity] = useState('');
+  const [targetDepartment, setTargetDepartment] = useState('');
+  const [targetRank, setTargetRank] = useState('');
+  const [targetRankType, setTargetRankType] = useState<'TYT' | 'SAY' | 'SOZ' | 'EA'>('SAY');
   // UI state
   const [showYks, setShowYks] = useState(false);
   const [showResources, setShowResources] = useState(false);
@@ -203,6 +209,8 @@ export default function YeniOgrenciPage() {
       phone: phone.trim() || null,
       birth_date: birthDate || null,
       grade_level: gradeLevel || null,
+      sinif_sube: sinifSube.trim() || null,
+      okul: okul.trim() || null,
       notes: notes.trim() || null,
       kurum: kurum.trim() || null,
       donem: donem || null,
@@ -216,15 +224,19 @@ export default function YeniOgrenciPage() {
       guardian_phone: guardianPhone.trim() || null,
       guardian_relation: guardianRelation || null,
       yks_year: isYks && showYks ? yksYear : null,
-      tyt_score: isYks && showYks && tytScore ? Number(tytScore) : null,
-      say_score: isYks && showYks && sayScore ? Number(sayScore) : null,
-      ea_score: isYks && showYks && eaScore ? Number(eaScore) : null,
-      soz_score: isYks && showYks && sozScore ? Number(sozScore) : null,
+      tyt_score: isYks && showYks && tytScore ? parseTurkishNumber(tytScore) : null,
+      say_score: isYks && showYks && sayScore ? parseTurkishNumber(sayScore) : null,
+      ea_score: isYks && showYks && eaScore ? parseTurkishNumber(eaScore) : null,
+      soz_score: isYks && showYks && sozScore ? parseTurkishNumber(sozScore) : null,
       tyt_rank: isYks && showYks && tytRank ? Number(tytRank) : null,
       say_rank: isYks && showYks && sayRank ? Number(sayRank) : null,
       ea_rank: isYks && showYks && eaRank ? Number(eaRank) : null,
       soz_rank: isYks && showYks && sozRank ? Number(sozRank) : null,
       resources: showResources ? resources : {},
+      target_university: targetUniversity.trim() || null,
+      target_department: targetDepartment.trim() || null,
+      target_rank: targetRank ? Number(targetRank) : null,
+      target_rank_type: (targetUniversity || targetDepartment || targetRank) ? targetRankType : null,
     });
 
     if (insertError) {
@@ -282,28 +294,58 @@ export default function YeniOgrenciPage() {
             <Field label="Doğum Tarihi">
               <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className={inputCls} />
             </Field>
-            <Field label="Sınıf Düzeyi">
-              <select value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} className={inputCls}>
-                <option value="">Seçiniz</option>
-                {GRADE_LEVELS.map((g) => <option key={g}>{g}</option>)}
-              </select>
+            <Field label="Kurum">
+              <input
+                type="text"
+                list="kurum-onerileri"
+                value={kurum}
+                onChange={(e) => { setKurum(e.target.value); setSinifSube(''); }}
+                placeholder="Bilgiçler Okulu, Özel Ders vb."
+                className={inputCls}
+              />
+              <datalist id="kurum-onerileri">
+                {availableKurumlar.map((k) => <option key={k} value={k} />)}
+              </datalist>
             </Field>
             <Field label="Sınav Türü" required>
               <select value={track} onChange={(e) => setTrack(e.target.value as ExamTrack)} className={inputCls}>
                 {TRACKS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </Field>
-                        <Field label="Kurum">
+            <Field label="Sınıf Düzeyi">
+              <select value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} className={inputCls}>
+                <option value="">Seçiniz</option>
+                {GRADE_LEVELS.map((g) => <option key={g}>{g}</option>)}
+              </select>
+            </Field>
+                        <Field label="Sınıf Düzeyi">
+              <select value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} className={inputCls}>
+                <option value="">Seçiniz</option>
+                {GRADE_LEVELS.map((g) => <option key={g}>{g}</option>)}
+              </select>
+            </Field>
+            {gradeLevel && (
+              <Field label={gradeLevel === 'Mezun' ? 'Mezun Olduğu Okul' : 'Devam Ettiği Okul'}>
+                <input
+                  type="text"
+                  value={okul}
+                  onChange={(e) => setOkul(e.target.value)}
+                  placeholder={gradeLevel === 'Mezun' ? 'Örn. Atatürk Anadolu Lisesi' : 'Örn. Atatürk Anadolu Lisesi'}
+                  className={inputCls}
+                />
+              </Field>
+            )}
+            <Field label="Sınıf / Şube">
               <input
                 type="text"
-                list="kurum-onerileri"
-                value={kurum}
-                onChange={(e) => setKurum(e.target.value)}
-                placeholder="Bilgiçler Okulu, Özel Ders vb."
+                list="sinif-onerileri"
+                value={sinifSube}
+                onChange={(e) => setSinifSube(e.target.value)}
+                placeholder="11-A, 12-Fen vb."
                 className={inputCls}
               />
-              <datalist id="kurum-onerileri">
-                {availableKurumlar.map((k) => <option key={k} value={k} />)}
+              <datalist id="sinif-onerileri">
+                {getSinifOnerileri(kurum).map((s) => <option key={s} value={s} />)}
               </datalist>
             </Field>
             <Field label="Dönem">
@@ -420,9 +462,17 @@ export default function YeniOgrenciPage() {
                     ].map((f) => (
                       <div key={f.label}>
                         <label className="mb-1 block text-[12px] text-gray-500">{f.label}</label>
-                        <input type="number" step="0.01" value={f.value}
-                          onChange={(e) => f.set(e.target.value)}
-                          placeholder="–" className={inputCls} />
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={f.value}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (/^\d*,?\d*$/.test(v)) f.set(v);
+                          }}
+                          placeholder="444,9876"
+                          className={inputCls}
+                        />
                       </div>
                     ))}
                   </div>
@@ -448,6 +498,35 @@ export default function YeniOgrenciPage() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+                {/* ── Hedef ── */}
+        {isYks && (
+          <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
+            <SectionTitle>Hedef</SectionTitle>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Field label="Hedef Üniversite">
+                <input type="text" value={targetUniversity} onChange={(e) => setTargetUniversity(e.target.value)}
+                  placeholder="Boğaziçi Üniversitesi" className={inputCls} />
+              </Field>
+              <Field label="Hedef Bölüm">
+                <input type="text" value={targetDepartment} onChange={(e) => setTargetDepartment(e.target.value)}
+                  placeholder="Bilgisayar Mühendisliği" className={inputCls} />
+              </Field>
+              <Field label="Hedef Sıralama">
+                <input type="number" value={targetRank} onChange={(e) => setTargetRank(e.target.value)}
+                  placeholder="15000" className={inputCls} />
+              </Field>
+              <Field label="Sıralama Türü">
+                <select value={targetRankType} onChange={(e) => setTargetRankType(e.target.value as 'TYT' | 'SAY' | 'SOZ' | 'EA')} className={inputCls}>
+                  <option value="TYT">TYT</option>
+                  <option value="SAY">Sayısal</option>
+                  <option value="SOZ">Sözel</option>
+                  <option value="EA">Eşit Ağırlık</option>
+                </select>
+              </Field>
+            </div>
           </div>
         )}
 

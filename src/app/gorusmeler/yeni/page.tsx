@@ -12,8 +12,10 @@ function YeniGorusmeForm() {
   const searchParams = useSearchParams();
   const supabase = createClient();
 
+  const lockedStudentId = searchParams.get('ogrenci') ?? '';
   const [students, setStudents] = useState<{ id: string; full_name: string }[]>([]);
-  const [studentId, setStudentId] = useState(searchParams.get('ogrenci') ?? '');
+  const [lockedStudentName, setLockedStudentName] = useState<string | null>(null);
+  const [studentId, setStudentId] = useState(lockedStudentId);
   const [meetingType, setMeetingType] = useState<'ogrenci' | 'veli'>('ogrenci');
   const [scheduledAt, setScheduledAt] = useState('');
   const [duration, setDuration] = useState(30);
@@ -26,6 +28,18 @@ function YeniGorusmeForm() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      if (lockedStudentId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any)
+          .from('students').select('id, full_name').eq('id', lockedStudentId).eq('coach_id', user.id).single();
+        if (data) {
+          setLockedStudentName(data.full_name);
+          setStudentId(data.id);
+        }
+        return;
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase as any)
         .from('students').select('id, full_name').eq('coach_id', user.id).neq('status', 'pasif').order('full_name');
@@ -55,14 +69,16 @@ function YeniGorusmeForm() {
     });
 
     if (err) { setError(err.message); setLoading(false); return; }
-    router.push('/gorusmeler');
+    router.push(`/gorusmeler/${studentId}`);
     router.refresh();
   }
+
+  const backHref = lockedStudentId ? `/gorusmeler/${lockedStudentId}` : '/gorusmeler';
 
   return (
     <div className="mx-auto max-w-lg">
       <div className="mb-5 flex items-center gap-3">
-        <Link href="/gorusmeler" className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
+        <Link href={backHref} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
           <IconArrowLeft size={18} />
         </Link>
         <h1 className="text-[18px] font-medium text-gray-900">Görüşme ekle</h1>
@@ -71,15 +87,21 @@ function YeniGorusmeForm() {
       <div className="rounded-xl border border-gray-200 bg-white px-5 py-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Öğrenci <span className="text-red-500">*</span></label>
-            <select
-              required
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            >
-              {students.map((s) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
-            </select>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Öğrenci</label>
+            {lockedStudentId ? (
+              <div className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-800">
+                {lockedStudentName ?? 'Yükleniyor...'}
+              </div>
+            ) : (
+              <select
+                required
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              >
+                {students.map((s) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+              </select>
+            )}
           </div>
 
           <div>
@@ -142,7 +164,7 @@ function YeniGorusmeForm() {
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex gap-3">
-            <Link href="/gorusmeler" className="flex-1 rounded-lg border border-gray-300 py-2 text-center text-sm text-gray-600 hover:bg-gray-50">İptal</Link>
+            <Link href={backHref} className="flex-1 rounded-lg border border-gray-300 py-2 text-center text-sm text-gray-600 hover:bg-gray-50">İptal</Link>
             <button type="submit" disabled={loading} className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
               {loading ? 'Ekleniyor...' : 'Görüşme ekle'}
             </button>

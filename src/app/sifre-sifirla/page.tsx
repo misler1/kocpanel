@@ -1,24 +1,45 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 export default function SifreSifirlaPage() {
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [verifying, setVerifying] = useState(true);
 
   useEffect(() => {
-    // Supabase token'ı URL'den alır ve oturumu açar
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setReady(true);
+    async function verify() {
+      const tokenHash = searchParams.get('token_hash');
+      const type = searchParams.get('type');
+
+      if (!tokenHash || type !== 'recovery') {
+        setError('Geçersiz veya eksik şifre sıfırlama linki.');
+        setVerifying(false);
+        return;
       }
-    });
+
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: 'recovery',
+      });
+
+      if (error) {
+        setError('Bu link süresi dolmuş veya daha önce kullanılmış. Lütfen yeni bir şifre sıfırlama e-postası isteyin.');
+        setVerifying(false);
+        return;
+      }
+
+      setReady(true);
+      setVerifying(false);
+    }
+    verify();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -46,10 +67,23 @@ export default function SifreSifirlaPage() {
     router.push('/anasayfa');
   }
 
-  if (!ready) {
+  if (verifying) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--navy-900)]">
-        <p className="text-sm text-white/50">Yükleniyor...</p>
+        <p className="text-sm text-white/50">Doğrulanıyor...</p>
+      </div>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--navy-900)] px-4">
+        <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-8 text-center shadow-xl">
+          <p className="text-sm font-medium text-[var(--danger)]">{error}</p>
+          <a href="/sifremi-unuttum" className="mt-4 inline-block text-sm text-[var(--accent)] hover:underline">
+            Yeni link iste →
+          </a>
+        </div>
       </div>
     );
   }

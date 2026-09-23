@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { ExamTrack, StudentStatus } from '@/types/database';
 import { IconArrowLeft, IconChevronDown, IconChevronUp, IconTrash } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
+import { parseTurkishNumber, formatTurkishNumber } from '@/lib/format';
 
 // ─── Sabitler ────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ const inputCls = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm foc
 export function OgrenciDuzenleClient({ student }: { student: any }) {
   const router = useRouter();
   const supabase = createClient();
-  const { availableKurumlar, availableDonemler, refreshOptions } = useExamFilter();
+    const { availableKurumlar, availableDonemler, refreshOptions, getSinifOnerileri } = useExamFilter();
   const res: Resources = student.resources ?? {};
 
   // Temel
@@ -117,6 +118,8 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
   const [phone, setPhone] = useState(student.phone ?? '');
   const [birthDate, setBirthDate] = useState(student.birth_date ?? '');
   const [gradeLevel, setGradeLevel] = useState(student.grade_level ?? '');
+  const [sinifSube, setSinifSube] = useState(student.sinif_sube ?? '');
+  const [okul, setOkul] = useState(student.okul ?? '');
   const [notes, setNotes] = useState(student.notes ?? '');
   const [kurum, setKurum] = useState(student.kurum ?? '');
   const [donem, setDonem] = useState(student.donem ?? '');
@@ -135,10 +138,10 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
 
   // YKS
   const [yksYear, setYksYear] = useState<number>(student.yks_year ?? getYksYear());
-  const [tytScore, setTytScore] = useState(student.tyt_score?.toString() ?? '');
-  const [sayScore, setSayScore] = useState(student.say_score?.toString() ?? '');
-  const [eaScore, setEaScore] = useState(student.ea_score?.toString() ?? '');
-  const [sozScore, setSozScore] = useState(student.soz_score?.toString() ?? '');
+  const [tytScore, setTytScore] = useState(formatTurkishNumber(student.tyt_score));
+  const [sayScore, setSayScore] = useState(formatTurkishNumber(student.say_score));
+  const [eaScore, setEaScore] = useState(formatTurkishNumber(student.ea_score));
+  const [sozScore, setSozScore] = useState(formatTurkishNumber(student.soz_score));
   const [tytRank, setTytRank] = useState(student.tyt_rank?.toString() ?? '');
   const [sayRank, setSayRank] = useState(student.say_rank?.toString() ?? '');
   const [eaRank, setEaRank] = useState(student.ea_rank?.toString() ?? '');
@@ -146,6 +149,11 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
 
   // Kaynaklar
   const [resources, setResources] = useState<Resources>(res);
+    // Hedef
+  const [targetUniversity, setTargetUniversity] = useState(student.target_university ?? '');
+  const [targetDepartment, setTargetDepartment] = useState(student.target_department ?? '');
+  const [targetRank, setTargetRank] = useState(student.target_rank?.toString() ?? '');
+  const [targetRankType, setTargetRankType] = useState<'TYT' | 'SAY' | 'SOZ' | 'EA'>(student.target_rank_type ?? 'SAY');
 
   // UI
   const [showYks, setShowYks] = useState(!!student.tyt_score || !!student.yks_year);
@@ -193,6 +201,8 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
         phone: phone.trim() || null,
         birth_date: birthDate || null,
         grade_level: gradeLevel || null,
+        sinif_sube: sinifSube.trim() || null,
+        okul: okul.trim() || null,
         notes: notes.trim() || null,
         kurum: kurum.trim() || null,
         donem: donem || null,
@@ -206,15 +216,19 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
         guardian_phone: guardianPhone.trim() || null,
         guardian_relation: guardianRelation || null,
         yks_year: isYks && showYks ? yksYear : null,
-        tyt_score: isYks && showYks && tytScore ? Number(tytScore) : null,
-        say_score: isYks && showYks && sayScore ? Number(sayScore) : null,
-        ea_score: isYks && showYks && eaScore ? Number(eaScore) : null,
-        soz_score: isYks && showYks && sozScore ? Number(sozScore) : null,
+        tyt_score: isYks && showYks && tytScore ? parseTurkishNumber(tytScore) : null,
+        say_score: isYks && showYks && sayScore ? parseTurkishNumber(sayScore) : null,
+        ea_score: isYks && showYks && eaScore ? parseTurkishNumber(eaScore) : null,
+        soz_score: isYks && showYks && sozScore ? parseTurkishNumber(sozScore) : null,
         tyt_rank: isYks && showYks && tytRank ? Number(tytRank) : null,
         say_rank: isYks && showYks && sayRank ? Number(sayRank) : null,
         ea_rank: isYks && showYks && eaRank ? Number(eaRank) : null,
         soz_rank: isYks && showYks && sozRank ? Number(sozRank) : null,
         resources: showResources ? resources : {},
+        target_university: targetUniversity.trim() || null,
+        target_department: targetDepartment.trim() || null,
+        target_rank: targetRank ? Number(targetRank) : null,
+        target_rank_type: (targetUniversity || targetDepartment || targetRank) ? targetRankType : null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', student.id);
@@ -289,23 +303,7 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
             <Field label="Doğum Tarihi">
               <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className={inputCls} />
             </Field>
-            <Field label="Sınıf Düzeyi">
-              <select value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} className={inputCls}>
-                <option value="">Seçiniz</option>
-                {GRADE_LEVELS.map((g) => <option key={g}>{g}</option>)}
-              </select>
-            </Field>
-            <Field label="Sınav Türü" required>
-              <select value={track} onChange={(e) => setTrack(e.target.value as ExamTrack)} className={inputCls}>
-                {TRACKS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </Field>
-            <Field label="Durum">
-              <select value={status} onChange={(e) => setStatus(e.target.value as StudentStatus)} className={inputCls}>
-                {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </Field>
-                        <Field label="Kurum">
+            <Field label="Kurum">
               <input
                 type="text"
                 list="kurum-onerileri-duzenle"
@@ -317,6 +315,52 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
               <datalist id="kurum-onerileri-duzenle">
                 {availableKurumlar.map((k) => <option key={k} value={k} />)}
               </datalist>
+            </Field>
+            <Field label="Sınav Türü" required>
+              <select value={track} onChange={(e) => setTrack(e.target.value as ExamTrack)} className={inputCls}>
+                {TRACKS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Sınıf Düzeyi">
+              <select value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} className={inputCls}>
+                <option value="">Seçiniz</option>
+                {GRADE_LEVELS.map((g) => <option key={g}>{g}</option>)}
+              </select>
+            </Field>
+                        <Field label="Sınıf Düzeyi">
+              <select value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} className={inputCls}>
+                <option value="">Seçiniz</option>
+                {GRADE_LEVELS.map((g) => <option key={g}>{g}</option>)}
+              </select>
+            </Field>
+            {gradeLevel && (
+              <Field label={gradeLevel === 'Mezun' ? 'Mezun Olduğu Okul' : 'Devam Ettiği Okul'}>
+                <input
+                  type="text"
+                  value={okul}
+                  onChange={(e) => setOkul(e.target.value)}
+                  placeholder="Örn. Atatürk Anadolu Lisesi"
+                  className={inputCls}
+                />
+              </Field>
+            )}
+            <Field label="Sınıf / Şube">
+              <input
+                type="text"
+                list="sinif-onerileri-duzenle"
+                value={sinifSube}
+                onChange={(e) => setSinifSube(e.target.value)}
+                placeholder="11-A, 12-Fen vb."
+                className={inputCls}
+              />
+              <datalist id="sinif-onerileri-duzenle">
+                {getSinifOnerileri(kurum).map((s) => <option key={s} value={s} />)}
+              </datalist>
+            </Field>
+            <Field label="Durum">
+              <select value={status} onChange={(e) => setStatus(e.target.value as StudentStatus)} className={inputCls}>
+                {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
             </Field>
             <Field label="Dönem">
               <select value={donem} onChange={(e) => setDonem(e.target.value)} className={inputCls}>
@@ -420,8 +464,17 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
                     ].map((f) => (
                       <div key={f.label}>
                         <label className="mb-1 block text-[12px] text-gray-500">{f.label}</label>
-                        <input type="number" step="0.01" value={f.value}
-                          onChange={(e) => f.set(e.target.value)} placeholder="–" className={inputCls} />
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={f.value}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (/^\d*,?\d*$/.test(v)) f.set(v);
+                          }}
+                          placeholder="444,9876"
+                          className={inputCls}
+                        />
                       </div>
                     ))}
                   </div>
@@ -445,6 +498,35 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+                {/* ── Hedef ── */}
+        {isYks && (
+          <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
+            <SectionTitle>Hedef</SectionTitle>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Field label="Hedef Üniversite">
+                <input type="text" value={targetUniversity} onChange={(e) => setTargetUniversity(e.target.value)}
+                  placeholder="Boğaziçi Üniversitesi" className={inputCls} />
+              </Field>
+              <Field label="Hedef Bölüm">
+                <input type="text" value={targetDepartment} onChange={(e) => setTargetDepartment(e.target.value)}
+                  placeholder="Bilgisayar Mühendisliği" className={inputCls} />
+              </Field>
+              <Field label="Hedef Sıralama">
+                <input type="number" value={targetRank} onChange={(e) => setTargetRank(e.target.value)}
+                  placeholder="15000" className={inputCls} />
+              </Field>
+              <Field label="Sıralama Türü">
+                <select value={targetRankType} onChange={(e) => setTargetRankType(e.target.value as 'TYT' | 'SAY' | 'SOZ' | 'EA')} className={inputCls}>
+                  <option value="TYT">TYT</option>
+                  <option value="SAY">Sayısal</option>
+                  <option value="SOZ">Sözel</option>
+                  <option value="EA">Eşit Ağırlık</option>
+                </select>
+              </Field>
+            </div>
           </div>
         )}
 

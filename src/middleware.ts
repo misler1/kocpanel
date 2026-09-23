@@ -21,22 +21,29 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const isAuthPage = request.nextUrl.pathname.startsWith('/giris') ||
-                     request.nextUrl.pathname.startsWith('/kayit') ||
-                     request.nextUrl.pathname.startsWith('/sifremi-unuttum') ||
-                     request.nextUrl.pathname.startsWith('/sifre-sifirla');
-  const isPublicPage = request.nextUrl.pathname.startsWith('/anket'); 
-  const isWebhook = request.nextUrl.pathname.startsWith('/api/whatsapp');
-  const isOnayPage = request.nextUrl.pathname.startsWith('/onay-bekleniyor');
+  const pathname = request.nextUrl.pathname;
+
+  const isAuthPage =
+    pathname.startsWith('/giris') ||
+    (pathname.startsWith('/kayit') && !pathname.startsWith('/kayit-formu')) ||
+    pathname.startsWith('/sifremi-unuttum') ||
+    pathname.startsWith('/sifre-sifirla');
+
+  const isPublicPage =
+    pathname.startsWith('/anket') ||
+    pathname.startsWith('/kayit-formu');
+
+  const isWebhook = pathname.startsWith('/api/whatsapp');
+  const isOnayPage = pathname.startsWith('/onay-bekleniyor');
 
   // Giriş yapmamış → giriş sayfasına
-  if (!user && !isAuthPage && !isWebhook && !isOnayPage && !isPublicPage && request.nextUrl.pathname !== '/') {
+  if (!user && !isAuthPage && !isWebhook && !isOnayPage && !isPublicPage && pathname !== '/') {
     const url = request.nextUrl.clone();
     url.pathname = '/giris';
     return NextResponse.redirect(url);
   }
 
-  // Giriş yapmış + auth sayfasındaysa → onay kontrolü yap
+  // Giriş yapmış + auth sayfasındaysa → anasayfaya
   if (user && isAuthPage && !isPublicPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/anasayfa';

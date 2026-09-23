@@ -24,6 +24,8 @@ interface ExamFilterContextType {
   kurum: string | null; // null = Tümü
   setKurum: (k: string | null) => void;
   availableKurumlar: string[];
+  getSinifOnerileri: (kurum: string) => string[];
+  
 
   // Dönem filtresi
   donem: string | null; // null = Tüm dönemler
@@ -44,6 +46,7 @@ const ExamFilterContext = createContext<ExamFilterContextType>({
   kurum: null,
   setKurum: () => {},
   availableKurumlar: [],
+  getSinifOnerileri: () => [],
   donem: null,
   setDonem: () => {},
   availableDonemler: [],
@@ -59,6 +62,7 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
 
   const [kurum, setKurum] = useState<string | null>(null);
   const [availableKurumlar, setAvailableKurumlar] = useState<string[]>([]);
+  const [classesByKurum, setClassesByKurum] = useState<Record<string, string[]>>({});
 
   const [donem, setDonem] = useState<string | null>(null);
   const [availableDonemler, setAvailableDonemler] = useState<string[]>([]);
@@ -75,7 +79,7 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: studentsData } = await (supabase as any)
       .from('students')
-      .select('track, kurum, donem')
+      .select('track, kurum, donem, sinif_sube')
       .eq('coach_id', user.id);
 
     const students = studentsData ?? [];
@@ -93,7 +97,22 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
     const kurumSet = new Set<string>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     students.forEach((s: any) => { if (s.kurum && s.kurum.trim()) kurumSet.add(s.kurum.trim()); });
-    setAvailableKurumlar(Array.from(kurumSet).sort());
+        setAvailableKurumlar(Array.from(kurumSet).sort());
+
+    const classMap: Record<string, Set<string>> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    students.forEach((s: any) => {
+      const k = s.kurum?.trim();
+      const sube = s.sinif_sube?.trim();
+      if (!k || !sube) return;
+      if (!classMap[k]) classMap[k] = new Set();
+      classMap[k].add(sube);
+    });
+    const classesByKurumObj: Record<string, string[]> = {};
+    Object.entries(classMap).forEach(([k, set]) => {
+      classesByKurumObj[k] = Array.from(set).sort();
+    });
+    setClassesByKurum(classesByKurumObj);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: donemlerData } = await (supabase as any)
@@ -132,6 +151,11 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
     return true;
   }
 
+  function getSinifOnerileri(kurum: string): string[] {
+    if (!kurum) return [];
+    return classesByKurum[kurum.trim()] ?? [];
+  }
+
   const filteredStudentCount = useMemo(() => {
     return allStudents.filter(matchesFilter).length;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -143,7 +167,7 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
       setExamGroup: handleSetExamGroup,
       setYksTrack,
       availableGroups,
-      kurum, setKurum, availableKurumlar,
+      kurum, setKurum, availableKurumlar, getSinifOnerileri,
       donem, setDonem, availableDonemler,
       filteredStudentCount,
       matchesFilter,

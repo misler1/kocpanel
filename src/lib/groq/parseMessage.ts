@@ -24,6 +24,10 @@ export interface BookReading {
 }
 
 export interface ParsedDailyLog {
+  // true: mesaj bir günlük çalışma raporu (konu/soru/deneme/kitap bilgisi içeriyor)
+  // false: mesaj genel sohbet/soru (selamlaşma, görüşme saati sorma vb.) — bu durumda
+  // diğer tüm alanlar boş döner ve webhook hiçbir şey kaydetmemeli.
+  is_study_log: boolean;
   topic_studies: TopicStudy[];
   question_solved: QuestionSolved[];
   exams: ExamResult[];
@@ -39,6 +43,10 @@ export async function parseWhatsAppMessage(
 
 KURALLAR:
 - Sadece JSON döndür, başka hiçbir şey yazma
+- ÖNCE karar ver: Bu mesaj bir GÜNLÜK ÇALIŞMA RAPORU mu (konu çalışması, soru çözümü, deneme sonucu veya kitap okuma bilgisi içeriyor mu)? Yoksa GENEL SOHBET/SORU mu (selamlaşma, görüşme saati sorma, teşekkür, günlük çalışmayla ilgisi olmayan herhangi bir mesaj)?
+  - Çalışma bilgisi içeriyorsa: "is_study_log": true yap ve ilgili alanları doldur
+  - İçermiyorsa: "is_study_log": false yap ve TÜM dizileri boş bırak ([])
+  - Emin olamadığın durumlarda (mesajda en ufak bir çalışma/soru/deneme/kitap ibaresi varsa) is_study_log: true tarafına eğil, tamamen alakasız görünen mesajlarda (örn. "Hocam yarın kaçta görüşelim", "Teşekkürler hocam", "Günaydın") false yap
 - Süreleri dakikaya çevir (2 saat = 120, 1.5 saat = 90)
 - Kitap ismi belirtilmemişse lastBookName kullan: "${lastBookName || 'Bilinmiyor'}"
 - Ders isimlerini standartlaştır: Matematik, Türkçe, Fizik, Kimya, Biyoloji, Tarih, Coğrafya, Edebiyat, İngilizce, Felsefe, Din, Geometri
@@ -47,6 +55,7 @@ KURALLAR:
 
 DÖNDÜRÜLECEK FORMAT:
 {
+  "is_study_log": true,
   "topic_studies": [
     {"subject": "Matematik", "topic": "Üslü Sayılar", "duration_minutes": 120}
   ],
@@ -59,6 +68,15 @@ DÖNDÜRÜLECEK FORMAT:
   "book_reading": [
     {"book_name": "İnsan Ne İle Yaşar", "pages": 15}
   ]
+}
+
+Sohbet mesajı örneği (is_study_log: false ise tüm diziler boş kalır):
+{
+  "is_study_log": false,
+  "topic_studies": [],
+  "question_solved": [],
+  "exams": [],
+  "book_reading": []
 }`;
 
   const response = await fetch(GROQ_API_URL, {
@@ -68,7 +86,7 @@ DÖNDÜRÜLECEK FORMAT:
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "openai/gpt-oss-120b",
+      model: "openai/gpt-oss-120b", // llama-3.3-70b-versatile 16 Ağustos 2026'da Groq tarafından kapatıldı
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: message },
@@ -79,7 +97,8 @@ DÖNDÜRÜLECEK FORMAT:
   });
 
   if (!response.ok) {
-    throw new Error(`Groq API hatası: ${response.status}`);
+    const errorBody = await response.text().catch(() => "");
+    throw new Error(`Groq API hatası: ${response.status} — ${errorBody}`);
   }
 
   const data = await response.json();

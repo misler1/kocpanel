@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
+import { formatTurkishNumber } from '@/lib/format';
 import {
   IconChevronDown, IconChevronUp,
   IconCalendar, IconChartBar, IconCheckbox, IconBooks,
   IconUser, IconUsers, IconPhone, IconSchool, IconTrophy,
-  IconEdit, IconTrash, IconNotebook,
+  IconEdit, IconTrash, IconNotebook, IconTarget,
 } from '@tabler/icons-react';
-import { createClient } from '@/lib/supabase/client';
 
 // ─── Sabitler ────────────────────────────────────────────────
 
@@ -16,7 +17,9 @@ const TRACK_LABELS: Record<string, string> = {
   YKS_SAY: 'YKS · Sayısal', YKS_SOZ: 'YKS · Sözel', YKS_EA: 'YKS · Eşit Ağırlık',
   YKS_DIL: 'YKS · Dil', LGS: 'LGS', DIGER: 'Diğer',
 };
-
+const RANK_TYPE_LABELS: Record<string, string> = {
+  TYT: 'TYT', SAY: 'Sayısal', SOZ: 'Sözel', EA: 'Eşit Ağırlık',
+};
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   aktif: { label: 'Aktif', className: 'bg-[#EAF3DE] text-[#3B6D11]' },
   gorusme_bekliyor: { label: 'Görüşme yok', className: 'bg-[#FAEEDA] text-[#854F0B]' },
@@ -33,6 +36,38 @@ const AVATAR_COLORS: Record<string, string> = {
   'av-coral': 'bg-[#FAECE7] text-[#993C1D]',
 };
 
+
+
+const TRACK_RESOURCES: Record<string, string[]> = {
+  YKS_SAY: [
+    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
+    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
+    'TYT Felsefe', 'TYT Din Kültürü',
+    'AYT Matematik', 'AYT Geometri', 'AYT Fizik', 'AYT Kimya', 'AYT Biyoloji',
+  ],
+  YKS_EA: [
+    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
+    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
+    'TYT Felsefe', 'TYT Din Kültürü',
+    'AYT Matematik', 'AYT Geometri', 'AYT Edebiyat', 'AYT Tarih', 'AYT Coğrafya',
+  ],
+  YKS_SOZ: [
+    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
+    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
+    'TYT Felsefe', 'TYT Din Kültürü',
+    'AYT Edebiyat', 'AYT Tarih', 'AYT Coğrafya', 'AYT Felsefe', 'AYT Din Kültürü',
+  ],
+  YKS_DIL: [
+    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
+    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
+    'TYT Felsefe', 'TYT Din Kültürü', 'YDT İngilizce',
+  ],
+  LGS: [
+    'Türkçe', 'Paragraf', 'Matematik', 'Fen Bilgisi',
+    'İnkılap Tarihi', 'Din Kültürü', 'İngilizce',
+  ],
+  DIGER: [],
+};
 // ─── Accordion ───────────────────────────────────────────────
 
 function Accordion({
@@ -106,6 +141,13 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks }: {
             <div className="flex flex-wrap items-center gap-2 mt-0.5">
               <span className="text-sm text-gray-500">{TRACK_LABELS[student.track] ?? student.track}</span>
               {student.grade_level && <span className="text-[12px] text-gray-400">· {student.grade_level}</span>}
+              {student.sinif_sube && <span className="text-[12px] text-gray-400">· {student.sinif_sube}</span>}
+              {student.okul && (
+                <div className="mt-1 text-[12px] text-gray-500">
+                  {student.grade_level === 'Mezun' ? '🎓 Mezun olduğu okul: ' : '🏫 Devam ettiği okul: '}
+                  {student.okul}
+                </div>
+            )}
             </div>
           </div>
           <span className={`flex-shrink-0 rounded-full px-3 py-1 text-[12px] font-medium ${status.className}`}>
@@ -171,7 +213,7 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks }: {
             ].filter(f => f.value).map((f) => (
               <div key={f.label} className="rounded-lg bg-gray-50 px-3 py-2.5 text-center">
                 <div className="text-[11px] text-gray-400">{f.label}</div>
-                <div className="text-[18px] font-semibold text-gray-900">{f.value}</div>
+                <div className="text-[18px] font-semibold text-gray-900">{formatTurkishNumber(f.value)}</div>
               </div>
             ))}
           </div>
@@ -193,12 +235,31 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks }: {
         </Accordion>
       )}
 
+
+      {/* ── Hedef ── */}
+            {(student.target_university || student.target_department || student.target_rank) && (
+              <Accordion icon={<IconTarget size={16} />} title="Hedef">
+                <div className="space-y-1">
+                  <InfoRow label="Hedef Üniversite" value={student.target_university} />
+                  <InfoRow label="Hedef Bölüm" value={student.target_department} />
+                  {student.target_rank && (
+                    <InfoRow
+                      label="Hedef Sıralama"
+                      value={`${Number(student.target_rank).toLocaleString('tr-TR')} (${RANK_TYPE_LABELS[student.target_rank_type] ?? student.target_rank_type})`}
+                    />
+                  )}
+                </div>
+              </Accordion>
+      )}
+
       {/* ── Kaynaklar ── */}
       {hasResources && (
         <Accordion icon={<IconSchool size={16} />} title="Kullanılan Kaynaklar">
           <div className="space-y-3">
-            {Object.entries(resources).map(([subject, books]) => {
-              const filled = (books as string[]).filter(Boolean);
+            {(TRACK_RESOURCES[student.track] ?? Object.keys(resources)).map((subject) => {
+              const books = resources[subject];
+              if (!books) return null;
+              const filled = books.filter(Boolean);
               if (!filled.length) return null;
               return (
                 <div key={subject}>
@@ -224,7 +285,7 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks }: {
         </div>
         <MeetingList meetings={meetings} studentId={id} />
         <div className="mt-2">
-          <Link href={`/gorusmeler?ogrenci=${id}`} className="text-[12px] text-gray-400 hover:underline">
+          <Link href={`/gorusmeler/${id}`} className="text-[12px] text-gray-400 hover:underline">
             Tüm görüşmeleri gör →
           </Link>
         </div>
@@ -302,33 +363,169 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks }: {
 
 // ─── Günlük Accordion ────────────────────────────────────────
 
+type TopicStudy = { subject: string; topic: string; resource: string; duration_minutes: number };
+type QuestionSolved = { subject: string; topic: string; resource: string; count: number };
+type ExamEntry = { subject: string; exam_name: string; net: number };
+type BookReading = { book_name: string; pages: number };
+
+type LogForm = {
+  id?: string;
+  log_date: string;
+  topic_studies: TopicStudy[];
+  question_solved: QuestionSolved[];
+  exams: ExamEntry[];
+  book_reading: BookReading[];
+  raw_message: string;
+};
+
+function todayStr() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function emptyForm(): LogForm {
+  return {
+    log_date: todayStr(),
+    topic_studies: [{ subject: '', topic: '', resource: '', duration_minutes: 0 }],
+    question_solved: [{ subject: '', topic: '', resource: '', count: 0 }],
+    exams: [{ subject: '', exam_name: '', net: 0 }],
+    book_reading: [{ book_name: '', pages: 0 }],
+    raw_message: '',
+  };
+}
+
+function logToForm(log: any): LogForm {
+  return {
+    id: log.id,
+    log_date: log.log_date,
+    topic_studies: log.topic_studies?.length ? log.topic_studies : [{ subject: '', topic: '', resource: '', duration_minutes: 0 }],
+    question_solved: log.question_solved?.length ? log.question_solved : [{ subject: '', topic: '', resource: '', count: 0 }],
+    exams: log.exams?.length ? log.exams : [{ subject: '', exam_name: '', net: 0 }],
+    book_reading: log.book_reading?.length ? log.book_reading : [{ book_name: '', pages: 0 }],
+    raw_message: log.raw_message ?? '',
+  };
+}
+
 function GunlukAccordion({ studentId }: { studentId: string }) {
   const [logs, setLogs] = useState<any[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [form, setForm] = useState<LogForm>(emptyForm());
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const supabase = createClient();
 
-  async function load() {
-    if (loaded) return;
-    const { data, error } = await (supabase as any)
-      .from('daily_logs')
-      .select('*')
-      .eq('student_id', studentId)
-      .order('log_date', { ascending: false })
-      .limit(30);
-    console.log("daily_logs data:", data);
-    console.log("daily_logs error:", error);
-    setLogs(data ?? []);
-    setLoaded(true);
-    if (data && data.length > 0) setSelectedLog(data[0]);
+  // Accordion açılır açılmaz otomatik yükle
+  useState(() => {
+    (async () => {
+      const { data, error } = await (supabase as any)
+        .from('daily_logs')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('log_date', { ascending: false })
+        .limit(30);
+      console.log('daily_logs data:', data);
+      console.log('daily_logs error:', error);
+      setLogs(data ?? []);
+      setLoaded(true);
+      if (data && data.length > 0) setSelectedLog(data[0]);
+    })();
+    return undefined;
+  });
+
+  function openNew() {
+    setForm(emptyForm());
+    setFormOpen(true);
   }
+
+  function openEdit(log: any) {
+    setForm(logToForm(log));
+    setFormOpen(true);
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+
+    const payload = {
+      student_id: studentId,
+      log_date: form.log_date,
+      source: 'manual',
+      topic_studies: form.topic_studies.filter((t) => t.topic),
+      question_solved: form.question_solved.filter((q) => q.topic),
+      exams: form.exams.filter((x) => x.exam_name),
+      book_reading: form.book_reading.filter((b) => b.book_name),
+      raw_message: form.raw_message || null,
+    };
+
+    if (form.id) {
+      const { data } = await (supabase.from('daily_logs') as any)
+        .update(payload)
+        .eq('id', form.id)
+        .select()
+        .single();
+      if (data) {
+        setLogs((prev) => prev.map((l) => (l.id === form.id ? data : l)));
+        setSelectedLog(data);
+      }
+    } else {
+      const { data: existing } = await (supabase as any)
+        .from('daily_logs')
+        .select('id')
+        .eq('student_id', studentId)
+        .eq('log_date', form.log_date)
+        .maybeSingle();
+
+      if (existing) {
+        const { data } = await (supabase.from('daily_logs') as any)
+          .update(payload)
+          .eq('id', existing.id)
+          .select()
+          .single();
+        if (data) {
+          setLogs((prev) => prev.map((l) => (l.id === existing.id ? data : l)));
+          setSelectedLog(data);
+        }
+      } else {
+        const { data } = await (supabase.from('daily_logs') as any)
+          .insert(payload)
+          .select()
+          .single();
+        if (data) {
+          const next = [data, ...logs].sort((a, b) => (a.log_date < b.log_date ? 1 : -1));
+          setLogs(next);
+          setSelectedLog(data);
+        }
+      }
+    }
+
+    setSaving(false);
+    setFormOpen(false);
+  }
+
+  async function handleDelete(id: string) {
+    await (supabase.from('daily_logs') as any).delete().eq('id', id);
+    const next = logs.filter((l) => l.id !== id);
+    setLogs(next);
+    if (selectedLog?.id === id) setSelectedLog(next[0] ?? null);
+    setDeletingId(null);
+  }
+
   return (
     <Accordion icon={<IconNotebook size={16} />} title="Günlük">
-      {!loaded ? (
-        <button onClick={load}
-          className="w-full rounded-lg border border-dashed border-gray-200 py-3 text-[13px] text-gray-400 hover:border-blue-300 hover:text-blue-500">
-          Günlükleri görüntüle
+      <div className="mb-3 flex justify-end">
+        <button
+          onClick={openNew}
+          className="text-[12px] font-medium text-blue-600 hover:underline"
+        >
+          + Günlük Çalışma Ekle
         </button>
+      </div>
+
+      {!loaded ? (
+        <p className="text-[13px] text-gray-400">Yükleniyor...</p>
       ) : logs.length === 0 ? (
         <p className="text-[13px] text-gray-400">Henüz günlük kaydı yok.</p>
       ) : (
@@ -338,10 +535,13 @@ function GunlukAccordion({ studentId }: { studentId: string }) {
               const d = new Date(log.log_date);
               const isSelected = selectedLog?.id === log.id;
               return (
-                <button key={log.id} onClick={() => setSelectedLog(log)}
+                <button
+                  key={log.id}
+                  onClick={() => setSelectedLog(log)}
                   className={`w-full rounded-lg px-2 py-2 text-left text-[12px] transition-colors ${
                     isSelected ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-500 hover:bg-gray-50'
-                  }`}>
+                  }`}
+                >
                   {d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
                   {log.source === 'whatsapp' && <span className="ml-1 text-[10px]">📱</span>}
                 </button>
@@ -351,10 +551,28 @@ function GunlukAccordion({ studentId }: { studentId: string }) {
 
           {selectedLog && (
             <div className="flex-1 min-w-0 space-y-3">
-              <div className="text-[12px] text-gray-400">
-                {new Date(selectedLog.log_date).toLocaleDateString('tr-TR', {
-                  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-                })}
+              <div className="flex items-center justify-between">
+                <div className="text-[12px] text-gray-400">
+                  {new Date(selectedLog.log_date).toLocaleDateString('tr-TR', {
+                    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                  })}
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => openEdit(selectedLog)}
+                    className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
+                    title="Düzenle"
+                  >
+                    <IconEdit size={14} />
+                  </button>
+                  <button
+                    onClick={() => setDeletingId(selectedLog.id)}
+                    className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-500"
+                    title="Sil"
+                  >
+                    <IconTrash size={14} />
+                  </button>
+                </div>
               </div>
 
               {selectedLog.topic_studies?.length > 0 && (
@@ -363,7 +581,10 @@ function GunlukAccordion({ studentId }: { studentId: string }) {
                   <div className="space-y-1">
                     {selectedLog.topic_studies.map((t: any, i: number) => (
                       <div key={i} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
-                        <span className="text-[13px] text-gray-700">{t.topic}</span>
+                        <span className="text-[13px] text-gray-700">
+                          {t.subject ? `${t.subject} · ` : ''}{t.topic}
+                          {t.resource && <span className="text-gray-400"> ({t.resource})</span>}
+                        </span>
                         <span className="text-[12px] text-gray-400">
                           {t.duration_minutes >= 60
                             ? `${Math.floor(t.duration_minutes / 60)} saat${t.duration_minutes % 60 ? ` ${t.duration_minutes % 60} dk` : ''}`
@@ -381,7 +602,10 @@ function GunlukAccordion({ studentId }: { studentId: string }) {
                   <div className="space-y-1">
                     {selectedLog.question_solved.map((q: any, i: number) => (
                       <div key={i} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
-                        <span className="text-[13px] text-gray-700">{q.topic}</span>
+                        <span className="text-[13px] text-gray-700">
+                          {q.subject ? `${q.subject} · ` : ''}{q.topic}
+                          {q.resource && <span className="text-gray-400"> ({q.resource})</span>}
+                        </span>
                         <span className="text-[12px] text-gray-400">{q.count} soru</span>
                       </div>
                     ))}
@@ -395,7 +619,9 @@ function GunlukAccordion({ studentId }: { studentId: string }) {
                   <div className="space-y-1">
                     {selectedLog.exams.map((e: any, i: number) => (
                       <div key={i} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
-                        <span className="text-[13px] text-gray-700">{e.exam_name}</span>
+                        <span className="text-[13px] text-gray-700">
+                          {e.subject ? `${e.subject} · ` : ''}{e.exam_name}
+                        </span>
                         <span className="text-[12px] text-gray-400">{e.net} net</span>
                       </div>
                     ))}
@@ -431,7 +657,198 @@ function GunlukAccordion({ studentId }: { studentId: string }) {
           )}
         </div>
       )}
+
+      {/* ── Ekle / Düzenle modalı ── */}
+      {formOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-base font-semibold text-gray-900">
+              {form.id ? 'Günlük kaydını düzenle' : 'Günlük çalışma ekle'}
+            </h3>
+            <form onSubmit={handleSave} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Tarih</label>
+                <input
+                  type="date"
+                  value={form.log_date}
+                  onChange={(e) => setForm({ ...form, log_date: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <ListEditor
+                title="📚 Konu Çalışma"
+                items={form.topic_studies}
+                onChange={(items) => setForm({ ...form, topic_studies: items })}
+                fields={[
+                  { key: 'subject', placeholder: 'Ders (örn. Matematik)', type: 'text' },
+                  { key: 'topic', placeholder: 'Konu (örn. Üslü Sayılar)', type: 'text' },
+                  { key: 'resource', placeholder: 'Kaynak (opsiyonel)', type: 'text' },
+                  { key: 'duration_minutes', placeholder: 'Dakika', type: 'number' },
+                ]}
+                empty={{ subject: '', topic: '', resource: '', duration_minutes: 0 }}
+              />
+
+              <ListEditor
+                title="✏️ Soru Çözümü"
+                items={form.question_solved}
+                onChange={(items) => setForm({ ...form, question_solved: items })}
+                fields={[
+                  { key: 'subject', placeholder: 'Ders (örn. Türkçe)', type: 'text' },
+                  { key: 'topic', placeholder: 'Konu (örn. Paragraf)', type: 'text' },
+                  { key: 'resource', placeholder: 'Kaynak (opsiyonel)', type: 'text' },
+                  { key: 'count', placeholder: 'Soru sayısı', type: 'number' },
+                ]}
+                empty={{ subject: '', topic: '', resource: '', count: 0 }}
+              />
+
+              <ListEditor
+                title="📝 Deneme"
+                items={form.exams}
+                onChange={(items) => setForm({ ...form, exams: items })}
+                fields={[
+                  { key: 'subject', placeholder: 'Ders (opsiyonel)', type: 'text' },
+                  { key: 'exam_name', placeholder: 'Deneme adı', type: 'text' },
+                  { key: 'net', placeholder: 'Net', type: 'number' },
+                ]}
+                empty={{ subject: '', exam_name: '', net: 0 }}
+              />
+
+              <ListEditor
+                title="📖 Kitap Okuma"
+                items={form.book_reading}
+                onChange={(items) => setForm({ ...form, book_reading: items })}
+                fields={[
+                  { key: 'book_name', placeholder: 'Kitap adı', type: 'text' },
+                  { key: 'pages', placeholder: 'Sayfa', type: 'number' },
+                ]}
+                empty={{ book_name: '', pages: 0 }}
+              />
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Not (opsiyonel)</label>
+                <textarea
+                  rows={2}
+                  value={form.raw_message}
+                  onChange={(e) => setForm({ ...form, raw_message: e.target.value })}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  placeholder="Serbest not..."
+                />
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setFormOpen(false)}
+                  className="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? 'Kaydediliyor...' : 'Kaydet'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Silme onayı ── */}
+      {deletingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
+            <h3 className="mb-2 text-base font-semibold text-gray-900">Günlük kaydını sil?</h3>
+            <p className="mb-5 text-sm text-gray-500">Bu güne ait kayıt kalıcı olarak silinecek.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeletingId(null)}
+                className="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={() => handleDelete(deletingId)}
+                className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700"
+              >
+                Evet, sil
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Accordion>
+  );
+}
+
+// ─── Dinamik satır ekleyici (Konu/Soru/Deneme/Kitap listeleri için) ──
+
+function ListEditor<T extends Record<string, any>>({
+  title, items, onChange, fields, empty,
+}: {
+  title: string;
+  items: T[];
+  onChange: (items: T[]) => void;
+  fields: { key: keyof T; placeholder: string; type: 'text' | 'number' }[];
+  empty: T;
+}) {
+  function updateItem(index: number, key: keyof T, value: string) {
+    const next = [...items];
+    next[index] = { ...next[index], [key]: value };
+    onChange(next);
+  }
+  function removeItem(index: number) {
+    onChange(items.filter((_, i) => i !== index));
+  }
+  function addItem() {
+    onChange([...items, { ...empty }]);
+  }
+
+    return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{title}</p>
+        <button
+          type="button"
+          onClick={addItem}
+          className="text-[12px] text-blue-600 hover:underline"
+        >
+          + Ekle
+        </button>
+      </div>
+      <div className="space-y-2">
+        {items.map((item, i) => (
+          <div key={i} className="rounded-lg border border-gray-100 bg-gray-50/50 p-2">
+            <div className="flex flex-wrap items-end gap-1.5">
+              {fields.map((f) => (
+                <div key={String(f.key)} className={f.type === 'number' ? 'w-20' : 'min-w-[110px] flex-1'}>
+                  <label className="mb-0.5 block text-[10px] text-gray-400">{f.placeholder}</label>
+                  <input
+                    type={f.type}
+                    value={item[f.key] ?? ''}
+                    onChange={(e) => updateItem(i, f.key, e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-[13px] focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              ))}
+              {items.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeItem(i)}
+                  className="flex-shrink-0 rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-500"
+                >
+                  <IconTrash size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
