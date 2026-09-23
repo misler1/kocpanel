@@ -20,6 +20,7 @@ function YeniGorusmeForm() {
   const [scheduledAt, setScheduledAt] = useState('');
   const [duration, setDuration] = useState(30);
   const [topic, setTopic] = useState('');
+  const [topicOptions, setTopicOptions] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,6 +29,16 @@ function YeniGorusmeForm() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: topicsData } = await (supabase as any)
+        .from('meetings')
+        .select('topic')
+        .eq('coach_id', user.id)
+        .not('topic', 'is', null);
+      const uniqueTopics = Array.from(
+        new Set((topicsData ?? []).map((t: any) => t.topic).filter(Boolean))
+      ) as string[];
+      setTopicOptions(uniqueTopics);
 
       if (lockedStudentId) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,11 +154,15 @@ function YeniGorusmeForm() {
             <label className="mb-1 block text-sm font-medium text-gray-700">Konu</label>
             <input
               type="text"
+              list="konu-onerileri"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="Haftalık takip, TYT değerlendirme..."
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             />
+            <datalist id="konu-onerileri">
+              {topicOptions.map((t) => <option key={t} value={t} />)}
+            </datalist>
           </div>
 
           <div>

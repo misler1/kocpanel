@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { IconArrowLeft, IconPlus, IconCalendar, IconEdit, IconTrash } from '@tabler/icons-react';
@@ -20,6 +20,24 @@ export function GorusmeOgrenciClient({
   const [editing, setEditing] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+    const [topicOptions, setTopicOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function loadTopics() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('meetings')
+        .select('topic')
+        .eq('coach_id', user.id)
+        .not('topic', 'is', null);
+      const unique = Array.from(
+        new Set((data ?? []).map((t: any) => t.topic).filter(Boolean))
+      ) as string[];
+      setTopicOptions(unique);
+    }
+    loadTopics();
+  }, []);
 
   const now = new Date();
   const upcoming = meetings.filter((m) => new Date(m.scheduled_at) >= now);
@@ -141,10 +159,15 @@ export function GorusmeOgrenciClient({
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Konu</label>
-                <input type="text" value={editing.topic ?? ''}
+                <input type="text"
+                  list="konu-onerileri-duzenle"
+                  value={editing.topic ?? ''}
                   onChange={(e) => setEditing({ ...editing, topic: e.target.value })}
                   placeholder="Haftalık takip, TYT değerlendirme..."
                   className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
+                <datalist id="konu-onerileri-duzenle">
+                  {topicOptions.map((t) => <option key={t} value={t} />)}
+                </datalist>
               </div>
 
               <div>

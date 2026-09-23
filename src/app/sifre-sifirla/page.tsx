@@ -63,7 +63,8 @@ function SifreSifirlaForm() {
       setLoading(false);
       return;
     }
-
+      // Diğer tüm oturumları (bu cihaz hariç) kapat
+    await supabase.auth.signOut({ scope: 'others' });
     router.push('/anasayfa');
   }
 
