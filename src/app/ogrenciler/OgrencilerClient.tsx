@@ -56,8 +56,7 @@ export function OgrencilerClient({ students }: { students: Student[] }) {
 
   const examFiltered = useMemo(
     () => students.filter((s) => matchesFilter(s)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [students]
+    [students, matchesFilter]
   );
 
   const availableSiniflar = useMemo(() => {
