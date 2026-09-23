@@ -7,14 +7,19 @@ import { createClient } from '@/lib/supabase/client';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { Suspense } from 'react';
 
+const HAFTALIK_TAKIP_KURUMU = 'Hüdayi Vakfı Çekmeköy YKS Yurdu';
+
 function YeniGorusmeForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
 
   const lockedStudentId = searchParams.get('ogrenci') ?? '';
-  const [students, setStudents] = useState<{ id: string; full_name: string }[]>([]);
+  const [students, setStudents] = useState<{ id: string; full_name: string; kurum: string | null }[]>([]);
   const [lockedStudentName, setLockedStudentName] = useState<string | null>(null);
+  const [lockedStudentKurum, setLockedStudentKurum] = useState<string | null>(null);
+  const [selectedKurum, setSelectedKurum] = useState<string | null>(null);
+  const [haftalikTakipGetirdi, setHaftalikTakipGetirdi] = useState<'evet' | 'hayir' | ''>('');
   const [studentId, setStudentId] = useState(lockedStudentId);
   const [meetingType, setMeetingType] = useState<'ogrenci' | 'veli'>('ogrenci');
   const [scheduledAt, setScheduledAt] = useState('');
@@ -43,9 +48,11 @@ function YeniGorusmeForm() {
       if (lockedStudentId) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data } = await (supabase as any)
-          .from('students').select('id, full_name').eq('id', lockedStudentId).eq('coach_id', user.id).single();
+          .from('students').select('id, full_name, kurum').eq('id', lockedStudentId).eq('coach_id', user.id).single();
         if (data) {
           setLockedStudentName(data.full_name);
+          setLockedStudentKurum(data.kurum ?? null);
+          setSelectedKurum(data.kurum ?? null);
           setStudentId(data.id);
         }
         return;
@@ -53,9 +60,12 @@ function YeniGorusmeForm() {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase as any)
-        .from('students').select('id, full_name').eq('coach_id', user.id).neq('status', 'pasif').order('full_name');
+        .from('students').select('id, full_name, kurum').eq('coach_id', user.id).neq('status', 'pasif').order('full_name');
       setStudents(data ?? []);
-      if (!studentId && data?.length) setStudentId(data[0].id);
+      if (!studentId && data?.length) {
+        setStudentId(data[0].id);
+        setSelectedKurum(data[0].kurum ?? null);
+      }
     }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -68,6 +78,8 @@ function YeniGorusmeForm() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push('/giris'); return; }
 
+    const isTargetKurum = (lockedStudentId ? lockedStudentKurum : selectedKurum) === HAFTALIK_TAKIP_KURUMU;
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: err } = await (supabase as any).from('meetings').insert({
       student_id: studentId,
@@ -77,6 +89,7 @@ function YeniGorusmeForm() {
       duration_minutes: duration,
       topic: topic.trim() || null,
       notes: notes.trim() || null,
+      haftalik_takip_getirdi: isTargetKurum && haftalikTakipGetirdi ? haftalikTakipGetirdi === 'evet' : null,
     });
 
     if (err) { setError(err.message); setLoading(false); return; }
@@ -85,6 +98,7 @@ function YeniGorusmeForm() {
   }
 
   const backHref = lockedStudentId ? `/gorusmeler/${lockedStudentId}` : '/gorusmeler';
+  const showHaftalikTakip = (lockedStudentId ? lockedStudentKurum : selectedKurum) === HAFTALIK_TAKIP_KURUMU;
 
   return (
     <div className="mx-auto max-w-lg">
@@ -107,7 +121,11 @@ function YeniGorusmeForm() {
               <select
                 required
                 value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
+                onChange={(e) => {
+                  setStudentId(e.target.value);
+                  const s = students.find((st) => st.id === e.target.value);
+                  setSelectedKurum(s?.kurum ?? null);
+                }}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
               >
                 {students.map((s) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
@@ -175,6 +193,26 @@ function YeniGorusmeForm() {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             />
           </div>
+
+          {showHaftalikTakip && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
+              <label className="mb-2 block text-sm font-medium text-gray-700">Haftalık takip çizelgesini getirdi mi?</label>
+              <div className="flex gap-3">
+                {(['evet', 'hayir'] as const).map((v) => (
+                  <label key={v} className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      value={v}
+                      checked={haftalikTakipGetirdi === v}
+                      onChange={() => setHaftalikTakipGetirdi(v)}
+                      className="accent-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">{v === 'evet' ? 'Evet' : 'Hayır'}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 

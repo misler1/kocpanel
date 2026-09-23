@@ -285,7 +285,7 @@ export default function YeniOgrenciPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Ad Soyad" required>
               <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ahmet Kaya" className={inputCls} />
+                placeholder="Ahmet Yıldız" className={inputCls} />
             </Field>
             <Field label="Telefon">
               <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
@@ -369,7 +369,7 @@ export default function YeniOgrenciPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <Field label="Anne Adı">
               <input type="text" value={motherName} onChange={(e) => setMotherName(e.target.value)}
-                placeholder="Ayşe Kaya" className={inputCls} />
+                placeholder="Ayşe Yıldız" className={inputCls} />
             </Field>
             <Field label="Anne Meslek">
               <input type="text" value={motherJob} onChange={(e) => setMotherJob(e.target.value)}
@@ -381,7 +381,7 @@ export default function YeniOgrenciPage() {
             </Field>
             <Field label="Baba Adı">
               <input type="text" value={fatherName} onChange={(e) => setFatherName(e.target.value)}
-                placeholder="Mehmet Kaya" className={inputCls} />
+                placeholder="Mehmet Yıldız" className={inputCls} />
             </Field>
             <Field label="Baba Meslek">
               <input type="text" value={fatherJob} onChange={(e) => setFatherJob(e.target.value)}

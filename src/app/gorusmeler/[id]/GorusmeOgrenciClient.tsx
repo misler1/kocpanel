@@ -254,6 +254,11 @@ function MeetingGroup({
                 <span className="text-[12px] text-[var(--ink-muted)]">{weekdayStr} · {timeStr} · {m.duration_minutes} dk</span>
               </div>
               {m.topic && <div className="mt-0.5 truncate text-[13px] text-[var(--ink)]">{m.topic}</div>}
+              {m.haftalik_takip_getirdi !== null && m.haftalik_takip_getirdi !== undefined && (
+                <div className={`mt-0.5 text-[11px] font-medium ${m.haftalik_takip_getirdi ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
+                  Haftalık takip: {m.haftalik_takip_getirdi ? 'Getirdi ✓' : 'Getirmedi ✗'}
+                </div>
+              )}
             </div>
 
             <span
