@@ -1,9 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-export default function SifreSifirlaPage() {
+function SifreSifirlaForm() {
   const supabase = createClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -127,5 +127,19 @@ export default function SifreSifirlaPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function SifreSifirlaPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[var(--navy-900)]">
+          <p className="text-sm text-white/50">Yükleniyor...</p>
+        </div>
+      }
+    >
+      <SifreSifirlaForm />
+    </Suspense>
   );
 }
