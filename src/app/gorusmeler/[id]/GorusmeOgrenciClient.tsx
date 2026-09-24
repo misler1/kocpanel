@@ -1,10 +1,55 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useExamFilter } from '@/lib/exam-filter-context';
 import { createClient } from '@/lib/supabase/client';
-import { IconArrowLeft, IconPlus, IconCalendar, IconEdit, IconTrash } from '@tabler/icons-react';
+import { IconChevronRight, IconCalendar } from '@tabler/icons-react';
+import { MeetingDetailModal } from '../MeetingDetailModal';
+
+const STATUS_MAP: Record<string, { label: string; className: string }> = {
+  aktif: { label: 'Aktif', className: 'bg-[var(--success-soft)] text-[var(--success)]' },
+  gorusme_bekliyor: { label: 'Görüşme yok', className: 'bg-[var(--accent-soft)] text-[var(--accent-dark)]' },
+  analiz_eksik: { label: 'Analiz yok', className: 'bg-[var(--danger-soft)] text-[var(--danger)]' },
+  dikkat: { label: 'Dikkat', className: 'bg-[var(--danger-soft)] text-[var(--danger)]' },
+  pasif: { label: 'Pasif', className: 'bg-[var(--paper)] text-[var(--ink-muted)]' },
+};
+
+const AVATAR_COLORS: Record<string, string> = {
+  'av-blue': 'bg-[#E6F1FB] text-[#185FA5]',
+  'av-teal': 'bg-[#E1F5EE] text-[#0F6E56]',
+  'av-purple': 'bg-[#EEEDFE] text-[#534AB7]',
+  'av-amber': 'bg-[#FAEEDA] text-[#854F0B]',
+  'av-coral': 'bg-[#FAECE7] text-[#993C1D]',
+};
+
+const TRACK_LABELS: Record<string, string> = {
+  YKS_SAY: 'YKS · SAY', YKS_SOZ: 'YKS · SÖZ', YKS_EA: 'YKS · EA',
+  YKS_DIL: 'YKS · DİL', LGS: 'LGS', DIGER: 'Diğer',
+};
+
+type SortKey = 'gorusme_eski' | 'gorusme_yeni' | 'ad' | 'soyad' | 'sinif' | 'dogum';
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'gorusme_eski', label: 'Görüşmesi en eski olan önce' },
+  { value: 'gorusme_yeni', label: 'Görüşmesi en yeni olan önce' },
+  { value: 'ad', label: 'Ada göre (A-Z)' },
+  { value: 'soyad', label: 'Soyada göre (A-Z)' },
+  { value: 'sinif', label: 'Sınıfa göre' },
+  { value: 'dogum', label: 'Doğum tarihine göre' },
+];
+
+function trackColor(track: string) {
+  if (track.startsWith('YKS')) return 'text-[var(--track-yks)]';
+  if (track === 'LGS') return 'text-[var(--track-lgs)]';
+  return 'text-[var(--ink-muted)]';
+}
+
+function getSoyad(fullName: string) {
+  const parts = fullName.trim().split(/\s+/);
+  return parts[parts.length - 1] ?? '';
+}
 
 function toLocalDatetime(iso: string) {
   const d = new Date(iso);
@@ -12,36 +57,107 @@ function toLocalDatetime(iso: string) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function GorusmeOgrenciClient({
-  student, initialMeetings,
-}: { student: { id: string; full_name: string }; initialMeetings: any[] }) {
+export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
   const supabase = createClient();
-  const [meetings, setMeetings] = useState<any[]>(initialMeetings);
+  const { matchesFilter } = useExamFilter();
+  const [sinifFilter, setSinifFilter] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('gorusme_eski');
+  const [viewMode, setViewMode] = useState<'ogrenciler' | 'tumu'>('ogrenciler');
+
+  // ── "Tüm görüşmeler" görünümü için state ──
+  const [allMeetings, setAllMeetings] = useState<any[] | null>(null);
+  const [loadingAll, setLoadingAll] = useState(false);
+  const [viewing, setViewing] = useState<any | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-    const [topicOptions, setTopicOptions] = useState<string[]>([]);
+  const [topicOptions, setTopicOptions] = useState<string[]>([]);
 
   useEffect(() => {
-    async function loadTopics() {
+    if (viewMode !== 'tumu' || allMeetings !== null) return;
+    async function loadAllMeetings() {
+      setLoadingAll(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from('meetings')
-        .select('topic')
-        .eq('coach_id', user.id)
-        .not('topic', 'is', null);
-      const unique = Array.from(
-        new Set((data ?? []).map((t: any) => t.topic).filter(Boolean))
-      ) as string[];
-      setTopicOptions(unique);
-    }
-    loadTopics();
-  }, []);
+      if (!user) { setLoadingAll(false); return; }
 
-  const now = new Date();
-  const upcoming = meetings.filter((m) => new Date(m.scheduled_at) >= now);
-  const past = meetings.filter((m) => new Date(m.scheduled_at) < now);
+      const { data } = await (supabase as any)
+        .from('meetings')
+        .select('*, students(id, full_name)')
+        .eq('coach_id', user.id)
+        .order('scheduled_at', { ascending: false });
+      setAllMeetings(data ?? []);
+
+      const uniqueTopics = Array.from(
+        new Set((data ?? []).map((m: any) => m.topic).filter(Boolean))
+      ) as string[];
+      setTopicOptions(uniqueTopics);
+
+      setLoadingAll(false);
+    }
+    loadAllMeetings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode]);
+
+  const examFiltered = useMemo(
+    () => students.filter((s) => matchesFilter(s)),
+    [students, matchesFilter]
+  );
+
+  const availableSiniflar = useMemo(() => {
+    const set = new Set<string>();
+    examFiltered.forEach((s: any) => {
+      if (s.sinif_sube && s.sinif_sube.trim()) set.add(s.sinif_sube.trim());
+    });
+    return Array.from(set).sort();
+  }, [examFiltered]);
+
+  const filtered = useMemo(() => {
+    let list = examFiltered as any[];
+    if (sinifFilter) {
+      list = list.filter((s) => s.sinif_sube === sinifFilter);
+    }
+
+    const sorted = [...list].sort((a, b) => {
+      switch (sortKey) {
+        case 'ad':
+          return a.full_name.localeCompare(b.full_name, 'tr');
+        case 'soyad':
+          return getSoyad(a.full_name).localeCompare(getSoyad(b.full_name), 'tr');
+        case 'sinif':
+          return (a.sinif_sube ?? '').localeCompare(b.sinif_sube ?? '', 'tr');
+        case 'dogum':
+          if (!a.birth_date && !b.birth_date) return 0;
+          if (!a.birth_date) return 1;
+          if (!b.birth_date) return -1;
+          return a.birth_date.localeCompare(b.birth_date);
+        case 'gorusme_yeni':
+          if (!a.last_meeting_at && !b.last_meeting_at) return 0;
+          if (!a.last_meeting_at) return 1;
+          if (!b.last_meeting_at) return -1;
+          return b.last_meeting_at.localeCompare(a.last_meeting_at);
+        case 'gorusme_eski':
+          if (!a.last_meeting_at && !b.last_meeting_at) return 0;
+          if (!a.last_meeting_at) return -1;
+          if (!b.last_meeting_at) return 1;
+          return a.last_meeting_at.localeCompare(b.last_meeting_at);
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [examFiltered, sinifFilter, sortKey]);
+
+  const active = filtered.filter((s) => s.status !== 'pasif');
+  const passive = filtered.filter((s) => s.status === 'pasif');
+
+  const allMeetingsFilteredSorted = useMemo(() => {
+    if (!allMeetings) return [];
+    return [...allMeetings]
+      .filter((m) => matchesFilter(m.students))
+      .sort((a, b) => (a.scheduled_at < b.scheduled_at ? 1 : -1));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allMeetings, matchesFilter]);
 
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
@@ -58,70 +174,153 @@ export function GorusmeOgrenciClient({
         completed: editing.completed,
       })
       .eq('id', editing.id)
-      .select('*')
+      .select('*, students(id, full_name)')
       .single();
 
-    if (data) setMeetings((prev) => prev.map((m) => m.id === editing.id ? data : m));
+    if (data) setAllMeetings((prev) => (prev ?? []).map((m) => m.id === editing.id ? data : m));
     setSaving(false);
     setEditing(null);
   }
 
   async function handleDelete(id: string) {
     await (supabase.from('meetings') as any).delete().eq('id', id);
-    setMeetings((prev) => prev.filter((m) => m.id !== id));
+    setAllMeetings((prev) => (prev ?? []).filter((m) => m.id !== id));
     setDeletingId(null);
   }
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-5 flex items-center gap-3">
-        <Link href="/gorusmeler" className="rounded-lg p-2 text-[var(--ink-muted)] hover:bg-[var(--paper)]">
-          <IconArrowLeft size={18} />
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-[18px] font-semibold text-[var(--ink)]">{student.full_name}</h1>
-          <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">{meetings.length} görüşme</p>
+      <div className="mb-5 flex items-center justify-between">
+        <div>
+          <h1 className="text-[18px] font-semibold text-[var(--ink)]">Görüşme kayıtları</h1>
+          <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">
+            {viewMode === 'ogrenciler' ? 'Görüşme eklemek/görmek için bir öğrenci seçin' : `${allMeetingsFilteredSorted.length} görüşme`}
+          </p>
         </div>
-        <Link
-          href={`/gorusmeler/yeni?ogrenci=${student.id}`}
-          className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
+        <button
+          onClick={() => setViewMode((v) => (v === 'ogrenciler' ? 'tumu' : 'ogrenciler'))}
+          className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3.5 py-2 text-[13px] font-medium text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
         >
-          <IconPlus size={15} />
-          Görüşme ekle
-        </Link>
+          {viewMode === 'ogrenciler' ? 'Tüm görüşmeler' : 'Öğrenciler'}
+        </button>
       </div>
 
-      {meetings.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20">
-          <IconCalendar size={32} className="text-[var(--ink-muted)]" />
-          <p className="text-[13px] text-[var(--ink-muted)]">Henüz görüşme eklenmemiş.</p>
-          <Link href={`/gorusmeler/yeni?ogrenci=${student.id}`} className="rounded-lg bg-[var(--accent)] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[var(--accent-dark)]">
-            İlk görüşmeyi ekle
-          </Link>
-        </div>
+      {viewMode === 'ogrenciler' ? (
+        <>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {availableSiniflar.length > 0 && (
+              <select
+                value={sinifFilter}
+                onChange={(e) => setSinifFilter(e.target.value)}
+                className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[13px] text-[var(--ink)] focus:outline-none"
+              >
+                <option value="">Tüm sınıflar</option>
+                {availableSiniflar.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            )}
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[13px] text-[var(--ink)] focus:outline-none"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20">
+              <IconCalendar size={32} className="text-[var(--ink-muted)]" />
+              <p className="text-[13px] text-[var(--ink-muted)]">Bu filtrede öğrenci yok.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {active.map((s) => <StudentRow key={s.id} student={s} />)}
+              {passive.length > 0 && (
+                <div className="mt-2 mb-1 text-[12px] font-medium text-[var(--ink-muted)]">Pasif öğrenciler</div>
+              )}
+              {passive.map((s) => <StudentRow key={s.id} student={s} />)}
+            </div>
+          )}
+        </>
       ) : (
-        <div className="space-y-4">
-          {upcoming.length > 0 && (
-            <section>
-              <h2 className="mb-2 text-[12px] font-medium text-[var(--ink-muted)]">Yaklaşan</h2>
-              <MeetingGroup
-                meetings={upcoming}
-                onEdit={(m) => setEditing({ ...m, scheduled_at_local: toLocalDatetime(m.scheduled_at) })}
-                onDelete={(id) => setDeletingId(id)}
-              />
-            </section>
+        <>
+          {loadingAll ? (
+            <p className="py-10 text-center text-[13px] text-[var(--ink-muted)]">Yükleniyor...</p>
+          ) : allMeetingsFilteredSorted.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20">
+              <IconCalendar size={32} className="text-[var(--ink-muted)]" />
+              <p className="text-[13px] text-[var(--ink-muted)]">Henüz görüşme yok.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {allMeetingsFilteredSorted.map((m) => {
+                const dt = new Date(m.scheduled_at);
+                const monthShort = dt.toLocaleDateString('tr-TR', { month: 'short' });
+                const dayNum = dt.getDate();
+                const weekdayStr = dt.toLocaleDateString('tr-TR', { weekday: 'short' });
+                const timeStr = dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                const isVeli = m.meeting_type === 'veli';
+
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => setViewing(m)}
+                    className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-left transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--paper)]"
+                  >
+                    <div className="flex w-12 flex-shrink-0 flex-col items-center justify-center rounded-lg bg-[var(--paper)] py-1.5 leading-none">
+                      <span className="text-[10px] font-medium text-[var(--ink-muted)]">{monthShort}</span>
+                      <span className="mt-0.5 text-[16px] font-semibold text-[var(--ink)]">{dayNum}</span>
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-[13px] font-medium text-[var(--ink)]">{m.students?.full_name ?? 'Bilinmeyen öğrenci'}</span>
+                        <span
+                          className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                            isVeli ? 'bg-[var(--accent-soft)] text-[var(--accent-dark)]' : 'bg-[var(--track-yks-soft)] text-[var(--track-yks)]'
+                          }`}
+                        >
+                          {isVeli ? 'Veli' : 'Koç'}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-[12px] text-[var(--ink-muted)]">{weekdayStr} · {timeStr} · {m.duration_minutes} dk</div>
+                      {m.topic && <div className="mt-0.5 truncate text-[13px] text-[var(--ink)]">{m.topic}</div>}
+                    </div>
+
+                    <span
+                      className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        m.completed ? 'bg-[var(--success-soft)] text-[var(--success)]' : 'bg-[var(--accent-soft)] text-[var(--accent-dark)]'
+                      }`}
+                    >
+                      {m.completed ? 'Tamamlandı' : 'Bekliyor'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           )}
-          {past.length > 0 && (
-            <section>
-              <h2 className="mb-2 text-[12px] font-medium text-[var(--ink-muted)]">Geçmiş</h2>
-              <MeetingGroup
-                meetings={past}
-                onEdit={(m) => setEditing({ ...m, scheduled_at_local: toLocalDatetime(m.scheduled_at) })}
-                onDelete={(id) => setDeletingId(id)}
-              />
-            </section>
-          )}
-        </div>
+        </>
+      )}
+
+      {viewing && (
+        <MeetingDetailModal
+          meeting={viewing}
+          studentName={viewing.students?.full_name}
+          studentHref={viewing.student_id ? `/gorusmeler/${viewing.student_id}` : undefined}
+          onClose={() => setViewing(null)}
+          onEdit={() => {
+            setEditing({ ...viewing, scheduled_at_local: toLocalDatetime(viewing.scheduled_at) });
+            setViewing(null);
+          }}
+          onDelete={() => {
+            setDeletingId(viewing.id);
+            setViewing(null);
+          }}
+        />
       )}
 
       {editing && (
@@ -160,12 +359,12 @@ export function GorusmeOgrenciClient({
               <div>
                 <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Konu</label>
                 <input type="text"
-                  list="konu-onerileri-duzenle"
+                  list="konu-onerileri-tumu"
                   value={editing.topic ?? ''}
                   onChange={(e) => setEditing({ ...editing, topic: e.target.value })}
                   placeholder="Haftalık takip, TYT değerlendirme..."
                   className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
-                <datalist id="konu-onerileri-duzenle">
+                <datalist id="konu-onerileri-tumu">
                   {topicOptions.map((t) => <option key={t} value={t} />)}
                 </datalist>
               </div>
@@ -222,66 +421,49 @@ export function GorusmeOgrenciClient({
   );
 }
 
-function MeetingGroup({
-  meetings, onEdit, onDelete,
-}: { meetings: any[]; onEdit: (m: any) => void; onDelete: (id: string) => void }) {
+function StudentRow({ student: s }: { student: any }) {
+  const initials = s.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+  const avatarClass = AVATAR_COLORS[s.avatar_color] ?? AVATAR_COLORS['av-blue'];
+  const status = STATUS_MAP[s.status] ?? STATUS_MAP['aktif'];
+  const isPasif = s.status === 'pasif';
+  const lastMeetingText = s.last_meeting_at
+    ? new Date(s.last_meeting_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })
+    : 'Henüz görüşme yok';
+
   return (
-    <div className="flex flex-col gap-2">
-      {meetings.map((m: any) => {
-        const dt = new Date(m.scheduled_at);
-        const monthShort = dt.toLocaleDateString('tr-TR', { month: 'short' });
-        const dayNum = dt.getDate();
-        const weekdayStr = dt.toLocaleDateString('tr-TR', { weekday: 'short' });
-        const timeStr = dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-        const isVeli = m.meeting_type === 'veli';
+    <Link
+      href={`/gorusmeler/${s.id}`}
+      className={`group flex items-center gap-3.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--paper)] ${isPasif ? 'opacity-60' : ''}`}
+    >
+      <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-medium ${avatarClass}`}>
+        {initials}
+      </div>
 
-        return (
-          <div key={m.id} className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3">
-            <div className="flex w-12 flex-shrink-0 flex-col items-center justify-center rounded-lg bg-[var(--paper)] py-1.5 leading-none">
-              <span className="text-[10px] font-medium text-[var(--ink-muted)]">{monthShort}</span>
-              <span className="mt-0.5 text-[16px] font-semibold text-[var(--ink)]">{dayNum}</span>
-            </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[14px] font-medium text-[var(--ink)]">{s.full_name}</div>
+        <div className="mt-0.5 flex items-center gap-2 text-[12px]">
+          <span className={`font-medium ${trackColor(s.track)}`}>{TRACK_LABELS[s.track] ?? s.track}</span>
+          {s.sinif_sube && (
+            <>
+              <span className="text-[var(--border)]">•</span>
+              <span className="text-[var(--ink-muted)]">{s.sinif_sube}</span>
+            </>
+          )}
+          <span className="text-[var(--border)]">•</span>
+          <span className={s.last_meeting_at ? 'text-[var(--ink-muted)]' : 'text-[var(--danger)]'}>
+            Son görüşme: {lastMeetingText}
+          </span>
+        </div>
+      </div>
 
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                    isVeli ? 'bg-[var(--accent-soft)] text-[var(--accent-dark)]' : 'bg-[var(--track-yks-soft)] text-[var(--track-yks)]'
-                  }`}
-                >
-                  {isVeli ? 'Veli' : 'Koç'}
-                </span>
-                <span className="text-[12px] text-[var(--ink-muted)]">{weekdayStr} · {timeStr} · {m.duration_minutes} dk</span>
-              </div>
-              {m.topic && <div className="mt-0.5 truncate text-[13px] text-[var(--ink)]">{m.topic}</div>}
-              {m.haftalik_takip_getirdi !== null && m.haftalik_takip_getirdi !== undefined && (
-                <div className={`mt-0.5 text-[11px] font-medium ${m.haftalik_takip_getirdi ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
-                  Haftalık takip: {m.haftalik_takip_getirdi ? 'Getirdi ✓' : 'Getirmedi ✗'}
-                </div>
-              )}
-            </div>
+      <span className={`hidden flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium sm:inline-block ${status.className}`}>
+        {status.label}
+      </span>
 
-            <span
-              className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                m.completed ? 'bg-[var(--success-soft)] text-[var(--success)]' : 'bg-[var(--accent-soft)] text-[var(--accent-dark)]'
-              }`}
-            >
-              {m.completed ? 'Tamamlandı' : 'Bekliyor'}
-            </span>
-
-            <div className="flex flex-shrink-0 gap-1">
-              <button onClick={() => onEdit(m)} title="Düzenle"
-                className="rounded p-1.5 text-[var(--ink-muted)] transition-colors hover:bg-[var(--accent-soft)] hover:text-[var(--accent-dark)]">
-                <IconEdit size={15} />
-              </button>
-              <button onClick={() => onDelete(m.id)} title="Sil"
-                className="rounded p-1.5 text-[var(--ink-muted)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]">
-                <IconTrash size={15} />
-              </button>
-            </div>
-          </div>
-        );
-      })}
-    </div>
+      <IconChevronRight
+        size={16}
+        className="flex-shrink-0 text-[var(--ink-muted)] opacity-0 transition-opacity group-hover:opacity-100"
+      />
+    </Link>
   );
 }
