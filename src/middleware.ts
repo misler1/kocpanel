@@ -54,13 +54,20 @@ export async function middleware(request: NextRequest) {
   if (user && !isAuthPage && !isWebhook && !isOnayPage && !isPublicPage) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_approved')
+      .select('is_approved, is_admin')
       .eq('id', user.id)
       .single();
 
     if (profile && !profile.is_approved) {
       const url = request.nextUrl.clone();
       url.pathname = '/onay-bekleniyor';
+      return NextResponse.redirect(url);
+    }
+
+    // Kazanım havuzu sadece yöneticiye açık
+    if (pathname.startsWith('/kazanim-havuzu') && !profile?.is_admin) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/anasayfa';
       return NextResponse.redirect(url);
     }
   }

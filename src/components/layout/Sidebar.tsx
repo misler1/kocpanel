@@ -1,14 +1,31 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { IconSchool } from '@tabler/icons-react';
-import { MAIN_NAV, TAKIP_NAV, BAGLANTI_NAV, HESAP_NAV } from '@/lib/navigation';
+import { MAIN_NAV, TAKIP_NAV, BAGLANTI_NAV, YONETIM_NAV, HESAP_NAV } from '@/lib/navigation';
 import { ExamFilterBar } from './ExamFilterBar';
 import { useExamFilter } from '@/lib/exam-filter-context';
 
 export function Sidebar({ studentCount }: { studentCount?: number }) {
   const pathname = usePathname();
+    const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
+      setIsAdmin(!!profile?.is_admin);
+    });
+  }, []);
   const { filteredStudentCount } = useExamFilter();
   const isActive = (href: string) => pathname === href;
 
@@ -16,6 +33,7 @@ export function Sidebar({ studentCount }: { studentCount?: number }) {
     { items: MAIN_NAV },
     { items: TAKIP_NAV },
     { items: BAGLANTI_NAV },
+    ...(isAdmin ? [{ items: YONETIM_NAV }] : []),
     { items: HESAP_NAV },
   ];
 

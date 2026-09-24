@@ -11,6 +11,7 @@ import {
   IconUserCircle,
   IconMessageCircle,
   IconClipboardList,
+  IconDatabase,
 } from '@tabler/icons-react';
 
 export interface NavItem {
@@ -40,12 +41,16 @@ export const BAGLANTI_NAV: NavItem[] = [
   { href: '/mesajlar', label: 'Mesajlar', icon: IconMessageCircle },
 ];
 
+export const YONETIM_NAV: NavItem[] = [
+  { href: '/kazanim-havuzu', label: 'Kazanım havuzu', icon: IconDatabase, section: 'Yönetim' },
+];
+
 export const HESAP_NAV: NavItem[] = [
   { href: '/ayarlar', label: 'Ayarlar', icon: IconSettings, section: 'Hesap' },
   { href: '/hesabim', label: 'Hesabım', icon: IconUserCircle },
 ];
 
-export const ALL_NAV = [...MAIN_NAV, ...TAKIP_NAV, ...BAGLANTI_NAV, ...HESAP_NAV];
+export const ALL_NAV = [...MAIN_NAV, ...TAKIP_NAV, ...BAGLANTI_NAV, ...YONETIM_NAV, ...HESAP_NAV];
 
 export const MOBILE_NAV: NavItem[] = [
   { href: '/anasayfa', label: 'Ana Sayfa', icon: IconHome },
