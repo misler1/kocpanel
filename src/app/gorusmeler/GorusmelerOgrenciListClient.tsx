@@ -67,6 +67,8 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
   // ── "Tüm görüşmeler" görünümü için state ──
   const [allMeetings, setAllMeetings] = useState<any[] | null>(null);
   const [loadingAll, setLoadingAll] = useState(false);
+  const [meetingSortKey, setMeetingSortKey] = useState<'tarih_yeni' | 'tarih_eski' | 'ogrenci_ad'>('tarih_yeni');
+  const [meetingSinifFilter, setMeetingSinifFilter] = useState('');
   const [viewing, setViewing] = useState<any | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -82,7 +84,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
 
       const { data } = await (supabase as any)
         .from('meetings')
-        .select('*, students(id, full_name)')
+        .select('*, students(id, full_name, sinif_sube, track, kurum, donem)')
         .eq('coach_id', user.id)
         .order('scheduled_at', { ascending: false });
       setAllMeetings(data ?? []);
@@ -151,13 +153,36 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
   const active = filtered.filter((s) => s.status !== 'pasif');
   const passive = filtered.filter((s) => s.status === 'pasif');
 
+  // ── "Tüm görüşmeler" listesi: filtre + sıralama ──
+  const availableMeetingSiniflar = useMemo(() => {
+    if (!allMeetings) return [];
+    const set = new Set<string>();
+    allMeetings.forEach((m: any) => {
+      if (matchesFilter(m.students) && m.students?.sinif_sube) set.add(m.students.sinif_sube);
+    });
+    return Array.from(set).sort();
+  }, [allMeetings, matchesFilter]);
+
   const allMeetingsFilteredSorted = useMemo(() => {
     if (!allMeetings) return [];
-    return [...allMeetings]
-      .filter((m) => matchesFilter(m.students))
-      .sort((a, b) => (a.scheduled_at < b.scheduled_at ? 1 : -1));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allMeetings, matchesFilter]);
+    let list = allMeetings.filter((m) => matchesFilter(m.students));
+    if (meetingSinifFilter) {
+      list = list.filter((m) => m.students?.sinif_sube === meetingSinifFilter);
+    }
+
+    return [...list].sort((a, b) => {
+      switch (meetingSortKey) {
+        case 'tarih_yeni':
+          return b.scheduled_at.localeCompare(a.scheduled_at);
+        case 'tarih_eski':
+          return a.scheduled_at.localeCompare(b.scheduled_at);
+        case 'ogrenci_ad':
+          return (a.students?.full_name ?? '').localeCompare(b.students?.full_name ?? '', 'tr');
+        default:
+          return 0;
+      }
+    });
+  }, [allMeetings, matchesFilter, meetingSinifFilter, meetingSortKey]);
 
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
@@ -174,7 +199,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
         completed: editing.completed,
       })
       .eq('id', editing.id)
-      .select('*, students(id, full_name)')
+      .select('*, students(id, full_name, sinif_sube, track, kurum, donem)')
       .single();
 
     if (data) setAllMeetings((prev) => (prev ?? []).map((m) => m.id === editing.id ? data : m));
@@ -248,6 +273,30 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
         </>
       ) : (
         <>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {availableMeetingSiniflar.length > 0 && (
+              <select
+                value={meetingSinifFilter}
+                onChange={(e) => setMeetingSinifFilter(e.target.value)}
+                className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[13px] text-[var(--ink)] focus:outline-none"
+              >
+                <option value="">Tüm sınıflar</option>
+                {availableMeetingSiniflar.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            )}
+            <select
+              value={meetingSortKey}
+              onChange={(e) => setMeetingSortKey(e.target.value as 'tarih_yeni' | 'tarih_eski' | 'ogrenci_ad')}
+              className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[13px] text-[var(--ink)] focus:outline-none"
+            >
+              <option value="tarih_yeni">Tarihe göre (yeniden eskiye)</option>
+              <option value="tarih_eski">Tarihe göre (eskiden yeniye)</option>
+              <option value="ogrenci_ad">Öğrenci adına göre (A-Z)</option>
+            </select>
+          </div>
+
           {loadingAll ? (
             <p className="py-10 text-center text-[13px] text-[var(--ink-muted)]">Yükleniyor...</p>
           ) : allMeetingsFilteredSorted.length === 0 ? (
