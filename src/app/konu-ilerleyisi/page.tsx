@@ -11,6 +11,7 @@ interface Topic {
   student_id: string;
   subject: string;
   topic: string;
+  topic_id?: string | null;
   konu_tamamlandi: boolean;
   kaynak1_sorular: boolean;
   kaynak2_sorular: boolean;
@@ -18,7 +19,28 @@ interface Topic {
   yanlislar_kontrol: boolean;
 }
 
-type TopicStepKey = keyof Omit<Topic, 'id' | 'student_id' | 'subject' | 'topic'>;
+// Havuz (kazanım/konu) tipleri
+interface PoolCategory {
+  id: string;
+  code: string;
+  name: string;
+}
+interface PoolSubject {
+  id: string;
+  category_id: string;
+  name: string;
+}
+interface PoolTopic {
+  id: string;
+  code: string | null;
+  name: string;
+  unit: string | null;
+}
+
+type TopicStepKey = keyof Omit<
+  Topic,
+  'id' | 'student_id' | 'subject' | 'topic' | 'topic_id'
+>;
 
 interface Step {
   key: TopicStepKey;
@@ -41,6 +63,19 @@ const REQUIRED_STEPS: TopicStepKey[] = [
   'yanlislar_kontrol',
 ];
 
+const TOPIC_SELECT =
+  'id, student_id, subject, topic, topic_id, konu_tamamlandi, kaynak1_sorular, kaynak2_sorular, kaynak3_sorular, yanlislar_kontrol';
+
+const norm = (s: string) => s.toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
+
+// TYT ve AYT'de aynı ders adı (Matematik) olduğu için ders etiketine ön ek eklenir.
+function subjectLabel(cat: PoolCategory | undefined, subjectName: string) {
+  if (cat && (cat.code === 'TYT' || cat.code === 'AYT')) {
+    return `${cat.code} ${subjectName}`;
+  }
+  return subjectName;
+}
+
 function getTopicProgress(t: Topic): { pct: number; color: string } {
   const done = REQUIRED_STEPS.filter((key) => t[key]).length;
 
@@ -62,6 +97,17 @@ export default function KonuIlerleyisiPage() {
   const [newSubject, setNewSubject] = useState('');
   const [newTopic, setNewTopic] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Havuz state'i
+  const [poolCats, setPoolCats] = useState<PoolCategory[]>([]);
+  const [poolSubjects, setPoolSubjects] = useState<PoolSubject[]>([]);
+  const [poolCatId, setPoolCatId] = useState('');
+  const [poolSubjectId, setPoolSubjectId] = useState('');
+  const [poolTopics, setPoolTopics] = useState<PoolTopic[]>([]);
+  const [poolTopicsLoading, setPoolTopicsLoading] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [adding, setAdding] = useState(false);
+  const [showManual, setShowManual] = useState(false);
 
   const filteredStudents = students.filter((student) => matchesFilter(student));
   const [sinifFilter, setSinifFilter] = useState('');
@@ -96,6 +142,21 @@ export default function KonuIlerleyisiPage() {
         setSelectedStudentId(data[0].id);
       }
 
+      // Havuz: sınav türleri ve dersler (küçük listeler)
+      const [{ data: cats }, { data: subs }] = await Promise.all([
+        (supabase as any)
+          .from('exam_categories')
+          .select('id, code, name')
+          .order('sort_order'),
+        (supabase as any)
+          .from('curriculum_subjects')
+          .select('id, category_id, name')
+          .order('sort_order')
+          .order('name'),
+      ]);
+      setPoolCats(cats ?? []);
+      setPoolSubjects(subs ?? []);
+
       setLoading(false);
     }
 
@@ -122,6 +183,54 @@ export default function KonuIlerleyisiPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStudentId, students]);
 
+  // Öğrenci değişince sınav türünü öğrencinin alanına göre öner (koç değiştirebilir).
+  useEffect(() => {
+    if (!poolCats.length || !selectedStudentId) return;
+    const student = students.find((s) => s.id === selectedStudentId);
+    const track = String(student?.track ?? '').replace(/İ/g, 'I').toUpperCase();
+    let code = 'TYT';
+    if (track.includes('LGS')) code = 'LGS';
+    else if (track.includes('DIL')) code = 'DIL';
+    const cat = poolCats.find((c) => c.code === code) ?? poolCats[0];
+    setPoolCatId(cat.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStudentId, poolCats]);
+
+  // Sınav türü değişince ilk dersi seç
+  useEffect(() => {
+    const list = poolSubjects.filter((s) => s.category_id === poolCatId);
+    setPoolSubjectId((cur) =>
+      list.some((s) => s.id === cur) ? cur : list[0]?.id ?? ''
+    );
+  }, [poolCatId, poolSubjects]);
+
+  // Ders değişince havuzdan konuları çek
+  useEffect(() => {
+    setPicked(new Set());
+    if (!poolSubjectId) {
+      setPoolTopics([]);
+      return;
+    }
+    let cancelled = false;
+    setPoolTopicsLoading(true);
+    (supabase as any)
+      .from('curriculum_topics')
+      .select('id, code, name, unit')
+      .eq('subject_id', poolSubjectId)
+      .eq('is_active', true)
+      .order('sort_order')
+      .range(0, 999)
+      .then(({ data }: any) => {
+        if (cancelled) return;
+        setPoolTopics(data ?? []);
+        setPoolTopicsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [poolSubjectId]);
+
   // Filtre değişince, seçili öğrenci artık filtreye uymuyorsa ilk öğrenciye geç.
   useEffect(() => {
     if (pickerStudents.length === 0) {
@@ -138,15 +247,75 @@ export default function KonuIlerleyisiPage() {
   async function loadTopics(studentId: string) {
     const { data } = await (supabase as any)
       .from('topic_progress')
-      .select(
-        'id, student_id, subject, topic, konu_tamamlandi, kaynak1_sorular, kaynak2_sorular, kaynak3_sorular, yanlislar_kontrol'
-      )
+      .select(TOPIC_SELECT)
       .eq('student_id', studentId)
       .order('subject');
 
     setTopics(data ?? []);
   }
 
+  // --- Havuzdan ekleme ---
+  const currentCat = poolCats.find((c) => c.id === poolCatId);
+  const currentPoolSubject = poolSubjects.find((s) => s.id === poolSubjectId);
+  const label = currentPoolSubject
+    ? subjectLabel(currentCat, currentPoolSubject.name)
+    : '';
+
+  const addedIds = new Set(topics.map((t) => t.topic_id).filter(Boolean) as string[]);
+  const addedTexts = new Set(
+    topics.filter((t) => norm(t.subject) === norm(label)).map((t) => norm(t.topic))
+  );
+  const isAdded = (p: PoolTopic) =>
+    addedIds.has(p.id) || addedTexts.has(norm(p.name));
+
+  const selectable = poolTopics.filter((p) => !isAdded(p));
+  const allPicked = selectable.length > 0 && selectable.every((p) => picked.has(p.id));
+
+  function togglePick(id: string) {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setPicked(allPicked ? new Set() : new Set(selectable.map((p) => p.id)));
+  }
+
+  async function addPicked() {
+    if (!selectedStudentId || !label || picked.size === 0) return;
+    setAdding(true);
+
+    const rows = poolTopics
+      .filter((p) => picked.has(p.id) && !isAdded(p))
+      .map((p) => ({
+        student_id: selectedStudentId,
+        subject: label,
+        topic: p.code ? `${p.code} · ${p.name}` : p.name,
+        topic_id: p.id,
+        konu_tamamlandi: false,
+        kaynak1_sorular: false,
+        kaynak2_sorular: false,
+        kaynak3_sorular: false,
+        yanlislar_kontrol: false,
+      }));
+
+    if (rows.length) {
+      const { data } = await (supabase as any)
+        .from('topic_progress')
+        .insert(rows)
+        .select(TOPIC_SELECT);
+
+      if (data) setTopics((prev) => [...prev, ...data]);
+    }
+
+    setPicked(new Set());
+    setAdding(false);
+  }
+
+  // --- Elle ekleme (havuzda olmayan konu için) ---
   async function addTopic() {
     if (!newTopic.trim() || !selectedStudentId || !newSubject) return;
 
@@ -162,9 +331,7 @@ export default function KonuIlerleyisiPage() {
         kaynak3_sorular: false,
         yanlislar_kontrol: false,
       })
-      .select(
-        'id, student_id, subject, topic, konu_tamamlandi, kaynak1_sorular, kaynak2_sorular, kaynak3_sorular, yanlislar_kontrol'
-      )
+      .select(TOPIC_SELECT)
       .single();
 
     if (data) {
@@ -228,6 +395,15 @@ export default function KonuIlerleyisiPage() {
     );
   }
 
+  const catSubjects = poolSubjects.filter((s) => s.category_id === poolCatId);
+
+  // Konuları ünitelere göre grupla (listede başlık göstermek için)
+  const unitGroups = poolTopics.reduce<Record<string, PoolTopic[]>>((acc, p) => {
+    const key = p.unit || '';
+    (acc[key] ||= []).push(p);
+    return acc;
+  }, {});
+
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-5">
@@ -276,56 +452,173 @@ export default function KonuIlerleyisiPage() {
             )}
           </div>
 
-          {selectedStudentId && studentSubjects.length === 0 && (
-            <div className="mb-4 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-2 text-[12px] text-[var(--accent-dark)]">
-              Bu öğrenciye ait kayıtlı ders bulunamadı. Öğrenci düzenleme
-              sayfasından &quot;Kullanılan Kaynaklar&quot; bölümünü doldur.
-            </div>
-          )}
-
           {selectedStudentId && (
           <>
-          {studentSubjects.length > 0 && (
-            <div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
-              <h2 className="mb-3 text-sm font-medium text-[var(--ink)]">
-                Konu ekle
-              </h2>
+          {/* Konu ekle: havuzdan seçim */}
+          <div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
+            <h2 className="mb-3 text-sm font-medium text-[var(--ink)]">
+              Konu ekle
+            </h2>
 
-              <div className="flex gap-2">
-                <select
-                  value={newSubject}
-                  onChange={(e) => setNewSubject(e.target.value)}
-                  className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]"
-                >
-                  {studentSubjects.map((subject) => (
-                    <option key={subject} value={subject}>
-                      {subject}
-                    </option>
-                  ))}
-                </select>
+            {poolCats.length === 0 ? (
+              <p className="text-[12px] text-[var(--ink-muted)]">
+                Kazanım havuzunda henüz kayıt yok. Yönetici havuzu doldurunca
+                konular buradan seçilebilecek.
+              </p>
+            ) : (
+              <>
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row">
+                  <select
+                    value={poolCatId}
+                    onChange={(e) => setPoolCatId(e.target.value)}
+                    className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)] sm:w-44"
+                  >
+                    {poolCats.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
 
-                <input
-                  type="text"
-                  value={newTopic}
-                  onChange={(e) => setNewTopic(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      addTopic();
-                    }
-                  }}
-                  placeholder="Konu adı..."
-                  className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]"
-                />
+                  <select
+                    value={poolSubjectId}
+                    onChange={(e) => setPoolSubjectId(e.target.value)}
+                    disabled={catSubjects.length === 0}
+                    className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                  >
+                    {catSubjects.length === 0 && <option value="">Ders yok</option>}
+                    {catSubjects.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
+                {poolTopicsLoading ? (
+                  <p className="text-[12px] text-[var(--ink-muted)]">Konular yükleniyor...</p>
+                ) : poolTopics.length === 0 ? (
+                  <p className="text-[12px] text-[var(--ink-muted)]">
+                    Bu derste henüz konu tanımlı değil.
+                  </p>
+                ) : (
+                  <>
+                    <div className="mb-2 flex items-center justify-between text-[12px] text-[var(--ink-muted)]">
+                      <button
+                        type="button"
+                        onClick={toggleAll}
+                        disabled={selectable.length === 0}
+                        className="font-medium text-[var(--accent)] disabled:opacity-40"
+                      >
+                        {allPicked ? 'Seçimi temizle' : 'Tümünü seç'}
+                      </button>
+                      <span>
+                        {poolTopics.length - selectable.length} / {poolTopics.length} zaten ekli
+                      </span>
+                    </div>
+
+                    <div className="max-h-72 overflow-y-auto rounded-lg border border-[var(--border)]">
+                      {Object.entries(unitGroups).map(([unit, list]) => (
+                        <div key={unit || 'none'}>
+                          {unit && (
+                            <div className="sticky top-0 bg-[var(--paper)] px-3 py-1.5 text-[11px] font-medium text-[var(--ink-muted)]">
+                              {unit}
+                            </div>
+                          )}
+                          {list.map((p) => {
+                            const added = isAdded(p);
+                            const checked = added || picked.has(p.id);
+                            return (
+                              <label
+                                key={p.id}
+                                className={`flex cursor-pointer items-start gap-2 border-t border-[var(--border)] px-3 py-2 text-[13px] first:border-t-0 ${
+                                  added ? 'cursor-default opacity-50' : 'hover:bg-[var(--paper)]'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5"
+                                  checked={checked}
+                                  disabled={added}
+                                  onChange={() => togglePick(p.id)}
+                                />
+                                <span className="text-[var(--ink)]">
+                                  {p.code && (
+                                    <span className="mr-1.5 text-[11px] text-[var(--ink-muted)]">
+                                      {p.code}
+                                    </span>
+                                  )}
+                                  {p.name}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={addPicked}
+                      disabled={picked.size === 0 || adding}
+                      className="mt-3 flex items-center gap-1 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-dark)] disabled:opacity-50"
+                    >
+                      <IconPlus size={15} />
+                      {adding ? 'Ekleniyor...' : `Seçilen ${picked.size} konuyu ekle`}
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+
+            {/* Elle ekleme (havuzda olmayan konu için) */}
+            {studentSubjects.length > 0 && (
+              <div className="mt-4 border-t border-[var(--border)] pt-3">
                 <button
-                  onClick={addTopic}
-                  className="flex items-center gap-1 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
+                  type="button"
+                  onClick={() => setShowManual((v) => !v)}
+                  className="text-[12px] text-[var(--ink-muted)] underline"
                 >
-                  <IconPlus size={15} />
+                  {showManual ? 'Elle eklemeyi gizle' : 'Havuzda olmayan konuyu elle ekle'}
                 </button>
+
+                {showManual && (
+                  <div className="mt-2 flex gap-2">
+                    <select
+                      value={newSubject}
+                      onChange={(e) => setNewSubject(e.target.value)}
+                      className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                    >
+                      {studentSubjects.map((subject) => (
+                        <option key={subject} value={subject}>
+                          {subject}
+                        </option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="text"
+                      value={newTopic}
+                      onChange={(e) => setNewTopic(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          addTopic();
+                        }
+                      }}
+                      placeholder="Konu adı..."
+                      className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                    />
+
+                    <button
+                      onClick={addTopic}
+                      className="flex items-center gap-1 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
+                    >
+                      <IconPlus size={15} />
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {Object.keys(grouped).length === 0 ? (
             <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] p-8 text-center text-[13px] text-[var(--ink-muted)]">
