@@ -8,6 +8,37 @@ import { useExamFilter } from '@/lib/exam-filter-context';
 
 const DAYS_TR = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
+const TRACK_RESOURCES: Record<string, string[]> = {
+  YKS_SAY: [
+    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
+    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
+    'TYT Felsefe', 'TYT Din Kültürü',
+    'AYT Matematik', 'AYT Geometri', 'AYT Fizik', 'AYT Kimya', 'AYT Biyoloji',
+  ],
+  YKS_EA: [
+    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
+    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
+    'TYT Felsefe', 'TYT Din Kültürü',
+    'AYT Matematik', 'AYT Geometri', 'AYT Edebiyat', 'AYT Tarih', 'AYT Coğrafya',
+  ],
+  YKS_SOZ: [
+    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
+    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
+    'TYT Felsefe', 'TYT Din Kültürü',
+    'AYT Edebiyat', 'AYT Tarih', 'AYT Coğrafya', 'AYT Felsefe', 'AYT Din Kültürü',
+  ],
+  YKS_DIL: [
+    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
+    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
+    'TYT Felsefe', 'TYT Din Kültürü', 'YDT İngilizce',
+  ],
+  LGS: [
+    'Türkçe', 'Paragraf', 'Matematik', 'Fen Bilgisi',
+    'İnkılap Tarihi', 'Din Kültürü', 'İngilizce',
+  ],
+  DIGER: [],
+};
+
 // Verilen başlangıç günü (0=Pzt) için en son geçmiş o günün tarihini döndürür
 function getWeekStartDate(weekStartDay: number): Date {
   const now = new Date();
@@ -307,7 +338,9 @@ export default function HaftalikTakipPage() {
     ? `${new Date(weekStart).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} – ${new Date(weekEnd).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}`
     : '';
 
-  const subjects = Object.keys(resourceMap);
+  const subjects = selectedStudent?.track
+    ? (TRACK_RESOURCES[selectedStudent.track] ?? Object.keys(resourceMap))
+    : Object.keys(resourceMap);
 
   if (loading) return <div className="p-8 text-[13px] text-[var(--ink-muted)]">Yükleniyor...</div>;
 
@@ -405,9 +438,6 @@ export default function HaftalikTakipPage() {
 
               {showForm && (
                 <div className="mt-3 space-y-3 rounded-lg bg-[var(--paper)] p-3">
-                  {subjects.length === 0 && (
-                    <p className="text-[12px] text-[var(--accent-dark)]">Önce öğrenciye kaynak ekle.</p>
-                  )}
                   {subjects.length > 0 && (
                     <>
                       <div className="flex flex-wrap gap-2">
@@ -421,9 +451,12 @@ export default function HaftalikTakipPage() {
                         </div>
                         {/* Kaynak */}
                         <div className="min-w-[130px] flex-1">
-                          <label className="mb-1 block text-[11px] font-medium text-[var(--ink-muted)]">Kaynak</label>
+                          <label className="mb-1 block text-[11px] font-medium text-[var(--ink-muted)]">
+                            Kaynak <span className="text-[var(--ink-muted)]">(opsiyonel)</span>
+                          </label>
                           <select value={newResource} onChange={(e) => setNewResource(e.target.value)}
                             className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1.5 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--accent)]">
+                            <option value="">Kaynak yok</option>
                             {(resourceMap[newSubject] ?? []).map((r) => (
                               <option key={r} value={r}>{r}</option>
                             ))}
