@@ -3,7 +3,7 @@
 // src/app/kazanim-havuzu/KazanimHavuzuClient.tsx
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import ImportPanel from "./ImportPanel";
+import { assignCurriculumForStudent } from "@/lib/curriculum-assign";
 
 type Category = { id: string; code: string; name: string };
 type Subject = { id: string; name: string; sort_order: number };
@@ -18,7 +18,8 @@ type Topic = {
 };
 
 export default function KazanimHavuzuClient({ categories: initial }: { categories: Category[] }) {
-  const [supabase] = useState(() => createClient());
+  const supabase = createClient();
+
   const [categories, setCategories] = useState<Category[]>(initial);
   const [catId, setCatId] = useState<string | null>(initial[0]?.id ?? null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -137,22 +138,39 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
     loadTopics();
   }
 
+  // Havuza yeni ders/konu eklendiğinde, mevcut tüm öğrencilerdeki eksikleri
+  // tamamlamak için: her aktif öğrenciyi sınav türüne göre tarar, eksik
+  // konuları ekler. Zaten eklenmiş konulara dokunmaz.
+  const [bulkBusy, setBulkBusy] = useState(false);
+  async function bulkAssignAll() {
+    setBulkBusy(true);
+    flash("Öğrenciler taranıyor...");
+    try {
+      const { data: allStudents, error } = await supabase
+        .from("students")
+        .select("id, track")
+        .neq("status", "pasif");
+      if (error) throw error;
+
+      let total = 0;
+      for (const s of allStudents ?? []) {
+        const { added } = await assignCurriculumForStudent(supabase, s.id, s.track);
+        total += added;
+      }
+      flash(`Tamamlandı: ${(allStudents ?? []).length} öğrenci tarandı, ${total} yeni konu atandı.`);
+    } catch (e) {
+      flash("Hata: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   async function deleteTopic(t: Topic) {
     if (!confirm(`"${t.name}" silinsin mi? Öğrenci kayıtlarındaki bağlantı boşa düşer; pasife almak daha güvenlidir.`)) return;
     const { error } = await supabase.from("curriculum_topics").delete().eq("id", t.id);
     if (error) return flash("Silinemedi: " + error.message);
     loadTopics();
   }
-
-     async function reloadAll() {
-     const { data } = await supabase
-       .from("exam_categories")
-       .select("id, code, name")
-       .order("sort_order");
-     if (data) setCategories(data);
-     loadSubjects();
-     loadTopics();
-   }
 
   // Ünitelere göre grupla
   const groups = topics.reduce<Record<string, Topic[]>>((acc, t) => {
@@ -191,7 +209,16 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
       <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 16 }}>
         Konu ilerleyişi ve deneme girişleri bu listeyi kullanır. Bu sayfayı sadece yönetici görür.
       </p>
-           <ImportPanel onDone={reloadAll} />
+
+      <div style={{ ...box, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 13, opacity: 0.75 }}>
+          Yeni ders veya konu eklediyseniz, mevcut öğrencilerin eksik konularını tamamlamak için çalıştırın.
+        </span>
+        <button style={{ ...btn, opacity: bulkBusy ? 0.6 : 1 }} disabled={bulkBusy} onClick={bulkAssignAll}>
+          {bulkBusy ? "Taranıyor..." : "Eksik konuları öğrencilere ata"}
+        </button>
+      </div>
+
       {msg && (
         <div role="status" style={{ ...box, marginBottom: 12, background: "#fff8e1" }}>{msg}</div>
       )}

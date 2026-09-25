@@ -8,6 +8,8 @@ import type { ExamTrack } from '@/types/database';
 import { IconArrowLeft, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { parseTurkishNumber } from '@/lib/format';
+import { TRACK_RESOURCES } from '@/lib/track-resources';
+import { assignCurriculumForStudent } from '@/lib/curriculum-assign';
 
 // ─── Sabitler ────────────────────────────────────────────────
 
@@ -37,38 +39,6 @@ function getYksYear() {
   const now = new Date();
   return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
 }
-
-// Alan → ders listesi
-const TRACK_RESOURCES: Record<string, string[]> = {
-  YKS_SAY: [
-    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
-    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
-    'TYT Felsefe', 'TYT Din Kültürü',
-    'AYT Matematik', 'AYT Geometri', 'AYT Fizik', 'AYT Kimya', 'AYT Biyoloji',
-  ],
-  YKS_EA: [
-    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
-    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
-    'TYT Felsefe', 'TYT Din Kültürü',
-    'AYT Matematik', 'AYT Geometri', 'AYT Edebiyat', 'AYT Tarih', 'AYT Coğrafya',
-  ],
-  YKS_SOZ: [
-    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
-    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
-    'TYT Felsefe', 'TYT Din Kültürü',
-    'AYT Edebiyat', 'AYT Tarih', 'AYT Coğrafya', 'AYT Felsefe', 'AYT Din Kültürü',
-  ],
-  YKS_DIL: [
-    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
-    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
-    'TYT Felsefe', 'TYT Din Kültürü', 'YDT İngilizce',
-  ],
-  LGS: [
-    'Türkçe', 'Paragraf', 'Matematik', 'Fen Bilgisi',
-    'İnkılap Tarihi', 'Din Kültürü', 'İngilizce',
-  ],
-  DIGER: [],
-};
 
 // ─── Tip ────────────────────────────────────────────────────
 
@@ -200,7 +170,7 @@ export default function YeniOgrenciPage() {
     const isYks = track.startsWith('YKS');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: insertError } = await (supabase.from('students') as any).insert({
+    const { data: inserted, error: insertError } = await (supabase.from('students') as any).insert({
       coach_id: user.id,
       full_name: fullName.trim(),
       track,
@@ -243,6 +213,9 @@ export default function YeniOgrenciPage() {
       setError('Öğrenci eklenirken hata oluştu: ' + insertError.message);
       setLoading(false);
       return;
+    }
+    if (inserted?.id) {
+      await assignCurriculumForStudent(supabase, inserted.id, track);
     }
     refreshOptions();
     router.push('/ogrenciler');
