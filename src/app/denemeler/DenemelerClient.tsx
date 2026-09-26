@@ -1,13 +1,15 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { IconPlus, IconChartBar, IconEdit, IconTrash, IconChevronDown, IconChevronUp, IconArrowsRightLeft, IconX, IconSparkles, IconLoader2 } from '@tabler/icons-react';
-import { StudentFilter } from '@/components/StudentFilter';
+import {
+  IconPlus, IconChartBar, IconEdit, IconTrash, IconChevronDown, IconChevronUp,
+  IconArrowsRightLeft, IconX, IconSparkles, IconLoader2,
+} from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
-import { TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS } from './examConstants';
+import { TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS, type SubjectDef } from './examConstants';
 
 const TYPE_BADGE: Record<string, string> = {
   TYT: 'bg-blue-50 text-blue-700',
@@ -15,11 +17,13 @@ const TYPE_BADGE: Record<string, string> = {
   LGS: 'bg-teal-50 text-teal-700',
 };
 
+const norm = (s: string) => (s ?? '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
+
 function scoreColor(net: number, max: number) {
   const pct = (net / max) * 100;
-  if (pct >= 70) return { bar: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' };
-  if (pct >= 45) return { bar: 'bg-amber-400', text: 'text-amber-700', bg: 'bg-amber-50' };
-  return { bar: 'bg-red-400', text: 'text-red-700', bg: 'bg-red-50' };
+  if (pct >= 70) return { text: 'text-emerald-700' };
+  if (pct >= 45) return { text: 'text-amber-700' };
+  return { text: 'text-red-600' };
 }
 
 function getSubjectNet(result: any, examType: string): number {
@@ -29,48 +33,27 @@ function getSubjectNet(result: any, examType: string): number {
   return examType === 'LGS' ? calcNetLGS(d, y) : calcNetYKS(d, y);
 }
 
-function SubjectResults({ subjectResults, examType }: { subjectResults: any; examType: string }) {
-  const subjects = examType === 'TYT' ? TYT_SUBJECTS : examType === 'AYT' ? AYT_SUBJECTS : LGS_SUBJECTS;
-  const maxNet = examType === 'TYT' ? 120 : examType === 'AYT' ? 160 : 90;
+function subjectsFor(examType: string): SubjectDef[] {
+  return examType === 'TYT' ? TYT_SUBJECTS : examType === 'AYT' ? AYT_SUBJECTS : LGS_SUBJECTS;
+}
 
-  if (!subjectResults) return null;
+type SortKey = string; // 'name' | 'net' | 'puan' | 'puan_say' | 'puan_ea' | 'puan_soz' | `subj:<key>:net|dogru|yanlis`
 
-  return (
-    <div className="mt-3 rounded-xl bg-gray-50 p-3">
-      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-        {subjects.map((s) => {
-          const result = subjectResults[s.key];
-          const net = getSubjectNet(result, examType);
-          const d = Number(result?.dogru) || 0;
-          const y = Number(result?.yanlis) || 0;
-          const pct = (net / s.total) * 100;
-          const barColor = pct >= 70 ? 'bg-emerald-400' : pct >= 45 ? 'bg-amber-400' : 'bg-red-400';
-
-          return (
-            <div key={s.key} className="rounded-lg bg-white border border-gray-100 px-3 py-2">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] font-medium text-gray-600 truncate">{s.label}</span>
-                <span className="text-[12px] font-bold text-gray-800 ml-1 flex-shrink-0">{net}</span>
-              </div>
-              <div className="h-1 w-full rounded-full bg-gray-100">
-                <div
-                  className={`h-full rounded-full ${barColor} transition-all`}
-                  style={{ width: `${Math.min(pct, 100)}%` }}
-                />
-              </div>
-              <div className="mt-1 flex justify-between text-[10px] text-gray-400">
-                <span>{d}D · {y}Y</span>
-                <span>/{s.total}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-2 text-right text-[11px] text-gray-400">
-        Toplam: {examType === 'TYT' ? '120' : examType === 'AYT' ? '160' : '90'} soru
-      </div>
-    </div>
-  );
+function sortValue(e: any, key: SortKey): number | string {
+  if (key === 'name') return e.students?.full_name ?? '';
+  if (key === 'net') return e.net_score ?? 0;
+  if (key === 'puan') return e.tyt_puan ?? e.lgs_puan ?? 0;
+  if (key === 'puan_say') return e.say_puan ?? 0;
+  if (key === 'puan_ea') return e.ea_puan ?? 0;
+  if (key === 'puan_soz') return e.soz_puan ?? 0;
+  if (key.startsWith('subj:')) {
+    const [, subj, field] = key.split(':');
+    const r = e.subject_results?.[subj];
+    if (field === 'net') return getSubjectNet(r, e.exam_type);
+    if (field === 'dogru') return Number(r?.dogru) || 0;
+    if (field === 'yanlis') return Number(r?.yanlis) || 0;
+  }
+  return 0;
 }
 
 interface Props {
@@ -79,19 +62,120 @@ interface Props {
   initialFilter?: string;
 }
 
+interface ExamGroup {
+  key: string;
+  examType: string;
+  examName: string;
+  date: string;
+  rows: any[];
+}
+
 export function DenemelerClient({ initialExams, students, initialFilter }: Props) {
   const supabase = createClient();
   const { matchesFilter } = useExamFilter();
+
   const [exams, setExams] = useState<any[]>(initialExams);
-  const [filter, setFilter] = useState(initialFilter ?? '');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'TYT' | 'AYT' | 'LGS'>('ALL');
+  const [sinifFilter, setSinifFilter] = useState('');
+  const [denemeFilter, setDenemeFilter] = useState(''); // `${type}|${normName}`
+  const [studentIds, setStudentIds] = useState<Set<string>>(
+    () => new Set(initialFilter ? [initialFilter] : [])
+  );
+  const [showStudentPicker, setShowStudentPicker] = useState(false);
+
+  const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});
+  const [groupSort, setGroupSort] = useState<Record<string, { key: SortKey; dir: 'asc' | 'desc' }>>({});
+
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
   const [showCompare, setShowCompare] = useState(false);
-
   const MAX_COMPARE = 5;
+
+  // ── Filtre zinciri: tür → sınıf → deneme adı → öğrenci ──
+  const afterTopbar = useMemo(() => exams.filter((e) => matchesFilter(e.students)), [exams, matchesFilter]);
+  const afterType = useMemo(
+    () => (typeFilter === 'ALL' ? afterTopbar : afterTopbar.filter((e) => e.exam_type === typeFilter)),
+    [afterTopbar, typeFilter]
+  );
+
+  const candidateStudents = useMemo(
+    () => students.filter((s: any) => matchesFilter(s) && (!sinifFilter || s.sinif_sube === sinifFilter)),
+    [students, matchesFilter, sinifFilter]
+  );
+
+  const afterSinif = useMemo(
+    () => (sinifFilter ? afterType.filter((e) => e.students?.sinif_sube === sinifFilter) : afterType),
+    [afterType, sinifFilter]
+  );
+
+  // Deneme adı seçenekleri (öğrenci filtresinden bağımsız, tür+sınıfa göre)
+  const denemeOptions = useMemo(() => {
+    const map = new Map<string, { key: string; label: string; date: string }>();
+    afterSinif.forEach((e) => {
+      const key = `${e.exam_type}|${norm(e.exam_name)}`;
+      const existing = map.get(key);
+      if (!existing || e.exam_date > existing.date) {
+        map.set(key, { key, label: `${e.exam_name} (${e.exam_type})`, date: e.exam_date });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [afterSinif]);
+
+  const afterDeneme = useMemo(
+    () => (denemeFilter ? afterSinif.filter((e) => `${e.exam_type}|${norm(e.exam_name)}` === denemeFilter) : afterSinif),
+    [afterSinif, denemeFilter]
+  );
+
+  const afterStudents = useMemo(
+    () => (studentIds.size > 0 ? afterDeneme.filter((e) => studentIds.has(e.student_id)) : afterDeneme),
+    [afterDeneme, studentIds]
+  );
+
+  const availableSiniflar = useMemo(
+    () =>
+      Array.from(
+        new Set(students.filter((s: any) => matchesFilter(s)).map((s: any) => s.sinif_sube).filter(Boolean))
+      ).sort(),
+    [students, matchesFilter]
+  );
+
+  // ── Gruplama: aynı deneme adı + sınav türü tek grup ──
+  const groups: ExamGroup[] = useMemo(() => {
+    const map = new Map<string, ExamGroup>();
+    afterStudents.forEach((e) => {
+      const key = `${e.exam_type}|${norm(e.exam_name)}`;
+      if (!map.has(key)) {
+        map.set(key, { key, examType: e.exam_type, examName: e.exam_name, date: e.exam_date, rows: [] });
+      }
+      const g = map.get(key)!;
+      g.rows.push(e);
+      if (e.exam_date > g.date) g.date = e.exam_date;
+    });
+    return Array.from(map.values()).sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [afterStudents]);
+
+  function isGroupOpen(key: string, index: number) {
+    if (key in manualOpen) return manualOpen[key];
+    return index === 0; // en güncel deneme varsayılan açık
+  }
+  function toggleGroup(key: string, currentlyOpen: boolean) {
+    setManualOpen((prev) => ({ ...prev, [key]: !currentlyOpen }));
+  }
+
+  function getSort(key: string): { key: SortKey; dir: 'asc' | 'desc' } {
+    return groupSort[key] ?? { key: 'name', dir: 'asc' };
+  }
+  function setSort(key: string, sortKey: SortKey) {
+    setGroupSort((prev) => ({ ...prev, [key]: { key: sortKey, dir: prev[key]?.dir ?? 'asc' } }));
+  }
+  function toggleDir(key: string) {
+    setGroupSort((prev) => ({
+      ...prev,
+      [key]: { key: prev[key]?.key ?? 'name', dir: (prev[key]?.dir ?? 'asc') === 'asc' ? 'desc' : 'asc' },
+    }));
+  }
 
   function toggleCompareSelect(id: string) {
     setSelectedCompareIds((prev) => {
@@ -100,214 +184,172 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
       return [...prev, id];
     });
   }
-
   function exitCompareMode() {
     setCompareMode(false);
     setSelectedCompareIds([]);
   }
-
   const compareExams = exams.filter((e) => selectedCompareIds.includes(e.id));
-
-  const globallyFiltered = exams.filter((e) => matchesFilter(e.students));
-  const filtered = filter ? globallyFiltered.filter((e) => e.student_id === filter) : globallyFiltered;
 
   async function handleToggleAnalysis(exam: any) {
     setTogglingId(exam.id);
     const newValue = !exam.analysis_done;
-    const { error } = await (supabase.from('exams') as any)
-      .update({ analysis_done: newValue })
-      .eq('id', exam.id);
-    if (!error) {
-      setExams((prev) =>
-        prev.map((e) => e.id === exam.id ? { ...e, analysis_done: newValue } : e)
-      );
-    }
+    const { error } = await (supabase.from('exams') as any).update({ analysis_done: newValue }).eq('id', exam.id);
+    if (!error) setExams((prev) => prev.map((e) => (e.id === exam.id ? { ...e, analysis_done: newValue } : e)));
     setTogglingId(null);
   }
-
   async function handleDelete(id: string) {
     await (supabase.from('exams') as any).delete().eq('id', id);
     setExams((prev) => prev.filter((e) => e.id !== id));
     setDeletingId(null);
   }
 
+  function toggleStudent(id: string) {
+    setStudentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const totalCount = afterStudents.length;
+  const filtersActive = typeFilter !== 'ALL' || !!sinifFilter || !!denemeFilter || studentIds.size > 0;
+
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className={`mx-auto max-w-6xl ${compareMode && selectedCompareIds.length > 0 ? 'pb-20' : ''}`}>
       {/* Başlık */}
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-[18px] font-medium text-gray-900">Deneme sonuçları</h1>
-          <p className="mt-0.5 text-[13px] text-gray-500">{filtered.length} kayıt</p>
+          <p className="mt-0.5 text-[13px] text-gray-500">{totalCount} kayıt · {groups.length} deneme</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => (compareMode ? exitCompareMode() : setCompareMode(true))}
             className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-medium transition ${
-              compareMode
-                ? 'bg-gray-900 text-white'
-                : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+              compareMode ? 'bg-gray-900 text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
             <IconArrowsRightLeft size={15} />
             {compareMode ? 'İptal' : 'Karşılaştır'}
           </button>
-          <Link href="/denemeler/yeni"
-            className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3.5 py-2 text-[13px] font-medium text-blue-700 hover:bg-blue-100">
+          <Link href="/denemeler/yeni" className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3.5 py-2 text-[13px] font-medium text-blue-700 hover:bg-blue-100">
             <IconPlus size={15} />
             Deneme gir
           </Link>
         </div>
       </div>
 
-      {/* Filtre */}
-      {(() => {
-        const filteredStudents = students.filter((s: any) => matchesFilter(s));
-        return filteredStudents.length > 0 && (
-          <StudentFilter
-            students={filteredStudents}
-            selectedId={filter}
-            onSelect={setFilter}
-            showAll
-          />
-        );
-      })()}
+      {/* Filtreler */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white p-3">
+        <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
+          {(['ALL', 'TYT', 'AYT', 'LGS'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => { setTypeFilter(t); setDenemeFilter(''); }}
+              className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition ${
+                typeFilter === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {t === 'ALL' ? 'Hepsi' : t}
+            </button>
+          ))}
+        </div>
 
-      {/* Liste */}
-      {filtered.length === 0 ? (
+        {availableSiniflar.length > 0 && (
+          <select
+            value={sinifFilter}
+            onChange={(e) => { setSinifFilter(e.target.value); setDenemeFilter(''); }}
+            className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-[12px] text-gray-700"
+          >
+            <option value="">Tüm sınıflar</option>
+            {availableSiniflar.map((s: any) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        )}
+
+        <select
+          value={denemeFilter}
+          onChange={(e) => setDenemeFilter(e.target.value)}
+          className="min-w-[170px] rounded-lg border border-gray-200 px-2.5 py-1.5 text-[12px] text-gray-700"
+        >
+          <option value="">Tüm denemeler</option>
+          {denemeOptions.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
+        </select>
+
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowStudentPicker((v) => !v)}
+            className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[12px] text-gray-700 hover:bg-gray-50"
+          >
+            {studentIds.size === 0 ? 'Tüm öğrenciler' : `${studentIds.size} öğrenci seçili`}
+            <IconChevronDown size={13} />
+          </button>
+          {showStudentPicker && (
+            <div className="absolute left-0 z-20 mt-1 max-h-64 w-56 overflow-y-auto rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
+              <div className="mb-1 flex justify-between px-1 text-[11px]">
+                <button onClick={() => setStudentIds(new Set(candidateStudents.map((s: any) => s.id)))} className="text-blue-600 hover:underline">
+                  Tümünü seç
+                </button>
+                <button onClick={() => setStudentIds(new Set())} className="text-gray-400 hover:underline">Temizle</button>
+              </div>
+              {candidateStudents.length === 0 && <p className="px-1.5 py-1 text-[12px] text-gray-400">Öğrenci yok.</p>}
+              {candidateStudents.map((s: any) => (
+                <label key={s.id} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] hover:bg-gray-50">
+                  <input type="checkbox" checked={studentIds.has(s.id)} onChange={() => toggleStudent(s.id)} className="h-3.5 w-3.5 accent-blue-600" />
+                  {s.full_name}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {filtersActive && (
+          <button
+            onClick={() => { setTypeFilter('ALL'); setSinifFilter(''); setDenemeFilter(''); setStudentIds(new Set()); }}
+            className="text-[12px] text-gray-400 underline hover:text-gray-600"
+          >
+            Filtreleri temizle
+          </button>
+        )}
+      </div>
+
+      {/* Gruplar */}
+      {groups.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-white py-20">
           <IconChartBar size={32} className="text-gray-300" />
-          <p className="text-sm text-gray-400">Henüz deneme girilmemiş.</p>
+          <p className="text-sm text-gray-400">Bu filtrelerle eşleşen deneme bulunamadı.</p>
           <Link href="/denemeler/yeni" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-            İlk denemeyi gir
+            Deneme gir
           </Link>
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((e: any) => {
-            const colors = scoreColor(e.net_score, e.max_score);
-            const pct = Math.round((e.net_score / e.max_score) * 100);
-            const date = new Date(e.exam_date).toLocaleDateString('tr-TR', {
-              day: 'numeric', month: 'long', year: 'numeric',
-            });
-            const typeBadge = TYPE_BADGE[e.exam_type] ?? 'bg-gray-100 text-gray-500';
-            const linked = e.linked;
-            const combineNet = linked && e.exam_type === 'AYT'
-              ? Math.round((e.net_score + linked.net_score) * 100) / 100 : null;
-
-            const puanlar = [
-              e.tyt_puan && `TYT: ${e.tyt_puan}`,
-              e.say_puan && `SAY: ${e.say_puan}`,
-              e.ea_puan && `EA: ${e.ea_puan}`,
-              e.soz_puan && `SÖZ: ${e.soz_puan}`,
-              e.lgs_puan && `LGS: ${e.lgs_puan}`,
-            ].filter(Boolean).join(' · ');
-
-            const isToggling = togglingId === e.id;
-            const isExpanded = expandedId === e.id;
-            const hasSubjectResults = e.subject_results && Object.keys(e.subject_results).length > 0;
-            return (
-              <div key={e.id} className={`rounded-xl border bg-white overflow-hidden transition ${
-                compareMode && selectedCompareIds.includes(e.id) ? 'border-blue-400 ring-1 ring-blue-200' : 'border-gray-200'
-              }`}>
-                {/* Üst kısım */}
-                <div className="px-4 py-4">
-                  <div className="flex items-start gap-3">
-                    {compareMode && (
-                      <input
-                        type="checkbox"
-                        checked={selectedCompareIds.includes(e.id)}
-                        onChange={() => toggleCompareSelect(e.id)}
-                        disabled={!selectedCompareIds.includes(e.id) && selectedCompareIds.length >= MAX_COMPARE}
-                        className="mt-1 h-4 w-4 flex-shrink-0 accent-blue-600 disabled:opacity-30"
-                      />
-                    )}
-                    <span className={`mt-0.5 flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${typeBadge}`}>
-                      {e.exam_type}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[13px] font-medium text-gray-900">
-                        {e.students?.full_name} — {e.exam_name}
-                      </div>
-                      <div className="text-[12px] text-gray-400">{date}</div>
-                      {puanlar && (
-                        <div className="mt-0.5 text-[12px] text-gray-500">{puanlar}</div>
-                      )}
-                      {linked && e.exam_type === 'AYT' && (
-                        <div className="mt-0.5 text-[11px] text-purple-600">
-                          🔗 {linked.exam_name} · Kombine: {combineNet} net
-                        </div>
-                      )}
-                      {/* İlerleme çubuğu */}
-                      <div className="mt-2 h-1.5 w-full rounded-full bg-gray-100">
-                        <div className={`h-full rounded-full ${colors.bar}`} style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-
-                    {/* Sağ: net + butonlar */}
-                    <div className="flex-shrink-0 text-right">
-                      <div className={`text-[16px] font-bold ${colors.text}`}>{e.net_score}</div>
-                      <div className="text-[11px] text-gray-400">/{e.max_score} net</div>
-                      <div className={`mt-0.5 text-[11px] font-semibold ${colors.text}`}>%{pct}</div>
-                      <button
-                        onClick={() => handleToggleAnalysis(e)}
-                        disabled={isToggling}
-                        className={`mt-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-70 disabled:opacity-40 cursor-pointer ${
-                          e.analysis_done
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                        }`}>
-                        {isToggling ? '...' : e.analysis_done ? 'Analiz ✓' : 'Analiz yok'}
-                      </button>
-                    </div>
-
-                    {/* Aksiyonlar */}
-                    <div className="flex flex-shrink-0 flex-col gap-1">
-                      <Link
-                        href={`/denemeler/${e.id}/duzenle`}
-                        className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-blue-600">
-                        <IconEdit size={15} />
-                      </Link>
-                      <button onClick={() => setDeletingId(e.id)}
-                        className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-500">
-                        <IconTrash size={15} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Ders detayları toggle butonu */}
-                  {hasSubjectResults && (
-                    <button
-                      onClick={() => setExpandedId(isExpanded ? null : e.id)}
-                      className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-100 py-1.5 text-[11px] text-gray-400 hover:bg-gray-50 transition-colors"
-                    >
-                      {isExpanded ? (
-                        <>Ders detaylarını gizle <IconChevronUp size={12} /></>
-                      ) : (
-                        <>Ders bazlı netleri gör <IconChevronDown size={12} /></>
-                      )}
-                    </button>
-                  )}
-                </div>
-
-                {/* Ders detayları — açılır panel */}
-                {isExpanded && hasSubjectResults && (
-                  <div className="border-t border-gray-100 px-4 pb-4">
-                    <SubjectResults
-                      subjectResults={e.subject_results}
-                      examType={e.exam_type}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {groups.map((g, idx) => (
+            <ExamGroupCard
+              key={g.key}
+              group={g}
+              isOpen={isGroupOpen(g.key, idx)}
+              onToggle={() => toggleGroup(g.key, isGroupOpen(g.key, idx))}
+              sort={getSort(g.key)}
+              onSortChange={(k) => setSort(g.key, k)}
+              onDirToggle={() => toggleDir(g.key)}
+              compareMode={compareMode}
+              selectedCompareIds={selectedCompareIds}
+              onToggleCompare={toggleCompareSelect}
+              compareDisabled={selectedCompareIds.length >= MAX_COMPARE}
+              onToggleAnalysis={handleToggleAnalysis}
+              togglingId={togglingId}
+              onDeleteRequest={setDeletingId}
+            />
+          ))}
         </div>
       )}
 
       {/* Karşılaştırma alt çubuğu */}
       {compareMode && selectedCompareIds.length > 0 && (
-        <div className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
-          <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-white px-4 py-2.5 shadow-lg">
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+          <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-gray-200 bg-white px-4 py-2.5 shadow-lg">
             <span className="text-[13px] text-gray-600">{selectedCompareIds.length} deneme seçildi</span>
             <button
               onClick={() => setShowCompare(true)}
@@ -316,9 +358,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
             >
               Karşılaştır
             </button>
-            <button onClick={exitCompareMode} className="text-[12px] text-gray-400 hover:text-gray-600">
-              Vazgeç
-            </button>
+            <button onClick={exitCompareMode} className="text-[12px] text-gray-400 hover:text-gray-600">Vazgeç</button>
           </div>
         </div>
       )}
@@ -330,12 +370,10 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
             <h3 className="mb-2 text-base font-semibold text-gray-900">Denemeyi sil?</h3>
             <p className="mb-5 text-sm text-gray-500">Bu deneme kaydı kalıcı olarak silinecek.</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeletingId(null)}
-                className="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-50">
+              <button onClick={() => setDeletingId(null)} className="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-50">
                 Vazgeç
               </button>
-              <button onClick={() => handleDelete(deletingId)}
-                className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700">
+              <button onClick={() => handleDelete(deletingId)} className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700">
                 Evet, sil
               </button>
             </div>
@@ -351,7 +389,219 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   );
 }
 
-// ─── Yapay zeka analiz sonucu tipleri ──────────────────────────
+// ─── Deneme grubu kartı: akordeon başlık + Excel tarzı tablo ──
+
+function ExamGroupCard({
+  group, isOpen, onToggle, sort, onSortChange, onDirToggle,
+  compareMode, selectedCompareIds, onToggleCompare, compareDisabled,
+  onToggleAnalysis, togglingId, onDeleteRequest,
+}: {
+  group: ExamGroup;
+  isOpen: boolean;
+  onToggle: () => void;
+  sort: { key: SortKey; dir: 'asc' | 'desc' };
+  onSortChange: (k: SortKey) => void;
+  onDirToggle: () => void;
+  compareMode: boolean;
+  selectedCompareIds: string[];
+  onToggleCompare: (id: string) => void;
+  compareDisabled: boolean;
+  onToggleAnalysis: (exam: any) => void;
+  togglingId: string | null;
+  onDeleteRequest: (id: string) => void;
+}) {
+  const subjects = subjectsFor(group.examType);
+  const maxScore = group.examType === 'TYT' ? 120 : group.examType === 'AYT' ? 160 : 90;
+  const typeBadge = TYPE_BADGE[group.examType] ?? 'bg-gray-100 text-gray-500';
+
+  const sortedRows = useMemo(() => {
+    const rows = [...group.rows];
+    rows.sort((a, b) => {
+      const va = sortValue(a, sort.key);
+      const vb = sortValue(b, sort.key);
+      const cmp = typeof va === 'string' || typeof vb === 'string'
+        ? String(va).localeCompare(String(vb), 'tr')
+        : (va as number) - (vb as number);
+      return sort.dir === 'asc' ? cmp : -cmp;
+    });
+    return rows;
+  }, [group.rows, sort]);
+
+  const avgNet = Math.round((group.rows.reduce((s, e) => s + (e.net_score || 0), 0) / group.rows.length) * 100) / 100;
+  const dateLabel = new Date(group.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const stickyNameLeft = compareMode ? 'left-8' : 'left-0';
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-gray-50">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${typeBadge}`}>{group.examType}</span>
+          <div className="min-w-0">
+            <div className="truncate text-[13px] font-medium text-gray-900">{group.examName}</div>
+            <div className="text-[11px] text-gray-400">{dateLabel} · {group.rows.length} öğrenci · Ort. net {avgNet}</div>
+          </div>
+        </div>
+        {isOpen ? <IconChevronUp size={16} className="flex-shrink-0 text-gray-400" /> : <IconChevronDown size={16} className="flex-shrink-0 text-gray-400" />}
+      </button>
+
+      {isOpen && (
+        <div className="border-t border-gray-100">
+          {/* Sıralama */}
+          <div className="flex flex-wrap items-center gap-2 bg-gray-50/60 px-4 py-2.5">
+            <span className="text-[11px] text-gray-400">Sırala:</span>
+            <select
+              value={sort.key}
+              onChange={(e) => onSortChange(e.target.value)}
+              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-700"
+            >
+              <option value="name">İsim</option>
+              <option value="net">Toplam Net</option>
+              {group.examType === 'AYT' ? (
+                <>
+                  <option value="puan_say">Sayısal Puanı</option>
+                  <option value="puan_ea">EA Puanı</option>
+                  <option value="puan_soz">Sözel Puanı</option>
+                </>
+              ) : (
+                <option value="puan">Puan</option>
+              )}
+              {subjects.map((s) => (
+                <optgroup key={s.key} label={s.label}>
+                  <option value={`subj:${s.key}:net`}>{s.label} Net</option>
+                  <option value={`subj:${s.key}:dogru`}>{s.label} Doğru</option>
+                  <option value={`subj:${s.key}:yanlis`}>{s.label} Yanlış</option>
+                </optgroup>
+              ))}
+            </select>
+            <button onClick={onDirToggle} className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-50">
+              {sort.dir === 'asc' ? '↑ Artan' : '↓ Azalan'}
+            </button>
+          </div>
+
+          {/* Excel tarzı tablo */}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[11px]">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  {compareMode && (
+                    <th rowSpan={2} className="sticky left-0 z-20 w-8 bg-gray-50 px-2 py-2" />
+                  )}
+                  <th rowSpan={2} className={`sticky ${stickyNameLeft} z-20 min-w-[140px] bg-gray-50 px-3 py-2 text-left font-medium text-gray-500`}>
+                    Öğrenci
+                  </th>
+                  {subjects.map((s) => (
+                    <th key={s.key} colSpan={4} className="border-l border-gray-200 px-2 py-1 text-center font-medium text-gray-500">
+                      {s.label}
+                    </th>
+                  ))}
+                  <th rowSpan={2} className="border-l border-gray-200 px-2 py-2 text-center font-semibold text-gray-700">
+                    Toplam<br />Net
+                  </th>
+                  {group.examType === 'AYT' ? (
+                    <>
+                      <th rowSpan={2} className="border-l border-gray-200 px-2 py-2 text-center font-medium text-gray-500">SAY<br />Puan</th>
+                      <th rowSpan={2} className="px-2 py-2 text-center font-medium text-gray-500">EA<br />Puan</th>
+                      <th rowSpan={2} className="px-2 py-2 text-center font-medium text-gray-500">SÖZ<br />Puan</th>
+                    </>
+                  ) : (
+                    <th rowSpan={2} className="border-l border-gray-200 px-2 py-2 text-center font-medium text-gray-500">Puan</th>
+                  )}
+                  <th rowSpan={2} className="border-l border-gray-200 px-2 py-2 text-center font-medium text-gray-500">Analiz</th>
+                  <th rowSpan={2} className="px-2 py-2 text-center font-medium text-gray-500">İşlem</th>
+                </tr>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  {subjects.map((s) => (
+                    <Fragment key={s.key}>
+                      <th className="border-l border-gray-100 px-1.5 py-1 text-center font-normal text-gray-400">D</th>
+                      <th className="px-1.5 py-1 text-center font-normal text-gray-400">Y</th>
+                      <th className="px-1.5 py-1 text-center font-normal text-gray-400">B</th>
+                      <th className="px-1.5 py-1 text-center font-normal text-gray-400">N</th>
+                    </Fragment>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {sortedRows.map((e) => {
+                  const colors = scoreColor(e.net_score, maxScore);
+                  const isToggling = togglingId === e.id;
+                  return (
+                    <tr key={e.id} className="hover:bg-gray-50/60">
+                      {compareMode && (
+                        <td className="sticky left-0 z-10 w-8 bg-white px-2 py-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedCompareIds.includes(e.id)}
+                            onChange={() => onToggleCompare(e.id)}
+                            disabled={!selectedCompareIds.includes(e.id) && compareDisabled}
+                            className="h-3.5 w-3.5 accent-blue-600 disabled:opacity-30"
+                          />
+                        </td>
+                      )}
+                      <td className={`sticky ${stickyNameLeft} z-10 whitespace-nowrap bg-white px-3 py-2 font-medium text-gray-800`}>
+                        {e.students?.full_name}
+                      </td>
+                      {subjects.map((s) => {
+                        const r = e.subject_results?.[s.key];
+                        const hasData = !!r;
+                        const d = Number(r?.dogru) || 0;
+                        const y = Number(r?.yanlis) || 0;
+                        const bos = Math.max(0, s.total - d - y);
+                        const net = getSubjectNet(r, e.exam_type);
+                        return (
+                          <Fragment key={s.key}>
+                            <td className="border-l border-gray-100 px-1.5 py-2 text-center text-gray-600">{hasData ? d : '—'}</td>
+                            <td className="px-1.5 py-2 text-center text-gray-600">{hasData ? y : '—'}</td>
+                            <td className="px-1.5 py-2 text-center text-gray-400">{hasData ? bos : '—'}</td>
+                            <td className="px-1.5 py-2 text-center font-semibold text-gray-800">{hasData ? net : '—'}</td>
+                          </Fragment>
+                        );
+                      })}
+                      <td className={`border-l border-gray-100 px-2 py-2 text-center font-bold ${colors.text}`}>{e.net_score}</td>
+                      {group.examType === 'AYT' ? (
+                        <>
+                          <td className="border-l border-gray-100 px-2 py-2 text-center text-gray-600">{e.say_puan ?? '—'}</td>
+                          <td className="px-2 py-2 text-center text-gray-600">{e.ea_puan ?? '—'}</td>
+                          <td className="px-2 py-2 text-center text-gray-600">{e.soz_puan ?? '—'}</td>
+                        </>
+                      ) : (
+                        <td className="border-l border-gray-100 px-2 py-2 text-center text-gray-600">
+                          {(group.examType === 'TYT' ? e.tyt_puan : e.lgs_puan) ?? '—'}
+                        </td>
+                      )}
+                      <td className="border-l border-gray-100 px-2 py-2 text-center">
+                        <button
+                          onClick={() => onToggleAnalysis(e)}
+                          disabled={isToggling}
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-70 disabled:opacity-40 ${
+                            e.analysis_done ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                          }`}
+                        >
+                          {isToggling ? '...' : e.analysis_done ? '✓' : '—'}
+                        </button>
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="flex items-center justify-center gap-1">
+                          <Link href={`/denemeler/${e.id}/duzenle`} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600">
+                            <IconEdit size={14} />
+                          </Link>
+                          <button onClick={() => onDeleteRequest(e.id)} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-500">
+                            <IconTrash size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Yapay zeka analiz sonucu tipleri (değişmedi) ──────────────
 
 interface StudentAnalysis {
   student_name: string;
@@ -367,7 +617,7 @@ interface ExamAnalysisResult {
   karsilastirma: string | null;
 }
 
-// ─── Karşılaştırma modalı ──────────────────────────────────────
+// ─── Karşılaştırma modalı (değişmedi) ──────────────────────────
 
 function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => void }) {
   const subjectRows = useMemo(() => {
@@ -423,7 +673,6 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
           </button>
         </div>
 
-        {/* Toplam net karşılaştırma çubukları */}
         <div className="mb-6 space-y-2.5">
           {exams.map((e) => {
             const pct = Math.round((e.net_score / maxNet) * 100);
@@ -440,14 +689,13 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
                   <span className={`flex-shrink-0 font-semibold ${colors.text}`}>{e.net_score} net</span>
                 </div>
                 <div className="h-2.5 w-full rounded-full bg-gray-100">
-                  <div className={`h-full rounded-full ${colors.bar} transition-all`} style={{ width: `${pct}%` }} />
+                  <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Ders bazlı tablo */}
         <div className="overflow-x-auto rounded-xl border border-gray-100">
           <table className="w-full text-[12px]">
             <thead>
@@ -490,7 +738,6 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
           </table>
         </div>
 
-        {/* Yapay zeka analizi bölümü */}
         <div className="mt-6 rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50/50 to-purple-50/50 p-4">
           {!analysisResult && (
             <>
@@ -531,9 +778,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
                   </>
                 )}
               </button>
-              {analysisError && (
-                <p className="mt-2 text-[12px] text-red-600">{analysisError}</p>
-              )}
+              {analysisError && <p className="mt-2 text-[12px] text-red-600">{analysisError}</p>}
             </>
           )}
 
@@ -544,10 +789,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
                   <IconSparkles size={16} className="text-blue-600" />
                   <span className="text-[13px] font-medium text-gray-800">Yapay Zeka Analizi</span>
                 </div>
-                <button
-                  onClick={() => setAnalysisResult(null)}
-                  className="text-[11px] text-gray-400 hover:text-gray-600"
-                >
+                <button onClick={() => setAnalysisResult(null)} className="text-[11px] text-gray-400 hover:text-gray-600">
                   Temizle
                 </button>
               </div>
@@ -559,14 +801,10 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
 
                     <div className="mb-2 flex flex-wrap gap-1.5">
                       {o.guclu_dersler.map((d) => (
-                        <span key={d} className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                          + {d}
-                        </span>
+                        <span key={d} className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">+ {d}</span>
                       ))}
                       {o.zayif_dersler.map((d) => (
-                        <span key={d} className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">
-                          − {d}
-                        </span>
+                        <span key={d} className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">− {d}</span>
                       ))}
                     </div>
 

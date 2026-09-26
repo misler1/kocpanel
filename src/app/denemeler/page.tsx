@@ -18,14 +18,19 @@ export default async function DenemelerPage({
   const studentIds: string[] = (rawIds ?? []).map((s: any) => s.id);
 
   const { data: rawStudents } = await (supabase as any)
-    .from('students').select('id, full_name, track, kurum, donem').eq('coach_id', user.id).order('full_name');
+    .from('students')
+    .select('id, full_name, track, kurum, donem, sinif_sube')
+    .eq('coach_id', user.id)
+    .order('full_name');
+
   let exams: any[] = [];
   if (studentIds.length > 0) {
-    const ids = ogrenciFilter ? [ogrenciFilter] : studentIds;
+    // Filtreleme artık istemci tarafında (tür/sınıf/deneme/öğrenci), bu yüzden
+    // koçun tüm öğrencilerinin tüm denemelerini tek seferde çekiyoruz.
     const { data } = await (supabase as any)
       .from('exams')
-      .select('*, students(full_name, track, kurum, donem), linked:linked_exam_id(exam_name, net_score, exam_type)')
-      .in('student_id', ids)
+      .select('*, students(full_name, track, kurum, donem, sinif_sube), linked:linked_exam_id(exam_name, net_score, exam_type)')
+      .in('student_id', studentIds)
       .order('exam_date', { ascending: false });
     exams = data ?? [];
   }
