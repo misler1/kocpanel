@@ -27,10 +27,17 @@ export async function POST(req: NextRequest) {
     .from('students').select('id, full_name')
     .eq('coach_id', user.id).neq('status', 'pasif');
 
-  const preview = rows.map((r) => {
+   const preview = rows.map((r) => {
     const match = matchStudentName(r.rawName, students ?? []);
     return { ...r, match };
   });
 
-  return NextResponse.json({ headers, mapping, preview });
+  return NextResponse.json({
+    headers,
+    mapping,
+    preview,
+    students: (students ?? []).map((s: any) => ({ id: s.id, full_name: s.full_name })),
+  });
+  
 }
+

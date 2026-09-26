@@ -30,11 +30,11 @@ export default function TopluYuklePage() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); 
   const [rows, setRows] = useState<PreviewRow[]>([]);
-  // manuel eşleştirme: satır index -> seçilen öğrenci id
+  const [allStudents, setAllStudents] = useState<{ id: string; full_name: string }[]>([]);
+    // manuel eşleştirme: satır index -> seçilen öğrenci id
   const [overrides, setOverrides] = useState<Record<number, string>>({});
-
   async function handleParse() {
     if (!file) { setError('Dosya seçin.'); return; }
     setError(null);
@@ -47,6 +47,7 @@ export default function TopluYuklePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Ayrıştırma başarısız.');
       setRows(data.preview);
+      setAllStudents(data.students ?? []);
       setOverrides({});
     } catch (e: any) {
       setError(e.message ?? 'Bir hata oluştu.');
@@ -174,11 +175,25 @@ export default function TopluYuklePage() {
                           className="w-full rounded border border-gray-200 px-2 py-1 text-[12px]"
                         >
                           <option value="">— Seç —</option>
-                          {r.match.alternatives.map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.full_name} ({Math.round(a.score * 100)}%)
-                            </option>
-                          ))}
+                          {r.match.alternatives.length > 0 && (
+                            <optgroup label="Önerilen eşleşmeler">
+                              {r.match.alternatives.map((a) => (
+                                <option key={a.id} value={a.id}>
+                                  {a.full_name} ({Math.round(a.score * 100)}%)
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          <optgroup label="Tüm öğrenciler">
+                            {allStudents
+                              .filter((s) => !r.match.alternatives.some((a) => a.id === s.id))
+                              .sort((a, b) => a.full_name.localeCompare(b.full_name, 'tr'))
+                              .map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.full_name}
+                                </option>
+                              ))}
+                          </optgroup>
                         </select>
                       </td>
                       <td className="px-2 py-2 text-center text-gray-500">{Math.round(r.match.score * 100)}%</td>
