@@ -40,15 +40,27 @@ export default function TopluYuklePage() {
     setError(null);
     setLoading(true);
     try {
+      const isPdf = file.name.toLowerCase().endsWith('.pdf');
       const fd = new FormData();
       fd.append('file', file);
-      fd.append('examType', examType);
-      const res = await fetch('/api/denemeler/toplu-yukle/parse', { method: 'POST', body: fd });
+      if (!isPdf) fd.append('examType', examType);
+
+      const endpoint = isPdf
+        ? '/api/denemeler/toplu-yukle/parse-pdf'
+        : '/api/denemeler/toplu-yukle/parse';
+      const res = await fetch(endpoint, { method: 'POST', body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Ayrıştırma başarısız.');
+
       setRows(data.preview);
       setAllStudents(data.students ?? []);
       setOverrides({});
+
+      // PDF'ten deneme adı/tarihi otomatik çıkarıldıysa formu doldur
+      if (isPdf) {
+        if (data.examName) setExamName(data.examName);
+        if (data.examDate) setExamDate(data.examDate);
+      }
     } catch (e: any) {
       setError(e.message ?? 'Bir hata oluştu.');
     } finally {
@@ -124,8 +136,8 @@ export default function TopluYuklePage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Excel dosyası</label>
-          <input type="file" accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          <label className="mb-1 block text-sm font-medium text-gray-700">Excel veya PDF dosyası</label>
+          <input type="file" accept=".xlsx,.xls,.pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="block w-full text-sm text-gray-600" />
         </div>
 
