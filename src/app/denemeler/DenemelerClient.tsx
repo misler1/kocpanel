@@ -1,12 +1,13 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
   IconPlus, IconChartBar, IconEdit, IconTrash, IconChevronDown, IconChevronUp,
   IconArrowsRightLeft, IconX, IconSparkles, IconLoader2, IconUpload,
+  IconArrowUp, IconArrowDown, IconEqual, IconCheck,
 } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS, type SubjectDef } from './examConstants';
@@ -16,6 +17,20 @@ const TYPE_BADGE: Record<string, string> = {
   AYT: 'bg-purple-50 text-purple-700',
   LGS: 'bg-teal-50 text-teal-700',
 };
+
+// ─── Ders renk paleti: her ders sıraya göre sabit bir renk alır ──
+const SUBJECT_PALETTE = [
+  { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500' },
+  { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', dot: 'bg-purple-500' },
+  { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200', dot: 'bg-teal-500' },
+  { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', dot: 'bg-orange-500' },
+  { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200', dot: 'bg-pink-500' },
+  { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', dot: 'bg-indigo-500' },
+  { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
+];
+function subjectColor(index: number) {
+  return SUBJECT_PALETTE[index % SUBJECT_PALETTE.length];
+}
 
 const norm = (s: string) => (s ?? '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
 
@@ -35,6 +50,15 @@ function getSubjectNet(result: any, examType: string): number {
 
 function subjectsFor(examType: string): SubjectDef[] {
   return examType === 'TYT' ? TYT_SUBJECTS : examType === 'AYT' ? AYT_SUBJECTS : LGS_SUBJECTS;
+}
+
+// Bir önceki değere göre yükseldi / düştü / aynı kaldı okunu döndürür.
+// Yükseliş: yeşil yukarı ok · Düşüş: kırmızı aşağı ok · Aynı: açık mor eşittir
+function TrendIcon({ current, previous }: { current: number; previous: number | null | undefined }) {
+  if (previous === null || previous === undefined) return null;
+  if (current > previous) return <IconArrowUp size={13} stroke={2.5} className="text-emerald-500" />;
+  if (current < previous) return <IconArrowDown size={13} stroke={2.5} className="text-red-500" />;
+  return <IconEqual size={13} stroke={2.5} className="text-purple-300" />;
 }
 
 type SortKey = string; // 'name' | 'net' | 'puan' | 'puan_say' | 'puan_ea' | 'puan_soz' | `subj:<key>:net|dogru|yanlis`
@@ -393,7 +417,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   );
 }
 
-// ─── Deneme grubu kartı: akordeon başlık + Excel tarzı tablo ──
+// ─── Deneme grubu kartı: akordeon başlık + Excel tarzı tablo (ders renkli) ──
 
 function ExamGroupCard({
   group, isOpen, onToggle, sort, onSortChange, onDirToggle,
@@ -482,7 +506,7 @@ function ExamGroupCard({
             </button>
           </div>
 
-          {/* Excel tarzı tablo */}
+          {/* Excel tarzı tablo — her ders kendi rengiyle */}
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[11px]">
               <thead>
@@ -493,11 +517,17 @@ function ExamGroupCard({
                   <th rowSpan={2} className={`sticky ${stickyNameLeft} z-20 min-w-[140px] bg-gray-50 px-3 py-2 text-left font-medium text-gray-500`}>
                     Öğrenci
                   </th>
-                  {subjects.map((s) => (
-                    <th key={s.key} colSpan={4} className="border-l border-gray-200 px-2 py-1 text-center font-medium text-gray-500">
-                      {s.label}
-                    </th>
-                  ))}
+                  {subjects.map((s, i) => {
+                    const c = subjectColor(i);
+                    return (
+                      <th key={s.key} colSpan={4} className={`border-l px-2 py-1 text-center font-semibold ${c.border} ${c.bg} ${c.text}`}>
+                        <span className="inline-flex items-center gap-1">
+                          <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
+                          {s.label}
+                        </span>
+                      </th>
+                    );
+                  })}
                   <th rowSpan={2} className="border-l border-gray-200 px-2 py-2 text-center font-semibold text-gray-700">
                     Toplam<br />Net
                   </th>
@@ -514,14 +544,17 @@ function ExamGroupCard({
                   <th rowSpan={2} className="px-2 py-2 text-center font-medium text-gray-500">İşlem</th>
                 </tr>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  {subjects.map((s) => (
-                    <Fragment key={s.key}>
-                      <th className="border-l border-gray-100 px-1.5 py-1 text-center font-normal text-gray-400">D</th>
-                      <th className="px-1.5 py-1 text-center font-normal text-gray-400">Y</th>
-                      <th className="px-1.5 py-1 text-center font-normal text-gray-400">B</th>
-                      <th className="px-1.5 py-1 text-center font-normal text-gray-400">N</th>
-                    </Fragment>
-                  ))}
+                  {subjects.map((s, i) => {
+                    const c = subjectColor(i);
+                    return (
+                      <Fragment key={s.key}>
+                        <th className={`border-l px-1.5 py-1 text-center font-normal ${c.border} ${c.bg}/40 text-gray-400`}>D</th>
+                        <th className={`px-1.5 py-1 text-center font-normal ${c.bg}/40 text-gray-400`}>Y</th>
+                        <th className={`px-1.5 py-1 text-center font-normal ${c.bg}/40 text-gray-400`}>B</th>
+                        <th className={`px-1.5 py-1 text-center font-normal ${c.bg}/40 text-gray-400`}>N</th>
+                      </Fragment>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -544,7 +577,8 @@ function ExamGroupCard({
                       <td className={`sticky ${stickyNameLeft} z-10 whitespace-nowrap bg-white px-3 py-2 font-medium text-gray-800`}>
                         {e.students?.full_name}
                       </td>
-                      {subjects.map((s) => {
+                      {subjects.map((s, i) => {
+                        const c = subjectColor(i);
                         const r = e.subject_results?.[s.key];
                         const hasData = !!r;
                         const d = Number(r?.dogru) || 0;
@@ -553,10 +587,10 @@ function ExamGroupCard({
                         const net = getSubjectNet(r, e.exam_type);
                         return (
                           <Fragment key={s.key}>
-                            <td className="border-l border-gray-100 px-1.5 py-2 text-center text-gray-600">{hasData ? d : '—'}</td>
+                            <td className={`border-l px-1.5 py-2 text-center text-gray-600 ${c.border}`}>{hasData ? d : '—'}</td>
                             <td className="px-1.5 py-2 text-center text-gray-600">{hasData ? y : '—'}</td>
                             <td className="px-1.5 py-2 text-center text-gray-400">{hasData ? bos : '—'}</td>
-                            <td className="px-1.5 py-2 text-center font-semibold text-gray-800">{hasData ? net : '—'}</td>
+                            <td className={`px-1.5 py-2 text-center font-semibold ${hasData ? c.text : 'text-gray-300'}`}>{hasData ? net : '—'}</td>
                           </Fragment>
                         );
                       })}
@@ -605,7 +639,206 @@ function ExamGroupCard({
   );
 }
 
-// ─── Yapay zeka analiz sonucu tipleri (değişmedi) ──────────────
+// ─── Tek bir denemenin ders ders D/Y/Net dökümü ──────────────────
+// Bu bileşen, deneme sonuçları sayfasındaki formatla birebir aynı
+// görünümü, karşılaştırma modalında VE öğrenci detay sayfasında
+// kullanabilmek için ayrı bir bileşen olarak dışa aktarılmıştır.
+// `previous` verilirse, her dersin netinin yanında bir önceki
+// denemeye göre yükseliş/düşüş/eşitlik oku gösterilir.
+export function ExamSubjectBreakdown({ exam, previous }: { exam: any; previous?: any }) {
+  const subjects = subjectsFor(exam.exam_type);
+  const typeBadge = TYPE_BADGE[exam.exam_type] ?? 'bg-gray-100 text-gray-500';
+  const dateLabel = new Date(exam.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
+        <div className="min-w-0">
+          <div className="truncate text-[13px] font-semibold text-gray-900">{exam.exam_name}</div>
+          <div className="text-[11px] text-gray-400">{dateLabel} · {exam.students?.full_name}</div>
+        </div>
+        <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${typeBadge}`}>{exam.exam_type}</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 p-3.5 sm:grid-cols-3">
+        {subjects.map((s, i) => {
+          const c = subjectColor(i);
+          const r = exam.subject_results?.[s.key];
+          const hasData = !!r;
+          const d = Number(r?.dogru) || 0;
+          const y = Number(r?.yanlis) || 0;
+          const net = getSubjectNet(r, exam.exam_type);
+          const prevR = previous?.subject_results?.[s.key];
+          const prevNet = previous ? getSubjectNet(prevR, previous.exam_type) : null;
+          return (
+            <div key={s.key} className={`rounded-lg border p-2.5 ${c.border} ${c.bg}`}>
+              <div className={`mb-1 flex items-center gap-1.5 text-[11px] font-semibold ${c.text}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
+                {s.label}
+              </div>
+              {hasData ? (
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[11px] text-gray-500">{d}D · {y}Y</span>
+                  <span className="flex items-center gap-1 text-[13px] font-bold text-gray-800">
+                    {net}
+                    <TrendIcon current={net} previous={prevR ? prevNet : null} />
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[11px] text-gray-300">Veri yok</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50/60 px-4 py-2.5">
+        <span className="text-[11px] font-medium text-gray-500">Toplam Net</span>
+        <span className="flex items-center gap-1 text-[15px] font-bold text-gray-900">
+          {exam.net_score}
+          <TrendIcon current={exam.net_score} previous={previous ? previous.net_score : null} />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Seçilen denemelerde geçen tüm dersleri (tekrarsız) birleştirir.
+// Karşılaştırmada "aynı ders" birden çok deneme türünde farklı
+// anahtarlarla eşleşse bile, ilk gördüğü tanım kullanılır.
+function unionSubjects(exams: any[]): SubjectDef[] {
+  const map = new Map<string, SubjectDef>();
+  exams.forEach((e) => {
+    subjectsFor(e.exam_type).forEach((s) => {
+      if (!map.has(s.key)) map.set(s.key, s);
+    });
+  });
+  return Array.from(map.values());
+}
+
+// Tek bir dersin, seçilen tüm denemelerdeki sonucunu yan yana gösteren satır.
+// Böylece "Türkçe" gibi bir dersin farklı denemelerdeki net değişimi
+// tek bakışta, aynı blokta karşılaştırılabilir.
+function SubjectCompareRow({
+  subject, colorIndex, exams, gridStyle,
+}: {
+  subject: SubjectDef; colorIndex: number; exams: any[]; gridStyle: CSSProperties;
+}) {
+  const c = subjectColor(colorIndex);
+  return (
+    <div className={`rounded-xl border p-2.5 ${c.border} ${c.bg}`}>
+      <div className={`mb-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold ${c.text}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
+        {subject.label}
+      </div>
+      <div className="grid gap-1.5" style={gridStyle}>
+        {exams.map((e, i) => {
+          const r = e.subject_results?.[subject.key];
+          const hasData = !!r;
+          const d = Number(r?.dogru) || 0;
+          const y = Number(r?.yanlis) || 0;
+          const net = getSubjectNet(r, e.exam_type);
+          const prevExam = i > 0 ? exams[i - 1] : null;
+          const prevR = prevExam?.subject_results?.[subject.key];
+          const prevNet = prevExam && prevR ? getSubjectNet(prevR, prevExam.exam_type) : null;
+          return (
+            <div key={e.id} className="rounded-lg border border-white/60 bg-white/70 px-2 py-1.5 text-center">
+              {hasData ? (
+                <>
+                  <div className="text-[9.5px] text-gray-500">{d}D · {y}Y</div>
+                  <div className="mt-0.5 flex items-center justify-center gap-1 text-[13px] font-bold text-gray-800">
+                    {net}
+                    <TrendIcon current={net} previous={prevR ? prevNet : null} />
+                  </div>
+                </>
+              ) : (
+                <div className="text-[10px] text-gray-300">Veri yok</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Zikzak (inişli çıkışlı) çizgi grafik ───────────────────────
+// Deneme çubukları yerine, öğrenci bazlı net/puan trendini gösteren
+// sade bir SVG çizgi grafik. Birden fazla öğrenci seçiliyse her biri
+// kendi renginde ayrı bir çizgi olarak çizilir.
+const STUDENT_LINE_COLORS = ['#2563EB', '#7C3AED', '#0D9488', '#EA580C', '#DB2777'];
+
+interface ChartSeries {
+  name: string;
+  color: string;
+  values: (number | null)[];
+}
+
+function ZigzagChart({ labels, series }: { labels: string[]; series: ChartSeries[] }) {
+  const width = 640;
+  const height = 168;
+  const pad = { top: 20, right: 16, bottom: 24, left: 8 };
+  const innerW = width - pad.left - pad.right;
+  const innerH = height - pad.top - pad.bottom;
+
+  const allValues = series.flatMap((s) => s.values.filter((v): v is number => v !== null));
+  if (allValues.length === 0 || labels.length === 0) return null;
+
+  const minV = Math.min(0, ...allValues);
+  const maxV = Math.max(...allValues, minV + 1);
+  const xStep = labels.length > 1 ? innerW / (labels.length - 1) : 0;
+  const xFor = (i: number) => pad.left + i * xStep;
+  const yFor = (v: number) => pad.top + innerH - ((v - minV) / (maxV - minV || 1)) * innerH;
+
+  return (
+    <div>
+      <div className="overflow-x-auto">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ minWidth: Math.max(280, labels.length * 64) }}>
+          {[0, 0.25, 0.5, 0.75, 1].map((f) => {
+            const y = pad.top + innerH * f;
+            return <line key={f} x1={pad.left} x2={width - pad.right} y1={y} y2={y} stroke="#F1F5F9" strokeWidth={1} />;
+          })}
+          {labels.map((l, i) => (
+            <text key={i} x={xFor(i)} y={height - 4} fontSize={9.5} textAnchor="middle" fill="#9CA3AF">{l}</text>
+          ))}
+          {series.map((s, si) => {
+            const pts = s.values
+              .map((v, i) => (v === null ? null : `${xFor(i)},${yFor(v)}`))
+              .filter(Boolean)
+              .join(' ');
+            return (
+              <g key={si}>
+                <polyline points={pts} fill="none" stroke={s.color} strokeWidth={2.25} strokeLinejoin="round" strokeLinecap="round" />
+                {s.values.map((v, i) => (
+                  v === null ? null : (
+                    <circle key={`c${i}`} cx={xFor(i)} cy={yFor(v)} r={3.5} fill={s.color} stroke="white" strokeWidth={1.5} />
+                  )
+                ))}
+                {s.values.map((v, i) => (
+                  v === null ? null : (
+                    <text key={`t${i}`} x={xFor(i)} y={yFor(v) - 8} fontSize={10.5} fontWeight={700} textAnchor="middle" fill={s.color}>{v}</text>
+                  )
+                ))}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      {series.length > 1 && (
+        <div className="mt-1.5 flex flex-wrap gap-3">
+          {series.map((s, i) => (
+            <div key={i} className="flex items-center gap-1.5 text-[11px] text-gray-500">
+              <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+              {s.name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Yapay zeka analiz sonucu tipleri ──────────────────────────
 
 interface StudentAnalysis {
   student_name: string;
@@ -621,45 +854,99 @@ interface ExamAnalysisResult {
   karsilastirma: string | null;
 }
 
-// ─── Karşılaştırma modalı (değişmedi) ──────────────────────────
+// ─── Karşılaştırma modalı — alt alta, ders renkli, trend oklu ──
 
 function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => void }) {
-  const subjectRows = useMemo(() => {
-    const map = new Map<string, string>();
-    exams.forEach((e) => {
-      const subjects = e.exam_type === 'TYT' ? TYT_SUBJECTS : e.exam_type === 'AYT' ? AYT_SUBJECTS : LGS_SUBJECTS;
-      subjects.forEach((s) => { if (!map.has(s.key)) map.set(s.key, s.label); });
-    });
-    return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
-  }, [exams]);
+  // Kronolojik sıra: ilk deneme en üstte (solda), son deneme en altta (sağda)
+  const sortedExams = useMemo(
+    () => [...exams].sort((a, b) => (a.exam_date < b.exam_date ? -1 : a.exam_date > b.exam_date ? 1 : 0)),
+    [exams]
+  );
 
-  const maxNet = Math.max(...exams.map((e) => e.net_score), 1);
+  // Öğrenciye göre grupla, her öğrencinin kendi denemeleri kronolojik sırada
+  const byStudent = useMemo(() => {
+    const map = new Map<string, any[]>();
+    sortedExams.forEach((e) => {
+      const arr = map.get(e.student_id) ?? [];
+      arr.push(e);
+      map.set(e.student_id, arr);
+    });
+    return Array.from(map.values());
+  }, [sortedExams]);
+
+  const studentCount = byStudent.length;
+
+  // Tüm seçili denemelerde geçen dersler — alttaki "ders bazlı trend" seçici için.
+  const allSubjects = useMemo(() => unionSubjects(sortedExams), [sortedExams]);
+  const [selectedSubjectKey, setSelectedSubjectKey] = useState('');
+  const activeSubjectKey = selectedSubjectKey || allSubjects[0]?.key || '';
+
+  // Grafiklerin x ekseni: tek öğrenci seçiliyse gerçek deneme adı/tarihi,
+  // birden çok öğrenci seçiliyse (farklı denemeler olabileceğinden) sıra numarası.
+  const maxSeqLen = Math.max(...byStudent.map((se) => se.length), 1);
+  const chartLabels = studentCount === 1
+    ? byStudent[0].map((e) => new Date(e.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }))
+    : Array.from({ length: maxSeqLen }, (_, i) => `${i + 1}.`);
+
+  const netChartSeries: ChartSeries[] = byStudent.map((se, i) => ({
+    name: se[0].students?.full_name ?? `Öğrenci ${i + 1}`,
+    color: STUDENT_LINE_COLORS[i % STUDENT_LINE_COLORS.length],
+    values: Array.from({ length: chartLabels.length }, (_, idx) => se[idx] ? se[idx].net_score : null),
+  }));
+
+  const subjectChartSeries: ChartSeries[] = byStudent.map((se, i) => ({
+    name: se[0].students?.full_name ?? `Öğrenci ${i + 1}`,
+    color: STUDENT_LINE_COLORS[i % STUDENT_LINE_COLORS.length],
+    values: Array.from({ length: chartLabels.length }, (_, idx) => {
+      const e = se[idx];
+      if (!e) return null;
+      const r = e.subject_results?.[activeSubjectKey];
+      return r ? getSubjectNet(r, e.exam_type) : null;
+    }),
+  }));
 
   const [includeMeetings, setIncludeMeetings] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ExamAnalysisResult | null>(null);
-
-  const studentCount = useMemo(
-    () => new Set(exams.map((e) => e.student_id)).size,
-    [exams]
-  );
+  const [saved, setSaved] = useState(false);
 
   async function handleAnalyze() {
     setAnalyzing(true);
     setAnalysisError(null);
+    setSaved(false);
     try {
       const res = await fetch('/api/analiz/deneme', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          examIds: exams.map((e) => e.id),
+          examIds: sortedExams.map((e) => e.id),
           includeMeetings,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Analiz başarısız oldu.');
       setAnalysisResult(data.analysis);
+
+      // Analizi öğrenci sayfasında görünmesi için kaydet (deneme adı + tarihle birlikte).
+      // Bu uç nokta henüz yoksa sessizce yok sayılır — kullanıcı analiz sonucunu
+      // yine de görür, sadece kalıcı kayıt oluşmaz.
+      try {
+        const saveRes = await fetch('/api/analiz/deneme/kaydet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            examIds: sortedExams.map((e) => e.id),
+            examNames: Array.from(new Set(sortedExams.map((e) => e.exam_name))),
+            examDates: Array.from(new Set(sortedExams.map((e) => e.exam_date))),
+            studentIds: Array.from(new Set(sortedExams.map((e) => e.student_id))),
+            analysis: data.analysis,
+          }),
+        });
+        if (saveRes.ok) setSaved(true);
+      } catch {
+        // sessizce geç
+      }
     } catch (err: any) {
       setAnalysisError(err.message ?? 'Bir hata oluştu.');
     } finally {
@@ -669,7 +956,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8">
-      <div className="w-full max-w-5xl rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
+      <div className="w-full max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
         <div className="mb-5 flex items-center justify-between">
           <h3 className="text-base font-semibold text-gray-900">Deneme Karşılaştırma</h3>
           <button onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
@@ -677,80 +964,95 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
           </button>
         </div>
 
-        <div className="mb-6 space-y-2.5">
-          {exams.map((e) => {
-            const pct = Math.round((e.net_score / maxNet) * 100);
-            const colors = scoreColor(e.net_score, e.max_score);
+        {/* Toplam net trendi — zikzak çizgi grafik (deneme sırasına göre inişli çıkışlı) */}
+        <div className="mb-6 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+          <div className="mb-1 text-[12px] font-semibold text-gray-600">Toplam Net Trendi</div>
+          <ZigzagChart labels={chartLabels} series={netChartSeries} />
+        </div>
+
+        {/* Ders bazlı karşılaştırma — her ders kendi renkli bloğunda, o dersin
+           seçilen tüm denemelerdeki sonucu aynı blok içinde, header şeridiyle
+           aynı ızgarada (grid) hizalı şekilde yan yana durur. Ders blokları
+           kendi aralarında alt alta sıralanır. */}
+        <div className="space-y-5">
+          {byStudent.map((studentExams) => {
+            const subjects = unionSubjects(studentExams);
+            const gridStyle: CSSProperties = {
+              gridTemplateColumns: `repeat(${studentExams.length}, minmax(76px, 1fr))`,
+            };
             return (
-              <div key={e.id}>
-                <div className="mb-1 flex items-center justify-between text-[12px]">
-                  <span className="truncate font-medium text-gray-700">
-                    {e.students?.full_name} — {e.exam_name}
-                    <span className="ml-1.5 text-[10px] font-normal text-gray-400">
-                      {new Date(e.exam_date).toLocaleDateString('tr-TR')}
-                    </span>
-                  </span>
-                  <span className={`flex-shrink-0 font-semibold ${colors.text}`}>{e.net_score} net</span>
+              <div key={studentExams[0].student_id}>
+                {studentCount > 1 && (
+                  <div className="mb-2 text-[13px] font-semibold text-gray-800">{studentExams[0].students?.full_name}</div>
+                )}
+
+                {/* Hangi sütun hangi denemeye ait — üst başlık şeridi, alttaki tüm satırlarla aynı grid */}
+                <div className="mb-1.5 grid gap-1.5" style={gridStyle}>
+                  {studentExams.map((e) => (
+                    <div key={e.id} className="rounded-lg bg-gray-100 px-2 py-1.5 text-center">
+                      <div className="truncate text-[10.5px] font-medium text-gray-600">{e.exam_name}</div>
+                      <div className="text-[10px] text-gray-400">
+                        {new Date(e.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="h-2.5 w-full rounded-full bg-gray-100">
-                  <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
+
+                <div className="space-y-1.5">
+                  {subjects.map((s, i) => (
+                    <SubjectCompareRow key={s.key} subject={s} colorIndex={i} exams={studentExams} gridStyle={gridStyle} />
+                  ))}
+
+                  {/* Toplam net satırı — aynı grid, aynı hizada */}
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-2.5">
+                    <div className="mb-1.5 text-[11.5px] font-semibold text-gray-700">Toplam Net</div>
+                    <div className="grid gap-1.5" style={gridStyle}>
+                      {studentExams.map((e, i) => {
+                        const prev = i > 0 ? studentExams[i - 1] : null;
+                        return (
+                          <div key={e.id} className="rounded-lg bg-white px-2 py-1.5 text-center">
+                            <span className="flex items-center justify-center gap-1 text-[13px] font-bold text-gray-900">
+                              {e.net_score}
+                              <TrendIcon current={e.net_score} previous={prev ? prev.net_score : null} />
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-gray-100">
-          <table className="w-full text-[12px]">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="sticky left-0 z-10 bg-gray-50 px-3 py-2 text-left font-medium text-gray-500">Ders</th>
-                {exams.map((e) => (
-                  <th key={e.id} className="min-w-[120px] px-3 py-2 text-center font-medium text-gray-500">
-                    <div className="truncate">{e.students?.full_name}</div>
-                    <div className="text-[10px] font-normal text-gray-400">{e.exam_name} · {e.exam_type}</div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              <tr className="bg-blue-50/50 font-semibold">
-                <td className="sticky left-0 z-10 bg-blue-50/50 px-3 py-2 text-gray-700">Toplam Net</td>
-                {exams.map((e) => (
-                  <td key={e.id} className="px-3 py-2 text-center text-blue-700">{e.net_score}</td>
-                ))}
-              </tr>
-              {subjectRows.map((row) => (
-                <tr key={row.key}>
-                  <td className="sticky left-0 z-10 bg-white px-3 py-2 text-gray-600">{row.label}</td>
-                  {exams.map((e) => {
-                    const r = e.subject_results?.[row.key];
-                    if (!r) return <td key={e.id} className="px-3 py-2 text-center text-gray-300">—</td>;
-                    const net = getSubjectNet(r, e.exam_type);
-                    const d = Number(r.dogru) || 0;
-                    const y = Number(r.yanlis) || 0;
-                    return (
-                      <td key={e.id} className="px-3 py-2 text-center">
-                        <div className="font-medium text-gray-800">{net}</div>
-                        <div className="text-[10px] text-gray-400">{d}D · {y}Y</div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/* Ders bazlı trend — tablonun hemen altında, seçilen ders için aynı zikzak grafik */}
+        {allSubjects.length > 0 && (
+          <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[12px] font-semibold text-gray-600">Ders Bazlı Net Trendi</span>
+              <select
+                value={activeSubjectKey}
+                onChange={(ev) => setSelectedSubjectKey(ev.target.value)}
+                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[12px] text-gray-700"
+              >
+                {allSubjects.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+              </select>
+            </div>
+            <ZigzagChart labels={chartLabels} series={subjectChartSeries} />
+          </div>
+        )}
 
-        <div className="mt-6 rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50/50 to-purple-50/50 p-4">
+        {/* Yapay zeka analizi — daha büyük punto, daha şık görünüm */}
+        <div className="mt-6 rounded-2xl border border-gray-100 bg-gradient-to-br from-blue-50/60 to-purple-50/60 p-5">
           {!analysisResult && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <IconSparkles size={16} className="text-blue-600" />
-                  <span className="text-[13px] font-medium text-gray-800">Yapay zeka ile analiz et</span>
+                  <IconSparkles size={19} className="text-blue-600" />
+                  <span className="text-[15px] font-semibold text-gray-800">Yapay zeka ile analiz et</span>
                 </div>
-                <label className="flex items-center gap-1.5 text-[12px] text-gray-600">
+                <label className="flex items-center gap-1.5 text-[13px] text-gray-600">
                   <input
                     type="checkbox"
                     checked={includeMeetings}
@@ -760,7 +1062,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
                   Görüşme notlarını da dahil et
                 </label>
               </div>
-              <p className="mt-1.5 text-[11px] text-gray-500">
+              <p className="mt-2 text-[13px] text-gray-500">
                 {studentCount > 1
                   ? `${studentCount} farklı öğrencinin denemeleri ayrı ayrı analiz edilip aralarında kıyaslama yapılacak.`
                   : 'Güçlü/zayıf dersler, trend ve öneriler oluşturulacak.'}
@@ -768,68 +1070,73 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
               <button
                 onClick={handleAnalyze}
                 disabled={analyzing}
-                className="mt-3 flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="mt-4 flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-[14px] font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
               >
                 {analyzing ? (
                   <>
-                    <IconLoader2 size={15} className="animate-spin" />
+                    <IconLoader2 size={16} className="animate-spin" />
                     Analiz ediliyor...
                   </>
                 ) : (
                   <>
-                    <IconSparkles size={15} />
+                    <IconSparkles size={16} />
                     Yapay Zeka ile Analiz Et
                   </>
                 )}
               </button>
-              {analysisError && <p className="mt-2 text-[12px] text-red-600">{analysisError}</p>}
+              {analysisError && <p className="mt-2 text-[13px] text-red-600">{analysisError}</p>}
             </>
           )}
 
           {analysisResult && (
             <div>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <IconSparkles size={16} className="text-blue-600" />
-                  <span className="text-[13px] font-medium text-gray-800">Yapay Zeka Analizi</span>
+                  <IconSparkles size={19} className="text-blue-600" />
+                  <span className="text-[15px] font-semibold text-gray-800">Yapay Zeka Analizi</span>
+                  {saved && (
+                    <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                      <IconCheck size={12} /> Öğrenci sayfasına kaydedildi
+                    </span>
+                  )}
                 </div>
-                <button onClick={() => setAnalysisResult(null)} className="text-[11px] text-gray-400 hover:text-gray-600">
+                <button onClick={() => setAnalysisResult(null)} className="text-[12px] text-gray-400 hover:text-gray-600">
                   Temizle
                 </button>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {analysisResult.ogrenciler.map((o, i) => (
-                  <div key={i} className="rounded-lg border border-gray-100 bg-white p-3.5">
-                    <div className="mb-2 text-[13px] font-semibold text-gray-900">{o.student_name}</div>
+                  <div key={i} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                    <div className="mb-2.5 text-[15px] font-bold text-gray-900">{o.student_name}</div>
 
-                    <div className="mb-2 flex flex-wrap gap-1.5">
+                    <div className="mb-3 flex flex-wrap gap-1.5">
                       {o.guclu_dersler.map((d) => (
-                        <span key={d} className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">+ {d}</span>
+                        <span key={d} className="rounded-full bg-emerald-50 px-2.5 py-1 text-[12px] font-medium text-emerald-700">+ {d}</span>
                       ))}
                       {o.zayif_dersler.map((d) => (
-                        <span key={d} className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">− {d}</span>
+                        <span key={d} className="rounded-full bg-red-50 px-2.5 py-1 text-[12px] font-medium text-red-600">− {d}</span>
                       ))}
                     </div>
 
-                    <p className="text-[12px] text-gray-600">
-                      <span className="font-medium text-gray-700">Trend: </span>
+                    <p className="text-[13.5px] leading-relaxed text-gray-600">
+                      <span className="font-semibold text-gray-700">Trend: </span>
                       {o.trend}
                     </p>
 
                     {o.capraz_degerlendirme && (
-                      <p className="mt-1.5 text-[12px] text-gray-600">
-                        <span className="font-medium text-gray-700">Görüşme değerlendirmesi: </span>
+                      <p className="mt-2 text-[13.5px] leading-relaxed text-gray-600">
+                        <span className="font-semibold text-gray-700">Görüşme değerlendirmesi: </span>
                         {o.capraz_degerlendirme}
                       </p>
                     )}
 
                     {o.oneriler.length > 0 && (
-                      <div className="mt-2">
-                        <span className="text-[12px] font-medium text-gray-700">Öneriler:</span>
-                        <ul className="mt-1 list-inside list-disc space-y-0.5">
+                      <div className="mt-3">
+                        <span className="text-[13.5px] font-semibold text-gray-700">Öneriler:</span>
+                        <ul className="mt-1.5 list-inside list-disc space-y-1">
                           {o.oneriler.map((oneri, oi) => (
-                            <li key={oi} className="text-[12px] text-gray-600">{oneri}</li>
+                            <li key={oi} className="text-[13.5px] leading-relaxed text-gray-600">{oneri}</li>
                           ))}
                         </ul>
                       </div>
@@ -838,9 +1145,9 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
                 ))}
 
                 {analysisResult.karsilastirma && (
-                  <div className="rounded-lg border border-purple-100 bg-purple-50/50 p-3.5">
-                    <div className="mb-1.5 text-[12px] font-semibold text-purple-800">Öğrenciler Arası Kıyaslama</div>
-                    <p className="text-[12px] text-purple-900">{analysisResult.karsilastirma}</p>
+                  <div className="rounded-xl border border-purple-100 bg-purple-50/50 p-4">
+                    <div className="mb-2 text-[13.5px] font-bold text-purple-800">Öğrenciler Arası Kıyaslama</div>
+                    <p className="text-[13.5px] leading-relaxed text-purple-900">{analysisResult.karsilastirma}</p>
                   </div>
                 )}
               </div>
