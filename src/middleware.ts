@@ -29,9 +29,15 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/sifremi-unuttum') ||
     pathname.startsWith('/sifre-sifirla');
 
+  const isMarketingPage =
+    pathname === '/hakkimizda' ||
+    pathname === '/koclarimiz' ||
+    pathname === '/hizmetlerimiz';
+
   const isPublicPage =
     pathname.startsWith('/anket') ||
-    pathname.startsWith('/kayit-formu');
+    pathname.startsWith('/kayit-formu') ||
+    isMarketingPage;
 
   const isWebhook = pathname.startsWith('/api/whatsapp');
   const isOnayPage = pathname.startsWith('/onay-bekleniyor');

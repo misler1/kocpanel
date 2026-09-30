@@ -19,7 +19,7 @@ export function Topbar({ profile }: { profile: Profile | null }) {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.push('/giris');
+    router.push('/');
     router.refresh();
   }
 
