@@ -1,13 +1,4 @@
-export interface ExtractedPdfRecord {
-  rawName: string;
-  results: Record<string, { dogru: string; yanlis: string }>;
-}
-
-export interface PdfParseResult {
-  examName: string | null;
-  examDate: string | null; // YYYY-MM-DD
-  records: ExtractedPdfRecord[];
-}
+import type { ExtractedPdfRecord, PdfParseResult } from './pdfTemplates/types';
 
 // "Konu Analizli Sınav Sonuç Belgesi" formatındaki DERSLER tablosu — sıra ve soru sayıları sabit.
 // pdf-parse bu tablodaki sayıları boşluksuz bitişik yazıyor (örn. "2018217,3386,65" =
