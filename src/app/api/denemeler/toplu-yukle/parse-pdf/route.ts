@@ -20,7 +20,10 @@ export async function POST(req: NextRequest) {
   const { examName, examDate, records } = parsePdfExamText(parsed.text);
 
   if (records.length === 0) {
-    return NextResponse.json({ error: 'PDF içinden öğrenci verisi çıkarılamadı. Format desteklenmiyor olabilir.' }, { status: 422 });
+    return NextResponse.json({
+      error: 'PDF içinden öğrenci verisi çıkarılamadı. Format desteklenmiyor olabilir.',
+      debugText: parsed.text.slice(0, 3000),
+    }, { status: 422 });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

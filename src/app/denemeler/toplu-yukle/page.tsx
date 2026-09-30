@@ -50,8 +50,12 @@ export default function TopluYuklePage() {
         : '/api/denemeler/toplu-yukle/parse';
       const res = await fetch(endpoint, { method: 'POST', body: fd });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Ayrıştırma başarısız.');
-
+      if (!res.ok) {
+        const msg = data.debugText
+          ? `${data.error ?? 'Ayrıştırma başarısız.'}\n\n--- Ham metin (ilk 3000 karakter) ---\n${data.debugText}`
+          : (data.error ?? 'Ayrıştırma başarısız.');
+        throw new Error(msg);
+      }
       setRows(data.preview);
       setAllStudents(data.students ?? []);
       setOverrides({});

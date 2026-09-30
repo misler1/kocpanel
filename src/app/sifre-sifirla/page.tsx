@@ -16,27 +16,38 @@ function SifreSifirlaForm() {
 
   useEffect(() => {
     async function verify() {
+      const code = searchParams.get('code');
       const tokenHash = searchParams.get('token_hash');
       const type = searchParams.get('type');
 
-      if (!tokenHash || type !== 'recovery') {
-        setError('Geçersiz veya eksik şifre sıfırlama linki.');
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          setError('Bu link süresi dolmuş veya daha önce kullanılmış. Lütfen yeni bir şifre sıfırlama e-postası isteyin.');
+          setVerifying(false);
+          return;
+        }
+        setReady(true);
         setVerifying(false);
         return;
       }
 
-      const { error } = await supabase.auth.verifyOtp({
-        token_hash: tokenHash,
-        type: 'recovery',
-      });
-
-      if (error) {
-        setError('Bu link süresi dolmuş veya daha önce kullanılmış. Lütfen yeni bir şifre sıfırlama e-postası isteyin.');
+      if (tokenHash && type === 'recovery') {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        });
+        if (error) {
+          setError('Bu link süresi dolmuş veya daha önce kullanılmış. Lütfen yeni bir şifre sıfırlama e-postası isteyin.');
+          setVerifying(false);
+          return;
+        }
+        setReady(true);
         setVerifying(false);
         return;
       }
 
-      setReady(true);
+      setError('Geçersiz veya eksik şifre sıfırlama linki.');
       setVerifying(false);
     }
     verify();
@@ -63,7 +74,7 @@ function SifreSifirlaForm() {
       setLoading(false);
       return;
     }
-      // Diğer tüm oturumları (bu cihaz hariç) kapat
+    // Diğer tüm oturumları (bu cihaz hariç) kapat
     await supabase.auth.signOut({ scope: 'others' });
     router.push('/anasayfa');
   }
