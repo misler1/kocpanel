@@ -1,16 +1,18 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Fragment, useMemo, useState, type CSSProperties } from 'react';
+import { Fragment, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
   IconPlus, IconChartBar, IconEdit, IconTrash, IconChevronDown, IconChevronUp,
-  IconArrowsRightLeft, IconX, IconSparkles, IconLoader2, IconUpload,
+  IconArrowsRightLeft, IconX, IconSparkles, IconLoader2, IconUpload, IconPrinter,
   IconArrowUp, IconArrowDown, IconEqual, IconCheck,
 } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS, type SubjectDef } from './examConstants';
+
 
 const TYPE_BADGE: Record<string, string> = {
   TYT: 'bg-blue-50 text-blue-700',
@@ -719,45 +721,78 @@ function unionSubjects(exams: any[]): SubjectDef[] {
 // Tek bir dersin, seçilen tüm denemelerdeki sonucunu yan yana gösteren satır.
 // Böylece "Türkçe" gibi bir dersin farklı denemelerdeki net değişimi
 // tek bakışta, aynı blokta karşılaştırılabilir.
-function SubjectCompareRow({
-  subject, colorIndex, exams, gridStyle,
-}: {
-  subject: SubjectDef; colorIndex: number; exams: any[]; gridStyle: CSSProperties;
-}) {
-  const c = subjectColor(colorIndex);
+// Satırlar: dersler · Sütunlar: denemeler (kronolojik). Tek bakışta sığar.
+function SubjectCompareTable({ exams }: { exams: any[] }) {
+  const subjects = unionSubjects(exams);
   return (
-    <div className={`rounded-lg border p-1.5 ${c.border} ${c.bg}`}>
-      <div className={`mb-1 flex items-center gap-1 text-[10.5px] font-semibold ${c.text}`}>
-        <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
-        {subject.label}
-      </div>
-      <div className="grid gap-1" style={gridStyle}>
-        {exams.map((e, i) => {
-          const r = e.subject_results?.[subject.key];
-          const hasData = !!r;
-          const d = Number(r?.dogru) || 0;
-          const y = Number(r?.yanlis) || 0;
-          const net = getSubjectNet(r, e.exam_type);
-          const prevExam = i > 0 ? exams[i - 1] : null;
-          const prevR = prevExam?.subject_results?.[subject.key];
-          const prevNet = prevExam && prevR ? getSubjectNet(prevR, prevExam.exam_type) : null;
-          return (
-            <div key={e.id} className="rounded-md border border-white/60 bg-white/70 px-1.5 py-1 text-center">
-              {hasData ? (
-                <>
-                  <div className="text-[9px] text-gray-500">{d}D · {y}Y</div>
-                  <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[12px] font-bold text-gray-800">
-                    {net}
-                    <TrendIcon current={net} previous={prevR ? prevNet : null} />
-                  </div>
-                </>
-              ) : (
-                <div className="text-[9.5px] text-gray-300">Veri yok</div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+    <div className="print-avoid overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <table className="w-full border-collapse text-[11px]">
+        <thead>
+          <tr className="bg-gray-50">
+            <th className="px-2 py-1.5 text-left font-medium text-gray-500">Ders</th>
+            {exams.map((e) => (
+              <th key={e.id} className="border-l border-gray-200 px-1.5 py-1.5 text-center">
+                <div className="mx-auto max-w-[110px] truncate font-medium text-gray-700" title={e.exam_name}>
+                  {e.exam_name}
+                </div>
+                <div className="text-[9.5px] font-normal text-gray-400">
+                  {new Date(e.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                </div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {subjects.map((s, si) => {
+            const c = subjectColor(si);
+            return (
+              <tr key={s.key} className="border-t border-gray-100">
+                <td className={`whitespace-nowrap px-2 py-1 font-semibold ${c.bg} ${c.text}`}>
+                  <span className="inline-flex items-center gap-1">
+                    <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
+                    {s.label}
+                  </span>
+                </td>
+                {exams.map((e, i) => {
+                  const r = e.subject_results?.[s.key];
+                  const prevExam = i > 0 ? exams[i - 1] : null;
+                  const prevR = prevExam?.subject_results?.[s.key];
+                  const net = getSubjectNet(r, e.exam_type);
+                  const prevNet = prevExam && prevR ? getSubjectNet(prevR, prevExam.exam_type) : null;
+                  return (
+                    <td key={e.id} className="border-l border-gray-100 px-1.5 py-1 text-center">
+                      {r ? (
+                        <>
+                          <div className="text-[9.5px] leading-tight text-gray-400">
+                            {Number(r.dogru) || 0}D · {Number(r.yanlis) || 0}Y
+                          </div>
+                          <div className="flex items-center justify-center gap-0.5 text-[12px] font-bold leading-tight text-gray-800">
+                            {net}
+                            <TrendIcon current={net} previous={prevR ? prevNet : null} />
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+          <tr className="border-t border-gray-200 bg-gray-50">
+            <td className="px-2 py-1.5 font-semibold text-gray-700">Toplam Net</td>
+            {exams.map((e, i) => (
+              <td key={e.id} className="border-l border-gray-200 px-1.5 py-1.5 text-center">
+                <span className="flex items-center justify-center gap-0.5 text-[13px] font-bold text-gray-900">
+                  {e.net_score}
+                  <TrendIcon current={e.net_score} previous={i > 0 ? exams[i - 1].net_score : null} />
+                </span>
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -954,97 +989,96 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8">
-      <div className="w-full max-w-4xl rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
-        <div className="mb-3 flex items-center justify-between">
+    return createPortal(
+    <div className="compare-portal fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3">
+      <div className="compare-print-root max-h-[94vh] w-full max-w-6xl overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
+        <style jsx global>{`
+          @media print {
+            @page { size: A4 portrait; margin: 8mm; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body > *:not(.compare-portal) { display: none !important; }
+            .compare-portal {
+              position: static !important;
+              display: block !important;
+              height: auto !important;
+              overflow: visible !important;
+              background: white !important;
+              padding: 0 !important;
+            }
+            .compare-print-root {
+              max-width: none !important;
+              max-height: none !important;
+              width: 100% !important;
+              overflow: visible !important;
+              border: 0 !important;
+              box-shadow: none !important;
+              padding: 0 !important;
+            }
+            .compare-print-root .no-print { display: none !important; }
+            .compare-print-root .print-avoid { break-inside: avoid; page-break-inside: avoid; }
+          }
+        `}</style>
+
+        <div className="mb-3 flex items-center justify-between gap-3">
           <h3 className="text-base font-semibold text-gray-900">Deneme Karşılaştırma</h3>
-          <button onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
-            <IconX size={18} />
-          </button>
+          <div className="no-print flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] font-semibold text-gray-600 hover:bg-gray-50"
+            >
+              <IconPrinter size={14} /> Yazdır
+            </button>
+            <button onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
+              <IconX size={18} />
+            </button>
+          </div>
         </div>
 
-        {/* Toplam net trendi — zikzak çizgi grafik (deneme sırasına göre inişli çıkışlı) */}
-        <div className="mb-4 rounded-lg border border-gray-100 bg-gray-50/60 p-3">
-          <div className="mb-1 text-[12px] font-semibold text-gray-600">Toplam Net Trendi</div>
-          <ZigzagChart labels={chartLabels} series={netChartSeries} />
-        </div>
-
-        {/* Ders bazlı karşılaştırma — her ders kendi renkli bloğunda, o dersin
-           seçilen tüm denemelerdeki sonucu aynı blok içinde, header şeridiyle
-           aynı ızgarada (grid) hizalı şekilde yan yana durur. Ders blokları
-           kendi aralarında alt alta sıralanır. */}
-        <div className="space-y-3">
-          {byStudent.map((studentExams) => {
-            const subjects = unionSubjects(studentExams);
-            const gridStyle: CSSProperties = {
-              gridTemplateColumns: `repeat(${studentExams.length}, minmax(58px, 1fr))`,
-            };
-            return (
+        {/* Sol: tablo(lar) · Sağ: grafikler — büyük ekranda yan yana */}
+        <div className="grid items-start gap-3 lg:grid-cols-2">
+          <div className="space-y-3">
+            {byStudent.map((studentExams) => (
               <div key={studentExams[0].student_id}>
                 {studentCount > 1 && (
-                  <div className="mb-1.5 text-[12px] font-semibold text-gray-800">{studentExams[0].students?.full_name}</div>
-                )}
-
-                {/* Hangi sütun hangi denemeye ait — üst başlık şeridi, alttaki tüm satırlarla aynı grid */}
-                <div className="mb-1 grid gap-1" style={gridStyle}>
-                  {studentExams.map((e) => (
-                    <div key={e.id} className="rounded-md bg-gray-100 px-1.5 py-1 text-center">
-                      <div className="truncate text-[9.5px] font-medium text-gray-600">{e.exam_name}</div>
-                      <div className="text-[9px] text-gray-400">
-                        {new Date(e.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-1">
-                  {subjects.map((s, i) => (
-                    <SubjectCompareRow key={s.key} subject={s} colorIndex={i} exams={studentExams} gridStyle={gridStyle} />
-                  ))}
-
-                  {/* Toplam net satırı — aynı grid, aynı hizada */}
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-1.5">
-                    <div className="mb-1 text-[10.5px] font-semibold text-gray-700">Toplam Net</div>
-                    <div className="grid gap-1" style={gridStyle}>
-                      {studentExams.map((e, i) => {
-                        const prev = i > 0 ? studentExams[i - 1] : null;
-                        return (
-                          <div key={e.id} className="rounded-md bg-white px-1.5 py-1 text-center">
-                            <span className="flex items-center justify-center gap-0.5 text-[12px] font-bold text-gray-900">
-                              {e.net_score}
-                              <TrendIcon current={e.net_score} previous={prev ? prev.net_score : null} />
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                  <div className="mb-1 text-[12px] font-semibold text-gray-800">
+                    {studentExams[0].students?.full_name}
                   </div>
-                </div>
+                )}
+                <SubjectCompareTable exams={studentExams} />
               </div>
-            );
-          })}
+            ))}
+          </div>
+
+          <div className="space-y-3">
+            <div className="print-avoid rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+              <div className="mb-1 text-[12px] font-semibold text-gray-600">Toplam Net Trendi</div>
+              <ZigzagChart labels={chartLabels} series={netChartSeries} />
+            </div>
+
+            {allSubjects.length > 0 && (
+              <div className="print-avoid rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[12px] font-semibold text-gray-600">Ders Bazlı Net Trendi</span>
+                  <select
+                    value={activeSubjectKey}
+                    onChange={(ev) => setSelectedSubjectKey(ev.target.value)}
+                    className="no-print rounded-md border border-gray-200 bg-white px-2 py-1 text-[12px] text-gray-700"
+                  >
+                    {allSubjects.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                  </select>
+                  <span className="hidden text-[11px] text-gray-500 print:inline">
+                    {allSubjects.find((s) => s.key === activeSubjectKey)?.label}
+                  </span>
+                </div>
+                <ZigzagChart labels={chartLabels} series={subjectChartSeries} />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Ders bazlı trend — tablonun hemen altında, seçilen ders için aynı zikzak grafik */}
-        {allSubjects.length > 0 && (
-          <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50/60 p-3">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[12px] font-semibold text-gray-600">Ders Bazlı Net Trendi</span>
-              <select
-                value={activeSubjectKey}
-                onChange={(ev) => setSelectedSubjectKey(ev.target.value)}
-                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[12px] text-gray-700"
-              >
-                {allSubjects.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-              </select>
-            </div>
-            <ZigzagChart labels={chartLabels} series={subjectChartSeries} />
-          </div>
-        )}
-
-        {/* Yapay zeka analizi — daha büyük punto, daha şık görünüm */}
-        <div className="mt-4 rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50/60 to-purple-50/60 p-4">
+        {/* Yapay zeka analizi — sonuç varsa yazdırmaya dahil */}
+        <div className={`mt-3 rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50/60 to-purple-50/60 p-4 ${analysisResult ? '' : 'no-print'}`}>
           {!analysisResult && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1070,18 +1104,12 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
               <button
                 onClick={handleAnalyze}
                 disabled={analyzing}
-                className="mt-4 flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-[14px] font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                className="mt-3 flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-[14px] font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
               >
                 {analyzing ? (
-                  <>
-                    <IconLoader2 size={16} className="animate-spin" />
-                    Analiz ediliyor...
-                  </>
+                  <><IconLoader2 size={16} className="animate-spin" /> Analiz ediliyor...</>
                 ) : (
-                  <>
-                    <IconSparkles size={16} />
-                    Yapay Zeka ile Analiz Et
-                  </>
+                  <><IconSparkles size={16} /> Yapay Zeka ile Analiz Et</>
                 )}
               </button>
               {analysisError && <p className="mt-2 text-[13px] text-red-600">{analysisError}</p>}
@@ -1090,64 +1118,65 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
 
           {analysisResult && (
             <div>
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <IconSparkles size={19} className="text-blue-600" />
                   <span className="text-[15px] font-semibold text-gray-800">Yapay Zeka Analizi</span>
                   {saved && (
-                    <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                    <span className="no-print flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
                       <IconCheck size={12} /> Öğrenci sayfasına kaydedildi
                     </span>
                   )}
                 </div>
-                <button onClick={() => setAnalysisResult(null)} className="text-[12px] text-gray-400 hover:text-gray-600">
+                <button onClick={() => setAnalysisResult(null)} className="no-print text-[12px] text-gray-400 hover:text-gray-600">
                   Temizle
                 </button>
               </div>
 
-              <div className="space-y-4">
-                {analysisResult.ogrenciler.map((o, i) => (
-                  <div key={i} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                    <div className="mb-2.5 text-[15px] font-bold text-gray-900">{o.student_name}</div>
+              <div className="space-y-3">
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {analysisResult.ogrenciler.map((o, i) => (
+                    <div key={i} className="print-avoid rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                      <div className="mb-2.5 text-[15px] font-bold text-gray-900">{o.student_name}</div>
 
-                    <div className="mb-3 flex flex-wrap gap-1.5">
-                      {o.guclu_dersler.map((d) => (
-                        <span key={d} className="rounded-full bg-emerald-50 px-2.5 py-1 text-[12px] font-medium text-emerald-700">+ {d}</span>
-                      ))}
-                      {o.zayif_dersler.map((d) => (
-                        <span key={d} className="rounded-full bg-red-50 px-2.5 py-1 text-[12px] font-medium text-red-600">− {d}</span>
-                      ))}
-                    </div>
-
-                    <p className="text-[13.5px] leading-relaxed text-gray-600">
-                      <span className="font-semibold text-gray-700">Trend: </span>
-                      {o.trend}
-                    </p>
-
-                    {o.capraz_degerlendirme && (
-                      <p className="mt-2 text-[13.5px] leading-relaxed text-gray-600">
-                        <span className="font-semibold text-gray-700">Görüşme değerlendirmesi: </span>
-                        {o.capraz_degerlendirme}
-                      </p>
-                    )}
-
-                    {o.oneriler.length > 0 && (
-                      <div className="mt-3">
-                        <span className="text-[13.5px] font-semibold text-gray-700">Öneriler:</span>
-                        <ul className="mt-1.5 list-inside list-disc space-y-1">
-                          {o.oneriler.map((oneri, oi) => (
-                            <li key={oi} className="text-[13.5px] leading-relaxed text-gray-600">{oneri}</li>
-                          ))}
-                        </ul>
+                      <div className="mb-3 flex flex-wrap gap-1.5">
+                        {o.guclu_dersler.map((d) => (
+                          <span key={d} className="rounded-full bg-emerald-50 px-2.5 py-1 text-[12px] font-medium text-emerald-700">+ {d}</span>
+                        ))}
+                        {o.zayif_dersler.map((d) => (
+                          <span key={d} className="rounded-full bg-red-50 px-2.5 py-1 text-[12px] font-medium text-red-600">− {d}</span>
+                        ))}
                       </div>
-                    )}
-                  </div>
-                ))}
+
+                      <p className="text-[13px] leading-relaxed text-gray-600">
+                        <span className="font-semibold text-gray-700">Trend: </span>{o.trend}
+                      </p>
+
+                      {o.capraz_degerlendirme && (
+                        <p className="mt-2 text-[13px] leading-relaxed text-gray-600">
+                          <span className="font-semibold text-gray-700">Görüşme değerlendirmesi: </span>
+                          {o.capraz_degerlendirme}
+                        </p>
+                      )}
+
+                      {o.oneriler.length > 0 && (
+                        <div className="mt-3">
+                          <span className="text-[13px] font-semibold text-gray-700">Öneriler:</span>
+                          <ul className="mt-1.5 list-inside list-disc space-y-1">
+                            {o.oneriler.map((oneri, oi) => (
+                              <li key={oi} className="text-[13px] leading-relaxed text-gray-600">{oneri}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
 
                 {analysisResult.karsilastirma && (
-                  <div className="rounded-xl border border-purple-100 bg-purple-50/50 p-4">
+                  <div className="print-avoid rounded-xl border border-purple-100 bg-purple-50/50 p-4">
                     <div className="mb-2 text-[13.5px] font-bold text-purple-800">Öğrenciler Arası Kıyaslama</div>
-                    <p className="text-[13.5px] leading-relaxed text-purple-900">{analysisResult.karsilastirma}</p>
+                    <p className="text-[13px] leading-relaxed text-purple-900">{analysisResult.karsilastirma}</p>
                   </div>
                 )}
               </div>
@@ -1155,6 +1184,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

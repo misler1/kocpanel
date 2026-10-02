@@ -46,25 +46,28 @@ export async function POST(req: Request) {
         .select('student_id, scheduled_at, notes, topic')
         .in('student_id', studentIds)
         .order('scheduled_at', { ascending: false })
-        .limit(30);
+        .limit(Math.max(studentIds.length * 3, 3));
 
       meetingsByStudent = new Map();
       for (const meeting of meetings ?? []) {
         const arr = meetingsByStudent.get(meeting.student_id) ?? [];
         const notes = [meeting.topic, meeting.notes].filter(Boolean).join(' - ');
-        if (notes.trim()) arr.push({ date: meeting.scheduled_at, notes });
-        meetingsByStudent.set(meeting.student_id, arr.slice(0, 5));
+        if (notes.trim()) arr.push({ date: meeting.scheduled_at, notes: notes.slice(0, 220) });
+        meetingsByStudent.set(meeting.student_id, arr.slice(0, 3));
       }
     }
 
     const { data: topics } = await (supabase as any)
       .from('topic_progress')
       .select('student_id, subject, topic, status, updated_at')
-      .in('student_id', studentIds);
+      .in('student_id', studentIds)
+      .order('updated_at', { ascending: false })
+      .limit(Math.max(studentIds.length * 24, 24));
 
     const topicsByStudent = new Map<string, { subject: string; topic: string; status: string; updatedAt: string }[]>();
     for (const topic of topics ?? []) {
       const arr = topicsByStudent.get(topic.student_id) ?? [];
+      if (arr.length >= 18) continue;
       arr.push({
         subject: topic.subject,
         topic: topic.topic,

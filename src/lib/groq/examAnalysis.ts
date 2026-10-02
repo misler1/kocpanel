@@ -99,7 +99,7 @@ function calculateSubjectNets(
 function formatExamForPrompt(exam: ExamRow): string {
   const nets = calculateSubjectNets(exam.subject_results, exam.exam_type);
   const subjectLines = Object.entries(nets)
-    .map(([subject, v]) => `      - ${subject}: ${v.dogru} doğru, ${v.yanlis} yanlış → net ${v.net}`)
+    .map(([subject, v]) => `    - ${subject}: D${v.dogru} Y${v.yanlis} N${v.net}`)
     .join("\n");
 
   const puanLines = [
@@ -119,35 +119,26 @@ ${subjectLines}`;
 function formatTopicsForPrompt(topics: TopicProgressInput[]): string {
   if (topics.length === 0) return "";
 
-  const bySubject = new Map<string, TopicProgressInput[]>();
-  for (const t of topics) {
-    if (!bySubject.has(t.subject)) bySubject.set(t.subject, []);
-    bySubject.get(t.subject)!.push(t);
-  }
-
   const statusLabel: Record<string, string> = {
     baslanmadi: "başlanmadı",
-    devam: "devam ediyor",
-    tamamlandi: "tamamlandı",
+    devam: "devam",
+    tamamlandi: "tamam",
   };
 
-  const lines: string[] = [];
-  for (const [subject, subjectTopics] of bySubject) {
-    lines.push(`    ${subject}:`);
-    for (const t of subjectTopics) {
-      const label = statusLabel[t.status] ?? t.status;
-      lines.push(`      - ${t.topic}: durum "${label}" (son güncelleme: ${t.updatedAt})`);
-    }
-  }
+  const lines = topics.slice(0, 18).map((t) => {
+    const label = statusLabel[t.status] ?? t.status;
+    return `    - ${t.subject}/${t.topic}: ${label}, ${t.updatedAt.slice(0, 10)}`;
+  });
 
-  return `\n\n  KONU İLERLEYİŞİ (ders bazlı, tarihli — EKSİK olabilir, her konu düzenli girilmemiş olabilir):\n${lines.join("\n")}`;
+  return `\n\n  KONU KAYITLARI (sınırlı, eksik olabilir):\n${lines.join("\n")}`;
 }
 
 function formatStudentGroupForPrompt(group: StudentExamGroup): string {
   const examSection = group.exams.map(formatExamForPrompt).join("\n\n");
   const meetingSection = group.meetings.length
     ? `\n\n  GÖRÜŞME NOTLARI:\n${group.meetings
-        .map((m) => `    - ${m.date}: ${m.notes.slice(0, 500)}`)
+        .slice(0, 3)
+        .map((m) => `    - ${m.date.slice(0, 10)}: ${m.notes.slice(0, 220)}`)
         .join("\n")}`
     : "";
   const topicsSection = formatTopicsForPrompt(group.topics);
@@ -155,6 +146,29 @@ function formatStudentGroupForPrompt(group: StudentExamGroup): string {
   return `ÖĞRENCİ: ${group.studentName}\n\n${examSection}${meetingSection}${topicsSection}`;
 }
 
+function parseAnalysisJson(content: string): ExamAnalysisResult {
+  const cleaned = content
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  if (!cleaned) {
+    throw new Error("Model boş analiz döndürdü. Lütfen tekrar deneyin.");
+  }
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const first = cleaned.indexOf("{");
+    const last = cleaned.lastIndexOf("}");
+    if (first >= 0 && last > first) {
+      return JSON.parse(cleaned.slice(first, last + 1));
+    }
+    throw new Error("Model geçerli JSON döndürmedi. Lütfen tekrar deneyin.");
+  }
+}
 export async function analyzeExams(
   groups: StudentExamGroup[]
 ): Promise<ExamAnalysisResult> {
@@ -172,74 +186,81 @@ export async function analyzeExams(
 
   const isMultiStudent = groups.length > 1;
 
-  const systemPrompt = `Sen bir Türk öğrenci koçluk uygulaması için deneme sonuçlarını analiz ediyorsun.
-Koça, öğrenci(ler)in deneme performansı hakkında JSON formatında bir değerlendirme sun.
-
-KURALLAR:
-- Sadece JSON döndür, başka hiçbir şey yazma
-- Ders bazlı net değerleri sana zaten hesaplanmış olarak veriliyor, tekrar hesaplama, olduğu gibi kullan
-- Her öğrenci için "ogrenciler" dizisinde AYRI bir obje oluştur, öğrencilerin verilerini birbirine karıştırma
-- Bir öğrencinin birden fazla denemesi varsa (kronolojik sırayla verilir) trend (gelişim/gerileme) belirle; tek denemesi varsa trend alanına "Tek deneme, trend belirlenemedi" yaz
-- Farklı sınav türleri (TYT/AYT/LGS) aynı öğrenci için karışık verilmişse bunu belirt, birbirine karıştırıp yanlış kıyaslama yapma
-- Bir öğrencinin görüşme notu verilmemişse o öğrencinin capraz_degerlendirme alanını null yap
-- Görüşme notu verilmişse, notlarda geçen konuların (motivasyon düşüklüğü, belirli bir derste zorlanma, sınav kaygısı vb.) o öğrencinin deneme sonuçlarına yansıyıp yansımadığını değerlendir
-- ÖNEMLİ — VERİ SINIRI: Deneme sonuçlarında sadece DERS SEVİYESİNDE net (doğru/yanlış sayıları) var, denemenin kendisinde hangi ALT KONUDAN yanlış yapıldığına dair veri YOK.
-- Bazı öğrenciler için ayrıca "KONU İLERLEYİŞİ" verisi gelebilir (ders + konu + durum + tarih). Bu geldiğinde konu bazlı yorum yapabilirsin, gelmediğinde ASLA konu adı uydurma — sadece ders adını kullan.
-- KONU İLERLEYİŞİ verildiğinde şu TARİH KURALINA kesinlikle uy: bir konunun "son güncelleme" tarihi, ilgili denemenin tarihinden SONRAYSA, o konuyu o denemedeki yanlışlarla ASLA ilişkilendirme — çünkü konu muhtemelen denemeden SONRA çalışılmış, denemedeki yanlışın sebebi olamaz. Sadece "son güncelleme" tarihi denemenin tarihiyle AYNI veya ONDAN ÖNCEKİ konuları o deneme ile ilişkilendirebilirsin.
-- KONU İLERLEYİŞİ verisi EKSİK olabilir (koç her konuyu düzenli girmemiş olabilir). Listede olmayan bir konu için "bu konu hiç çalışılmadı" gibi kesin bir iddiada bulunma — sadece elindeki (girilmiş) kayıtlara dayanarak, pozitif veriden yorum yap.
-- Öneriler somut ve uygulanabilir olsun ama SADECE elindeki veriye dayansın: soru hacmi, hata oranı (yanlış/doğru dengesi), tekrar sıklığı, deneme türleri arası tutarlılık, (varsa ve tarih kuralına uygunsa) konu ilerleyiş durumu gibi gözlemler üzerinden öneri ver. Konu ilerleyişi verisi yoksa veya tarih uyuşmuyorsa, hangi konuya çalışılması gerektiğini söylemek yerine koçun öğrenciyle görüşüp zayıf konuyu netleştirmesini öner.
-- guclu_dersler ve zayif_dersler net değerlerine göre belirlensin; veri girilmemiş (boş) dersleri değerlendirmeye katma
+  const systemPrompt = `Sen Türkçe konuşan bir öğrenci koçluğu asistanısın. Deneme sonuçlarını kısa ve somut analiz et.
+Sadece geçerli JSON döndür, açıklama veya markdown yazma.
+Kurallar:
+- Ders netleri verilmiştir; yeniden hesaplama.
+- Her öğrenci için ayrı obje üret, öğrencileri karıştırma.
+- Tek denemede trend için "Tek deneme, trend belirlenemedi" yaz.
+- Farklı sınav türleri varsa bunu belirt, TYT/AYT/LGS'yi hatalı kıyaslama.
+- Deneme verisi sadece ders düzeyindedir; alt konu uydurma.
+- Konu kayıtları sınırlı ve eksik olabilir; sadece verilen konu kayıtlarına dayan.
+- Görüşme notu yoksa capraz_degerlendirme null olsun.
+- Öneriler kısa, uygulanabilir ve veriye dayalı olsun.
 ${
   isMultiStudent
-    ? `- Birden fazla öğrenci var: "karsilastirma" alanına öğrencileri birbirine göre kıyaslayan, farklarını ve dikkat çeken noktaları vurgulayan bir değerlendirme yaz (örn. hangisi hangi derste daha güçlü, aralarındaki net farkı ne anlama gelebilir vb.)`
-    : `- Tek öğrenci var: "karsilastirma" alanını null yap`
+    ? `- Birden fazla öğrenci varsa karsilastirma alanında kısa bir kıyaslama yaz.`
+    : `- Tek öğrenci varsa karsilastirma alanını null yap.`
 }
-
-DÖNDÜRÜLECEK FORMAT:
-{
-  "ogrenciler": [
-    {
-      "student_name": "string",
-      "guclu_dersler": ["Matematik", "Geometri"],
-      "zayif_dersler": ["Türkçe"],
-      "trend": "string",
-      "capraz_degerlendirme": "string veya null",
-      "oneriler": ["string", "string"]
-    }
-  ],
-  "karsilastirma": "string veya null"
-}`;
+JSON formatı:
+{"ogrenciler":[{"student_name":"string","guclu_dersler":["string"],"zayif_dersler":["string"],"trend":"string","capraz_degerlendirme":"string veya null","oneriler":["string"]}],"karsilastirma":"string veya null"}`;
 
   const userPrompt = groups.map(formatStudentGroupForPrompt).join("\n\n---\n\n");
 
-  const response = await fetch(GROQ_API_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-oss-120b", // llama-3.3-70b-versatile 16 Ağustos 2026'da Groq tarafından kapatıldı
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.4,
-      max_tokens: isMultiStudent ? 3000 : 1800, // konu ilerleyişi verisi eklenince çıktı biraz uzayabilir
-    }),
-  });
+  const requestBody = {
+    model: "openai/gpt-oss-120b", // llama-3.3-70b-versatile 16 Ağustos 2026'da Groq tarafından kapatıldı
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    temperature: 0.2,
+    max_tokens: isMultiStudent ? 1200 : 900,
+    reasoning_effort: "low",
+  };
 
-  if (!response.ok) {
-    const errorBody = await response.text().catch(() => "");
-    throw new Error(`Groq API hatası: ${response.status} — ${errorBody}`);
+  async function requestAnalysis(useJsonMode: boolean) {
+    return fetch(GROQ_API_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...requestBody,
+        ...(useJsonMode ? { response_format: { type: "json_object" } } : {}),
+      }),
+    });
   }
 
-  const data = await response.json();
-  const content = data.choices[0].message.content;
-
-  try {
-    return JSON.parse(content);
-  } catch {
-    throw new Error(`JSON parse hatası: ${content}`);
+  async function readAnalysisResponse(response: Response) {
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      return { ok: false as const, body, content: "" };
+    }
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content ?? "";
+    return { ok: true as const, body: "", content: typeof content === "string" ? content : JSON.stringify(content) };
   }
+
+  let response = await requestAnalysis(true);
+  let result = await readAnalysisResponse(response);
+
+  if (!result.ok && response.status === 400 && result.body.includes("json_validate_failed")) {
+    response = await requestAnalysis(false);
+    result = await readAnalysisResponse(response);
+  }
+
+  if (result.ok && !result.content.trim()) {
+    response = await requestAnalysis(false);
+    result = await readAnalysisResponse(response);
+  }
+
+  if (!result.ok) {
+    if (response.status === 413) {
+      throw new Error("Analiz isteği çok büyüdü. Daha az deneme seçin veya görüşme notlarını dahil etmeden tekrar deneyin.");
+    }
+    throw new Error(`Groq API hatası: ${response.status} — ${result.body}`);
+  }
+
+  return parseAnalysisJson(result.content);
 }
