@@ -125,8 +125,8 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
     const donemList: string[] = (donemlerData ?? []).map((d: any) => d.donem_adi);
     setAvailableDonemler(donemList);
 
-    // Varsayılan: en güncel (en son açılan) dönem seçili olsun
-    setDonem((prev) => prev ?? donemList[donemList.length - 1] ?? null);
+    // Varsayılan olarak tüm dönemleri göster; kullanıcı isterse dönem filtresi seçer.
+    setDonem((prev) => (prev && donemList.includes(prev) ? prev : null));
   }
 
   useEffect(() => {

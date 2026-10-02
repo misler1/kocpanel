@@ -99,8 +99,6 @@ function YeniDenemeForm() {
   useEffect(() => {
     const s = students.find((s) => s.id === studentId);
     if (s?.track === 'LGS') setExamType('LGS');
-    else if (examType === 'LGS') setExamType('TYT');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentId, students]);
 
   // AYT seçilince mevcut TYT denemelerini yükle (bağlama için)
@@ -118,8 +116,7 @@ function YeniDenemeForm() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examType, studentId]);
 
-  const currentStudent = students.find((s) => s.id === studentId);
-  const isLgs = currentStudent?.track === 'LGS';
+  const examTypeOptions: ExamType[] = ['TYT', 'AYT', 'LGS'];
 
   const tytNet = calcTotalNet(TYT_SUBJECTS, tytResults, 'yks');
   const aytNet = calcTotalNet(AYT_SUBJECTS, aytResults, 'yks');
@@ -202,7 +199,7 @@ function YeniDenemeForm() {
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Deneme türü</label>
               <div className="flex gap-2">
-                {(isLgs ? ['LGS'] : ['TYT', 'AYT']).map((t) => (
+                {examTypeOptions.map((t) => (
                   <button key={t} type="button"
                     onClick={() => setExamType(t as ExamType)}
                     className={`flex-1 rounded-lg border py-2 text-sm font-medium transition ${
