@@ -69,6 +69,9 @@ export interface QuestionLog {
   week_start: string;
   target_count: number;
   done_count: number;
+  plan_day: number | null;
+  start_time: string | null;
+  end_time: string | null;
   created_at: string;
 }
 

@@ -106,8 +106,10 @@ create table question_logs (
   week_start date not null,
   target_count int not null default 0,
   done_count int not null default 0,
-  created_at timestamptz default now(),
-  unique (student_id, subject, week_start)
+  plan_day int check (plan_day between 0 and 6),
+  start_time time,
+  end_time time,
+  created_at timestamptz default now()
 );
 
 -- ============================================================
@@ -154,6 +156,7 @@ create index idx_meetings_student on meetings(student_id);
 create index idx_exams_student on exams(student_id);
 create index idx_tasks_coach on tasks(coach_id);
 create index idx_question_logs_student on question_logs(student_id);
+create index idx_question_logs_weekly_plan on question_logs(student_id, week_start, plan_day, start_time, end_time);
 create index idx_messages_conversation on messages(conversation_id);
 
 -- ============================================================

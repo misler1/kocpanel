@@ -7,9 +7,10 @@ import { formatTurkishNumber } from '@/lib/format';
 import {
   IconChevronDown, IconChevronUp,
   IconCalendar, IconChartBar, IconCheckbox, IconBooks,
-  IconUser, IconUsers, IconPhone, IconSchool, IconTrophy,
+  IconUsers, IconSchool, IconTrophy,
   IconEdit, IconTrash, IconNotebook, IconTarget,
 } from '@tabler/icons-react';
+import { OgrenciProgramlari } from './OgrenciProgramlari';
 
 // ─── Sabitler ────────────────────────────────────────────────
 
@@ -136,68 +137,63 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks }: {
           <div className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full text-xl font-semibold ${avatarClass}`}>
             {initials}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <h2 className="text-lg font-medium text-gray-900">{student.full_name}</h2>
-            <div className="flex flex-wrap items-center gap-2 mt-0.5">
-              <span className="text-sm text-gray-500">{TRACK_LABELS[student.track] ?? student.track}</span>
-              {student.grade_level && <span className="text-[12px] text-gray-400">· {student.grade_level}</span>}
-              {student.sinif_sube && <span className="text-[12px] text-gray-400">· {student.sinif_sube}</span>}
-              {student.okul && (
-                <div className="mt-1 text-[12px] text-gray-500">
-                  {student.grade_level === 'Mezun' ? '🎓 Mezun olduğu okul: ' : '🏫 Devam ettiği okul: '}
-                  {student.okul}
-                </div>
-            )}
-            </div>
+            <p className="mt-0.5 text-sm text-gray-500">{TRACK_LABELS[student.track] ?? student.track}</p>
           </div>
           <span className={`flex-shrink-0 rounded-full px-3 py-1 text-[12px] font-medium ${status.className}`}>
             {status.label}
           </span>
         </div>
-        <div className="mt-3 flex flex-wrap gap-4">
-          {student.phone && (
-            <div className="flex items-center gap-1.5 text-[13px] text-gray-500">
-              <IconPhone size={13} />{student.phone}
-            </div>
-          )}
-          {birthDateFormatted && (
-            <div className="flex items-center gap-1.5 text-[13px] text-gray-500">
-              <IconUser size={13} />{birthDateFormatted}
-            </div>
-          )}
+
+        <div className="mt-4 border-t border-gray-100 pt-3">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Temel Bilgiler</p>
+          <div className="space-y-0.5">
+            <InfoRow label="Ad Soyad" value={student.full_name} />
+            <InfoRow label="Telefon" value={student.phone} />
+            <InfoRow label="Doğum Tarihi" value={birthDateFormatted} />
+            <InfoRow label="Kurum" value={student.kurum} />
+            <InfoRow label="Sınav Türü" value={TRACK_LABELS[student.track] ?? student.track} />
+            <InfoRow label="Sınıf Düzeyi" value={student.grade_level} />
+            <InfoRow
+              label={student.grade_level === 'Mezun' ? 'Mezun Olduğu Okul' : 'Devam Ettiği Okul'}
+              value={student.okul}
+            />
+            <InfoRow label="Sınıf / Şube" value={student.sinif_sube} />
+            <InfoRow label="Dönem" value={student.donem} />
+            <InfoRow label="Notlar" value={student.notes} />
+          </div>
         </div>
-        {student.notes && (
-          <p className="mt-3 rounded-lg bg-gray-50 p-3 text-[13px] text-gray-600">{student.notes}</p>
-        )}
       </div>
 
-      {/* ── Aile & Veli ── */}
-      {(hasFamily || hasGuardian) && (
-        <Accordion icon={<IconUsers size={16} />} title="Aile & Veli Bilgileri">
+      {/* ── Aile Bilgileri ── */}
+      {hasFamily && (
+        <Accordion icon={<IconUsers size={16} />} title="Aile Bilgileri">
           {student.mother_name && (
             <div className="mb-3">
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Anne</p>
-              <InfoRow label="Ad Soyad" value={student.mother_name} />
-              <InfoRow label="Meslek" value={student.mother_job} />
-              <InfoRow label="Telefon" value={student.mother_phone} />
+              <InfoRow label="Anne Adı" value={student.mother_name} />
+              <InfoRow label="Anne Meslek" value={student.mother_job} />
+              <InfoRow label="Anne Telefon" value={student.mother_phone} />
             </div>
           )}
           {student.father_name && (
-            <div className="mb-3">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Baba</p>
-              <InfoRow label="Ad Soyad" value={student.father_name} />
-              <InfoRow label="Meslek" value={student.father_job} />
-              <InfoRow label="Telefon" value={student.father_phone} />
-            </div>
-          )}
-          {student.guardian_name && (
             <div>
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Veli</p>
-              <InfoRow label="Ad Soyad" value={student.guardian_name} />
-              <InfoRow label="Telefon" value={student.guardian_phone} />
-              <InfoRow label="Yakınlık" value={student.guardian_relation} />
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Baba</p>
+              <InfoRow label="Baba Adı" value={student.father_name} />
+              <InfoRow label="Baba Meslek" value={student.father_job} />
+              <InfoRow label="Baba Telefon" value={student.father_phone} />
             </div>
           )}
+        </Accordion>
+      )}
+
+      {/* ── Veli Bilgileri ── */}
+      {hasGuardian && (
+        <Accordion icon={<IconUsers size={16} />} title="Veli Bilgileri">
+          <InfoRow label="Veli Adı Soyadı" value={student.guardian_name} />
+          <InfoRow label="Veli Telefon" value={student.guardian_phone} />
+          <InfoRow label="Yakınlık Durumu" value={student.guardian_relation} />
         </Accordion>
       )}
 
@@ -330,6 +326,16 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks }: {
         </div>
       </Accordion>
 
+      {/* ── Haftalık Takip Programı ── */}
+      <Accordion icon={<IconCalendar size={16} />} title="Haftalık Takip Programı" defaultOpen>
+        <div className="mb-2 flex justify-end">
+          <Link href="/haftalik-takip" className="text-[12px] text-blue-600 hover:underline">
+            + Program hazırla
+          </Link>
+        </div>
+        <OgrenciProgramlari studentId={id} />
+      </Accordion>
+      
       {/* ── Görevler & Takip ── */}
       <Accordion icon={<IconCheckbox size={16} />} title="Bekleyen Görevler & Takip">
         {tasks.length > 0 && (

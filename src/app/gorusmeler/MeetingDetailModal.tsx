@@ -55,6 +55,13 @@ export function MeetingDetailModal({
           </span>
         </div>
 
+        {(meeting.created_by_profile?.full_name || meeting.created_by_other_name) && (
+          <div className="mb-3">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Görüşmeyi yapan</p>
+            <p className="text-[14px] text-[var(--ink)]">{meeting.created_by_profile?.full_name ?? meeting.created_by_other_name}</p>
+          </div>
+        )}
+
         {meeting.topic && (
           <div className="mb-3">
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Konu</p>

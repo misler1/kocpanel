@@ -24,7 +24,7 @@ export default async function GorusmeOgrenciPage({
 
   const { data: meetings } = await (supabase as any)
     .from('meetings')
-    .select('*')
+    .select('*, created_by_profile:created_by(id, full_name)')
     .eq('student_id', id)
     .eq('coach_id', user.id)
     .order('scheduled_at', { ascending: false });

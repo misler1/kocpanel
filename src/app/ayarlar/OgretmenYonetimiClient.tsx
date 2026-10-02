@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,6 +48,12 @@ export function OgretmenYonetimiClient({ teachers, currentUserId }: { teachers: 
                 <div className="text-[11px] text-gray-400">{date}</div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              <Link
+                href={`/ayarlar/ogretmenler/${t.id}`}
+                className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-medium text-blue-600 transition-colors hover:bg-blue-100"
+              >
+                İzinler
+              </Link>
               {/* Onay butonu */}
               {!isMe && (
                 <button

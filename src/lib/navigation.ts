@@ -6,7 +6,6 @@ import {
   IconBooks,
   IconChartBar,
   IconUsersGroup,
-  IconCalendar,
   IconSettings,
   IconUserCircle,
   IconMessageCircle,
@@ -37,7 +36,6 @@ export const TAKIP_NAV: NavItem[] = [
 
 export const BAGLANTI_NAV: NavItem[] = [
   { href: '/veli-gorusmeleri', label: 'Veli görüşmeleri', icon: IconUsersGroup, section: 'Bağlantı' },
-  { href: '/ders-programi', label: 'Ders programı', icon: IconCalendar },
   { href: '/mesajlar', label: 'Mesajlar', icon: IconMessageCircle },
 ];
 
@@ -56,6 +54,5 @@ export const MOBILE_NAV: NavItem[] = [
   { href: '/anasayfa', label: 'Ana Sayfa', icon: IconHome },
   { href: '/ogrenciler', label: 'Öğrenciler', icon: IconUsers },
   { href: '/denemeler', label: 'Denemeler', icon: IconChartBar },
-  { href: '/ders-programi', label: 'Takvim', icon: IconCalendar },
   { href: '/ayarlar', label: 'Menü', icon: IconSettings },
 ];

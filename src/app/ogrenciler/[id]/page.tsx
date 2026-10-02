@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { IconArrowLeft, IconEdit } from '@tabler/icons-react';
 import { OgrenciDetayClient } from './OgrenciDetayClient';
+import { OgrenciArsivdenCikarButton } from './OgrenciArsivdenCikarButton';
 
 export default async function OgrenciDetayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,8 +18,10 @@ export default async function OgrenciDetayPage({ params }: { params: Promise<{ i
   const student = rawStudent as any;
   if (!student) notFound();
 
+  const isArchived = student.status === 'pasif';
+
   const { data: rawMeetings } = await supabase
-    .from('meetings').select('*').eq('student_id', id)
+    .from('meetings').select('*, created_by_profile:created_by(id, full_name)').eq('student_id', id)
     .order('scheduled_at', { ascending: false }).limit(5);
   const { data: rawExams } = await supabase
     .from('exams').select('*').eq('student_id', id)
@@ -29,11 +32,12 @@ export default async function OgrenciDetayPage({ params }: { params: Promise<{ i
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-5 flex items-center gap-3">
-        <Link href="/ogrenciler" className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <Link href={isArchived ? '/ogrenciler?arsiv=1' : '/ogrenciler'} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
           <IconArrowLeft size={18} />
         </Link>
         <h1 className="flex-1 text-[18px] font-medium text-gray-900">{student.full_name}</h1>
+        {isArchived && <OgrenciArsivdenCikarButton studentId={id} />}
         <Link
           href={`/ogrenciler/${id}/duzenle`}
           className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-[13px] text-gray-600 hover:bg-gray-50"

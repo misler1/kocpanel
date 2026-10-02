@@ -726,12 +726,12 @@ function SubjectCompareRow({
 }) {
   const c = subjectColor(colorIndex);
   return (
-    <div className={`rounded-xl border p-2.5 ${c.border} ${c.bg}`}>
-      <div className={`mb-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold ${c.text}`}>
+    <div className={`rounded-lg border p-1.5 ${c.border} ${c.bg}`}>
+      <div className={`mb-1 flex items-center gap-1 text-[10.5px] font-semibold ${c.text}`}>
         <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
         {subject.label}
       </div>
-      <div className="grid gap-1.5" style={gridStyle}>
+      <div className="grid gap-1" style={gridStyle}>
         {exams.map((e, i) => {
           const r = e.subject_results?.[subject.key];
           const hasData = !!r;
@@ -742,17 +742,17 @@ function SubjectCompareRow({
           const prevR = prevExam?.subject_results?.[subject.key];
           const prevNet = prevExam && prevR ? getSubjectNet(prevR, prevExam.exam_type) : null;
           return (
-            <div key={e.id} className="rounded-lg border border-white/60 bg-white/70 px-2 py-1.5 text-center">
+            <div key={e.id} className="rounded-md border border-white/60 bg-white/70 px-1.5 py-1 text-center">
               {hasData ? (
                 <>
-                  <div className="text-[9.5px] text-gray-500">{d}D · {y}Y</div>
-                  <div className="mt-0.5 flex items-center justify-center gap-1 text-[13px] font-bold text-gray-800">
+                  <div className="text-[9px] text-gray-500">{d}D · {y}Y</div>
+                  <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[12px] font-bold text-gray-800">
                     {net}
                     <TrendIcon current={net} previous={prevR ? prevNet : null} />
                   </div>
                 </>
               ) : (
-                <div className="text-[10px] text-gray-300">Veri yok</div>
+                <div className="text-[9.5px] text-gray-300">Veri yok</div>
               )}
             </div>
           );
@@ -775,9 +775,9 @@ interface ChartSeries {
 }
 
 function ZigzagChart({ labels, series }: { labels: string[]; series: ChartSeries[] }) {
-  const width = 640;
-  const height = 168;
-  const pad = { top: 20, right: 16, bottom: 24, left: 8 };
+  const width = 560;
+  const height = 126;
+  const pad = { top: 18, right: 14, bottom: 20, left: 8 };
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
@@ -793,7 +793,7 @@ function ZigzagChart({ labels, series }: { labels: string[]; series: ChartSeries
   return (
     <div>
       <div className="overflow-x-auto">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ minWidth: Math.max(280, labels.length * 64) }}>
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ minWidth: Math.max(260, labels.length * 52) }}>
           {[0, 0.25, 0.5, 0.75, 1].map((f) => {
             const y = pad.top + innerH * f;
             return <line key={f} x1={pad.left} x2={width - pad.right} y1={y} y2={y} stroke="#F1F5F9" strokeWidth={1} />;
@@ -956,8 +956,8 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8">
-      <div className="w-full max-w-3xl rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
-        <div className="mb-5 flex items-center justify-between">
+      <div className="w-full max-w-4xl rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
+        <div className="mb-3 flex items-center justify-between">
           <h3 className="text-base font-semibold text-gray-900">Deneme Karşılaştırma</h3>
           <button onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
             <IconX size={18} />
@@ -965,7 +965,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
         </div>
 
         {/* Toplam net trendi — zikzak çizgi grafik (deneme sırasına göre inişli çıkışlı) */}
-        <div className="mb-6 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+        <div className="mb-4 rounded-lg border border-gray-100 bg-gray-50/60 p-3">
           <div className="mb-1 text-[12px] font-semibold text-gray-600">Toplam Net Trendi</div>
           <ZigzagChart labels={chartLabels} series={netChartSeries} />
         </div>
@@ -974,44 +974,44 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
            seçilen tüm denemelerdeki sonucu aynı blok içinde, header şeridiyle
            aynı ızgarada (grid) hizalı şekilde yan yana durur. Ders blokları
            kendi aralarında alt alta sıralanır. */}
-        <div className="space-y-5">
+        <div className="space-y-3">
           {byStudent.map((studentExams) => {
             const subjects = unionSubjects(studentExams);
             const gridStyle: CSSProperties = {
-              gridTemplateColumns: `repeat(${studentExams.length}, minmax(76px, 1fr))`,
+              gridTemplateColumns: `repeat(${studentExams.length}, minmax(58px, 1fr))`,
             };
             return (
               <div key={studentExams[0].student_id}>
                 {studentCount > 1 && (
-                  <div className="mb-2 text-[13px] font-semibold text-gray-800">{studentExams[0].students?.full_name}</div>
+                  <div className="mb-1.5 text-[12px] font-semibold text-gray-800">{studentExams[0].students?.full_name}</div>
                 )}
 
                 {/* Hangi sütun hangi denemeye ait — üst başlık şeridi, alttaki tüm satırlarla aynı grid */}
-                <div className="mb-1.5 grid gap-1.5" style={gridStyle}>
+                <div className="mb-1 grid gap-1" style={gridStyle}>
                   {studentExams.map((e) => (
-                    <div key={e.id} className="rounded-lg bg-gray-100 px-2 py-1.5 text-center">
-                      <div className="truncate text-[10.5px] font-medium text-gray-600">{e.exam_name}</div>
-                      <div className="text-[10px] text-gray-400">
+                    <div key={e.id} className="rounded-md bg-gray-100 px-1.5 py-1 text-center">
+                      <div className="truncate text-[9.5px] font-medium text-gray-600">{e.exam_name}</div>
+                      <div className="text-[9px] text-gray-400">
                         {new Date(e.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {subjects.map((s, i) => (
                     <SubjectCompareRow key={s.key} subject={s} colorIndex={i} exams={studentExams} gridStyle={gridStyle} />
                   ))}
 
                   {/* Toplam net satırı — aynı grid, aynı hizada */}
-                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-2.5">
-                    <div className="mb-1.5 text-[11.5px] font-semibold text-gray-700">Toplam Net</div>
-                    <div className="grid gap-1.5" style={gridStyle}>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-1.5">
+                    <div className="mb-1 text-[10.5px] font-semibold text-gray-700">Toplam Net</div>
+                    <div className="grid gap-1" style={gridStyle}>
                       {studentExams.map((e, i) => {
                         const prev = i > 0 ? studentExams[i - 1] : null;
                         return (
-                          <div key={e.id} className="rounded-lg bg-white px-2 py-1.5 text-center">
-                            <span className="flex items-center justify-center gap-1 text-[13px] font-bold text-gray-900">
+                          <div key={e.id} className="rounded-md bg-white px-1.5 py-1 text-center">
+                            <span className="flex items-center justify-center gap-0.5 text-[12px] font-bold text-gray-900">
                               {e.net_score}
                               <TrendIcon current={e.net_score} previous={prev ? prev.net_score : null} />
                             </span>
@@ -1028,7 +1028,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
 
         {/* Ders bazlı trend — tablonun hemen altında, seçilen ders için aynı zikzak grafik */}
         {allSubjects.length > 0 && (
-          <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+          <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50/60 p-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <span className="text-[12px] font-semibold text-gray-600">Ders Bazlı Net Trendi</span>
               <select
@@ -1044,7 +1044,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
         )}
 
         {/* Yapay zeka analizi — daha büyük punto, daha şık görünüm */}
-        <div className="mt-6 rounded-2xl border border-gray-100 bg-gradient-to-br from-blue-50/60 to-purple-50/60 p-5">
+        <div className="mt-4 rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50/60 to-purple-50/60 p-4">
           {!analysisResult && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">

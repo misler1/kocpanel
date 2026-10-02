@@ -4,14 +4,15 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import type { Student } from '@/types/database';
-import { IconChevronRight } from '@tabler/icons-react';
+import { IconArchive, IconChevronRight, IconPlus } from '@tabler/icons-react';
+
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   aktif: { label: 'Aktif', className: 'bg-[var(--success-soft)] text-[var(--success)]' },
   gorusme_bekliyor: { label: 'Görüşme yok', className: 'bg-[var(--accent-soft)] text-[var(--accent-dark)]' },
   analiz_eksik: { label: 'Analiz yok', className: 'bg-[var(--danger-soft)] text-[var(--danger)]' },
   dikkat: { label: 'Dikkat', className: 'bg-[var(--danger-soft)] text-[var(--danger)]' },
-  pasif: { label: 'Pasif', className: 'bg-[var(--paper)] text-[var(--ink-muted)]' },
+  pasif: { label: 'Arşiv', className: 'bg-[var(--paper)] text-[var(--ink-muted)]' },
 };
 
 const AVATAR_COLORS: Record<string, string> = {
@@ -28,6 +29,12 @@ const TRACK_LABELS: Record<string, string> = {
 };
 
 type SortKey = 'ad' | 'soyad' | 'sinif' | 'dogum' | 'gorusme_yeni' | 'gorusme_eski';
+
+type ListedStudent = Student & {
+  birth_date?: string | null;
+  last_meeting_at?: string | null;
+  sinif_sube?: string | null;
+};
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'ad', label: 'Ada göre (A-Z)' },
@@ -49,7 +56,7 @@ function getSoyad(fullName: string) {
   return parts[parts.length - 1] ?? '';
 }
 
-export function OgrencilerClient({ students }: { students: Student[] }) {
+export function OgrencilerClient({ students, archiveMode }: { students: ListedStudent[]; archiveMode: boolean }) {
   const { matchesFilter } = useExamFilter();
   const [sinifFilter, setSinifFilter] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('ad');
@@ -60,17 +67,15 @@ export function OgrencilerClient({ students }: { students: Student[] }) {
   );
 
   const availableSiniflar = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const set = new Set<string>();
-    examFiltered.forEach((s: any) => {
+    examFiltered.forEach((s) => {
       if (s.sinif_sube && s.sinif_sube.trim()) set.add(s.sinif_sube.trim());
     });
     return Array.from(set).sort();
   }, [examFiltered]);
 
   const filtered = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let list = examFiltered as any[];
+    let list = examFiltered;
     if (sinifFilter) {
       list = list.filter((s) => s.sinif_sube === sinifFilter);
     }
@@ -103,28 +108,49 @@ export function OgrencilerClient({ students }: { students: Student[] }) {
       }
     });
 
-    return sorted as Student[];
+    return sorted;
   }, [examFiltered, sinifFilter, sortKey]);
-
-  const active = filtered.filter((s) => s.status !== 'pasif');
-  const passive = filtered.filter((s) => s.status === 'pasif');
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[18px] font-semibold text-[var(--ink)]">Öğrenciler</h1>
-          <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">{active.length} aktif öğrenci</p>
+          <h1 className="text-[18px] font-semibold text-[var(--ink)]">
+            {archiveMode ? 'Arşivdeki öğrenciler' : 'Öğrenciler'}
+          </h1>
+          <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">
+            {archiveMode ? `${filtered.length} arşivde öğrenci` : `${filtered.length} aktif öğrenci`}
+          </p>
         </div>
-        <Link
-          href="/ogrenciler/yeni"
-          className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
-        >
-          + Öğrenci ekle
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          {archiveMode ? (
+            <Link
+              href="/ogrenciler"
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
+            >
+              Öğrencilere dön
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/ogrenciler?arsiv=1"
+                className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
+              >
+                <IconArchive size={15} />
+                Arşivden Öğrenci Al
+              </Link>
+              <Link
+                href="/ogrenciler/yeni"
+                className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
+              >
+                <IconPlus size={15} />
+                Öğrenci ekle
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* ── Filtre & Sıralama ── */}
       <div className="mb-4 flex flex-wrap gap-2">
         {availableSiniflar.length > 0 && (
           <select
@@ -151,23 +177,20 @@ export function OgrencilerClient({ students }: { students: Student[] }) {
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20">
-          <p className="text-[13px] text-[var(--ink-muted)]">Bu filtrede öğrenci yok.</p>
+          <p className="text-[13px] text-[var(--ink-muted)]">
+            {archiveMode ? 'Arşivde öğrenci yok.' : 'Bu filtrede öğrenci yok.'}
+          </p>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {active.map((s) => <StudentRow key={s.id} student={s} />)}
-          {passive.length > 0 && (
-            <div className="mt-2 mb-1 text-[12px] font-medium text-[var(--ink-muted)]">Pasif öğrenciler</div>
-          )}
-          {passive.map((s) => <StudentRow key={s.id} student={s} />)}
+          {filtered.map((s) => <StudentRow key={s.id} student={s} />)}
         </div>
       )}
     </div>
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function StudentRow({ student: s }: { student: any }) {
+function StudentRow({ student: s }: { student: ListedStudent }) {
   const initials = s.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
   const avatarClass = AVATAR_COLORS[s.avatar_color] ?? AVATAR_COLORS['av-blue'];
   const status = STATUS_MAP[s.status] ?? STATUS_MAP['aktif'];
@@ -177,7 +200,7 @@ function StudentRow({ student: s }: { student: any }) {
   return (
     <Link
       href={`/ogrenciler/${s.id}`}
-      className={`group flex items-center gap-3.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--paper)] ${isPasif ? 'opacity-60' : ''}`}
+      className={`group flex items-center gap-3.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--paper)] ${isPasif ? 'opacity-75' : ''}`}
     >
       <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-medium ${avatarClass}`}>
         {initials}

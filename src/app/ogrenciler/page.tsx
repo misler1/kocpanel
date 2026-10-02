@@ -3,18 +3,36 @@ import { createClient } from '@/lib/supabase/server';
 import { OgrencilerClient } from './OgrencilerClient';
 import type { Student } from '@/types/database';
 
-export default async function OgrencilerPage() {
+type OgrenciListStudent = Student & {
+  birth_date?: string | null;
+  last_meeting_at?: string | null;
+  sinif_sube?: string | null;
+};
+
+export default async function OgrencilerPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ arsiv?: string }>;
+}) {
+  const params = (await searchParams) ?? {};
+  const archiveMode = params.arsiv === '1';
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/giris');
 
-  const { data: students } = await supabase
+  let studentsQuery = supabase
     .from('students')
     .select('*')
     .eq('coach_id', user.id)
     .order('full_name');
 
-  const studentIds = (students ?? []).map((s: any) => s.id);
+  studentsQuery = archiveMode
+    ? studentsQuery.eq('status', 'pasif')
+    : studentsQuery.neq('status', 'pasif');
+
+  const { data: students } = await studentsQuery;
+  const studentIds = ((students ?? []) as OgrenciListStudent[]).map((s) => s.id);
 
   const lastMeetingMap: Record<string, string> = {};
   if (studentIds.length > 0) {
@@ -33,11 +51,10 @@ export default async function OgrencilerPage() {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const studentsWithMeeting = (students ?? []).map((s: any) => ({
+  const studentsWithMeeting = ((students ?? []) as OgrenciListStudent[]).map((s) => ({
     ...s,
     last_meeting_at: lastMeetingMap[s.id] ?? null,
   }));
 
-  return <OgrencilerClient students={studentsWithMeeting as Student[]} />;
+  return <OgrencilerClient students={studentsWithMeeting} archiveMode={archiveMode} />;
 }

@@ -16,12 +16,15 @@ function YeniGorusmeForm() {
 
   const lockedStudentId = searchParams.get('ogrenci') ?? '';
   const [students, setStudents] = useState<{ id: string; full_name: string; kurum: string | null }[]>([]);
+  const [meetingOwners, setMeetingOwners] = useState<{ id: string; full_name: string }[]>([]);
   const [lockedStudentName, setLockedStudentName] = useState<string | null>(null);
   const [lockedStudentKurum, setLockedStudentKurum] = useState<string | null>(null);
   const [selectedKurum, setSelectedKurum] = useState<string | null>(null);
   const [haftalikTakipGetirdi, setHaftalikTakipGetirdi] = useState<'evet' | 'hayir' | ''>('');
   const [studentId, setStudentId] = useState(lockedStudentId);
   const [meetingType, setMeetingType] = useState<'ogrenci' | 'veli'>('ogrenci');
+  const [createdBy, setCreatedBy] = useState('');
+  const [createdByOtherName, setCreatedByOtherName] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [duration, setDuration] = useState(30);
   const [topic, setTopic] = useState('');
@@ -34,6 +37,38 @@ function YeniGorusmeForm() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setCreatedBy(user.id);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: currentProfile } = await (supabase as any)
+        .from('profiles')
+        .select('id, full_name')
+        .eq('id', user.id)
+        .single();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: internLinks } = await (supabase as any)
+        .from('teacher_access_profiles')
+        .select('teacher_id')
+        .eq('mentor_id', user.id)
+        .in('status', ['intern', 'dorm_supervisor']);
+
+      const internIds = (internLinks ?? []).map((row: { teacher_id: string }) => row.teacher_id);
+      let internProfiles: { id: string; full_name: string }[] = [];
+      if (internIds.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any)
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', internIds)
+          .order('full_name');
+        internProfiles = data ?? [];
+      }
+
+      setMeetingOwners([
+        ...(currentProfile ? [currentProfile] : [{ id: user.id, full_name: 'Ben' }]),
+        ...internProfiles,
+      ]);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: topicsData } = await (supabase as any)
         .from('meetings')
@@ -41,7 +76,7 @@ function YeniGorusmeForm() {
         .eq('coach_id', user.id)
         .not('topic', 'is', null);
       const uniqueTopics = Array.from(
-        new Set((topicsData ?? []).map((t: any) => t.topic).filter(Boolean))
+        new Set((topicsData ?? []).map((t: { topic: string | null }) => t.topic).filter(Boolean))
       ) as string[];
       setTopicOptions(uniqueTopics);
 
@@ -84,6 +119,8 @@ function YeniGorusmeForm() {
     const { error: err } = await (supabase as any).from('meetings').insert({
       student_id: studentId,
       coach_id: user.id,
+      created_by: createdBy === 'other' ? null : (createdBy || user.id),
+      created_by_other_name: createdBy === 'other' ? createdByOtherName.trim() || null : null,
       meeting_type: meetingType,
       scheduled_at: new Date(scheduledAt).toISOString(),
       duration_minutes: duration,
@@ -132,6 +169,34 @@ function YeniGorusmeForm() {
               </select>
             )}
           </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Görüşmeyi yapan</label>
+            <select
+              value={createdBy}
+              onChange={(e) => {
+                setCreatedBy(e.target.value);
+                if (e.target.value !== 'other') setCreatedByOtherName('');
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            >
+              {meetingOwners.map((owner) => <option key={owner.id} value={owner.id}>{owner.full_name}</option>)}
+              <option value="other">Diğer</option>
+            </select>
+          </div>
+
+          {createdBy === 'other' && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Görüşmeyi yapan kişi</label>
+              <input
+                type="text"
+                value={createdByOtherName}
+                onChange={(e) => setCreatedByOtherName(e.target.value)}
+                placeholder="Ad soyad veya açıklama"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+          )}
 
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">Görüşme türü</label>

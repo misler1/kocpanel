@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { ExamTrack, StudentStatus } from '@/types/database';
-import { IconArrowLeft, IconChevronDown, IconChevronUp, IconTrash } from '@tabler/icons-react';
+import { IconArchive, IconArchiveOff, IconArrowLeft, IconChevronDown, IconChevronUp, IconTrash } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { parseTurkishNumber, formatTurkishNumber } from '@/lib/format';
 
@@ -162,6 +162,7 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
 
   function handleGuardianQuickFill(src: 'anne' | 'baba') {
     if (src === 'anne') {
@@ -251,18 +252,53 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
     router.refresh();
   }
 
+  async function handleArchiveToggle() {
+    const nextStatus: StudentStatus = status === 'pasif' ? 'aktif' : 'pasif';
+    setError(null);
+    setArchiving(true);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase.from('students') as any)
+      .update({
+        status: nextStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', student.id);
+
+    if (updateError) {
+      setError('Arşiv durumu güncellenirken hata oluştu: ' + updateError.message);
+      setArchiving(false);
+      return;
+    }
+
+    setStatus(nextStatus);
+    refreshOptions();
+    router.push('/ogrenciler');
+    router.refresh();
+  }
+
   const initials = fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
   const selectedColor = AVATAR_COLORS.find((c) => c.value === avatarColor)!;
   const subjects = TRACK_RESOURCES[track] ?? [];
   const isYks = track.startsWith('YKS');
+  const isArchived = status === 'pasif';
 
   return (
     <div className="mx-auto max-w-2xl pb-12">
-      <div className="mb-5 flex items-center gap-3">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
         <Link href={`/ogrenciler/${student.id}`} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
           <IconArrowLeft size={18} />
         </Link>
         <h1 className="flex-1 text-[18px] font-medium text-gray-900">{student.full_name} — Düzenle</h1>
+        <button
+          type="button"
+          onClick={handleArchiveToggle}
+          disabled={archiving}
+          className="flex items-center gap-1.5 rounded-lg border border-amber-200 px-3 py-1.5 text-[13px] text-amber-700 hover:bg-amber-50 disabled:opacity-60"
+        >
+          {isArchived ? <IconArchiveOff size={14} /> : <IconArchive size={14} />}
+          {archiving ? 'Güncelleniyor...' : isArchived ? 'Arşivden çıkar' : 'Arşive gönder'}
+        </button>
         <button
           type="button"
           onClick={() => setShowDelete(true)}
