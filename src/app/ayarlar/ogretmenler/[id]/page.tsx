@@ -33,7 +33,7 @@ export default async function OgretmenIzinleriPage({ params }: { params: Promise
     .order('full_name');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: accessProfile } = await (supabase.from('teacher_access_profiles') as any)
+  const { data: accessProfile } = await (supabase as any).from('teacher_access_profiles')
     .select('status, mentor_id')
     .eq('teacher_id', id)
     .maybeSingle();
@@ -50,7 +50,7 @@ export default async function OgretmenIzinleriPage({ params }: { params: Promise
     : { data: [] };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: pagePermissions } = await (supabase.from('teacher_page_permissions') as any)
+  const { data: pagePermissions } = await (supabase as any).from('teacher_page_permissions')
     .select('page, enabled, allowed_kurums, allowed_classes, excluded_student_ids, scopes')
     .eq('teacher_id', id);
 

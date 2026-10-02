@@ -217,7 +217,7 @@ export function OgretmenIzinleriClient({
     setMessage(null);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: profileError } = await (supabase.from('teacher_access_profiles') as any).upsert({
+    const { error: profileError } = await (supabase as any).from('teacher_access_profiles').upsert({
       teacher_id: teacher.id,
       status,
       mentor_id: status === 'coach' ? null : mentorId || null,
@@ -246,7 +246,7 @@ export function OgretmenIzinleriClient({
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: permissionsError } = await (supabase.from('teacher_page_permissions') as any).upsert(rows);
+    const { error: permissionsError } = await (supabase as any).from('teacher_page_permissions').upsert(rows);
 
     if (permissionsError) {
       setMessage('İzinler kaydedilemedi: ' + permissionsError.message);
