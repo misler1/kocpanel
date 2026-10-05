@@ -16,6 +16,8 @@ export interface Student {
   id: string;
   profile_id: string | null;
   coach_id: string;
+  responsible_coach_id?: string | null;
+  responsible_coach_other_name?: string | null;
   full_name: string;
   track: ExamTrack;
   status: StudentStatus;

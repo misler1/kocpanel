@@ -19,7 +19,10 @@ export default async function GorusmeOgrenciPage({
     .eq('id', id)
     .eq('coach_id', user.id)
     .single();
-const { data: meetings, error: meetingsError } = await (supabase as any)
+
+  if (!student) notFound();
+
+  const { data: meetings, error: meetingsError } = await (supabase as any)
     .from('meetings')
     .select('*')
     .eq('student_id', id)

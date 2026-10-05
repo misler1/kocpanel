@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { IconChevronDown, IconMenu2, IconX } from '@tabler/icons-react';
 
 const NAV_LINKS = [
@@ -18,8 +19,8 @@ export function MarketingHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-        <Link href="/" className="font-[family-name:var(--font-display)] text-xl font-semibold text-gray-900">
-          KoçDefterim
+        <Link href="/" className="flex items-center">
+          <Image src="/brand/kocdefterim-logo.png" alt="KoçDefterim" width={230} height={67} className="h-11 w-auto object-contain" priority />
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">

@@ -3,13 +3,17 @@ import "./globals.css";
 import { ExamFilterProvider } from "@/lib/exam-filter-context";
 
 export const metadata: Metadata = {
-  title: "KoçPanel",
+  title: "KoçDefterim",
   description: "Eğitim koçları için öğrenci takip ve yönetim paneli",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "KoçPanel",
+    title: "KoçDefterim",
   },
 };
 
@@ -29,10 +33,11 @@ export default function RootLayout({
   return (
     <html lang="tr" className="h-full antialiased">
       <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
+        <link rel="icon" href="/icon.png" type="image/png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="KoçPanel" />
+        <meta name="apple-mobile-web-app-title" content="KoçDefterim" />
       </head>
       <body className="min-h-full flex flex-col bg-gray-50">
         <ExamFilterProvider>

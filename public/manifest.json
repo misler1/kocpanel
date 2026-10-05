@@ -1,11 +1,11 @@
 {
-  "name": "KoçPanel",
-  "short_name": "KoçPanel",
+  "name": "KoçDefterim",
+  "short_name": "KoçDefterim",
   "description": "Eğitim koçları için öğrenci takip paneli",
   "start_url": "/anasayfa",
   "display": "standalone",
   "background_color": "#f9fafb",
-  "theme_color": "#2563eb",
+  "theme_color": "#003c78",
   "orientation": "portrait",
   "icons": [
     {

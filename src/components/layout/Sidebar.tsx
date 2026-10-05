@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { IconSchool } from '@tabler/icons-react';
 import { MAIN_NAV, TAKIP_NAV, BAGLANTI_NAV, YONETIM_NAV, HESAP_NAV } from '@/lib/navigation';
 import { ExamFilterBar } from './ExamFilterBar';
 import { useExamFilter } from '@/lib/exam-filter-context';
@@ -39,14 +39,12 @@ export function Sidebar({ studentCount }: { studentCount?: number }) {
 
   return (
     <aside className="hidden md:flex md:w-64 md:flex-col md:bg-[var(--navy-900)] md:px-3 md:py-5 md:overflow-y-auto md:h-full">
-      <div className="mb-4 flex items-center gap-2.5 border-b border-white/10 px-2 pb-5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)]">
-          <IconSchool size={18} className="text-white" />
-        </span>
+      <Link href="/anasayfa" className="mb-4 flex items-center gap-2.5 border-b border-white/10 px-2 pb-5" aria-label="KoçDefterim anasayfa">
+        <Image src="/brand/kocdefterim-mark-beyaz-k-v2.png" alt="KoçDefterim" width={38} height={38} className="h-9 w-9 flex-shrink-0 object-contain" priority />
         <span className="text-[16px] font-semibold tracking-tight text-white">
-          KoçPanel
+          KoçDefterim
         </span>
-      </div>
+      </Link>
 
       <ExamFilterBar />
 

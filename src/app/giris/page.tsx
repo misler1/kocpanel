@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 
 export default function GirisPage() {
@@ -33,9 +34,8 @@ export default function GirisPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-600 font-semibold">K</div>
-          <h1 className="text-lg font-medium text-gray-900">KoçPanel</h1>
+        <div className="mb-6">
+          <Image src="/brand/kocdefterim-logo.png" alt="KoçDefterim" width={260} height={75} className="h-14 w-auto max-w-full object-contain" priority />
         </div>
 
         <h2 className="mb-1 text-xl font-semibold text-gray-900">Giriş yap</h2>

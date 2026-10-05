@@ -27,6 +27,8 @@ create table students (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid references profiles(id) on delete set null, -- öğrencinin kendi giriş hesabı varsa
   coach_id uuid not null references profiles(id) on delete cascade,
+  responsible_coach_id uuid references profiles(id) on delete set null,
+  responsible_coach_other_name text,
   full_name text not null,
   track exam_track not null default 'DIGER',
   status student_status not null default 'aktif',
@@ -151,6 +153,7 @@ create table messages (
 -- INDEXES
 -- ============================================================
 create index idx_students_coach on students(coach_id);
+create index idx_students_responsible_coach on students(responsible_coach_id);
 create index idx_meetings_coach on meetings(coach_id);
 create index idx_meetings_student on meetings(student_id);
 create index idx_exams_student on exams(student_id);

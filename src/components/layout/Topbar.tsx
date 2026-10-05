@@ -1,5 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
 import { IconBell, IconSearch, IconLogout } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { useExamFilter } from '@/lib/exam-filter-context';
@@ -36,12 +38,10 @@ export function Topbar({ profile }: { profile: Profile | null }) {
     <header className="border-b border-[var(--border)] bg-[var(--card)]">
       <div className="flex h-14 items-center justify-between px-4 md:px-6">
         {/* Mobilde logo */}
-        <div className="flex items-center gap-2 md:hidden">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[var(--accent)] text-xs font-bold text-white">
-            K
-          </div>
-          <span className="text-[15px] font-medium text-[var(--ink)]">KoçPanel</span>
-        </div>
+        <Link href="/anasayfa" className="flex items-center gap-2 md:hidden" aria-label="KoçDefterim anasayfa">
+          <Image src="/brand/kocdefterim-mark-beyaz-k-v2.png" alt="KoçDefterim" width={32} height={32} className="h-8 w-8 object-contain" priority />
+          <span className="text-[15px] font-medium text-[var(--ink)]">KoçDefterim</span>
+        </Link>
 
         {/* Sağ: arama, bildirim, çıkış */}
         <div className="ml-auto flex items-center gap-1">

@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { IconSchool } from '@tabler/icons-react';
 import type { UserRole } from '@/types/database';
 
 const ROLES: { value: UserRole; label: string }[] = [
@@ -60,11 +60,8 @@ export default function KayitPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--navy-900)] px-4 py-10">
       <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-8 shadow-xl">
-        <div className="mb-6 flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--accent)]">
-            <IconSchool size={18} className="text-white" />
-          </span>
-          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--ink)]">KoçPanel</h1>
+        <div className="mb-6">
+          <Image src="/brand/kocdefterim-logo.png" alt="KoçDefterim" width={260} height={75} className="h-14 w-auto max-w-full object-contain" priority />
         </div>
 
         <h2 className="mb-1 text-xl font-semibold text-[var(--ink)]">Hesap oluştur</h2>

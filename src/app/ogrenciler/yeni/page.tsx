@@ -43,6 +43,7 @@ function getYksYear() {
 // ─── Tip ────────────────────────────────────────────────────
 
 type Resources = Record<string, [string, string, string]>;
+type TeacherOption = { id: string; full_name: string; kind: 'self' | 'intern' };
 
 // ─── Bölüm başlığı bileşeni ─────────────────────────────────
 
@@ -89,6 +90,9 @@ export default function YeniOgrenciPage() {
   const [notes, setNotes] = useState('');
   const [kurum, setKurum] = useState('');
   const [donem, setDonem] = useState(currentDonem ?? '');
+  const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([]);
+  const [responsibleCoachId, setResponsibleCoachId] = useState('');
+  const [responsibleCoachOtherName, setResponsibleCoachOtherName] = useState('');
   // Aile bilgileri
   const [motherName, setMotherName] = useState('');
   const [motherJob, setMotherJob] = useState('');
@@ -130,6 +134,51 @@ export default function YeniOgrenciPage() {
     if (!donem && currentDonem) setDonem(currentDonem);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDonem]);
+  useEffect(() => {
+    async function loadTeacherOptions() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: currentProfile } = await (supabase as any)
+        .from('profiles')
+        .select('id, full_name')
+        .eq('id', user.id)
+        .single();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: internLinks } = await (supabase as any)
+        .from('teacher_access_profiles')
+        .select('teacher_id')
+        .eq('mentor_id', user.id)
+        .in('status', ['intern', 'dorm_supervisor']);
+
+      const internIds = (internLinks ?? []).map((row: { teacher_id: string }) => row.teacher_id);
+      let internProfiles: TeacherOption[] = [];
+      if (internIds.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any)
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', internIds)
+          .order('full_name');
+        internProfiles = (data ?? []).map((profile: { id: string; full_name: string }) => ({
+          ...profile,
+          kind: 'intern' as const,
+        }));
+      }
+
+      const options: TeacherOption[] = [
+        { id: user.id, full_name: currentProfile?.full_name ?? 'Kendisi', kind: 'self' },
+        ...internProfiles,
+      ];
+      setTeacherOptions(options);
+      setResponsibleCoachId((prev) => prev || user.id);
+    }
+    loadTeacherOptions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Veli kaynağı değişince otomatik doldur
   function handleGuardianSource(src: 'anne' | 'baba' | 'diger') {
     setGuardianSource(src);
@@ -172,6 +221,8 @@ export default function YeniOgrenciPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: inserted, error: insertError } = await (supabase.from('students') as any).insert({
       coach_id: user.id,
+      responsible_coach_id: responsibleCoachId === 'other' ? null : responsibleCoachId || user.id,
+      responsible_coach_other_name: responsibleCoachId === 'other' ? responsibleCoachOtherName.trim() || null : null,
       full_name: fullName.trim(),
       track,
       avatar_color: avatarColor,
@@ -291,12 +342,34 @@ export default function YeniOgrenciPage() {
                 {GRADE_LEVELS.map((g) => <option key={g}>{g}</option>)}
               </select>
             </Field>
-                        <Field label="Sınıf Düzeyi">
-              <select value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} className={inputCls}>
-                <option value="">Seçiniz</option>
-                {GRADE_LEVELS.map((g) => <option key={g}>{g}</option>)}
+            <Field label="Koç Öğretmen">
+              <select
+                value={responsibleCoachId}
+                onChange={(e) => {
+                  setResponsibleCoachId(e.target.value);
+                  if (e.target.value !== 'other') setResponsibleCoachOtherName('');
+                }}
+                className={inputCls}
+              >
+                {teacherOptions.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.full_name}
+                  </option>
+                ))}
+                <option value="other">Diğer</option>
               </select>
             </Field>
+            {responsibleCoachId === 'other' && (
+              <Field label="Diğer Koç Öğretmen">
+                <input
+                  type="text"
+                  value={responsibleCoachOtherName}
+                  onChange={(e) => setResponsibleCoachOtherName(e.target.value)}
+                  placeholder="Ad Soyad"
+                  className={inputCls}
+                />
+              </Field>
+            )}
             {gradeLevel && (
               <Field label={gradeLevel === 'Mezun' ? 'Mezun Olduğu Okul' : 'Devam Ettiği Okul'}>
                 <input

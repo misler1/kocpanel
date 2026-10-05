@@ -114,7 +114,7 @@ const profile = profileData as { is_admin: boolean } | null;
         )}
       </div>
 
-      <p className="mt-6 text-center text-[12px] text-gray-400">KoçPanel · v0.1.0</p>
+      <p className="mt-6 text-center text-[12px] text-gray-400">KoçDefterim · v0.1.0</p>
     </div>
   );
 }
