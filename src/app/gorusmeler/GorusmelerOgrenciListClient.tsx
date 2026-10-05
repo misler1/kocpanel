@@ -51,6 +51,15 @@ function getSoyad(fullName: string) {
   return parts[parts.length - 1] ?? '';
 }
 
+// Bu haftanın Pazartesi 00:00'ını döndürür
+function getThisWeekStart(): Date {
+  const now = new Date();
+  const day = (now.getDay() + 6) % 7; // 0 = Pazartesi
+  const start = new Date(now);
+  start.setDate(now.getDate() - day);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
 function toLocalDatetime(iso: string) {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -58,7 +67,7 @@ function toLocalDatetime(iso: string) {
 }
 
 export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const { matchesFilter } = useExamFilter();
   const [sinifFilter, setSinifFilter] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('gorusme_eski');
@@ -79,13 +88,18 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
     if (viewMode !== 'tumu' || allMeetings !== null) return;
     async function loadAllMeetings() {
       setLoadingAll(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoadingAll(false); return; }
+      const studentIds = students.map((s: any) => s.id).filter(Boolean);
+      if (studentIds.length === 0) {
+        setAllMeetings([]);
+        setTopicOptions([]);
+        setLoadingAll(false);
+        return;
+      }
 
       const { data } = await (supabase as any)
         .from('meetings')
-        .select('*, students(id, full_name, sinif_sube, track, kurum, donem)')
-        .eq('coach_id', user.id)
+        .select('*, students(id, full_name, sinif_sube, track, kurum, donem), created_by_profile:created_by(id, full_name)')
+        .in('student_id', studentIds)
         .order('scheduled_at', { ascending: false });
       setAllMeetings(data ?? []);
 
@@ -98,7 +112,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
     }
     loadAllMeetings();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode]);
+  }, [viewMode, students, supabase]);
 
   const examFiltered = useMemo(
     () => students.filter((s) => matchesFilter(s)),
@@ -153,6 +167,10 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
   const active = filtered.filter((s) => s.status !== 'pasif');
   const passive = filtered.filter((s) => s.status === 'pasif');
 
+  const thisWeekStart = useMemo(() => getThisWeekStart(), []);
+  const notMetThisWeek = active.filter((s) => !s.last_meeting_at || new Date(s.last_meeting_at) < thisWeekStart);
+  const metThisWeek = active.filter((s) => s.last_meeting_at && new Date(s.last_meeting_at) >= thisWeekStart);
+
   // ── "Tüm görüşmeler" listesi: filtre + sıralama ──
   const availableMeetingSiniflar = useMemo(() => {
     if (!allMeetings) return [];
@@ -199,7 +217,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
         completed: editing.completed,
       })
       .eq('id', editing.id)
-      .select('*, students(id, full_name, sinif_sube, track, kurum, donem)')
+      .select('*, students(id, full_name, sinif_sube, track, kurum, donem), created_by_profile:created_by(id, full_name)')
       .single();
 
     if (data) setAllMeetings((prev) => (prev ?? []).map((m) => m.id === editing.id ? data : m));
@@ -257,19 +275,48 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
           </div>
 
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20">
-              <IconCalendar size={32} className="text-[var(--ink-muted)]" />
-              <p className="text-[13px] text-[var(--ink-muted)]">Bu filtrede öğrenci yok.</p>
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20">
+          <IconCalendar size={32} className="text-[var(--ink-muted)]" />
+          <p className="text-[13px] text-[var(--ink-muted)]">Bu filtrede öğrenci yok.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-5">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-[13px] font-semibold text-[var(--danger)]">Bu hafta görüşülmeyenler</span>
+              <span className="rounded-full bg-[var(--danger-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--danger)]">{notMetThisWeek.length}</span>
             </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {active.map((s) => <StudentRow key={s.id} student={s} />)}
-              {passive.length > 0 && (
-                <div className="mt-2 mb-1 text-[12px] font-medium text-[var(--ink-muted)]">Pasif öğrenciler</div>
-              )}
-              {passive.map((s) => <StudentRow key={s.id} student={s} />)}
+            {notMetThisWeek.length === 0 ? (
+              <p className="text-[13px] text-[var(--ink-muted)]">Bu hafta herkesle görüşülmüş 🎉</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {notMetThisWeek.map((s) => <StudentRow key={s.id} student={s} />)}
+              </div>
+            )}
+          </div>
+
+          {metThisWeek.length > 0 && (
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-[13px] font-semibold text-[var(--success)]">Bu hafta görüşülenler</span>
+                <span className="rounded-full bg-[var(--success-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--success)]">{metThisWeek.length}</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {metThisWeek.map((s) => <StudentRow key={s.id} student={s} />)}
+              </div>
             </div>
           )}
+
+          {passive.length > 0 && (
+            <div>
+              <div className="mb-2 text-[12px] font-medium text-[var(--ink-muted)]">Pasif öğrenciler</div>
+              <div className="flex flex-col gap-2">
+                {passive.map((s) => <StudentRow key={s.id} student={s} />)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
         </>
       ) : (
         <>

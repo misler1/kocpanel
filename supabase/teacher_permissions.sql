@@ -119,3 +119,32 @@ as $$
       and not (s.id = any(tpp.excluded_student_ids))
   );
 $$;
+
+-- Meeting records: coaches can see all meetings for their students; interns can see their own entries;
+-- mentor coaches can also see meetings entered by their interns.
+drop policy if exists "meetings_coach_all" on meetings;
+create policy "meetings_coach_all" on meetings for all
+  using (
+    coach_id = auth.uid()
+    or created_by = auth.uid()
+    or exists (
+      select 1 from students s
+      where s.id = meetings.student_id
+        and s.coach_id = auth.uid()
+    )
+    or exists (
+      select 1 from teacher_access_profiles tap
+      where tap.teacher_id = meetings.created_by
+        and tap.mentor_id = auth.uid()
+    )
+    or can_teacher_access_student(auth.uid(), meetings.student_id, 'meetings')
+  )
+  with check (
+    coach_id = auth.uid()
+    or exists (
+      select 1 from students s
+      where s.id = meetings.student_id
+        and s.coach_id = auth.uid()
+    )
+    or can_teacher_access_student(auth.uid(), meetings.student_id, 'meetings')
+  );

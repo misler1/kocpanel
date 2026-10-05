@@ -725,14 +725,14 @@ function unionSubjects(exams: any[]): SubjectDef[] {
 function SubjectCompareTable({ exams }: { exams: any[] }) {
   const subjects = unionSubjects(exams);
   return (
-    <div className="print-avoid overflow-x-auto rounded-lg border border-gray-200 bg-white">
-      <table className="w-full border-collapse text-[11px]">
+    <div className="print-avoid rounded-lg border border-gray-200 bg-white">
+      <table className="w-full table-fixed border-collapse text-[11px]">
         <thead>
           <tr className="bg-gray-50">
-            <th className="px-2 py-1.5 text-left font-medium text-gray-500">Ders</th>
+            <th className="w-[88px] px-2 py-1.5 text-left font-medium text-gray-500">Ders</th>
             {exams.map((e) => (
               <th key={e.id} className="border-l border-gray-200 px-1.5 py-1.5 text-center">
-                <div className="mx-auto max-w-[110px] truncate font-medium text-gray-700" title={e.exam_name}>
+                <div className="truncate font-medium text-gray-700" title={e.exam_name}>
                   {e.exam_name}
                 </div>
                 <div className="text-[9.5px] font-normal text-gray-400">
@@ -988,13 +988,13 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
       setAnalyzing(false);
     }
   }
-
+    const landscape = sortedExams.length >= 4;
     return createPortal(
     <div className="compare-portal fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3">
       <div className="compare-print-root max-h-[94vh] w-full max-w-6xl overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
         <style jsx global>{`
           @media print {
-            @page { size: A4 portrait; margin: 8mm; }
+            @page { size: ${landscape ? 'A4 landscape' : 'A4 portrait'}; margin: 8mm; }
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             body > *:not(.compare-portal) { display: none !important; }
             .compare-portal {
@@ -1013,6 +1013,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
               border: 0 !important;
               box-shadow: none !important;
               padding: 0 !important;
+              zoom: 0.9 !important;
             }
             .compare-print-root .no-print { display: none !important; }
             .compare-print-root .print-avoid { break-inside: avoid; page-break-inside: avoid; }
@@ -1034,23 +1035,21 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
             </button>
           </div>
         </div>
+        
+                {/* Üstte tablo(lar), altında iki grafik yan yana */}
+        <div className="space-y-3">
+          {byStudent.map((studentExams) => (
+            <div key={studentExams[0].student_id}>
+              {studentCount > 1 && (
+                <div className="mb-1 text-[12px] font-semibold text-gray-800">
+                  {studentExams[0].students?.full_name}
+                </div>
+              )}
+              <SubjectCompareTable exams={studentExams} />
+            </div>
+          ))}
 
-        {/* Sol: tablo(lar) · Sağ: grafikler — büyük ekranda yan yana */}
-        <div className="grid items-start gap-3 lg:grid-cols-2">
-          <div className="space-y-3">
-            {byStudent.map((studentExams) => (
-              <div key={studentExams[0].student_id}>
-                {studentCount > 1 && (
-                  <div className="mb-1 text-[12px] font-semibold text-gray-800">
-                    {studentExams[0].students?.full_name}
-                  </div>
-                )}
-                <SubjectCompareTable exams={studentExams} />
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-3">
+          <div className="grid items-start gap-3 sm:grid-cols-2 print:grid-cols-2">
             <div className="print-avoid rounded-lg border border-gray-100 bg-gray-50/60 p-3">
               <div className="mb-1 text-[12px] font-semibold text-gray-600">Toplam Net Trendi</div>
               <ZigzagChart labels={chartLabels} series={netChartSeries} />
@@ -1078,7 +1077,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
         </div>
 
         {/* Yapay zeka analizi — sonuç varsa yazdırmaya dahil */}
-        <div className={`mt-3 rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50/60 to-purple-50/60 p-4 ${analysisResult ? '' : 'no-print'}`}>
+                <div className={`mt-3 rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50/60 to-purple-50/60 p-4 ${analysisResult ? '' : 'no-print'}`}>
           {!analysisResult && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1134,7 +1133,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
               </div>
 
               <div className="space-y-3">
-                <div className="grid gap-3 lg:grid-cols-2">
+                <div className="grid gap-3 lg:grid-cols-2 print:grid-cols-2">
                   {analysisResult.ogrenciler.map((o, i) => (
                     <div key={i} className="print-avoid rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
                       <div className="mb-2.5 text-[15px] font-bold text-gray-900">{o.student_name}</div>

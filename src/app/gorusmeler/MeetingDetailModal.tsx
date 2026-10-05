@@ -50,9 +50,6 @@ export function MeetingDetailModal({
           <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${isVeli ? 'bg-[var(--accent-soft)] text-[var(--accent-dark)]' : 'bg-[var(--track-yks-soft)] text-[var(--track-yks)]'}`}>
             {isVeli ? 'Veli görüşmesi' : 'Öğrenci görüşmesi'}
           </span>
-          <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${meeting.completed ? 'bg-[var(--success-soft)] text-[var(--success)]' : 'bg-[var(--accent-soft)] text-[var(--accent-dark)]'}`}>
-            {meeting.completed ? 'Tamamlandı' : 'Bekliyor'}
-          </span>
         </div>
 
         {(meeting.created_by_profile?.full_name || meeting.created_by_other_name) && (

@@ -1,12 +1,14 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { IconArrowLeft, IconPlus, IconCalendar } from '@tabler/icons-react';
 import { MeetingDetailModal } from '../MeetingDetailModal';
+import { NotesEditor } from '@/components/NotesEditor';
 
+const HAFTALIK_TAKIP_KURUMU = 'Hüdayi Vakfı Çekmeköy YKS Yurdu';
 function toLocalDatetime(iso: string) {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -15,8 +17,8 @@ function toLocalDatetime(iso: string) {
 
 export function GorusmeOgrenciClient({
   student, initialMeetings,
-}: { student: { id: string; full_name: string }; initialMeetings: any[] }) {
-  const supabase = createClient();
+}: { student: { id: string; full_name: string; kurum?: string | null }; initialMeetings: any[] }) {
+  const supabase = useMemo(() => createClient(), []);
   const [meetings, setMeetings] = useState<any[]>(initialMeetings);
   const [viewing, setViewing] = useState<any | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
@@ -39,7 +41,7 @@ export function GorusmeOgrenciClient({
       setTopicOptions(unique);
     }
     loadTopics();
-  }, []);
+  }, [supabase]);
 
   const now = new Date();
   const upcoming = meetings.filter((m) => new Date(m.scheduled_at) >= now);
@@ -57,10 +59,10 @@ export function GorusmeOgrenciClient({
         topic: editing.topic?.trim() || null,
         notes: editing.notes?.trim() || null,
         duration_minutes: Number(editing.duration_minutes),
-        completed: editing.completed,
+        haftalik_takip_getirdi: editing.haftalik_takip_getirdi ?? null,
       })
       .eq('id', editing.id)
-      .select('*')
+      .select('*, created_by_profile:created_by(id, full_name)')
       .single();
 
     if (data) setMeetings((prev) => prev.map((m) => m.id === editing.id ? data : m));
@@ -181,18 +183,41 @@ export function GorusmeOgrenciClient({
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Notlar</label>
-                <textarea rows={3} value={editing.notes ?? ''}
-                  onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
+                <NotesEditor
+                  value={editing.notes ?? ''}
+                  onChange={(v) => setEditing({ ...editing, notes: v })}
+                  rows={4}
                   placeholder="Görüşme notları..."
-                  className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
+                />
               </div>
 
-              <label className="flex cursor-pointer items-center gap-2">
-                <input type="checkbox" checked={editing.completed}
-                  onChange={(e) => setEditing({ ...editing, completed: e.target.checked })}
-                  className="h-4 w-4 accent-[var(--accent)]" />
-                <span className="text-sm text-[var(--ink)]">Tamamlandı olarak işaretle</span>
-              </label>
+              {student.kurum === HAFTALIK_TAKIP_KURUMU && (
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--paper)] px-3 py-3">
+                  <label className="mb-2 block text-sm font-medium text-[var(--ink)]">
+                    Haftalık takip çizelgesini getirdi mi? <span className="font-normal text-[var(--ink-muted)]">(opsiyonel)</span>
+                  </label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="flex cursor-pointer items-center gap-2">
+                      <input type="radio" checked={editing.haftalik_takip_getirdi === true}
+                        onChange={() => setEditing({ ...editing, haftalik_takip_getirdi: true })}
+                        className="accent-[var(--accent)]" />
+                      <span className="text-sm text-[var(--ink)]">Evet</span>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2">
+                      <input type="radio" checked={editing.haftalik_takip_getirdi === false}
+                        onChange={() => setEditing({ ...editing, haftalik_takip_getirdi: false })}
+                        className="accent-[var(--accent)]" />
+                      <span className="text-sm text-[var(--ink)]">Hayır</span>
+                    </label>
+                    {editing.haftalik_takip_getirdi !== null && editing.haftalik_takip_getirdi !== undefined && (
+                      <button type="button" onClick={() => setEditing({ ...editing, haftalik_takip_getirdi: null })}
+                        className="text-[12px] text-[var(--ink-muted)] underline hover:text-[var(--ink)]">
+                        Temizle
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setEditing(null)}
@@ -273,14 +298,6 @@ function MeetingGroup({
                 </div>
               )}
             </div>
-
-            <span
-              className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                m.completed ? 'bg-[var(--success-soft)] text-[var(--success)]' : 'bg-[var(--accent-soft)] text-[var(--accent-dark)]'
-              }`}
-            >
-              {m.completed ? 'Tamamlandı' : 'Bekliyor'}
-            </span>
           </button>
         );
       })}

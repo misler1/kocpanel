@@ -6,8 +6,14 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { Suspense } from 'react';
+import { NotesEditor } from '@/components/NotesEditor';
 
 const HAFTALIK_TAKIP_KURUMU = 'Hüdayi Vakfı Çekmeköy YKS Yurdu';
+
+function toLocalDatetime(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 function YeniGorusmeForm() {
   const router = useRouter();
@@ -25,14 +31,26 @@ function YeniGorusmeForm() {
   const [meetingType, setMeetingType] = useState<'ogrenci' | 'veli'>('ogrenci');
   const [createdBy, setCreatedBy] = useState('');
   const [createdByOtherName, setCreatedByOtherName] = useState('');
-  const [scheduledAt, setScheduledAt] = useState('');
-  const [duration, setDuration] = useState(30);
+  const [formOpenedAt] = useState(() => new Date());
+  const [scheduledAt, setScheduledAt] = useState(() => toLocalDatetime(formOpenedAt));
+  const [duration, setDuration] = useState(1);
+  const [durationEditedManually, setDurationEditedManually] = useState(false);
   const [topic, setTopic] = useState('');
   const [topicOptions, setTopicOptions] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+// Form açıldığından beri geçen süreyi otomatik hesaplar (elle değiştirilirse durur)
+useEffect(() => {
+  if (durationEditedManually) return;
+  const interval = setInterval(() => {
+    const elapsedMs = Date.now() - formOpenedAt.getTime();
+    setDuration(Math.max(1, Math.round(elapsedMs / 60000)));
+  }, 1000);
+  return () => clearInterval(interval);
+}, [durationEditedManually, formOpenedAt]);
+  
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -225,12 +243,15 @@ function YeniGorusmeForm() {
             <label className="mb-1 block text-sm font-medium text-gray-700">Süre (dakika)</label>
             <input
               type="number"
-              min={5}
+              min={1}
               max={180}
               value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
+              onChange={(e) => { setDuration(Number(e.target.value)); setDurationEditedManually(true); }}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             />
+            {!durationEditedManually && (
+              <p className="mt-1 text-[11px] text-gray-400">Form açıldığından beri otomatik sayılıyor — istersen elle değiştirebilirsin.</p>
+            )}
           </div>
 
           <div>
@@ -250,19 +271,20 @@ function YeniGorusmeForm() {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Notlar</label>
-            <textarea
+            <NotesEditor
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
+              onChange={setNotes}
+              rows={4}
               placeholder="Görüşme notları..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             />
           </div>
 
           {showHaftalikTakip && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
-              <label className="mb-2 block text-sm font-medium text-gray-700">Haftalık takip çizelgesini getirdi mi?</label>
-              <div className="flex gap-3">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Haftalık takip çizelgesini getirdi mi? <span className="font-normal text-gray-400">(opsiyonel)</span>
+              </label>
+              <div className="flex flex-wrap items-center gap-3">
                 {(['evet', 'hayir'] as const).map((v) => (
                   <label key={v} className="flex cursor-pointer items-center gap-2">
                     <input
@@ -275,6 +297,15 @@ function YeniGorusmeForm() {
                     <span className="text-sm text-gray-700">{v === 'evet' ? 'Evet' : 'Hayır'}</span>
                   </label>
                 ))}
+                {haftalikTakipGetirdi && (
+                  <button
+                    type="button"
+                    onClick={() => setHaftalikTakipGetirdi('')}
+                    className="text-[12px] text-gray-400 underline hover:text-gray-600"
+                  >
+                    Temizle
+                  </button>
+                )}
               </div>
             </div>
           )}
