@@ -132,16 +132,82 @@ const yksArticles: Article[] = [
   {
     category: 'yks',
     slug: 'en-cok-kazanan-bolumler-2026',
-    title: 'En Çok Kazanan Bölümler (2026)',
-    description: 'Gelir potansiyeli bölüm seçiminde önemlidir; ancak tek ölçüt olduğunda öğrenciyi yanlış tercihe götürebilir.',
+    title: '2026’da En Çok Kazandıran Meslekler',
+    description: 'TÜİK’in 2026’da yayımlanan yükseköğretim istihdam verilerine göre en yüksek kazanç sağlayan bölümler, istihdam oranları ve eğitim-meslek uyumu üzerine güncel değerlendirme.',
     intro: [
-      'Bölüm seçerken “mezun olunca ne kadar kazanırım?” sorusu doğaldır. Öğrenci ve veli geleceği görmek ister. Yine de bu soruyu tek başına merkeze almak, mesleğin günlük gerçeklerini gözden kaçırmaya neden olabilir.',
-      '2026 için meslek ve gelir beklentilerini değerlendirirken sektör ihtiyacı, öğrencinin yeteneği, çalışma biçimi ve bölümün sunduğu imkanlar birlikte düşünülmelidir.',
+      '2026’da yayımlanan son TÜİK verisine bakarsak listenin başında pilotaj var. Ardından Matematik Mühendisliği, Uzay Mühendisliği, Uçak Mühendisliği ve Kontrol ve Otomasyon Mühendisliği geliyor.',
+      'Listenin ilk beşine bakınca bazı alışıldık isimler ortada yok. Hukuk yok mesela. Tıp ilk beşte değil. Bilgisayar mühendisliği de değil; TÜİK’in daha geniş bölüm sıralamasında 15’inci, yazılım mühendisliği ise 21’inci sırada yer alıyor.',
+      'İlk beşte dört mühendislik bölümünün bulunması daha ilginç. Bunların ikisi doğrudan havacılıkla ilgili, uzay mühendisliğini de eklediğimizde listenin büyük bölümü oldukça teknik ve dar uzmanlık alanlarından oluşuyor.',
     ],
     sections: [
-      { title: 'Gelir potansiyeli değişkendir', body: 'Aynı bölümden mezun olan iki kişinin kazancı; şehir, deneyim, yabancı dil, teknoloji kullanımı ve kişisel becerilere göre değişebilir. Bu yüzden bölüm seçimi yalnızca ortalama gelir beklentisine göre yapılmamalıdır.' },
-      { title: 'Yetenek ve ilgi uyumu', body: 'Öğrencinin sevmediği veya karakterine uygun olmayan bir alanda uzun vadede başarılı olması zorlaşabilir. Gelir beklentisi güçlü olsa bile öğrencinin o alanda emek vermeye istekli olup olmadığı konuşulmalıdır.' },
-      { title: 'Tercihte denge', body: 'Doğru tercih, geleceğin iş imkanlarını dikkate alır ama öğrencinin güçlü yönlerini de ihmal etmez. En sağlıklı karar bu ikisinin kesiştiği yerde ortaya çıkar.' },
+      {
+        title: 'Aylık ortalama kazancı en yüksek lisans bölümleri',
+        body: [
+          'TÜİK’in yayımladığı sıralamaya göre aylık ortalama kazancı en yüksek lisans bölümlerinin ilk beşi şöyle: Pilotaj, Matematik Mühendisliği, Uzay Mühendisliği, Uçak Mühendisliği ve Kontrol ve Otomasyon Mühendisliği.',
+          'Ön lisans tarafında ilk sıranın Uçak Teknolojisi olması da aynı tabloya küçük bir parça daha ekliyor. Onu perakende satış ve mağaza yönetimi, polis meslek eğitimi, elektrik enerjisi üretim-iletim-dağıtımı ve marka iletişimi izliyor.',
+          'TÜİK burada bölüm mezunlarının aylık ortalama kazançlarını sıralıyor. Bültenin kamuya açık özetinde bu bölümlerin kazanç tutarları TL olarak verilmediği için “2026 pilot maaşı şu kadar, matematik mühendisi maaşı bu kadar” şeklinde rakamlar eklemek doğru olmaz. İnternette karşılaşılan maaş tablolarının önemli bir kısmı birbirinden farklı ölçüm yöntemleri kullanıyor.',
+        ],
+      },
+      {
+        title: 'Matematik Mühendisliği neden dikkat çekiyor?',
+        body: [
+          'Pilotajın birinciliği çok şaşırtıcı olmayabilir. Benim daha fazla ilgimi çeken bölüm Matematik Mühendisliği. Kazanç sıralamasında ikinci. Aynı yıl mezunlarının kayıtlı istihdam oranı yüzde 89,8.',
+          'Türkiye’deki tüm lisans mezunlarında kayıtlı istihdam oranı yüzde 73,9. Matematik Mühendisliği bu haliyle hem kazanç listesinin hem de kayıtlı istihdamı en yüksek ilk beş bölümün içinde yer alıyor.',
+          'İstihdam listesinin tamamı zaten kazanç listesinden oldukça farklı. Tıp yüzde 95,5 ile ilk sırada. Özel Eğitim Öğretmenliği yüzde 90,8, Havacılık Elektrik ve Elektroniği yüzde 89,9, Matematik Mühendisliği yüzde 89,8, Hemşirelik yüzde 89,8 kayıtlı istihdam oranına sahip.',
+          'Tıp burada oldukça ayrı bir yerde. Yaklaşık her 20 tıp mezunundan 19’u kayıtlı istihdamda. Kazançta ilk beşe girmediğini biliyoruz; daha geniş bölüm listelerinde tıp altıncı sırada görünüyor.',
+        ],
+      },
+      {
+        title: 'İşe geçiş süresi başka bir tablo anlatıyor',
+        body: [
+          'Lisans mezunlarının ilk kayıtlı işlerini bulma süresi 2025’te ortalama 14,2 ay. Tıp mezunlarında bu süre 3,9 ay. Daha hızlısı da var: Dil ve Konuşma Terapisi mezunları ortalama 2,4 ayda ilk kayıtlı işlerine geçiyor.',
+          'Özel Eğitim Öğretmenliği 4,4 ay, Eczacılık 4,6 ay, Ergoterapi 7,6 ay seviyesinde. Bu rakamların yan yana gelişi biraz garip ama gerçek hayattaki iş piyasası da zaten kusursuz bir sıralama tablosu gibi çalışmıyor.',
+          'Pilotaj kazançta birinci. Tıp istihdamda birinci. Dil ve Konuşma Terapisi mezunları ilk işlerine en hızlı geçen grup. Matematik Mühendisliği ise iki ayrı listenin üst tarafında birden görünüyor. Bunların hepsini tek ölçüye çevirip hangisinin “daha iyi meslek” olduğunu hesaplamaya çalışınca veri bize yardımcı olmaktan uzaklaşmaya başlıyor.',
+        ],
+      },
+      {
+        title: 'Havacılık neden listede bu kadar çok görünüyor?',
+        body: [
+          'Pilotaj, Uzay Mühendisliği ve Uçak Mühendisliği kazançta ilk dört bölümün üçü. Havacılık Elektrik ve Elektroniği de yüzde 89,9 kayıtlı istihdamla kendi listesinin üst sıralarında. Ön lisansta kazanç lideri Uçak Teknolojisi.',
+          'Bunun nedenine ilişkin TÜİK araştırmasında ayrı bir açıklama yok. Yine de ortak özellikleri görmek zor değil. Havacılık; eğitim maliyetinin, teknik standartların ve uzmanlık gereksiniminin yüksek olduğu bir sektör. Aynı zamanda çalışan sayısının genel işletme ya da sosyal bilim alanlarındaki kadar geniş olmadığı bir pazar.',
+          'Buradan “havacılık bölümü seçen çok kazanır” gibi kesin bir sonuç çıkmaz. Böyle bir sonuç için elimizde yeterli veri yok. Listede aynı alanın birkaç farklı eğitim düzeyinde tekrar tekrar görülmesi ise gerçek.',
+          'Mühendisliğin tamamı için tablo daha sıradan. “Mühendislik, imalat ve inşaat” alanında kayıtlı istihdam oranı yüzde 82,1. Sağlık ve refahta yüzde 84,5; bilişim ve iletişim teknolojilerinde yüzde 76,7; eğitimde yüzde 75,4; iş, yönetim ve hukukta yüzde 74,1.',
+          'Bu yüzden yüksek kazanç tablosunda dört mühendislik bölümünün yan yana bulunmasını bütün mühendisliklere yaymak fazla geniş bir genelleme olur. Listenin tepesindeki bölümler mühendisliğin oldukça belirli kolları.',
+        ],
+      },
+      {
+        title: 'Mezun olduğumuz bölümde mi çalışıyoruz?',
+        body: [
+          'Bence üniversite tercihi konuşulurken en az maaş kadar ilginç olan verilerden biri bu. Ücretli çalışan lisans mezunlarının yüzde 56,7’si eğitim aldığı alanla uyumlu bir meslek grubunda çalışıyor. Neredeyse yarı yarıya.',
+          'Alanlara indiğimizde fark büyüyor. Sağlık ve refah mezunlarında kendi alanında çalışma oranı yüzde 80,4. İş, yönetim ve hukukta yüzde 79,6. Eğitimde yüzde 64,8, mühendislik-imalat-inşaatta yüzde 63,6, bilişim ve iletişim teknolojilerinde yüzde 56,1.',
+          'Sosyal bilimler, gazetecilik ve enformasyon alanında bu oran yüzde 20,6. Yüzde 80,4 ile yüzde 20,6 arasındaki fark 59,8 puan.',
+          'Bu sayıyı görünce üniversite bölümünü yalnızca diploma adı üzerinden düşünmek zorlaşıyor. Sağlık okuyan bir mezunla sosyal bilimler okuyan bir mezunun eğitim aldığı alanla daha sonra yaptığı iş arasındaki bağ aynı güçte değil.',
+          'Üstelik burada “iş bulamama”dan söz etmiyoruz. Çalışan mezunların yaptığı işin eğitim alanıyla ne kadar uyuştuğundan söz ediyoruz. Bu ayrım önemli.',
+        ],
+      },
+      {
+        title: 'Peki neden 2026 maaşlarını TL olarak vermiyoruz?',
+        body: [
+          'Çünkü güvenilir ve tüm meslekleri aynı yöntemle karşılaştıran 2026 tarihli bir TÜİK maaş tablosu henüz yok. Meslek gruplarını doğrudan TL üzerinden karşılaştırabildiğimiz son kapsamlı TÜİK çalışması Kazanç Yapısı İstatistikleri 2023.',
+          '2023’te yıllık ortalama brüt kazanç yöneticilerde 538 bin 530 TL, profesyonel meslek mensuplarında 409 bin 767 TL idi. Sektör bazında finans ve sigorta 640 bin 739 TL ile ilk sırada, bilgi ve iletişim 605 bin 317 TL ile ikinci sıradaydı.',
+          'Bu rakamları 2026 maaşı diye kullanırsak üç yıl önceki ücretleri bugüne taşımış oluruz. TÜİK’in kendi yayımlama takviminde Kazanç Yapısı İstatistikleri’nin bir sonraki haber bülteni Aralık 2027 olarak görünüyor.',
+          'O zamana kadar “2026’da doktor ortalama şu kadar, pilot bu kadar, yazılımcı şu kadar kazanıyor” diyen tablolar mutlaka çıkacaktır. Bazıları iş ilanlarından veri alacak, bazıları çalışan beyanlarından, bazıları birkaç kariyer sitesindeki rakamları birleştirecek. Bunlar başka tür veriler. Yararlı olabilirler ama hepsini kesin bir Türkiye sıralaması gibi sunmak konusunda temkinli olmak gerekir.',
+        ],
+      },
+      {
+        title: '2026 verisi bize ne söylüyor?',
+        body: [
+          '2026’da yayımlanan resmî veriye dönersek cevap daha kısa: kazançta ilk beş bölüm Pilotaj, Matematik Mühendisliği, Uzay Mühendisliği, Uçak Mühendisliği ve Kontrol ve Otomasyon Mühendisliği.',
+          'Tıp altıncı sırada. Bilgisayar Mühendisliği 15’inci, Yazılım Mühendisliği 21’inci. Matematik Mühendisliği hem kazançta ikinci hem yüzde 89,8 kayıtlı istihdama sahip. Tıp mezunlarında kayıtlı istihdam yüzde 95,5. Üniversite mezunlarının tamamında ise eğitim aldığı alanla uyumlu çalışanların oranı yüzde 56,7.',
+          'Bir kariyer tablosu için bunlar birbirinden oldukça farklı rakamlar. Ben olsam en çok sonuncusunu aklımda tutardım: üniversite mezunlarının önemli bir bölümü, yıllar sonra diplomasında yazan alanın dışında çalışıyor.',
+          'Bir bölümün adı bazen meslek hayatının başlangıcı oluyor. Bazen de yalnızca başlangıçta alınmış bir yön.',
+        ],
+      },
+    ],
+    references: [
+      { title: 'Türkiye İstatistik Kurumu (TÜİK), Yükseköğretim İstihdam Göstergeleri 2025. 23 Temmuz 2026.', detail: 'Lisans mezunlarında kayıtlı istihdam oranı, bölüm bazında istihdam, ilk işe geçiş süresi, aylık ortalama kazanç sıralaması ve eğitim-meslek uyumu verileri için kullanılmıştır.' },
+      { title: 'Türkiye İstatistik Kurumu verilerinin 23 Temmuz 2026 tarihli ayrıntılı aktarımı.', detail: 'Bölüm bazında istihdam, ilk işe geçiş süresi, aylık ortalama kazanç sıralaması ve eğitim-meslek uyumu verileri için kullanıldı.' },
+      { title: 'Türkiye İstatistik Kurumu (TÜİK), Kazanç Yapısı İstatistikleri 2023. 25 Aralık 2024.', detail: 'Meslek grupları ve sektörler için yıllık ortalama brüt kazançların son kapsamlı resmî kaynağıdır. Bir sonraki bülten tarihi TÜİK tarafından Aralık 2027 olarak belirtilmektedir.' },
     ],
   },
   {
