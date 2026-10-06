@@ -213,16 +213,96 @@ const yksArticles: Article[] = [
   {
     category: 'yks',
     slug: 'gelecegin-meslekleri',
-    title: 'Geleceğin Meslekleri',
-    description: 'Geleceğin mesleklerini anlamak için yalnızca popüler başlıklara değil, beceri dönüşümüne bakmak gerekir.',
+    title: 'Geleceğin Meslekleri: 2030’a Doğru İş Dünyasında Neler Değişebilir?',
+    description: '2030’a doğru iş dünyasında öne çıkması beklenen meslekler, yapay zeka, veri, siber güvenlik, sağlık, enerji ve Türkiye’de değişen beceri ihtiyaçları üzerine güncel rehber.',
     intro: [
-      'Geleceğin meslekleri denince akla çoğu zaman teknoloji gelir. Yapay zeka, veri, yazılım ve dijital alanlar gerçekten önem kazanıyor. Fakat gelecek yalnızca teknik becerilerden ibaret değil.',
-      'İletişim, problem çözme, yabancı dil, etik düşünme ve öğrenmeyi sürdürme becerisi de öğrencinin mesleki yolculuğunda belirleyici olabilir.',
+      'Geleceğin meslekleri denildiğinde birkaç isim artık hemen akla geliyor: yapay zeka uzmanı, veri bilimci, siber güvenlik uzmanı, yazılım geliştirici...',
+      'Dünya Ekonomik Forumu’nun 2025 yılında yayımladığı Future of Jobs Report bu beklentiyi büyük ölçüde doğruluyor. Büyük Veri Uzmanları yüzde olarak en hızlı büyümesi beklenen mesleklerin başında. FinTech mühendisleri, yapay zeka ve makine öğrenmesi uzmanları ile yazılım ve uygulama geliştiricileri de üst sıralarda bulunuyor.',
+      'Fakat raporun iş sayısındaki artışı gösteren bölümüne geçtiğimizde ilk sıraya tarım çalışanları geliyor. Bugün dünya genelinde 200 milyondan fazla tarım çalışanı bulunuyor ve WEF, 2030’a kadar yaklaşık 34 milyon ilave tarım işi oluşabileceğini tahmin ediyor.',
     ],
     sections: [
-      { title: 'Meslekler değişirken beceriler öne çıkar', body: 'Bugün var olan bazı işler dönüşecek, bazıları tamamen farklı hale gelecek. Bu yüzden öğrencinin yalnızca bir meslek adına değil, o meslekte ihtiyaç duyulan becerilere odaklanması gerekir.' },
-      { title: 'Alan seçimi nasıl etkilenir?', body: 'Sayısal, eşit ağırlık, sözel veya dil alanı seçimi yapılırken öğrencinin yalnızca mevcut netleri değil, merakı ve uzun vadeli öğrenme isteği de dikkate alınmalıdır.' },
-      { title: 'Esnek düşünmek gerekir', body: 'Gelecekte başarılı olmak, tek bir unvana kilitlenmekten çok yeni şartlara uyum sağlayabilmekle ilgilidir. Öğrenci kendi güçlü yönlerini tanıdıkça seçeneklerini daha sağlıklı değerlendirir.' },
+      {
+        title: 'Yüzde olarak büyüme ile iş sayısı artışı aynı şey değil',
+        body: [
+          'Büyük veri uzmanlığı mevcut çalışan sayısına göre çok hızlı genişleyen bir alan. Tarım ise zaten yüz milyonlarca insanın çalıştığı dev bir sektör. Daha küçük bir yüzde artışı bile milyonlarca yeni işe karşılık gelebiliyor.',
+          'Bu yüzden geleceğin mesleklerini okurken iki ayrı tabloyu birbirine karıştırmamak gerekir. Bir meslek oransal olarak çok hızlı büyüyebilir ama toplam iş sayısı sınırlı kalabilir. Başka bir alanda büyüme oranı daha düşük görünürken yaratılan iş sayısı çok daha büyük olabilir.',
+          'WEF’in genel hesabı da epey büyük rakamlara ulaşıyor. Araştırmadaki projeksiyona göre 2025-2030 döneminde makro eğilimler yaklaşık 170 milyon yeni iş yaratabilir, 92 milyon mevcut iş ise yer değiştirebilir. Net artış 78 milyon iş olarak tahmin ediliyor.',
+          'Raporda bu hareket, incelenen 1,2 milyar formal işin yüzde 22’sine karşılık gelen yapısal işgücü hareketi olarak tanımlanıyor. Yeni işlerin payı yüzde 14, yer değiştirmesi beklenen işlerin payı yüzde 8; net istihdam artışı ise yüzde 7.',
+        ],
+      },
+      {
+        title: 'Bu veriler nasıl okunmalı?',
+        body: [
+          'Bu çalışma bir nüfus sayımı değil. 55 ekonomide, 22 sektör grubunda faaliyet gösteren 1.000’in üzerinde büyük işverenin görüşlerini kapsıyor ve bu şirketler 14 milyondan fazla çalışanı temsil ediyor. 2030’a ilişkin rakamlar da bu beklentilerin küresel istihdam verileriyle birleştirilmesinden oluşuyor.',
+          'Yani rapor bize “2030’da kesin olarak şu kadar kişi bu meslekte çalışacak” demiyor. Daha çok işverenlerin hangi alanlarda büyüme, dönüşüm ve beceri ihtiyacı beklediğini gösteriyor.',
+          'Öğrenci açısından bu ayrım önemli. Çünkü geleceğin mesleği diye görünen bir alanı seçmek tek başına yeterli değil. O alana giden bölüm, beceri, yabancı dil, teknoloji kullanımı ve çalışma biçimi birlikte düşünülmeli.',
+        ],
+      },
+      {
+        title: 'Teknoloji tarafında veri, yapay zeka ve güvenlik öne çıkıyor',
+        body: [
+          'Teknoloji tarafındaki hareketin en görünür kısmı şimdilik veri ve yapay zeka çevresinde. Şirketler daha fazla veri topluyor, finans dijitalleşiyor, üretim sistemleri ağa bağlanıyor. Siber güvenliğin önem kazanması da bunun doğal bir parçası. Bağlanan sistem sayısı arttıkça korunması gereken alan büyüyor.',
+          'Yazılım geliştirme biraz daha karmaşık bir örnek. WEF, yazılım ve uygulama geliştiricilerini hızlı büyüyen meslekler arasında gösteriyor. Üretken yapay zeka ise aynı anda kod yazabiliyor, test hazırlayabiliyor, hata arayabiliyor ve dokümantasyon üretebiliyor.',
+          'Bir yazılımcı eskiden saatlerce yazdığı kodun ilk taslağını artık yapay zekaya hazırlatabiliyor. Sonrasında kodun gerçekten doğru çalışıp çalışmadığını, mevcut sisteme uyup uymadığını veya güvenlik sorunu oluşturup oluşturmadığını kontrol ediyor. Çalışma gününün içeriği şimdiden değişmeye başladı.',
+        ],
+      },
+      {
+        title: 'Üretken yapay zeka işleri yok etmekten çok görevleri değiştiriyor',
+        body: [
+          'ILO’nun Mayıs 2025’te yayımladığı çalışma bu değişimi görev düzeyinde inceliyor. Araştırma, yaklaşık 30 bin mesleki görevin üretken yapay zeka tarafından ne ölçüde yapılabileceğini değerlendirmiş.',
+          'Dünya genelindeki çalışanların yaklaşık dörtte biri, belirli ölçüde GenAI maruziyeti bulunan mesleklerde çalışıyor. Küresel istihdamın yüzde 3,3’ü ise en yüksek maruziyet kategorisinde. Büro ve idari meslekler en yüksek oranların görüldüğü gruplar arasında.',
+          'Buradaki oranları “çalışanların dörtte biri işini kaybedecek” şeklinde okumak mümkün değil. ILO zaten en olası etkinin işlerin bütünüyle ortadan kalkmasından çok mesleklerin içindeki görevlerin değişmesi olduğunu söylüyor.',
+          'Muhasebe kayıtlarının hazırlanması, standart müşteri yazışmaları, çeviri, belge inceleme veya temel yazılım işleri bu değişimin ilk görüldüğü alanlar. Bir meslekte otomatikleşebilen görevlerin sayısı arttıkça o işi yapan kişiden beklenen şeyler de yavaş yavaş değişiyor.',
+        ],
+      },
+      {
+        title: 'Türkiye’de tablo nasıl görünüyor?',
+        body: [
+          'WEF’in Türkiye için hazırladığı ülke değerlendirmesinde robotik mühendisleri, yenilenebilir enerji mühendisleri ile otonom ve elektrikli araç uzmanları hızlı büyümesi beklenen meslekler arasında. Türkiye’deki işverenler, 2030’a kadar iş başında kullanılan becerilerin yüzde 44’ünün değişime uğramasını bekliyor. Küresel ortalama yüzde 39.',
+          'Yapay zeka ve büyük veri, teknolojik okuryazarlık, ağlar ve siber güvenlik Türkiye’de en hızlı önem kazanması beklenen beceriler arasında.',
+          'İŞKUR’un “Geleceğin Meslekleri” listesi daha gündelik bir görüntü veriyor. Listenin ilk sırasında Yazılım Mühendisi, ardından E-Ticaret Uzmanı ve Bilişim Personeli bulunuyor. Elektrikli Otomobil Ustası dördüncü, Elektrikli Araç Tamir Bakım Ustası beşinci sırada.',
+          'Büyük Veri Analisti dokuzuncu, Bilgi Güvenliği Uzmanı onuncu, Siber Güvenlik Personeli on ikinci sırada. Güneş Enerjisi Paneli Montaj Elemanı 17’nci, Drone Operatörü 24’üncü, Yapay Zeka Uzmanı 29’uncu. Kaynakçı 27’nci, Kurye ise 30’uncu sırada.',
+        ],
+      },
+      {
+        title: 'Geleceği yalnızca üniversite bölümleri üzerinden düşünmek eksik kalabilir',
+        body: [
+          'İŞKUR listesinin önemli tarafı burada. Geleceği yalnızca üniversite bölümleri üzerinden düşünmenin neden eksik kalabildiğini gösteriyor. Elektrikli araçların yaygınlaşması otomotiv mühendislerinin çalışma alanını değiştiriyor; aynı araçların bakımını yapabilecek ustalara da ihtiyaç duyuluyor.',
+          'Güneş enerjisi yatırımlarında mühendislik tarafının yanında kurulum ve teknik bakım işi bulunuyor. E-ticaret büyüdüğünde yazılım kadar lojistik, operasyon, müşteri deneyimi ve satış tarafı da değişiyor.',
+          'Türkiye’nin 2025-2028 Ulusal İstihdam Stratejisi’nde de yeşil ve dijital dönüşüm ile beceri uyumu temel politika alanlarından biri olarak belirlenmiş durumda. Mesleki eğitim programlarının yeni ihtiyaçlara göre güncellenmesi ve işgücünün dönüşüme hazırlanması bu çerçevenin parçaları arasında.',
+        ],
+      },
+      {
+        title: 'Sağlık ve bakım alanı başka bir dinamikle büyüyor',
+        body: [
+          'Sağlık tarafında başka bir dinamik çalışıyor. WEF hemşirelik, sosyal hizmetler, danışmanlık ve bakım işlerinde büyüme bekliyor. Bunun önemli nedenlerinden biri yaşlanan nüfus. İnsanlar daha uzun yaşadıkça uzun süreli sağlık hizmeti, rehabilitasyon ve bakım ihtiyacı da artıyor.',
+          'Teknoloji bu mesleklerin içine giriyor; yapay zeka destekli görüntü analizi, dijital hasta kayıtları ve uzaktan sağlık sistemleri şimdiden kullanılıyor. Fakat bir hastanın fiziksel bakımını yapmak veya uzun süreli bir tedavide insanla iletişim kurmak farklı türde işler.',
+          'Gelecekte büyümesi beklenen mesleklerin hepsinin ortak bir nedeni yok. Bazılarını teknoloji büyütüyor. Bazılarında nüfus yapısı etkili. Enerji yatırımları başka işler çıkarıyor, artan çevrim içi ticaret başka.',
+        ],
+      },
+      {
+        title: 'Becerilerdeki değişim daha geniş bir grubu ilgilendiriyor',
+        body: [
+          'WEF’in becerilerle ilgili tahmini yalnızca yeni mezunları kapsamıyor. İşverenler, çalışanların bugün kullandığı beceri setlerinin ortalama yüzde 39’unun 2025-2030 arasında dönüşmesini veya güncelliğini yitirmesini bekliyor.',
+          'En hızlı önem kazanması beklenen becerilerin başında yapay zeka ve büyük veri geliyor. Ağlar ve siber güvenlik ile teknolojik okuryazarlık da üst sıralarda. Analitik düşünme, yaratıcı düşünme, dayanıklılık, esneklik, liderlik ve iş birliği gibi beceriler de şirketlerin önem vermeye devam ettiği alanlar.',
+          'Rapor, dünya işgücünü 100 kişi üzerinden anlattığında 59 kişinin 2030’a kadar yeniden beceri kazanma veya mevcut becerilerini geliştirme ihtiyacı yaşayacağını öngörüyor. Bu 59 kişinin 11’inin gerekli eğitime ulaşamayabileceği tahmin ediliyor.',
+          '2030’da çalışacak insanların çoğu iş hayatına 2030’da başlamayacak. Bugün ofiste, fabrikada, hastanede, okulda veya sahada çalışan insanlar da o yılın işgücünün büyük bölümünü oluşturacak.',
+        ],
+      },
+      {
+        title: 'Öğrenci için çıkarılacak en pratik sonuç',
+        body: [
+          'Geleceğin meslekleri tartışmasının belki en pratik tarafı burada. Beş yıl sonrasının kesin meslek listesini bugünden çıkarmak zor. Şimdiden kullanılan araçların ve istenen becerilerin değişimini görmek ise daha kolay.',
+          'Bugünkü verilerde yapay zeka ve veri, yazılım, siber güvenlik, elektrikli araç teknolojileri, yenilenebilir enerji, sağlık ve bakım alanları sık sık karşımıza çıkıyor. Tarım, inşaat, taşımacılık ve satış gibi büyük istihdam alanlarında da milyonlarca yeni iş bekleniyor.',
+          'Şimdilik elimizdeki tablo bu. 2030 yaklaştıkça listenin bazı isimleri değişecektir; bazıları muhtemelen yerinde kalacaktır. Öğrenci için en sağlam hazırlık, tek bir meslek adına kilitlenmekten çok öğrenmeyi sürdürme, teknoloji okuryazarlığı, analitik düşünme ve kendini güncelleme becerisini güçlendirmektir.',
+        ],
+      },
+    ],
+    references: [
+      { title: 'World Economic Forum, The Future of Jobs Report 2025. 7 Ocak 2025.', detail: 'Araştırma; 55 ekonomi, 22 sektör grubu ve 14 milyondan fazla çalışanı temsil eden 1.000’in üzerinde işverenin görüşlerine dayanıyor. İstihdam ve beceri projeksiyonlarının temel kaynağıdır.' },
+      { title: 'International Labour Organization, Generative AI and Jobs: A Refined Global Index of Occupational Exposure. 20 Mayıs 2025.', detail: 'Yaklaşık 30 bin görevi inceleyen çalışma, üretken yapay zekaya mesleki maruziyet ve görev dönüşümü için kullanılmıştır.' },
+      { title: 'Türkiye İş Kurumu, Geleceğin Meslekleri.', detail: 'Yazılım, otomotiv, enerji, siber güvenlik, veri ve çeşitli teknik mesleklerin Türkiye listesindeki yerleri için kullanılmıştır.' },
+      { title: 'World Economic Forum, Türkiye ülke değerlendirmesi.', detail: 'Türkiye’de hızlı büyümesi beklenen meslekler ve 2030 beceri değişimi tahminleri için kullanılmıştır.' },
     ],
   },
   {
