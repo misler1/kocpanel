@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 
 export type ExamGroup = 'LGS' | 'YKS' | null;
 export type YksTrack = 'YKS_SAY' | 'YKS_SOZ' | 'YKS_EA' | 'YKS_DIL' | null;
-import { getEffectiveCoachId } from '@/lib/effective-coach';
+import { getVisibleCoachIds } from '@/lib/effective-coach';
 
 export interface FilterableStudent {
   track?: string | null;
@@ -76,12 +76,12 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
   async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const coachId = await getEffectiveCoachId(supabase, user.id);
+    const coachIds = await getVisibleCoachIds(supabase, user.id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: studentsData } = await (supabase as any)
       .from('students')
       .select('track, kurum, donem, sinif_sube')
-      .eq('coach_id', coachId)
+      .in('coach_id', coachIds)
 
     const students = studentsData ?? [];
     setAllStudents(students);
@@ -119,7 +119,7 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
     const { data: donemlerData } = await (supabase as any)
       .from('donemler')
       .select('donem_adi')
-      .eq('coach_id', coachId)
+      .in('coach_id', coachIds)
       .order('created_at', { ascending: true });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

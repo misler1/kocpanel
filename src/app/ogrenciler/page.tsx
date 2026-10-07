@@ -29,12 +29,12 @@ export default async function OgrencilerPage({
     .maybeSingle();
 
   const isRestricted = !!access && access.status !== 'coach' && !!access.mentor_id;
-  const ownerId = isRestricted ? access.mentor_id : user.id;
+  const ownerIds = isRestricted ? [access.mentor_id, user.id] : [user.id];
 
   let studentsQuery = supabase
     .from('students')
     .select('*')
-    .eq('coach_id', ownerId)
+    .in('coach_id', ownerIds)
     .order('full_name');
 
   studentsQuery = archiveMode
