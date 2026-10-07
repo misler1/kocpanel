@@ -21,10 +21,20 @@ export default async function OgrencilerPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/giris');
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: access } = await (supabase as any)
+    .from('teacher_access_profiles')
+    .select('status, mentor_id')
+    .eq('teacher_id', user.id)
+    .maybeSingle();
+
+  const isRestricted = !!access && access.status !== 'coach' && !!access.mentor_id;
+  const ownerId = isRestricted ? access.mentor_id : user.id;
+
   let studentsQuery = supabase
     .from('students')
     .select('*')
-    .eq('coach_id', user.id)
+    .eq('coach_id', ownerId)
     .order('full_name');
 
   studentsQuery = archiveMode
