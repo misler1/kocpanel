@@ -32,7 +32,11 @@ export async function middleware(request: NextRequest) {
   const isMarketingPage =
     pathname === '/hakkimizda' ||
     pathname === '/koclarimiz' ||
-    pathname === '/hizmetlerimiz';
+    pathname === '/hizmetlerimiz' ||
+    pathname.startsWith('/yks') ||
+    pathname.startsWith('/lgs') ||
+    pathname.startsWith('/dil-sinav-koclugu') ||
+    pathname.startsWith('/diger-sinavlar');
 
   const isPublicPage =
     pathname.startsWith('/anket') ||
