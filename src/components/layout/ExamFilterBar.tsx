@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { IconChevronDown, IconBuilding, IconCalendar } from '@tabler/icons-react';
+import { InternToggle } from '@/components/layout/InternToggle';
 
 export function ExamFilterBar() {
   const {
@@ -40,6 +41,7 @@ export function ExamFilterBar() {
           options={availableDonemler}
           onChange={setDonem}
         />
+        <InternToggle />
       </div>
 
       {/* LGS / YKS filtresi */}

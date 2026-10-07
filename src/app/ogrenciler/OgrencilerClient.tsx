@@ -34,6 +34,7 @@ type ListedStudent = Student & {
   birth_date?: string | null;
   last_meeting_at?: string | null;
   sinif_sube?: string | null;
+  is_intern_student?: boolean;
 };
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -222,6 +223,15 @@ function StudentRow({ student: s }: { student: ListedStudent }) {
       </div>
 
       <span className={`hidden flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium sm:inline-block ${status.className}`}>
+              {s.is_intern_student && (
+        <span className="hidden flex-shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 sm:inline-block">
+          Stajyer
+        </span>
+      )}
+
+      <span className={`hidden flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium sm:inline-block ${status.className}`}>
+        {status.label}
+      </span>
         {status.label}
       </span>
 

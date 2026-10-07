@@ -2,11 +2,14 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { OgrencilerClient } from './OgrencilerClient';
 import type { Student } from '@/types/database';
+import { cookies } from 'next/headers';
+import { getVisibleCoachIds } from '@/lib/effective-coach';
 
 type OgrenciListStudent = Student & {
   birth_date?: string | null;
   last_meeting_at?: string | null;
   sinif_sube?: string | null;
+  is_intern_student?: boolean;
 };
 
 export default async function OgrencilerPage({
@@ -28,8 +31,9 @@ export default async function OgrencilerPage({
     .eq('teacher_id', user.id)
     .maybeSingle();
 
-  const isRestricted = !!access && access.status !== 'coach' && !!access.mentor_id;
-  const ownerIds = isRestricted ? [access.mentor_id, user.id] : [user.id];
+  const includeInterns = (await cookies()).get('show_interns')?.value === '1';
+  const ownerIds = await getVisibleCoachIds(supabase, user.id, includeInterns);
+  
 
   let studentsQuery = supabase
     .from('students')
@@ -61,9 +65,10 @@ export default async function OgrencilerPage({
     });
   }
 
-  const studentsWithMeeting = ((students ?? []) as OgrenciListStudent[]).map((s) => ({
+    const studentsWithMeeting = ((students ?? []) as OgrenciListStudent[]).map((s) => ({
     ...s,
     last_meeting_at: lastMeetingMap[s.id] ?? null,
+    is_intern_student: s.coach_id !== user.id && ownerIds.includes(s.coach_id),
   }));
 
   return <OgrencilerClient students={studentsWithMeeting} archiveMode={archiveMode} />;

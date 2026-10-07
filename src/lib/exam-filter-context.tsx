@@ -76,7 +76,10 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
   async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const coachIds = await getVisibleCoachIds(supabase, user.id);
+
+    const includeInterns = document.cookie.split('; ').includes('show_interns=1');
+    const coachIds = await getVisibleCoachIds(supabase, user.id, includeInterns);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: studentsData } = await (supabase as any)
       .from('students')

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -72,6 +72,7 @@ const TRACK_RESOURCES: Record<string, string[]> = {
 };
 
 type Resources = Record<string, [string, string, string]>;
+type TeacherOption = { id: string; full_name: string; kind: 'self' | 'intern' };
 
 function getYksYear() {
   const now = new Date();
@@ -123,6 +124,11 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
   const [notes, setNotes] = useState(student.notes ?? '');
   const [kurum, setKurum] = useState(student.kurum ?? '');
   const [donem, setDonem] = useState(student.donem ?? '');
+  const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([]);
+  const [responsibleCoachId, setResponsibleCoachId] = useState(
+    student.responsible_coach_other_name ? 'other' : student.responsible_coach_id ?? ''
+  );
+  const [responsibleCoachOtherName, setResponsibleCoachOtherName] = useState(student.responsible_coach_other_name ?? '');
   // Aile
   const [motherName, setMotherName] = useState(student.mother_name ?? '');
   const [motherJob, setMotherJob] = useState(student.mother_job ?? '');
@@ -163,6 +169,51 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [archiving, setArchiving] = useState(false);
+
+  useEffect(() => {
+    async function loadTeacherOptions() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: currentProfile } = await (supabase as any)
+        .from('profiles')
+        .select('id, full_name')
+        .eq('id', user.id)
+        .single();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: internLinks } = await (supabase as any)
+        .from('teacher_access_profiles')
+        .select('teacher_id')
+        .eq('mentor_id', user.id)
+        .in('status', ['intern', 'dorm_supervisor']);
+
+      const internIds = (internLinks ?? []).map((row: { teacher_id: string }) => row.teacher_id);
+      let internProfiles: TeacherOption[] = [];
+      if (internIds.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any)
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', internIds)
+          .order('full_name');
+        internProfiles = (data ?? []).map((profile: { id: string; full_name: string }) => ({
+          ...profile,
+          kind: 'intern' as const,
+        }));
+      }
+
+      const options: TeacherOption[] = [
+        { id: user.id, full_name: currentProfile?.full_name ?? 'Kendisi', kind: 'self' },
+        ...internProfiles,
+      ];
+      setTeacherOptions(options);
+      setResponsibleCoachId((prev: string) => prev || student.responsible_coach_id || user.id);
+    }
+    loadTeacherOptions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleGuardianQuickFill(src: 'anne' | 'baba') {
     if (src === 'anne') {
@@ -216,6 +267,8 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
         guardian_name: guardianName.trim() || null,
         guardian_phone: guardianPhone.trim() || null,
         guardian_relation: guardianRelation || null,
+        responsible_coach_id: responsibleCoachId === 'other' ? null : responsibleCoachId || null,
+        responsible_coach_other_name: responsibleCoachId === 'other' ? responsibleCoachOtherName.trim() || null : null,
         yks_year: isYks && showYks ? yksYear : null,
         tyt_score: isYks && showYks && tytScore ? parseTurkishNumber(tytScore) : null,
         say_score: isYks && showYks && sayScore ? parseTurkishNumber(sayScore) : null,
@@ -363,12 +416,34 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
                 {GRADE_LEVELS.map((g) => <option key={g}>{g}</option>)}
               </select>
             </Field>
-                        <Field label="Sınıf Düzeyi">
-              <select value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} className={inputCls}>
-                <option value="">Seçiniz</option>
-                {GRADE_LEVELS.map((g) => <option key={g}>{g}</option>)}
+            <Field label="Koç Öğretmen">
+              <select
+                value={responsibleCoachId}
+                onChange={(e) => {
+                  setResponsibleCoachId(e.target.value);
+                  if (e.target.value !== 'other') setResponsibleCoachOtherName('');
+                }}
+                className={inputCls}
+              >
+                {teacherOptions.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.full_name}
+                  </option>
+                ))}
+                <option value="other">Diğer</option>
               </select>
             </Field>
+            {responsibleCoachId === 'other' && (
+              <Field label="Diğer Koç Öğretmen">
+                <input
+                  type="text"
+                  value={responsibleCoachOtherName}
+                  onChange={(e) => setResponsibleCoachOtherName(e.target.value)}
+                  placeholder="Ad Soyad"
+                  className={inputCls}
+                />
+              </Field>
+            )}
             {gradeLevel && (
               <Field label={gradeLevel === 'Mezun' ? 'Mezun Olduğu Okul' : 'Devam Ettiği Okul'}>
                 <input
