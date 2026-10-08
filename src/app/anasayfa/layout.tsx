@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { getVisibleCoachIds } from '@/lib/effective-coach';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
@@ -18,10 +20,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .single();
 
   // Öğrenci sayısını sidebar badge için çek
+  const includeInterns = (await cookies()).get('show_interns')?.value === '1';
+  const coachIds = await getVisibleCoachIds(supabase, user.id, includeInterns);
   const { count: studentCount } = await supabase
     .from('students')
     .select('*', { count: 'exact', head: true })
-    .eq('coach_id', user.id);
+    .in('coach_id', coachIds)
+    .neq('status', 'pasif');
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gray-50">

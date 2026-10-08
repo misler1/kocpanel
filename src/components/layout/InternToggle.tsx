@@ -1,15 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { useExamFilter } from '@/lib/exam-filter-context';
 
 const COOKIE = 'show_interns';
 
 export function InternToggle() {
-  const router = useRouter();
-  const { refreshOptions } = useExamFilter();
   const [hasInterns, setHasInterns] = useState(false);
   const [on, setOn] = useState(false);
 
@@ -37,14 +33,28 @@ export function InternToggle() {
       ? `${COOKIE}=1; path=/; max-age=31536000; samesite=lax`
       : `${COOKIE}=; path=/; max-age=0; samesite=lax`;
     setOn(next);
-    refreshOptions();
-    router.refresh();
+    // Sunucu sayfaları, menü sayacı ve filtreler yeni seçimle baştan yüklensin
+    window.location.reload();
   }
 
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-[12px] text-gray-600">
-      <input type="checkbox" checked={on} onChange={toggle} className="h-4 w-4 accent-blue-600" />
-      Stajyerlerin öğrencileri
-    </label>
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
+      <span className="truncate text-xs text-white/70">Stajyerlerin öğrencileri</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        onClick={toggle}
+        className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${
+          on ? 'bg-[var(--accent)]' : 'bg-white/20'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+            on ? 'translate-x-[18px]' : 'translate-x-0.5'
+          }`}
+        />
+      </button>
+    </div>
   );
 }

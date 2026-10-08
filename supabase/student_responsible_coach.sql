@@ -10,3 +10,6 @@ where responsible_coach_id is null
   and responsible_coach_other_name is null;
 
 create index if not exists idx_students_responsible_coach on students(responsible_coach_id);
+
+notify pgrst, 'reload schema';
+
