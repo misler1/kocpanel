@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 
 export type ExamGroup = 'LGS' | 'YKS' | null;
 export type YksTrack = 'YKS_SAY' | 'YKS_SOZ' | 'YKS_EA' | 'YKS_DIL' | null;
-import { getVisibleCoachIds } from '@/lib/effective-coach';
+import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 
 export interface FilterableStudent {
   track?: string | null;
@@ -73,18 +73,18 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
 
   const supabase = createClient();
 
-  async function loadAll() {
+    async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const includeInterns = document.cookie.split('; ').includes('show_interns=1');
-    const coachIds = await getVisibleCoachIds(supabase, user.id, includeInterns);
+    const scope = await getStudentScope(supabase, user.id, includeInterns);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: studentsData } = await (supabase as any)
-      .from('students')
-      .select('track, kurum, donem, sinif_sube')
-      .in('coach_id', coachIds)
+    const { data: studentsData } = await applyStudentScope(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase as any).from('students').select('track, kurum, donem, sinif_sube').neq('status', 'pasif'),
+      scope
+    );
 
     const students = studentsData ?? [];
     setAllStudents(students);
@@ -101,7 +101,7 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
     const kurumSet = new Set<string>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     students.forEach((s: any) => { if (s.kurum && s.kurum.trim()) kurumSet.add(s.kurum.trim()); });
-        setAvailableKurumlar(Array.from(kurumSet).sort());
+    setAvailableKurumlar(Array.from(kurumSet).sort());
 
     const classMap: Record<string, Set<string>> = {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -122,7 +122,7 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
     const { data: donemlerData } = await (supabase as any)
       .from('donemler')
       .select('donem_adi')
-      .in('coach_id', coachIds)
+      .in('coach_id', scope.coachIds)
       .order('created_at', { ascending: true });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

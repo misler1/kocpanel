@@ -35,6 +35,7 @@ type ListedStudent = Student & {
   last_meeting_at?: string | null;
   sinif_sube?: string | null;
   is_intern_student?: boolean;
+  responsible_coach_other_name?: string | null;
 };
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -207,21 +208,18 @@ function StudentRow({ student: s }: { student: ListedStudent }) {
         {initials}
       </div>
 
-      <div className="min-w-0 flex-1">
+       <div className="min-w-0 flex-1">
         <div className="truncate text-[14px] font-medium text-[var(--ink)]">{s.full_name}</div>
         <div className="mt-0.5 flex items-center gap-2 text-[12px]">
-          <span className={`font-medium ${trackColor(s.track)}`}>{TRACK_LABELS[s.track] ?? s.track}</span>
-          {s.sinif_sube && (
-            <>
-              <span className="text-[var(--border)]">•</span>
-              <span className="text-[var(--ink-muted)]">{s.sinif_sube}</span>
-            </>
-          )}
-          <span className="text-[var(--border)]">•</span>
-          <span className="text-[var(--ink-muted)]">Katılım {date}</span>
+          {/* ... track, sınıf, katılım tarihi: dokunma ... */}
         </div>
       </div>
 
+      {s.is_intern_student && (
+        <span className="hidden flex-shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 sm:inline-block">
+          Stajyer{s.responsible_coach_other_name ? `: ${s.responsible_coach_other_name}` : ''}
+        </span>
+      )}
       <span className={`hidden flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium sm:inline-block ${status.className}`}>
               {s.is_intern_student && (
         <span className="hidden flex-shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 sm:inline-block">

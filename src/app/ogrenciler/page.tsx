@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { OgrencilerClient } from './OgrencilerClient';
 import type { Student } from '@/types/database';
 import { cookies } from 'next/headers';
-import { getVisibleCoachIds } from '@/lib/effective-coach';
+import { getStudentScope, applyStudentScope, isInternStudent } from '@/lib/effective-coach';
 
 type OgrenciListStudent = Student & {
   birth_date?: string | null;
@@ -32,14 +32,13 @@ export default async function OgrencilerPage({
     .maybeSingle();
 
   const includeInterns = (await cookies()).get('show_interns')?.value === '1';
-  const ownerIds = await getVisibleCoachIds(supabase, user.id, includeInterns);
-  
+  const scope = await getStudentScope(supabase, user.id, includeInterns);
 
-  let studentsQuery = supabase
-    .from('students')
-    .select('*')
-    .in('coach_id', ownerIds)
-    .order('full_name');
+  let studentsQuery = applyStudentScope(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from('students').select('*').order('full_name'),
+    scope
+  );
 
   studentsQuery = archiveMode
     ? studentsQuery.eq('status', 'pasif')
@@ -68,7 +67,7 @@ export default async function OgrencilerPage({
     const studentsWithMeeting = ((students ?? []) as OgrenciListStudent[]).map((s) => ({
     ...s,
     last_meeting_at: lastMeetingMap[s.id] ?? null,
-    is_intern_student: s.coach_id !== user.id && ownerIds.includes(s.coach_id),
+        is_intern_student: scope.isMentor && isInternStudent(s as never, user.id),
   }));
 
   return <OgrencilerClient students={studentsWithMeeting} archiveMode={archiveMode} />;
