@@ -18,7 +18,6 @@ function toLocalDatetime(iso: string) {
 export function GorusmeOgrenciClient({
   student, initialMeetings,
 }: { student: { id: string; full_name: string; kurum?: string | null }; initialMeetings: any[] }) {
-  console.log('DEBUG initialMeetings:', student.full_name, initialMeetings);
   const supabase = useMemo(() => createClient(), []);
   const [meetings, setMeetings] = useState<any[]>(initialMeetings);
   const [viewing, setViewing] = useState<any | null>(null);

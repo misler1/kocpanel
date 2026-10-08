@@ -103,13 +103,20 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
     const includeInterns = document.cookie.split('; ').includes('show_interns=1');
     const scope = await getStudentScope(supabase, user.id, includeInterns);
 
-    const { data: studentsData } = await applyStudentScope(
+    const { data: studentsData, error: studentsError } = await applyStudentScope(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase as any).from('students').select('track, kurum, donem, sinif_sube').neq('status', 'pasif'),
       scope
     );
 
     const students = studentsData ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const trackCounts = students.reduce((acc: Record<string, number>, s: any) => {
+      const t = s.track ?? 'TRACK_YOK';
+      acc[t] = (acc[t] ?? 0) + 1;
+      return acc;
+    }, {});
+    console.log('FILTER DEBUG', { includeInterns, coachIds: scope.coachIds, toplam: students.length, trackCounts });
     setAllStudents(students);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
