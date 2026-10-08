@@ -84,6 +84,8 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
   const [saving, setSaving] = useState(false);
   const [topicOptions, setTopicOptions] = useState<string[]>([]);
 
+  const studentsById = useMemo(() => new Map(students.map((s: any) => [s.id, s])), [students]);
+
   useEffect(() => {
     if (viewMode !== 'tumu' || allMeetings !== null) return;
     async function loadAllMeetings() {
@@ -360,6 +362,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
                 const weekdayStr = dt.toLocaleDateString('tr-TR', { weekday: 'short' });
                 const timeStr = dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
                 const isVeli = m.meeting_type === 'veli';
+                const studentInfo: any = studentsById.get(m.student_id) ?? m.students;
 
                 return (
                   <button
@@ -374,7 +377,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="truncate text-[13px] font-medium text-[var(--ink)]">{m.students?.full_name ?? 'Bilinmeyen öğrenci'}</span>
+                        <span className="truncate text-[13px] font-medium text-[var(--ink)]">{studentInfo?.full_name ?? 'Bilinmeyen öğrenci'}</span>
                         <span
                           className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                             isVeli ? 'bg-[var(--accent-soft)] text-[var(--accent-dark)]' : 'bg-[var(--track-yks-soft)] text-[var(--track-yks)]'
@@ -382,6 +385,11 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
                         >
                           {isVeli ? 'Veli' : 'Koç'}
                         </span>
+                        {studentInfo?.is_intern_student && (
+                          <span className="hidden flex-shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 sm:inline-block">
+                            Stajyer{studentInfo.responsible_coach_other_name ? `: ${studentInfo.responsible_coach_other_name}` : ''}
+                          </span>
+                        )}
                       </div>
                       <div className="mt-0.5 text-[12px] text-[var(--ink-muted)]">{weekdayStr} · {timeStr} · {m.duration_minutes} dk</div>
                       {m.topic && <div className="mt-0.5 truncate text-[13px] text-[var(--ink)]">{m.topic}</div>}
@@ -551,6 +559,12 @@ function StudentRow({ student: s }: { student: any }) {
           </span>
         </div>
       </div>
+
+      {s.is_intern_student && (
+        <span className="hidden flex-shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 sm:inline-block">
+          Stajyer{s.responsible_coach_other_name ? `: ${s.responsible_coach_other_name}` : ''}
+        </span>
+      )}
 
       <span className={`hidden flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium sm:inline-block ${status.className}`}>
         {status.label}

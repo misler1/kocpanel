@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { IconPlus, IconTrash, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { useExamFilter } from '@/lib/exam-filter-context';
+import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 import { subjectSortIndex } from '@/lib/subject-order';
 
 interface Topic {
@@ -154,12 +155,16 @@ export default function KonuIlerleyisiPage() {
         return;
       }
 
-      const { data } = await (supabase as any)
-        .from('students')
-        .select('id, full_name, resources, track, kurum, donem, sinif_sube')
-        .eq('coach_id', user.id)
-        .neq('status', 'pasif')
-        .order('full_name');
+      const includeInterns = document.cookie.split('; ').includes('show_interns=1');
+      const scope = await getStudentScope(supabase, user.id, includeInterns);
+      const { data } = await applyStudentScope(
+        (supabase as any)
+          .from('students')
+          .select('id, full_name, resources, track, kurum, donem, sinif_sube, coach_id, responsible_coach_id, responsible_coach_other_name')
+          .neq('status', 'pasif')
+          .order('full_name'),
+        scope
+      );
 
       setStudents(data ?? []);
 

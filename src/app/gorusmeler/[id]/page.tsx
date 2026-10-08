@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect, notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 import { GorusmeOgrenciClient } from './GorusmeOgrenciClient';
 
 export default async function GorusmeOgrenciPage({
@@ -13,12 +15,16 @@ export default async function GorusmeOgrenciPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/giris');
 
-  const { data: student } = await (supabase as any)
-    .from('students')
-    .select('id, full_name, kurum')
-    .eq('id', id)
-    .eq('coach_id', user.id)
-    .single();
+  const includeInterns = (await cookies()).get('show_interns')?.value === '1';
+  const scope = await getStudentScope(supabase, user.id, includeInterns);
+  const { data: students } = await applyStudentScope(
+    (supabase as any)
+      .from('students')
+      .select('id, full_name, kurum, coach_id, responsible_coach_id, responsible_coach_other_name')
+      .eq('id', id),
+    scope
+  );
+  const student = students?.[0] ?? null;
 
   if (!student) notFound();
 
@@ -26,15 +32,12 @@ export default async function GorusmeOgrenciPage({
     .from('meetings')
     .select('*')
     .eq('student_id', id)
-    .eq('coach_id', user.id)
     .order('scheduled_at', { ascending: false });
 
   if (meetingsError) {
     console.error('MEETINGS SORGU HATASI:', meetingsError);
   }
 
-  // created_by_profile join'i şema önbelleğinde foreign key bulunamadığı için başarısız
-  // oluyordu — bunun yerine profilleri ayrı çekip elle eşleştiriyoruz.
   const creatorIds = Array.from(
     new Set((meetings ?? []).map((m: any) => m.created_by).filter(Boolean))
   );

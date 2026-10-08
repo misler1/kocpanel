@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { Suspense } from 'react';
 import { NotesEditor } from '@/components/NotesEditor';
@@ -91,7 +92,6 @@ useEffect(() => {
       const { data: topicsData } = await (supabase as any)
         .from('meetings')
         .select('topic')
-        .eq('coach_id', user.id)
         .not('topic', 'is', null);
       const uniqueTopics = Array.from(
         new Set((topicsData ?? []).map((t: { topic: string | null }) => t.topic).filter(Boolean))
@@ -99,9 +99,17 @@ useEffect(() => {
       setTopicOptions(uniqueTopics);
 
       if (lockedStudentId) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data } = await (supabase as any)
-          .from('students').select('id, full_name, kurum').eq('id', lockedStudentId).eq('coach_id', user.id).single();
+        const includeInterns = document.cookie.split('; ').includes('show_interns=1');
+        const scope = await getStudentScope(supabase, user.id, includeInterns);
+        const { data: scopedStudents } = await applyStudentScope(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (supabase as any)
+            .from('students')
+            .select('id, full_name, kurum, coach_id, responsible_coach_id, responsible_coach_other_name')
+            .eq('id', lockedStudentId),
+          scope
+        );
+        const data = scopedStudents?.[0] ?? null;
         if (data) {
           setLockedStudentName(data.full_name);
           setLockedStudentKurum(data.kurum ?? null);
@@ -111,9 +119,17 @@ useEffect(() => {
         return;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase as any)
-        .from('students').select('id, full_name, kurum').eq('coach_id', user.id).neq('status', 'pasif').order('full_name');
+      const includeInterns = document.cookie.split('; ').includes('show_interns=1');
+      const scope = await getStudentScope(supabase, user.id, includeInterns);
+      const { data } = await applyStudentScope(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any)
+          .from('students')
+          .select('id, full_name, kurum, coach_id, responsible_coach_id, responsible_coach_other_name')
+          .neq('status', 'pasif')
+          .order('full_name'),
+        scope
+      );
       setStudents(data ?? []);
       if (!studentId && data?.length) {
         setStudentId(data[0].id);

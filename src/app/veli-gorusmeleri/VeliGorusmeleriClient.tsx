@@ -86,6 +86,11 @@ function VeliList({ meetings }: { meetings: any[] }) {
                 <span className="flex-shrink-0 rounded-full bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent-dark)]">
                   Veli
                 </span>
+                {m.students?.is_intern_student && (
+                  <span className="hidden flex-shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 sm:inline-block">
+                    Stajyer{m.students.responsible_coach_other_name ? `: ${m.students.responsible_coach_other_name}` : ''}
+                  </span>
+                )}
               </div>
               <div className="mt-0.5 text-[12px] text-[var(--ink-muted)]">
                 {weekdayStr} · {timeStr} · {m.duration_minutes} dk

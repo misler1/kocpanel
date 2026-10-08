@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { SubjectRow } from '../SubjectRow';
 import {
@@ -80,10 +81,15 @@ function YeniDenemeForm() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase as any)
-        .from('students').select('id, full_name, track, kurum, donem')
-        .eq('coach_id', user.id).neq('status', 'pasif').order('full_name');
+      const { data } = await applyStudentScope(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any)
+          .from('students')
+          .select('id, full_name, track, kurum, donem, coach_id, responsible_coach_id, responsible_coach_other_name')
+          .neq('status', 'pasif')
+          .order('full_name'),
+        await getStudentScope(supabase, user.id, document.cookie.split('; ').includes('show_interns=1'))
+      );
       setStudents(data ?? []);
       const firstId = searchParams.get('ogrenci') ?? data?.[0]?.id ?? '';
       setStudentId(firstId);

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { IconTrash, IconPlus, IconDownload, IconPrinter, IconCopy, IconX, IconEdit, IconDeviceFloppy } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
+import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 
 const DAYS_TR = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -177,12 +178,16 @@ export default function HaftalikTakipPage() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await (supabase as any)
-        .from('students')
-        .select('id, full_name, resources, week_start_day, track, kurum, donem, sinif_sube')
-        .eq('coach_id', user.id)
-        .neq('status', 'pasif')
-        .order('full_name');
+      const includeInterns = document.cookie.split('; ').includes('show_interns=1');
+      const scope = await getStudentScope(supabase, user.id, includeInterns);
+      const { data } = await applyStudentScope(
+        (supabase as any)
+          .from('students')
+          .select('id, full_name, resources, week_start_day, track, kurum, donem, sinif_sube, coach_id, responsible_coach_id, responsible_coach_other_name')
+          .neq('status', 'pasif')
+          .order('full_name'),
+        scope
+      );
       setStudents(data ?? []);
       const pre = new URLSearchParams(window.location.search).get('ogrenci');
       if (data?.length) {

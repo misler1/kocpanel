@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect, notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 import { SonuclarClient } from './SonuclarClient';
 
 export default async function SonuclarPage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,22 +35,28 @@ export default async function SonuclarPage({ params }: { params: Promise<{ id: s
     .eq('survey_id', id)
     .eq('question_type', 'text');
 
-  const { data: responses } = await (supabase.from('survey_responses') as any)
-    .select('*, students(full_name, track)')
+  const includeInterns = (await cookies()).get('show_interns')?.value === '1';
+  const scope = await getStudentScope(supabase, user.id, includeInterns);
+  const { data: students } = await applyStudentScope(
+    (supabase as any)
+      .from('students')
+      .select('id, full_name, track, coach_id, responsible_coach_id, responsible_coach_other_name')
+      .neq('status', 'pasif')
+      .order('full_name'),
+    scope
+  );
+  const visibleStudentIds = new Set(((students ?? []) as any[]).map((s: any) => s.id));
+
+  const { data: rawResponses } = await (supabase.from('survey_responses') as any)
+    .select('*, students(full_name, track, coach_id, responsible_coach_id, responsible_coach_other_name)')
     .eq('survey_id', id)
     .order('submitted_at', { ascending: false });
+  const responses = (rawResponses ?? []).filter((r: any) => !r.student_id || visibleStudentIds.has(r.student_id));
 
-  const responseIds = (responses ?? []).map((r: any) => r.id);
+  const responseIds = responses.map((r: any) => r.id);
   const { data: answers } = responseIds.length > 0
     ? await (supabase.from('survey_answers') as any).select('*').in('response_id', responseIds)
     : { data: [] };
-
-  const { data: students } = await supabase
-    .from('students')
-    .select('id, full_name, track')
-    .eq('coach_id', user.id)
-    .neq('status', 'pasif')
-    .order('full_name');
 
   return (
     <SonuclarClient

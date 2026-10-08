@@ -34,7 +34,6 @@ export function GorusmeOgrenciClient({
       const { data } = await supabase
         .from('meetings')
         .select('topic')
-        .eq('coach_id', user.id)
         .not('topic', 'is', null);
       const unique = Array.from(
         new Set((data ?? []).map((t: any) => t.topic).filter(Boolean))

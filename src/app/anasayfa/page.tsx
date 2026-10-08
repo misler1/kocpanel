@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
+import { fetchChunkedByIds } from '@/lib/chunked-in';
 import { AnasayfaClient } from './AnasayfaClient';
 import type { Student, Task, QuestionLog } from '@/types/database';
 
@@ -24,60 +27,64 @@ export default async function AnasayfaPage() {
 
   const { start: weekStart, end: weekEnd } = getWeekBounds();
 
-  // Profil
   const { data: rawProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
   const profile = rawProfile as any;
 
-  // TÜM öğrenciler (filtreleme client tarafında yapılacak)
-  const { data: rawStudents } = await supabase
-    .from('students')
-    .select('*')
-    .eq('coach_id', user.id)
-    .order('updated_at', { ascending: false });
+  const includeInterns = (await cookies()).get('show_interns')?.value === '1';
+  const scope = await getStudentScope(supabase, user.id, includeInterns);
+  const { data: rawStudents } = await applyStudentScope(
+    (supabase as any)
+      .from('students')
+      .select('*')
+      .order('updated_at', { ascending: false }),
+    scope
+  );
   const students = (rawStudents as Student[] | null) ?? [];
   const studentIds = students.map((s) => s.id);
 
-  // Bu haftaki görüşmeler
-  const { data: rawMeetings } = await supabase
-    .from('meetings')
-    .select('*, students(full_name, track, kurum, donem)')
-    .eq('coach_id', user.id)
-    .gte('scheduled_at', weekStart.toISOString())
-    .lte('scheduled_at', weekEnd.toISOString())
-    .order('scheduled_at');
-  const meetings = (rawMeetings as any[]) ?? [];
+  const meetings = studentIds.length > 0
+    ? await fetchChunkedByIds<any>(studentIds, (chunk) =>
+        (supabase as any)
+          .from('meetings')
+          .select('*, students(full_name, track, kurum, donem, coach_id, responsible_coach_id, responsible_coach_other_name)')
+          .in('student_id', chunk)
+          .gte('scheduled_at', weekStart.toISOString())
+          .lte('scheduled_at', weekEnd.toISOString())
+          .order('scheduled_at')
+      )
+    : [];
 
-  // Son denemeler (daha geniş çekip client'ta filtreleyip ilk 4'ü göstereceğiz)
-  let exams: any[] = [];
-  if (studentIds.length > 0) {
-    const { data: rawExams } = await supabase
-      .from('exams')
-      .select('*, students(full_name, track, kurum, donem)')
-      .in('student_id', studentIds)
-      .order('exam_date', { ascending: false })
-      .limit(30);
-    exams = (rawExams as any[]) ?? [];
-  }
+  const exams = studentIds.length > 0
+    ? await fetchChunkedByIds<any>(studentIds, (chunk) =>
+        (supabase as any)
+          .from('exams')
+          .select('*, students(full_name, track, kurum, donem, coach_id, responsible_coach_id, responsible_coach_other_name)')
+          .in('student_id', chunk)
+          .order('exam_date', { ascending: false })
+          .limit(30)
+      )
+    : [];
 
-  // Görevler
-  const { data: rawTasks } = await supabase
-    .from('tasks')
-    .select('*, students(track, kurum, donem)')
-    .eq('coach_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(20);
-  const tasks = (rawTasks as (Task & { students?: any })[] | null) ?? [];
+  const tasks = studentIds.length > 0
+    ? await fetchChunkedByIds<Task & { students?: any }>(studentIds, (chunk) =>
+        (supabase as any)
+          .from('tasks')
+          .select('*, students(track, kurum, donem, coach_id, responsible_coach_id, responsible_coach_other_name)')
+          .in('student_id', chunk)
+          .order('created_at', { ascending: false })
+          .limit(20)
+      )
+    : [];
 
-  // Haftalık soru logları
-  let questionLogs: (QuestionLog & { students?: any })[] = [];
-  if (studentIds.length > 0) {
-    const { data: rawLogs } = await supabase
-      .from('question_logs')
-      .select('*, students(track, kurum, donem)')
-      .in('student_id', studentIds)
-      .gte('week_start', weekStart.toISOString().slice(0, 10));
-    questionLogs = (rawLogs as (QuestionLog & { students?: any })[] | null) ?? [];
-  }
+  const questionLogs = studentIds.length > 0
+    ? await fetchChunkedByIds<QuestionLog & { students?: any }>(studentIds, (chunk) =>
+        (supabase as any)
+          .from('question_logs')
+          .select('*, students(track, kurum, donem, coach_id, responsible_coach_id, responsible_coach_other_name)')
+          .in('student_id', chunk)
+          .gte('week_start', weekStart.toISOString().slice(0, 10))
+      )
+    : [];
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Koç';
 

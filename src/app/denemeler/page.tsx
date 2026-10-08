@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
+import { fetchChunkedByIds } from '@/lib/chunked-in';
 import { DenemelerClient } from './DenemelerClient';
 
 export default async function DenemelerPage({
@@ -13,32 +16,33 @@ export default async function DenemelerPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/giris');
 
-  const { data: rawIds } = await (supabase as any)
-    .from('students').select('id').eq('coach_id', user.id);
-  const studentIds: string[] = (rawIds ?? []).map((s: any) => s.id);
+  const includeInterns = (await cookies()).get('show_interns')?.value === '1';
+  const scope = await getStudentScope(supabase, user.id, includeInterns);
+  const { data: rawStudents } = await applyStudentScope(
+    (supabase as any)
+      .from('students')
+      .select('id, full_name, track, kurum, donem, sinif_sube, coach_id, responsible_coach_id, responsible_coach_other_name')
+      .neq('status', 'pasif')
+      .order('full_name'),
+    scope
+  );
+  const students = (rawStudents as any[]) ?? [];
+  const studentIds: string[] = students.map((s: any) => s.id);
 
-  const { data: rawStudents } = await (supabase as any)
-    .from('students')
-    .select('id, full_name, track, kurum, donem, sinif_sube')
-    .eq('coach_id', user.id)
-    .order('full_name');
-
-  let exams: any[] = [];
-  if (studentIds.length > 0) {
-    // Filtreleme artık istemci tarafında (tür/sınıf/deneme/öğrenci), bu yüzden
-    // koçun tüm öğrencilerinin tüm denemelerini tek seferde çekiyoruz.
-    const { data } = await (supabase as any)
-      .from('exams')
-      .select('*, students(full_name, track, kurum, donem, sinif_sube), linked:linked_exam_id(exam_name, net_score, exam_type)')
-      .in('student_id', studentIds)
-      .order('exam_date', { ascending: false });
-    exams = data ?? [];
-  }
+  const exams = studentIds.length > 0
+    ? await fetchChunkedByIds<any>(studentIds, (chunk) =>
+        (supabase as any)
+          .from('exams')
+          .select('*, students(full_name, track, kurum, donem, sinif_sube, coach_id, responsible_coach_id, responsible_coach_other_name), linked:linked_exam_id(exam_name, net_score, exam_type)')
+          .in('student_id', chunk)
+          .order('exam_date', { ascending: false })
+      )
+    : [];
 
   return (
     <DenemelerClient
       initialExams={exams}
-      students={(rawStudents as any[]) ?? []}
+      students={students}
       initialFilter={ogrenciFilter}
     />
   );

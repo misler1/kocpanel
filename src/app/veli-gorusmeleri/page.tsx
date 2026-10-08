@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { getStudentScope, applyStudentScope, isInternStudent } from '@/lib/effective-coach';
+import { fetchChunkedByIds } from '@/lib/chunked-in';
 import { VeliGorusmeleriClient } from './VeliGorusmeleriClient';
 
 export default async function VeliGorusmeleriPage() {
@@ -8,13 +11,36 @@ export default async function VeliGorusmeleriPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/giris');
 
-  const { data: rawMeetings } = await (supabase as any)
-    .from('meetings')
-    .select('*, students(full_name, track, kurum, donem)')
-    .eq('coach_id', user.id)
-    .eq('meeting_type', 'veli')
-    .order('scheduled_at', { ascending: false });
-  const meetings = (rawMeetings as any[]) ?? [];
+  const includeInterns = (await cookies()).get('show_interns')?.value === '1';
+  const scope = await getStudentScope(supabase, user.id, includeInterns);
+  const { data: students } = await applyStudentScope(
+    (supabase as any)
+      .from('students')
+      .select('id, full_name, track, kurum, donem, coach_id, responsible_coach_id, responsible_coach_other_name')
+      .neq('status', 'pasif'),
+    scope
+  );
+  const studentIds = (students ?? []).map((s: any) => s.id);
+  const studentMap = new Map((students ?? []).map((s: any) => [s.id, {
+    ...s,
+    is_intern_student: scope.isMentor && isInternStudent(s, user.id),
+  }]));
 
-  return <VeliGorusmeleriClient meetings={meetings} />;
+  const meetings = studentIds.length > 0
+    ? await fetchChunkedByIds<any>(studentIds, (chunk) =>
+        (supabase as any)
+          .from('meetings')
+          .select('*, students(id, full_name, track, kurum, donem, coach_id, responsible_coach_id, responsible_coach_other_name)')
+          .in('student_id', chunk)
+          .eq('meeting_type', 'veli')
+          .order('scheduled_at', { ascending: false })
+      )
+    : [];
+
+  const visibleMeetings = meetings.map((m: any) => ({
+    ...m,
+    students: studentMap.get(m.student_id) ?? m.students,
+  }));
+
+  return <VeliGorusmeleriClient meetings={visibleMeetings} />;
 }
