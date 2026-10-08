@@ -12,6 +12,7 @@ export interface FilterableStudent {
   kurum?: string | null;
   donem?: string | null;
 }
+const FILTER_KEY = 'exam_filter_v1';
 
 interface ExamFilterContextType {
   // Sınav türü filtresi
@@ -72,6 +73,28 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
   const [allStudents, setAllStudents] = useState<any[]>([]);
 
   const supabase = createClient();
+    const [restored, setRestored] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(FILTER_KEY);
+      if (raw) {
+        const f = JSON.parse(raw);
+        setExamGroupState(f.examGroup ?? null);
+        setYksTrack(f.yksTrack ?? null);
+        setKurum(f.kurum ?? null);
+        setDonem(f.donem ?? null);
+      }
+    } catch {}
+    setRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      sessionStorage.setItem(FILTER_KEY, JSON.stringify({ examGroup, yksTrack, kurum, donem }));
+    } catch {}
+  }, [restored, examGroup, yksTrack, kurum, donem]);
 
     async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -97,11 +120,14 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
     if (hasLgs) groups.push('LGS');
     if (hasYks) groups.push('YKS');
     setAvailableGroups(groups);
+    setExamGroupState((prev) => (prev && groups.includes(prev) ? prev : null));
 
     const kurumSet = new Set<string>();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     students.forEach((s: any) => { if (s.kurum && s.kurum.trim()) kurumSet.add(s.kurum.trim()); });
-    setAvailableKurumlar(Array.from(kurumSet).sort());
+    const kurumList = Array.from(kurumSet).sort();
+    setAvailableKurumlar(kurumList);
+    setKurum((prev) => (prev && kurumList.includes(prev) ? prev : null));
 
     const classMap: Record<string, Set<string>> = {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,18 +169,20 @@ export function ExamFilterProvider({ children }: { children: ReactNode }) {
     setYksTrack(null);
   }
 
-  function matchesFilter(student: FilterableStudent | null | undefined) {
+    function matchesFilter(student: FilterableStudent | null | undefined) {
     if (!student) return false;
     if (examGroup === 'LGS' && student.track !== 'LGS') return false;
     if (examGroup === 'YKS') {
       if (!student.track || !student.track.startsWith('YKS')) return false;
       if (yksTrack && student.track !== yksTrack) return false;
     }
+    // Sadece YKS öğrencisi varken LGS/YKS düğmeleri yok, alt tür doğrudan seçilebilir
+    if (examGroup !== 'YKS' && yksTrack && student.track !== yksTrack) return false;
     if (kurum && student.kurum !== kurum) return false;
     if (donem && student.donem !== donem) return false;
     return true;
   }
-
+  
   function getSinifOnerileri(kurum: string): string[] {
     if (!kurum) return [];
     return classesByKurum[kurum.trim()] ?? [];

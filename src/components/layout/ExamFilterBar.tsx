@@ -20,7 +20,7 @@ export function ExamFilterBar() {
   ];
 
   const showExamButtons = availableGroups.length >= 2;
-
+  const onlyYks = availableGroups.length === 1 && availableGroups[0] === 'YKS';
   return (
     <div className="mb-3 space-y-2 border-b border-white/10 pb-3">
       {/* Kurum ve Dönem seçimi */}
@@ -44,34 +44,36 @@ export function ExamFilterBar() {
         <InternToggle />
       </div>
 
-      {/* LGS / YKS filtresi */}
-      {showExamButtons && (
+            {/* LGS / YKS filtresi */}
+      {(showExamButtons || onlyYks) && (
         <div>
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => setExamGroup(examGroup === 'LGS' ? null : 'LGS')}
-              className={`flex-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                examGroup === 'LGS'
-                  ? 'bg-[var(--accent)] text-white'
-                  : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
-              }`}
-            >
-              LGS
-            </button>
-            <button
-              onClick={() => setExamGroup(examGroup === 'YKS' ? null : 'YKS')}
-              className={`flex-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                examGroup === 'YKS'
-                  ? 'bg-[var(--accent)] text-white'
-                  : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
-              }`}
-            >
-              YKS
-            </button>
-          </div>
+          {showExamButtons && (
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => setExamGroup(examGroup === 'LGS' ? null : 'LGS')}
+                className={`flex-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  examGroup === 'LGS'
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
+                }`}
+              >
+                LGS
+              </button>
+              <button
+                onClick={() => setExamGroup(examGroup === 'YKS' ? null : 'YKS')}
+                className={`flex-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  examGroup === 'YKS'
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
+                }`}
+              >
+                YKS
+              </button>
+            </div>
+          )}
 
-          {examGroup === 'YKS' && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
+          {(examGroup === 'YKS' || onlyYks) && (
+            <div className={`${showExamButtons ? 'mt-1.5 ' : ''}flex flex-wrap gap-1`}>
               {yksSubTracks.map((t) => (
                 <button
                   key={t.value}
