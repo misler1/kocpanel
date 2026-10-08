@@ -171,6 +171,11 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
   const [archiving, setArchiving] = useState(false);
 
   useEffect(() => {
+    if (availableDonemler.length === 0) return;
+    setDonem((prev: string) => (prev && availableDonemler.includes(prev) ? prev : availableDonemler[0]));
+  }, [availableDonemler]);
+
+  useEffect(() => {
     async function loadTeacherOptions() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;

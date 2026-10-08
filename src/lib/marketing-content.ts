@@ -492,7 +492,7 @@ const dilArticles: Article[] = [
     category: 'dil-sinav-koclugu',
     slug: 'ydtde-gunluk-kac-soru-cozulmeli',
     title: 'YDT’de Günlük Kaç Soru Çözülmeli?',
-    description: 'YDT’de günlük soru sayısı öğrencinin seviyesine, konu eksiğine ve deneme dönemine göre değişmelidir.',
+    description: '',
     intro: ['Günlük soru sayısı, dil öğrencileri için iyi bir takip göstergesi olabilir. Yine de tek başına yeterli değildir.', 'Çok soru çözmek, yanlışlar analiz edilmediğinde beklenen gelişimi getirmeyebilir.'],
     sections: [
       { title: 'Seviyeye göre plan', body: 'Başlangıç seviyesindeki öğrenci daha çok konu ve kelime temeli kurarken, ileri seviyedeki öğrenci deneme ve soru tipi analizine ağırlık verebilir.' },
@@ -519,21 +519,21 @@ export const ARTICLE_CATEGORIES: Category[] = [
     slug: 'yks',
     label: 'YKS',
     shortLabel: 'YKS',
-    description: 'YKS hazırlığında deneme analizi, net artışı, tercih hedefi, TYT-AYT dengesi ve sınav stratejisi üzerine rehber yazılar.',
+    description: '',
     articles: yksArticles.map(({ slug, title, description }) => ({ slug, title, description })),
   },
   {
     slug: 'lgs',
     label: 'LGS',
     shortLabel: 'LGS',
-    description: 'LGS öğrencileri ve velileri için çalışma düzeni, ders stratejisi, sınav kaygısı, yüzdelik dilim ve lise tercihi içerikleri.',
+    description: '',
     articles: lgsArticles.map(({ slug, title, description }) => ({ slug, title, description })),
   },
   {
     slug: 'dil-sinav-koclugu',
     label: 'Dil Sınav Koçluğu',
     shortLabel: 'Dil Sınav Koçluğu',
-    description: 'YDT ve dil puanı hazırlığında kelime, reading, soru çözümü, net artışı ve bölüm tercihi üzerine rehber içerikler.',
+    description: '',
     articles: dilArticles.map(({ slug, title, description }) => ({ slug, title, description })),
   },
 ];
