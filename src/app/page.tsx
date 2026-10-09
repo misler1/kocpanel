@@ -9,6 +9,13 @@ import {
   IconMessageCircle, IconChartBar, IconTarget, IconArrowRight,
 } from '@tabler/icons-react';
 
+const LIGHT_SLIDES = [
+  { title: 'YKS ko\u00e7lu\u011fu', text: 'TYT ve AYT s\u00fcrecinde deneme analizi, haftal\u0131k plan ve net takibi birlikte ilerler.' },
+  { title: 'LGS takip sistemi', text: 'S\u0131n\u0131f d\u00fczeyi, ders eksikleri ve deneme sonu\u00e7lar\u0131 sade bir ak\u0131\u015fla izlenir.' },
+  { title: 'Dil s\u0131nav ko\u00e7lu\u011fu', text: 'YDT haz\u0131rl\u0131\u011f\u0131nda kelime, reading ve soru \u00e7\u00f6z\u00fcm ritmi d\u00fczenli takip edilir.' },
+  { title: 'Veli bilgilendirme', text: '\u00d6\u011frencinin \u00e7al\u0131\u015fma temposu ve geli\u015fimi veliler i\u00e7in daha anla\u015f\u0131l\u0131r hale gelir.' },
+];
+
 export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -43,6 +50,28 @@ export default async function Home() {
           </div>
           <ReportCardVisual />
         </div>
+      </section>
+
+      {/* Hafif SEO slider */}
+      <section className="overflow-hidden border-y border-gray-100 bg-white py-6" aria-label="KocDefterim hizmet basliklari">
+        <div className="mx-auto max-w-6xl px-5">
+          <div className="relative overflow-hidden">
+            <div className="kd-slider-track flex w-max gap-4">
+              {[...LIGHT_SLIDES, ...LIGHT_SLIDES].map((slide, index) => (
+                <article key={`${slide.title}-${index}`} aria-hidden={index >= LIGHT_SLIDES.length} className="w-[280px] flex-shrink-0 rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 sm:w-[340px]">
+                  <h2 className="font-[family-name:var(--font-display)] text-[17px] text-gray-900">{slide.title}</h2>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-gray-600">{slide.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+        <style>{`
+          .kd-slider-track { animation: kd-slide 34s linear infinite; }
+          .kd-slider-track:hover { animation-play-state: paused; }
+          @keyframes kd-slide { from { transform: translateX(0); } to { transform: translateX(calc(-50% - 0.5rem)); } }
+          @media (prefers-reduced-motion: reduce) { .kd-slider-track { animation: none; } }
+        `}</style>
       </section>
 
       {/* Nasıl Çalışıyoruz — gerçekten sıralı bir süreç olduğu için numaralandırma burada uygun */}

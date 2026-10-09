@@ -356,13 +356,87 @@ const lgsArticles: Article[] = [
   {
     category: 'lgs',
     slug: 'en-iyi-liseler',
-    title: 'En İyi Liseler',
-    description: 'En iyi lise seçimi; puan, yüzdelik dilim, okul kültürü, ulaşım ve öğrencinin ihtiyaçları birlikte düşünülerek yapılmalıdır.',
-    intro: ['LGS sonrası lise seçimi aileler için heyecanlı ama zor bir dönemdir. “En iyi lise” denince çoğu zaman akla en yüksek puanlı okullar gelir.', 'Puan önemli bir göstergedir; fakat tek başına yeterli değildir. Öğrencinin okula uyumu, ulaşım, sosyal ortam ve akademik beklenti de kararın parçası olmalıdır.'],
+    title: "Türkiye'nin En İyi Liseleri 2026: LGS'de En Yüksek Puanla Öğrenci Alan Liseler",
+    description: "2026 LGS ilk yerleştirme taban puanlarına göre en yüksek puanla öğrenci alan liseleri, özel yabancı liseleri ve tercih döneminde dikkat edilmesi gereken farkları anlatan güncel rehber.",
+    intro: [
+      "2026 LGS'ye 994 bin 358 öğrenci katıldı. Sınavdaki 90 sorunun tamamını doğru cevaplayan 452 öğrenci 500 tam puan aldı.",
+      "5 Ağustos'ta ilk yerleştirme sonuçları açıklandığında iki program 500 puandaydı: İstanbul Erkek Lisesi ve Kabataş Erkek Lisesinin Almanca programı.",
+      "Türkiye'de bütün liseleri eğitim kalitesine göre sıralayan resmi bir 'en iyi liseler' araştırması bulunmuyor. Bu yazıda daha sınırlı ve ölçülebilir bir veri kullanıyorum: 2026 LGS ilk yerleştirme taban puanı.",
+      "Birden fazla programı bulunan okullarda en yüksek taban puanlı program esas alınmıştır.",
+    ],
     sections: [
-      { title: 'Puan kadar uyum da önemlidir', body: 'Çok yüksek puanlı bir okul her öğrenci için en doğru seçenek olmayabilir. Öğrencinin temposu, sosyal ihtiyaçları ve okulun beklenti düzeyi birlikte değerlendirilmelidir.' },
-      { title: 'Okul türünü tanımak gerekir', body: 'Fen lisesi, Anadolu lisesi, sosyal bilimler lisesi veya mesleki programların sunduğu imkanlar farklıdır. Tercih yapmadan önce okul türleri iyi anlaşılmalıdır.' },
-      { title: 'Liste dengeli hazırlanmalı', body: 'Tercih listesinde öğrencinin yüzdelik dilimine uygun okullar, daha yüksek hedefler ve güvenli seçenekler birlikte yer almalıdır.' },
+      {
+        title: "2026 LGS'de en yüksek puanla öğrenci alan 10 lise",
+        body: [
+          "1. İstanbul Erkek Lisesi, İstanbul, Almanca hazırlık: 500,0000.",
+          "2. Kabataş Erkek Lisesi, İstanbul, Almanca hazırlık: 500,0000.",
+          "3. Galatasaray Lisesi, İstanbul, Fransızca hazırlık: 497,4323.",
+          "4. İstanbul Atatürk Fen Lisesi, İstanbul, Almanca hazırlık: 494,8872.",
+          "5. Ankara Fen Lisesi, Ankara, İngilizce: 494,4243.",
+          "6. Cağaloğlu Anadolu Lisesi, İstanbul, Almanca hazırlık: 493,3585.",
+          "7. İzmir Fen Lisesi, İzmir, İngilizce: 492,1823.",
+          "8. Hüseyin Avni Sözen Anadolu Lisesi, İstanbul, Almanca hazırlık: 491,8566.",
+          "9. İzmir Atatürk Lisesi, İzmir, Almanca hazırlık: 491,4327.",
+          "10. Prof. Dr. Aziz Sancar Fen Lisesi, Ankara, İngilizce: 489,4430.",
+        ],
+      },
+      {
+        title: "İlk 10 listesini nasıl okumalı?",
+        body: [
+          "Bunlar 5 Ağustos 2026'daki ilk yerleştirme puanları. Aynı okulun farklı yabancı dil programları ayrı ayrı sıralandığında Kabataş'ın İngilizce programı 497,7581 ile Galatasaray'ın önüne giriyor. İstanbul Atatürk Fen'in İngilizce programı da 493,3585 puanla Cağaloğlu'yla aynı seviyede.",
+          "İlk 10'daki altı okul İstanbul'da. Ankara ve İzmir'den ikişer okul var. Altısı Anadolu lisesi, dördü fen lisesi. Listenin ilk üç sırasında İstanbul Erkek, Kabataş ve Galatasaray yer alıyor.",
+          "Hazırlık sınıfı bu grubun belirgin özelliklerinden biri. İstanbul Erkek, Kabataş, Galatasaray, İstanbul Atatürk Fen, Cağaloğlu, Hüseyin Avni Sözen ve İzmir Atatürk beş yıllık hazırlıklı programlarla öğrenci alıyor.",
+        ],
+      },
+      {
+        title: "Puan farkları bazen çok küçük",
+        body: [
+          "İstanbul Erkek son yıllarda ayrıca dikkat çekiyor. Okul 2023, 2024, 2025 ve 2026'da 500 taban puanda kaldı. Kabataş'ta 2026'da iki program arasında fark oluştu: Almanca programı 500, İngilizce programı 497,7581.",
+          "Galatasaray'ın taban puanı 497,4323. Yani Kabataş'ın İngilizce programıyla arasındaki fark yaklaşık üçte bir puan.",
+          "Fen liselerinde ilk sıra İstanbul Atatürk Fen'in Almanca programında: 494,8872 puan. Ankara Fen 494,4243, İzmir Fen 492,1823 puanla kapandı. İstanbul Atatürk Fen ile Ankara Fen arasındaki fark yalnızca 0,4629 puan.",
+          "LGS'nin üst sıralarında birkaç basamaklık sıra farkı bazen puanda yarım puana bile ulaşmıyor.",
+        ],
+      },
+      {
+        title: "İlk 10'un ötesinde ne oluyor?",
+        body: [
+          "MEB'in 2026 ilk yerleştirme raporunda, merkezi sınav puanına göre ortaöğretim kurumlarına yerleşen üst yüzde 5'lik dilimde 43 bin 850 öğrenci bulunduğu belirtiliyor.",
+          "Bu öğrencilerin yüzde 52,16'sı fen liselerine, yüzde 40,55'i Anadolu liselerine yerleşti. Geri kalan bölüm Anadolu imam hatip, mesleki ve teknik Anadolu ve sosyal bilimler liselerine dağıldı.",
+          "MEB'in aynı dönem verisine göre sınavla öğrenci alan okullarda 198 bin 905 kontenjan vardı. İlk yerleştirmede 190 bin 473 öğrenci bu okullara yerleşti ve doluluk oranı yüzde 95,76 olarak gerçekleşti.",
+          "Türkiye'nin yüksek puanlı lise grubunu yalnızca İstanbul'daki birkaç okuldan okumamak gerekiyor. Ankara Fen, İzmir Fen, Prof. Dr. Aziz Sancar Fen gibi okullar ilk 10'da; liste genişledikçe farklı şehirlerden fen liseleri daha fazla görünmeye başlıyor.",
+        ],
+      },
+      {
+        title: "Robert Kolej ve özel yabancı liseler",
+        body: [
+          "'Türkiye'nin en iyi liseleri' denildiğinde Robert Kolej, Alman Lisesi, Üsküdar Amerikan ve Saint-Joseph gibi özel yabancı liseleri dışarıda bırakmak doğru olmaz. Buna karşılık bu okulların puanları devlet liseleriyle aynı yerleştirme sürecinde oluşmuyor.",
+          "Robert Kolej, 2026-2027 kayıtlarını erkek öğrencilerde 488,2457, kız öğrencilerde 481,1675 kapanış puanıyla tamamladı. Bu rakamlar okulun kendi resmi kayıt sayfasında yayımlanıyor.",
+          "Saint-Joseph'ta 2026 için 208 kişilik kontenjan vardı. Okul kayıt dönemine 455 taban puanla başladı; son taban puan 452 oldu. Kesin kayıt yaptıran öğrencilerde en yüksek LGS puanı 495,0188, en düşük puan 452,4081, ortalama puan ise 464,5152 olarak açıklandı.",
+          "Özel okullarda kayıt dönemleri ilerledikçe puan değişebiliyor. Robert'ta kız ve erkek öğrenciler için ayrı kapanış puanlarının bulunması da başka bir fark. Bu yüzden özel okul puanlarını devlet liselerinin ilk yerleştirme tablosuyla bire bir aynı sıralama gibi okumamak gerekir.",
+        ],
+      },
+      {
+        title: "Puan dışında kalan birkaç fark",
+        body: [
+          "İstanbul Erkek Almanca hazırlıklı ve beş yıllık. Galatasaray'da eğitim Fransızca hazırlıkla başlıyor. İstanbul Atatürk Fen, fen lisesi programını hazırlık sınıfıyla birleştiriyor. Ankara Fen'de ise hazırlık sınıfı yok.",
+          "Hüseyin Avni Sözen'in Almanca programı beş yıl ve pansiyonu bulunmuyor. İzmir Atatürk'ün Almanca programı da hazırlıklı; okulda kız ve erkek öğrenciler için pansiyon imkanı var.",
+          "Aynı puan aralığındaki iki okul bu açıdan birbirinden epey farklı olabilir. Bu nedenle tercih döneminde yalnızca puan değil; okulun program dili, hazırlık durumu, pansiyon imkanı, ulaşım ve öğrencinin günlük yaşamı birlikte düşünülmelidir.",
+        ],
+      },
+      {
+        title: "2026 tablosunun söylediği şey",
+        body: [
+          "2026 ilk yerleştirmesine göre listenin başında İstanbul Erkek ile Kabataş'ın Almanca programı var. Galatasaray 497,4323 puanla onları takip ediyor. İstanbul Atatürk Fen ve Ankara Fen 494 puan bandında; Cağaloğlu 493,3585, İzmir Fen 492,1823 puanda.",
+          "Bunlar 2026 sınavı ve 2026 tercihlerinin oluşturduğu taban puanlar. Bir sonraki LGS'de sınavın güçlüğü, kontenjanlar ve öğrencilerin tercihleri değiştiğinde puanlar da yeniden oluşacak.",
+        ],
+      },
+    ],
+    references: [
+      { title: "Milli Eğitim Bakanlığı - 2026 LGS Kapsamında Merkezi Sınav Sonuçları ve Merkezi Sınav Raporu.", detail: "Sınava katılan 994.358 öğrenci ve 500 tam puan alan 452 öğrenci için kullanılmıştır." },
+      { title: "Milli Eğitim Bakanlığı - 2026 LGS İlk Yerleştirme Sonuç Raporu.", detail: "Üst yüzde 5'lik dilimdeki 43.850 öğrenci, okul türlerine yerleşme oranları, kontenjan, yerleşen öğrenci ve doluluk oranları için kullanılmıştır." },
+      { title: "2026 MEB/e-Okul ilk yerleştirme verilerinin okul bazlı derlemeleri.", detail: "İlk yerleştirme taban puanlarının çapraz kontrolünde kullanılmıştır." },
+      { title: "Robert Kolej - 2026-2027 Kayıt Dönemi.", detail: "Erkek ve kız öğrenciler için kapanış puanları okulun resmi sitesinden alınmıştır." },
+      { title: "İstanbul Özel Saint-Joseph Fransız Lisesi - 2026 Kayıt İstatistikleri.", detail: "Kontenjan, ilk ve son taban puan, en yüksek, en düşük ve ortalama LGS puanları okulun resmi sitesinden alınmıştır." },
     ],
   },
   {
