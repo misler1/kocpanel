@@ -353,7 +353,7 @@ const yksArticles: Article[] = [
 ];
 
 const lgsArticles: Article[] = [
-  {
+{
     category: 'lgs',
     slug: 'en-iyi-liseler',
     title: "Türkiye'nin En İyi Liseleri 2026: LGS'de En Yüksek Puanla Öğrenci Alan Liseler",
@@ -441,6 +441,92 @@ const lgsArticles: Article[] = [
   },
   {
     category: 'lgs',
+    slug: 'lgs-ogrencisi-gunluk-kac-saat-calismali',
+    title: "LGS Öğrencisi Günde Kaç Saat Çalışmalı?",
+    description: "LGS'ye hazırlanan öğrenciler için günlük çalışma süresini, net çalışma kavramını, deneme analizini, uyku düzenini ve haftalık program dengesini birlikte ele alan rehber.",
+    intro: [
+      "LGS'ye hazırlanan bir öğrencinin günde kaç saat çalışması gerektiğini tek rakamla söylemek zor. Yine de bir yerden başlamak gerekiyor.",
+      "Okul günlerinde 2-3 saat, hafta sonlarında 3-4 saat net bireysel çalışma çoğu 8. sınıf öğrencisi için kullanılabilecek makul bir aralık.",
+      "Buradaki \"net\" kelimesi işi biraz değiştiriyor. Akşam 19.00'da masaya oturup 22.00'de kalkmış olmak üç saat ders çalışıldığı anlamına gelmeyebilir. Araya telefon, yemek, uzun bir mola ve biraz oyalanma girdiyse gerçek süre iki saate kadar düşebilir.",
+      "Tersi de oluyor. İki saatlik bir çalışmada matematikten o gün işlenen konu tekrar edilmiş, sorular çözülmüş, fen ödevi tamamlanmış ve yanlış çıkan birkaç soruya yeniden dönülmüşse o akşamı \"az çalıştım\" diye değerlendirmek pek anlamlı değil.",
+      "Saat hesabının sınırı biraz burada.",
+      "Yine de 2-3 saat rakamını rastgele söylemiyorum. Sekizinci sınıf öğrencisi günün önemli bölümünü zaten okulda geçiriyor. Eve geldikten sonra dört-beş saat daha düzenli ders çalışmayı yıl boyunca sürdürebilmek pek çok öğrenci için zor. Üstelik süre uzadıkça her yeni yarım saatin aynı miktarda öğrenme getireceğinin bir garantisi yok.",
+      "OECD'nin PISA 2022 verilerinde ilginç bir ilişki görülüyor. OECD ülkeleri ortalamasında, günde yarım saatten bir saate kadar ödev yapan öğrencilerin matematik puanı, yarım saatten az ödev yapanlardan sosyoekonomik koşullar hesaba katıldıktan sonra ortalama 16 puan yüksek. Bir saatten iki saate geçildiğinde fark yalnızca 2 puan. İki saatin üzerinde ise ödev süresiyle matematik performansı arasındaki ilişki negatife dönüyor.",
+      "Bu araştırma \"iki saatten fazla çalışmayın\" demiyor. OECD de özellikle buna dikkat çekiyor. Düşük performanslı öğrenciler aynı konuyu öğrenmek veya aynı ödevi bitirmek için daha fazla zamana ihtiyaç duyuyor olabilir. Yani uzun çalışma süresi düşük başarının nedeni olmak zorunda değil; bazen düşük başarı daha uzun çalışma süresinin nedeni olabilir.",
+      "LGS hazırlığıyla PISA ödevi de birebir aynı şey değil. Ancak verideki bir ayrıntı tanıdık geliyor: ilk saatlerle sonraki saatlerin verimi her zaman aynı olmayabiliyor.",
+    ],
+    sections: [
+      {
+        title: "2-3 saatlik bir akşamda ne yapılabilir?",
+        body: [
+          "Bu süre ilk bakışta kısa gelebilir. İçini doldurduğumuzda o kadar da kısa değil.",
+          "Örneğin matematikte okulda işlenen konuya dönülüp 20-25 soru çözülmesi 50-60 dakika sürebilir. Fen bilimlerinden 20 soru ve yanlışların kontrolü 35-40 dakika alabilir. Paragraf rutini için 20-25 dakika ayrıldığında iki saatin önemli kısmı zaten dolmuş olur.",
+          "Her akşam üç farklı dersten onlarca test çözmek gerekmiyor.",
+          "Pazartesi matematik biraz daha uzun sürebilir. Salı günü fen ağırlık kazanır. Türkçe ve paragraf daha kısa ama daha düzenli yer alabilir. Deneme yapılan günün programı zaten baştan değişir.",
+          "LGS yılı ilerledikçe bu dağılım da değişiyor.",
+          "Sonbaharda yeni konular daha fazla zaman alır. Matematikte konu oturmadıysa soru sayısının düşük kalması sorun değildir. Ocak-şubat döneminde hem yeni konular hem eski konular birlikte yürümeye başlar. Baharla beraber deneme sayısı artar; denemenin kendisi kadar sonrasında yapılan kontrol de zaman ister.",
+          "2026 LGS'nin birinci oturumunda 50 sözel soru için 75 dakika, ikinci oturumunda matematik ve fen bilimlerinden oluşan 40 soru için 80 dakika verildi. Sınav iki oturumda toplam 90 sorudan oluşuyor.",
+          "Bu yapı, yılın sonlarına doğru çalışma programına uzun süre kesintisiz odaklanmayı da ekliyor. Öğrenci evde sürekli 25 dakikalık çalışmalar yapıyorsa bir noktadan sonra 80 dakikalık sayısal oturumu da denemesi gerekir.",
+          "Deneme günleri bu nedenle normal çalışma günlerinden biraz farklı.",
+          "90 soruluk deneme çözülüp yalnızca nete bakılıyorsa önemli bir bilgi kaçıyor. Mesela matematikte beş yanlış geldi. İkisi konu eksikliği, biri işlem hatası, biri soruyu yanlış okuma, biri de süre yetişmediği için yapılmış olabilir. Beşinin de karşılığı \"beş yanlış\", ama gelecek hafta yapılması gereken çalışma aynı değil.",
+          "Bazen deneme sonrasında yarım saat boyunca bu beş soruyla uğraşmak, hemen yeni bir teste geçmekten daha işe yarayabilir.",
+          "Soru sayısını da bu nedenle tek başına çalışma ölçüsü olarak kullanmak zor. 40 kolay soruyla geçirilen bir saat ile 12 zor matematik sorusuyla geçirilen bir saat kâğıt üzerinde aynı süre.",
+          "Öğrencinin o gün ne yaptığına biraz bakmak gerekiyor.",
+        ],
+      },
+      {
+        title: "Her LGS öğrencisine 2-3 saat yeter mi?",
+        body: [
+          "Hayır.",
+          "Temel matematik konuları birikmiş, fen konuları geriden geliyor ve okul programına yetişmekte zorlanan bir öğrencinin 2 saatle bütün eksiklerini kapatması gerçekçi olmayabilir. Bir dönem 3-3,5 saate çıkması gerekebilir.",
+          "Konuları düzenli götüren ve denemelerde istediği sonuçlara yaklaşmış bir öğrenci içinse okul gününde 1,5-2 saat gayet yeterli olabilir.",
+          "Kabaca şöyle düşünülebilir:",
+          "Konular düzenli, belirgin eksik yok: 1,5-2,5 saat.",
+          "Bazı konu ve soru eksikleri var: 2-3 saat.",
+          "Birkaç derste ciddi birikme oluşmuş: 2,5-3,5 saat.",
+          "Deneme ağırlıklı son dönem: 2,5-4 saat.",
+          "Bu süreler bir standardın karşılığı değil. Çalışma programı hazırlarken kullanılabilecek aralıklar.",
+          "Hafta sonu okul olmadığı için süre biraz daha rahat genişletilebilir. Üç-dört saatlik çalışmayı sabah ve öğleden sonra iki ayrı parçaya bölmek de mümkün. Sabah matematik ve fen, öğleden sonra Türkçe ve deneme analizi gibi.",
+          "Her günü eşitlemeye çalışmak gereksiz bir yük oluşturabiliyor.",
+          "Beş okul gününde sırasıyla 2, 2,5, 2, 3 ve 2 saat çalışan biri haftayı başarısız geçirmiş sayılmaz. Toplam 11,5 saat eder. Hafta sonuna üçer saat eklendiğinde haftalık bireysel çalışma 17,5 saate çıkar.",
+          "Okuldaki ders süresi bunun dışında.",
+          "Bu hesaba bakınca günlük iki saat artık o kadar küçük görünmüyor.",
+          "Çalışma süresini artırmak için de net bir neden olmalı. Denemelerde zaman sorunu varsa hız çalışması eklenebilir. Matematikte belirli bir konu sürekli yanlış geliyorsa oraya yarım saat daha ayrılabilir. Program yetişiyor, yanlışlar azalıyor ve sonuçlar ilerliyorsa sırf bir arkadaş dört saat çalışıyor diye mevcut programı büyütmenin fazla anlamı yok.",
+          "Bir öğrencinin programı ekimde başka, martta başka görünebilir. Zaten görünmesi de normal; çünkü yapılan iş değişiyor.",
+        ],
+      },
+      {
+        title: "Uyku hesabı bazen çalışma saatinden daha önemli",
+        body: [
+          "Sekizinci sınıf öğrencilerinin önemli bir bölümü 13-14 yaşında. American Academy of Sleep Medicine, 13-18 yaş arasındaki gençlerin düzenli olarak 8-10 saat uyumasını öneriyor. Daha kısa uykunun dikkat, davranış ve öğrenme sorunlarıyla ilişkili olduğunu belirtiyor.",
+          "Sabah 07.00'de kalkacak bir öğrencinin gece 01.00'e kadar ders çalışması bu açıdan pek iyi bir hesap çıkarmıyor.",
+          "Akşam programa fazladan iki saat eklenmiş oluyor ama uyku altı saate düşüyor. Ertesi gün öğrencinin okulda geçireceği saatler de var.",
+          "Sınava yaklaştıkça bu daha fazla önem kazanıyor. 2026 LGS'nin ilk oturumu saat 09.30'da, ikinci oturumu 11.30'da başladı. Gece çalışan ve sabah zor uyanan bir düzeni son hafta değiştirmeye çalışmak yerine, uyku saatini daha erken dönemde oturtmak daha rahat olabilir.",
+          "Molalarda da dakika hesabını fazla büyütmeye gerek yok. Kimi öğrenci 40 dakika sonra ara vermek ister, kimi bir saat rahat çalışır. Deneme çözülüyorsa zaten daha uzun oturmak gerekir.",
+          "On dakikalık aranın sürekli kırk dakikaya çıktığı bir düzende ise sorun mola tekniğinin adında değildir.",
+        ],
+      },
+      {
+        title: "LGS öğrencisi için benim kullanacağım başlangıç noktası",
+        body: [
+          "Okul gününde 2-3 saat, hafta sonunda 3-4 saat.",
+          "Sonra öğrencinin haftasına bakarım.",
+          "Matematik konuları okulun gerisinde mi? Türkçede okuma hızı sorun oluyor mu? Fen yanlışları belirli konularda mı toplanıyor? Deneme sonuçları birkaç haftadır aynı yerde mi? Ödevler yetişiyor mu?",
+          "Bu soruların cevapları çalışma süresini yarım saat aşağı da çekebilir, bir saat yukarı da.",
+          "Bazı haftalar 18 saat iyi gider. Bir hafta sınavlar vardır, 13 saatte kalır. Başka bir hafta denemeler ve eksik konular nedeniyle 20 saati geçer.",
+          "LGS hazırlığının tamamını tek bir günlük rakama sığdırmaya çalışınca bu farklılıklar görünmüyor.",
+          "O nedenle 2-3 saati \"her gün mutlaka doldurulacak kota\" yerine başlangıç için kullanılacak bir çalışma süresi olarak görmek daha doğru.",
+        ],
+      },
+    ],
+    references: [
+      { title: "Millî Eğitim Bakanlığı - 2026 Merkezî Sınav Başvuru ve Uygulama Kılavuzu.", detail: "2026 LGS'nin 13 Haziran'da uygulanması, sözel oturumun 50 soru/75 dakika, sayısal oturumun 40 soru/80 dakika olması ve oturum saatleri için kullanılmıştır." },
+      { title: "OECD - PISA 2022 Results, Volume II.", detail: "Ödev süresi ile matematik performansı arasındaki ilişki için kullanılmıştır. OECD ortalamasında ilişki iki saate kadar pozitif, iki saatin üzerinde negatif görünmektedir; rapor bu ilişkinin nedensellik olarak yorumlanamayacağını özellikle belirtmektedir." },
+      { title: "American Academy of Sleep Medicine - Teen Sleep Duration Health Advisory.", detail: "13-18 yaş arasındaki gençler için düzenli olarak 8-10 saat uyku önerisi ve yetersiz uykunun dikkat ve öğrenmeyle ilişkisi için kullanılmıştır." },
+    ],
+  },
+{
+    category: 'lgs',
     slug: 'son-senenin-taban-puanlari',
     title: 'Son Senenin Taban Puanları',
     description: 'LGS taban puanları tercih döneminde yol gösterir; ancak karar verirken yüzdelik dilim daha sağlıklı bir ölçüdür.',
@@ -451,19 +537,7 @@ const lgsArticles: Article[] = [
       { title: 'Güncel kılavuz izlenmeli', body: 'Tercih yaparken MEB tarafından yayımlanan güncel kılavuz ve okul kontenjanları esas alınmalıdır. Eski veriler yalnızca ön değerlendirme için kullanılmalıdır.' },
     ],
   },
-  {
-    category: 'lgs',
-    slug: 'lgs-ogrencisi-gunluk-kac-saat-calismali',
-    title: 'LGS Öğrencisi Günlük Kaç Saat Çalışmalı?',
-    description: 'LGS’de çalışma süresi kadar çalışmanın düzeni, içeriği ve öğrencinin sürdürebileceği tempo da önemlidir.',
-    intro: ['Velilerin en çok merak ettiği konulardan biri günlük çalışma süresidir. Fakat her öğrenci için geçerli tek bir saat söylemek doğru olmaz.', 'Bazı öğrencinin konu eksiği fazladır, bazısının deneme pratiği eksiktir, bazısı ise kısa ama düzenli çalıştığında daha iyi ilerler.'],
-    sections: [
-      { title: 'Süre değil verim belirleyicidir', body: 'Üç saat masada oturup dağınık çalışmak yerine, daha kısa ama net hedefli bir çalışma daha etkili olabilir. Öğrenci hangi derse neden çalıştığını bilmelidir.' },
-      { title: 'Düzenli tekrar gerekir', body: 'LGS hazırlığında günlük tekrar, soru çözümü ve deneme analizi birlikte ilerlemelidir. Sadece konu dinlemek ya da sadece test çözmek süreci eksik bırakır.' },
-      { title: 'Dinlenme de planın parçasıdır', body: 'Ortaokul öğrencisi için dinlenme, uyku ve sosyal zaman ihmal edilmemelidir. Çok ağır programlar kısa sürede motivasyonu düşürebilir.' },
-    ],
-  },
-  {
+{
     category: 'lgs',
     slug: 'lgs-matematik-fen-turkce-nasil-calisilir',
     title: 'LGS Matematik, Fen ve Türkçe Nasıl Çalışılır?',
@@ -475,7 +549,7 @@ const lgsArticles: Article[] = [
       { title: 'Türkçede düzenli okuma etkili olur', body: 'Paragraf, anlam ve dil bilgisi sorularında düzenli pratik önemlidir. Öğrenci yalnızca çok soru çözmekle kalmamalı, neden yanlış yaptığını da anlamalıdır.' },
     ],
   },
-  {
+{
     category: 'lgs',
     slug: 'lgsde-stres-oluyorum-sinav-korkusu',
     title: 'LGS’de Stres Oluyorum, Sınav Korkusu',
@@ -487,7 +561,7 @@ const lgsArticles: Article[] = [
       { title: 'Aile dili önemlidir', body: 'Sürekli sonuç konuşmak öğrencinin baskısını artırabilir. Emek, düzen ve gelişim üzerinden konuşmak daha sağlıklı bir destek sağlar.' },
     ],
   },
-  {
+{
     category: 'lgs',
     slug: 'ders-calismak-istemiyorum-motivasyonum-dustu',
     title: 'Ders Çalışmak İstemiyorum, Motivasyonum Düştü',
@@ -499,7 +573,7 @@ const lgsArticles: Article[] = [
       { title: 'Dinlenme ihmal edilmemeli', body: 'Sürekli çalışma baskısı öğrenciyi tüketebilir. Sağlıklı bir planın içinde uyku, mola ve nefes alacak zaman da bulunmalıdır.' },
     ],
   },
-  {
+{
     category: 'lgs',
     slug: 'yuzdelik-dilim-nedir-lise-tercihi-nasil-yapilir',
     title: 'Yüzdelik Dilim Nedir, Lise Tercihi Nasıl Yapılır?',
