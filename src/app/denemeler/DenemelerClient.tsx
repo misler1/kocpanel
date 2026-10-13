@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -101,12 +101,18 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   const { matchesFilter } = useExamFilter();
 
   const [exams, setExams] = useState<any[]>(initialExams);
+  useEffect(() => {
+    setExams(initialExams);
+  }, [initialExams]);
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'TYT' | 'AYT' | 'LGS'>('ALL');
   const [sinifFilter, setSinifFilter] = useState('');
   const [denemeFilter, setDenemeFilter] = useState(''); // `${type}|${normName}`
   const [studentIds, setStudentIds] = useState<Set<string>>(
     () => new Set(initialFilter ? [initialFilter] : [])
   );
+  useEffect(() => {
+    setStudentIds(new Set(initialFilter ? [initialFilter] : []));
+  }, [initialFilter]);
   const [showStudentPicker, setShowStudentPicker] = useState(false);
 
   const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});

@@ -77,6 +77,8 @@ function YeniDenemeForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const filteredStudents = students.filter((s) => matchesFilter(s));
+  const selectedStudent = filteredStudents.find((s) => s.id === studentId);
+  const selectedStudentId = selectedStudent?.id ?? '';
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -134,41 +136,51 @@ function YeniDenemeForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!selectedStudent) {
+      setError('Lütfen denemenin kaydedileceği öğrenciyi seçin.');
+      return;
+    }
     setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push('/giris'); return; }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push('/giris'); return; }
 
-    const subjectResults = examType === 'TYT' ? tytResults
-      : examType === 'AYT' ? aytResults
-      : lgsResults;
+      const subjectResults = examType === 'TYT' ? tytResults
+        : examType === 'AYT' ? aytResults
+        : lgsResults;
 
-    const totalNet = examType === 'TYT' ? tytNet
-      : examType === 'AYT' ? aytNet
-      : lgsNet;
+      const totalNet = examType === 'TYT' ? tytNet
+        : examType === 'AYT' ? aytNet
+        : lgsNet;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: err } = await (supabase as any).from('exams').insert({
-      student_id: studentId,
-      exam_name: examName.trim(),
-      exam_date: examDate,
-      exam_type: examType,
-      net_score: totalNet,
-      max_score: examType === 'TYT' ? 120 : examType === 'AYT' ? 160 : 90,
-      subject_results: subjectResults,
-      linked_exam_id: examType === 'AYT' && linkedTytId ? linkedTytId : null,
-      analysis_done: analysisDone,
-      analysis_notes: analysisNotes.trim() || null,
-      tyt_puan: examType === 'TYT' && tytPuan ? Number(tytPuan) : null,
-      say_puan: examType === 'AYT' && sayPuan ? Number(sayPuan) : null,
-      ea_puan: examType === 'AYT' && eaPuan ? Number(eaPuan) : null,
-      soz_puan: examType === 'AYT' && sozPuan ? Number(sozPuan) : null,
-      lgs_puan: examType === 'LGS' && lgsPuan ? Number(lgsPuan) : null,
-    });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: err } = await (supabase as any).from('exams').insert({
+        student_id: selectedStudent.id,
+        exam_name: examName.trim(),
+        exam_date: examDate,
+        exam_type: examType,
+        net_score: totalNet,
+        max_score: examType === 'TYT' ? 120 : examType === 'AYT' ? 160 : 90,
+        subject_results: subjectResults,
+        linked_exam_id: examType === 'AYT' && linkedTytId ? linkedTytId : null,
+        analysis_done: analysisDone,
+        analysis_notes: analysisNotes.trim() || null,
+        tyt_puan: examType === 'TYT' && tytPuan ? Number(tytPuan) : null,
+        say_puan: examType === 'AYT' && sayPuan ? Number(sayPuan) : null,
+        ea_puan: examType === 'AYT' && eaPuan ? Number(eaPuan) : null,
+        soz_puan: examType === 'AYT' && sozPuan ? Number(sozPuan) : null,
+        lgs_puan: examType === 'LGS' && lgsPuan ? Number(lgsPuan) : null,
+      });
 
-    if (err) { setError(err.message); setLoading(false); return; }
-    router.push('/denemeler');
-    router.refresh();
+      if (err) { setError(err.message); return; }
+      router.push(`/denemeler?ogrenci=${encodeURIComponent(selectedStudent.id)}`);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Deneme kaydedilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   const inputCls = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none';
@@ -189,7 +201,8 @@ function YeniDenemeForm() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Öğrenci <span className="text-red-500">*</span></label>
-              <select required value={studentId} onChange={(e) => setStudentId(e.target.value)} className={inputCls}>
+              <select required value={selectedStudentId} onChange={(e) => setStudentId(e.target.value)} className={inputCls}>
+                <option value="" disabled>Öğrenci seçin</option>
                 {filteredStudents.map((s) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
               </select>
             </div>
