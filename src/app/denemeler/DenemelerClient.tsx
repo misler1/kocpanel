@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -67,6 +67,7 @@ type SortKey = string; // 'name' | 'net' | 'puan' | 'puan_say' | 'puan_ea' | 'pu
 
 function sortValue(e: any, key: SortKey): number | string {
   if (key === 'name') return e.students?.full_name ?? '';
+  if (key === 'date') return e.exam_date ?? '';
   if (key === 'net') return e.net_score ?? 0;
   if (key === 'puan') return e.tyt_puan ?? e.lgs_puan ?? 0;
   if (key === 'puan_say') return e.say_puan ?? 0;
@@ -100,19 +101,23 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   const supabase = createClient();
   const { matchesFilter } = useExamFilter();
 
+  const [syncedInitialExams, setSyncedInitialExams] = useState(initialExams);
   const [exams, setExams] = useState<any[]>(initialExams);
-  useEffect(() => {
+  if (syncedInitialExams !== initialExams) {
+    setSyncedInitialExams(initialExams);
     setExams(initialExams);
-  }, [initialExams]);
+  }
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'TYT' | 'AYT' | 'LGS'>('ALL');
   const [sinifFilter, setSinifFilter] = useState('');
   const [denemeFilter, setDenemeFilter] = useState(''); // `${type}|${normName}`
+  const [syncedInitialFilter, setSyncedInitialFilter] = useState(initialFilter);
   const [studentIds, setStudentIds] = useState<Set<string>>(
     () => new Set(initialFilter ? [initialFilter] : [])
   );
-  useEffect(() => {
+  if (syncedInitialFilter !== initialFilter) {
+    setSyncedInitialFilter(initialFilter);
     setStudentIds(new Set(initialFilter ? [initialFilter] : []));
-  }, [initialFilter]);
+  }
   const [showStudentPicker, setShowStudentPicker] = useState(false);
 
   const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});
@@ -188,6 +193,29 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
     return Array.from(map.values()).sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [afterStudents]);
 
+  // ── Tek öğrenci seçiliyse: o öğrencinin denemeleri alt alta (sınav türüne göre bir tablo) ──
+  const singleStudent = studentIds.size === 1;
+  const studentGroups: ExamGroup[] = useMemo(() => {
+    if (!singleStudent) return [];
+    const map = new Map<string, ExamGroup>();
+    afterStudents.forEach((e) => {
+      const key = `student|${e.exam_type}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          examType: e.exam_type,
+          examName: e.students?.full_name ?? 'Öğrenci',
+          date: e.exam_date,
+          rows: [],
+        });
+      }
+      const g = map.get(key)!;
+      g.rows.push(e);
+      if (e.exam_date > g.date) g.date = e.exam_date;
+    });
+    return Array.from(map.values()).sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [afterStudents, singleStudent]);
+
   function isGroupOpen(key: string, index: number) {
     if (key in manualOpen) return manualOpen[key];
     return index === 0; // en güncel deneme varsayılan açık
@@ -197,7 +225,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   }
 
   function getSort(key: string): { key: SortKey; dir: 'asc' | 'desc' } {
-    return groupSort[key] ?? { key: 'name', dir: 'asc' };
+    return groupSort[key] ?? (key.startsWith('student|') ? { key: 'date', dir: 'desc' } : { key: 'name', dir: 'asc' });
   }
   function setSort(key: string, sortKey: SortKey) {
     setGroupSort((prev) => ({ ...prev, [key]: { key: sortKey, dir: prev[key]?.dir ?? 'asc' } }));
@@ -205,7 +233,10 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   function toggleDir(key: string) {
     setGroupSort((prev) => ({
       ...prev,
-      [key]: { key: prev[key]?.key ?? 'name', dir: (prev[key]?.dir ?? 'asc') === 'asc' ? 'desc' : 'asc' },
+      [key]: {
+        key: prev[key]?.key ?? (key.startsWith('student|') ? 'date' : 'name'),
+        dir: (prev[key]?.dir ?? (key.startsWith('student|') ? 'desc' : 'asc')) === 'asc' ? 'desc' : 'asc',
+      },
     }));
   }
 
@@ -253,7 +284,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
       <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-[18px] font-medium text-gray-900">Deneme sonuçları</h1>
-          <p className="mt-0.5 text-[13px] text-gray-500">{totalCount} kayıt · {groups.length} deneme</p>
+          <p className="mt-0.5 text-[13px] text-gray-500">{totalCount} kayıt · {singleStudent ? totalCount : groups.length} deneme</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -263,7 +294,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
             }`}
           >
             <IconArrowsRightLeft size={15} />
-            {compareMode ? 'İptal' : 'Karşılaştır'}
+            {compareMode ? 'İptal' : 'Analiz'}
           </button>
           <Link href="/denemeler/toplu-yukle" className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3.5 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-50">
             <IconUpload size={15} />
@@ -351,7 +382,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
       </div>
 
       {/* Gruplar */}
-      {groups.length === 0 ? (
+      {(singleStudent ? studentGroups : groups).length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-white py-20">
           <IconChartBar size={32} className="text-gray-300" />
           <p className="text-sm text-gray-400">Bu filtrelerle eşleşen deneme bulunamadı.</p>
@@ -361,9 +392,10 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
         </div>
       ) : (
         <div className="space-y-3">
-          {groups.map((g, idx) => (
+          {(singleStudent ? studentGroups : groups).map((g, idx) => (
             <ExamGroupCard
               key={g.key}
+              variant={singleStudent ? 'student' : 'exam'}
               group={g}
               isOpen={isGroupOpen(g.key, idx)}
               onToggle={() => toggleGroup(g.key, isGroupOpen(g.key, idx))}
@@ -392,7 +424,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
               disabled={selectedCompareIds.length < 2}
               className="rounded-full bg-blue-600 px-4 py-1.5 text-[13px] font-medium text-white hover:bg-blue-700 disabled:opacity-40"
             >
-              Karşılaştır
+              Analiz
             </button>
             <button onClick={exitCompareMode} className="text-[12px] text-gray-400 hover:text-gray-600">Vazgeç</button>
           </div>
@@ -430,8 +462,9 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
 function ExamGroupCard({
   group, isOpen, onToggle, sort, onSortChange, onDirToggle,
   compareMode, selectedCompareIds, onToggleCompare, compareDisabled,
-  onToggleAnalysis, togglingId, onDeleteRequest,
+  onToggleAnalysis, togglingId, onDeleteRequest, variant = 'exam',
 }: {
+  variant?: 'exam' | 'student';
   group: ExamGroup;
   isOpen: boolean;
   onToggle: () => void;
@@ -449,6 +482,8 @@ function ExamGroupCard({
   const subjects = subjectsFor(group.examType);
   const maxScore = group.examType === 'TYT' ? 120 : group.examType === 'AYT' ? 160 : 90;
   const typeBadge = TYPE_BADGE[group.examType] ?? 'bg-gray-100 text-gray-500';
+  const isStudent = variant === 'student';
+  const open = isStudent || isOpen; // tek öğrenci görünümünde akordeon yok, her zaman açık
 
   const sortedRows = useMemo(() => {
     const rows = [...group.rows];
@@ -465,22 +500,48 @@ function ExamGroupCard({
 
   const avgNet = Math.round((group.rows.reduce((s, e) => s + (e.net_score || 0), 0) / group.rows.length) * 100) / 100;
   const dateLabel = new Date(group.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  // Tek öğrenci görünümünde alt satır: tüm denemelerin ortalaması
+  const avg = (vals: number[]) =>
+    vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100 : null;
+  const avgPuan = (field: string) =>
+    avg(group.rows.map((e) => Number(e[field])).filter((n) => Number.isFinite(n) && n > 0));
+  const subjectAvgs = isStudent
+    ? subjects.map((s) => {
+        const have = group.rows.filter((e) => !!e.subject_results?.[s.key]);
+        return {
+          key: s.key,
+          d: avg(have.map((e) => Number(e.subject_results[s.key].dogru) || 0)),
+          y: avg(have.map((e) => Number(e.subject_results[s.key].yanlis) || 0)),
+          bos: avg(have.map((e) => Math.max(0, s.total - (Number(e.subject_results[s.key].dogru) || 0) - (Number(e.subject_results[s.key].yanlis) || 0)))),
+          net: avg(have.map((e) => getSubjectNet(e.subject_results[s.key], e.exam_type))),
+        };
+      })
+    : [];
   const stickyNameLeft = compareMode ? 'left-8' : 'left-0';
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <button type="button" onClick={onToggle} className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-gray-50">
+      <button
+        type="button"
+        onClick={isStudent ? undefined : onToggle}
+        className={`flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left ${isStudent ? 'cursor-default' : 'hover:bg-gray-50'}`}
+      >
         <div className="flex min-w-0 items-center gap-3">
           <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${typeBadge}`}>{group.examType}</span>
           <div className="min-w-0">
             <div className="truncate text-[13px] font-medium text-gray-900">{group.examName}</div>
-            <div className="text-[11px] text-gray-400">{dateLabel} · {group.rows.length} öğrenci · Ort. net {avgNet}</div>
+            <div className="text-[11px] text-gray-400">
+              {isStudent
+                ? `${group.rows.length} deneme · Ort. net ${avgNet}`
+                : `${dateLabel} · ${group.rows.length} öğrenci · Ort. net ${avgNet}`}
+            </div>
           </div>
         </div>
-        {isOpen ? <IconChevronUp size={16} className="flex-shrink-0 text-gray-400" /> : <IconChevronDown size={16} className="flex-shrink-0 text-gray-400" />}
+        {!isStudent && (isOpen ? <IconChevronUp size={16} className="flex-shrink-0 text-gray-400" /> : <IconChevronDown size={16} className="flex-shrink-0 text-gray-400" />)}
       </button>
 
-      {isOpen && (
+      {open && (
         <div className="border-t border-gray-100">
           {/* Sıralama */}
           <div className="flex flex-wrap items-center gap-2 bg-gray-50/60 px-4 py-2.5">
@@ -490,7 +551,7 @@ function ExamGroupCard({
               onChange={(e) => onSortChange(e.target.value)}
               className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-700"
             >
-              <option value="name">İsim</option>
+              {isStudent ? <option value="date">Tarih</option> : <option value="name">İsim</option>}
               <option value="net">Toplam Net</option>
               {group.examType === 'AYT' ? (
                 <>
@@ -523,7 +584,7 @@ function ExamGroupCard({
                     <th rowSpan={2} className="sticky left-0 z-20 w-8 bg-gray-50 px-2 py-2" />
                   )}
                   <th rowSpan={2} className={`sticky ${stickyNameLeft} z-20 min-w-[140px] bg-gray-50 px-3 py-2 text-left font-medium text-gray-500`}>
-                    Öğrenci
+                    {isStudent ? 'Deneme' : 'Öğrenci'}
                   </th>
                   {subjects.map((s, i) => {
                     const c = subjectColor(i);
@@ -583,7 +644,16 @@ function ExamGroupCard({
                         </td>
                       )}
                       <td className={`sticky ${stickyNameLeft} z-10 whitespace-nowrap bg-white px-3 py-2 font-medium text-gray-800`}>
-                        {e.students?.full_name}
+                        {isStudent ? (
+                          <>
+                            <div className="max-w-[220px] truncate" title={e.exam_name}>{e.exam_name}</div>
+                            <div className="text-[10px] font-normal text-gray-400">
+                              {new Date(e.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            </div>
+                          </>
+                        ) : (
+                          e.students?.full_name
+                        )}
                       </td>
                       {subjects.map((s, i) => {
                         const c = subjectColor(i);
@@ -639,6 +709,43 @@ function ExamGroupCard({
                   );
                 })}
               </tbody>
+              {isStudent && (
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 bg-gray-50 font-semibold">
+                    {compareMode && <td className="sticky left-0 z-10 w-8 bg-gray-50" />}
+                    <td className={`sticky ${stickyNameLeft} z-10 whitespace-nowrap bg-gray-50 px-3 py-2 text-gray-800`}>
+                      Ortalama
+                      <div className="text-[10px] font-normal text-gray-400">{group.rows.length} deneme</div>
+                    </td>
+                    {subjects.map((s, i) => {
+                      const c = subjectColor(i);
+                      const a = subjectAvgs[i];
+                      return (
+                        <Fragment key={s.key}>
+                          <td className={`border-l px-1.5 py-2 text-center text-gray-600 ${c.border}`}>{a.d ?? '—'}</td>
+                          <td className="px-1.5 py-2 text-center text-gray-600">{a.y ?? '—'}</td>
+                          <td className="px-1.5 py-2 text-center text-gray-400">{a.bos ?? '—'}</td>
+                          <td className={`px-1.5 py-2 text-center font-bold ${a.net === null ? 'text-gray-300' : c.text}`}>{a.net ?? '—'}</td>
+                        </Fragment>
+                      );
+                    })}
+                    <td className={`border-l border-gray-100 px-2 py-2 text-center font-bold ${scoreColor(avgNet, maxScore).text}`}>{avgNet}</td>
+                    {group.examType === 'AYT' ? (
+                      <>
+                        <td className="border-l border-gray-100 px-2 py-2 text-center text-gray-600">{avgPuan('say_puan') ?? '—'}</td>
+                        <td className="px-2 py-2 text-center text-gray-600">{avgPuan('ea_puan') ?? '—'}</td>
+                        <td className="px-2 py-2 text-center text-gray-600">{avgPuan('soz_puan') ?? '—'}</td>
+                      </>
+                    ) : (
+                      <td className="border-l border-gray-100 px-2 py-2 text-center text-gray-600">
+                        {avgPuan(group.examType === 'TYT' ? 'tyt_puan' : 'lgs_puan') ?? '—'}
+                      </td>
+                    )}
+                    <td className="border-l border-gray-100" />
+                    <td />
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         </div>
@@ -728,8 +835,11 @@ function unionSubjects(exams: any[]): SubjectDef[] {
 // Böylece "Türkçe" gibi bir dersin farklı denemelerdeki net değişimi
 // tek bakışta, aynı blokta karşılaştırılabilir.
 // Satırlar: dersler · Sütunlar: denemeler (kronolojik). Tek bakışta sığar.
-function SubjectCompareTable({ exams }: { exams: any[] }) {
+function SubjectCompareTable({ exams, showAverage = false }: { exams: any[]; showAverage?: boolean }) {
   const subjects = unionSubjects(exams);
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const mean = (vals: number[]) => (vals.length ? round2(vals.reduce((a, b) => a + b, 0) / vals.length) : null);
+  const totalAvg = mean(exams.map((e) => Number(e.net_score) || 0));
   return (
     <div className="print-avoid rounded-lg border border-gray-200 bg-white">
       <table className="w-full table-fixed border-collapse text-[11px]">
@@ -746,6 +856,12 @@ function SubjectCompareTable({ exams }: { exams: any[] }) {
                 </div>
               </th>
             ))}
+            {showAverage && (
+              <th className="border-l-2 border-gray-300 bg-blue-50/60 px-1.5 py-1.5 text-center">
+                <div className="font-semibold text-blue-700">Ortalama</div>
+                <div className="text-[9.5px] font-normal text-gray-400">{exams.length} deneme</div>
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -783,6 +899,24 @@ function SubjectCompareTable({ exams }: { exams: any[] }) {
                     </td>
                   );
                 })}
+                {showAverage && (() => {
+                  const have = exams.filter((e) => !!e.subject_results?.[s.key]);
+                  const aNet = mean(have.map((e) => getSubjectNet(e.subject_results[s.key], e.exam_type)));
+                  const aD = mean(have.map((e) => Number(e.subject_results[s.key].dogru) || 0));
+                  const aY = mean(have.map((e) => Number(e.subject_results[s.key].yanlis) || 0));
+                  return (
+                    <td className="border-l-2 border-gray-300 bg-blue-50/40 px-1.5 py-1 text-center">
+                      {aNet === null ? (
+                        <span className="text-gray-300">—</span>
+                      ) : (
+                        <>
+                          <div className="text-[9.5px] leading-tight text-gray-400">{aD}D · {aY}Y</div>
+                          <div className="text-[12px] font-bold leading-tight text-blue-700">{aNet}</div>
+                        </>
+                      )}
+                    </td>
+                  );
+                })()}
               </tr>
             );
           })}
@@ -796,6 +930,11 @@ function SubjectCompareTable({ exams }: { exams: any[] }) {
                 </span>
               </td>
             ))}
+            {showAverage && (
+              <td className="border-l-2 border-gray-300 bg-blue-50/60 px-1.5 py-1.5 text-center">
+                <span className="text-[13px] font-bold text-blue-700">{totalAvg}</span>
+              </td>
+            )}
           </tr>
         </tbody>
       </table>
@@ -818,7 +957,7 @@ interface ChartSeries {
 function ZigzagChart({ labels, series }: { labels: string[]; series: ChartSeries[] }) {
   const width = 560;
   const height = 126;
-  const pad = { top: 18, right: 14, bottom: 20, left: 8 };
+  const pad = { top: 20, right: 26, bottom: 20, left: 26 }; // etiketler (ilk/son nokta) kırpılmasın diye yan boşluk
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
@@ -1027,7 +1166,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
         `}</style>
 
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold text-gray-900">Deneme Karşılaştırma</h3>
+          <h3 className="text-base font-semibold text-gray-900">Deneme Analizi</h3>
           <div className="no-print flex items-center gap-1.5">
             <button
               type="button"
@@ -1051,7 +1190,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
                   {studentExams[0].students?.full_name}
                 </div>
               )}
-              <SubjectCompareTable exams={studentExams} />
+              <SubjectCompareTable exams={studentExams} showAverage={studentCount === 1} />
             </div>
           ))}
 
