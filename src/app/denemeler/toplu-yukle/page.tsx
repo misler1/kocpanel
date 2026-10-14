@@ -23,14 +23,6 @@ interface PreviewRow {
   };
 }
 
-interface ConfirmedRow {
-  studentId: string;
-  results: PreviewRow['results'];
-  puan?: number;
-  examName: string;
-  examDate: string;
-}
-
 export default function TopluYuklePage() {
   const router = useRouter();
   const [examType, setExamType] = useState<ExamType>('TYT');
@@ -75,8 +67,8 @@ export default function TopluYuklePage() {
         if (data.examName) setExamName(data.examName);
         if (data.examDate) setExamDate(data.examDate);
       }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Bir hata oluştu.');
+    } catch (e: any) {
+      setError(e.message ?? 'Bir hata oluştu.');
     } finally {
       setLoading(false);
     }
@@ -98,7 +90,7 @@ export default function TopluYuklePage() {
         examName: (r.examName || examName).trim(),
         examDate: r.examDate || examDate,
       }))
-      .filter((r): r is ConfirmedRow => !!r.studentId);
+      .filter((r) => !!r.studentId);
 
     if (confirmed.length === 0) { setError('Eşleştirilmiş satır yok.'); return; }
     if (confirmed.some((r) => !r.examName)) { setError('Deneme adı boş olamaz.'); return; }
@@ -128,8 +120,8 @@ export default function TopluYuklePage() {
       }
       router.push('/denemeler');
       router.refresh();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Bir hata oluştu.');
+    } catch (e: any) {
+      setError(e.message ?? 'Bir hata oluştu.');
     } finally {
       setSaving(false);
     }
@@ -203,7 +195,7 @@ export default function TopluYuklePage() {
             <table className="w-full text-[12px]">
               <thead className="sticky top-0 bg-gray-50">
                 <tr className="border-b border-gray-200">
-                  <th className="px-2 py-2 text-left font-medium text-gray-500">Excel&apos;deki İsim</th>
+                  <th className="px-2 py-2 text-left font-medium text-gray-500">Excel'deki İsim</th>
                   <th className="px-2 py-2 text-left font-medium text-gray-500">Eşleşen Öğrenci</th>
                   <th className="px-2 py-2 text-center font-medium text-gray-500">Skor</th>
                   <th className="px-2 py-2 text-center font-medium text-gray-500">Durum</th>
