@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -13,6 +12,8 @@ interface PreviewRow {
   rawName: string;
   results: Record<string, { dogru: string; yanlis: string }>;
   puan?: number;
+  examName?: string | null;
+  examDate?: string | null;
   match: {
     studentId: string | null;
     studentName: string | null;
@@ -20,6 +21,14 @@ interface PreviewRow {
     isAmbiguous: boolean;
     alternatives: { id: string; full_name: string; score: number }[];
   };
+}
+
+interface ConfirmedRow {
+  studentId: string;
+  results: PreviewRow['results'];
+  puan?: number;
+  examName: string;
+  examDate: string;
 }
 
 export default function TopluYuklePage() {
@@ -57,6 +66,7 @@ export default function TopluYuklePage() {
         throw new Error(msg);
       }
       setRows(data.preview);
+      if (data.examType) setExamType(data.examType as ExamType);
       setAllStudents(data.students ?? []);
       setOverrides({});
 
@@ -65,8 +75,8 @@ export default function TopluYuklePage() {
         if (data.examName) setExamName(data.examName);
         if (data.examDate) setExamDate(data.examDate);
       }
-    } catch (e: any) {
-      setError(e.message ?? 'Bir hata oluştu.');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Bir hata oluştu.');
     } finally {
       setLoading(false);
     }
@@ -79,25 +89,47 @@ export default function TopluYuklePage() {
   const unresolvedCount = rows.filter((r) => !resolvedStudentId(r)).length;
 
   async function handleSave() {
-    const confirmedRows = rows
-      .map((r) => ({ studentId: resolvedStudentId(r), results: r.results, puan: r.puan }))
-      .filter((r) => !!r.studentId) as { studentId: string; results: any; puan?: number }[];
+    const confirmed = rows
+      .map((r) => ({
+        studentId: resolvedStudentId(r),
+        results: r.results,
+        puan: r.puan,
+        // PDF'te her kayıt kendi deneme adı/tarihini taşıyabilir; yoksa formdaki değer
+        examName: (r.examName || examName).trim(),
+        examDate: r.examDate || examDate,
+      }))
+      .filter((r): r is ConfirmedRow => !!r.studentId);
 
-    if (confirmedRows.length === 0) { setError('Eşleştirilmiş satır yok.'); return; }
+    if (confirmed.length === 0) { setError('Eşleştirilmiş satır yok.'); return; }
+    if (confirmed.some((r) => !r.examName)) { setError('Deneme adı boş olamaz.'); return; }
+    if (confirmed.some((r) => !r.examDate)) { setError('Tarih seçin.'); return; }
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch('/api/denemeler/toplu-yukle/kaydet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ examType, examName, examDate, rows: confirmedRows }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Kaydedilemedi.');
+      // aynı deneme adı + tarihe sahip satırlar tek istekte kaydedilir
+      const groups = new Map<string, typeof confirmed>();
+      for (const r of confirmed) {
+        const k = `${r.examName}||${r.examDate}`;
+        groups.set(k, [...(groups.get(k) ?? []), r]);
+      }
+      for (const list of groups.values()) {
+        const res = await fetch('/api/denemeler/toplu-yukle/kaydet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            examType,
+            examName: list[0].examName,
+            examDate: list[0].examDate,
+            rows: list.map((r) => ({ studentId: r.studentId, results: r.results, puan: r.puan })),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? 'Kaydedilemedi.');
+      }
       router.push('/denemeler');
       router.refresh();
-    } catch (e: any) {
-      setError(e.message ?? 'Bir hata oluştu.');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Bir hata oluştu.');
     } finally {
       setSaving(false);
     }
@@ -111,7 +143,7 @@ export default function TopluYuklePage() {
         <Link href="/denemeler" className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
           <IconArrowLeft size={18} />
         </Link>
-        <h1 className="text-[18px] font-medium text-gray-900">Toplu deneme sonucu yükle (Excel)</h1>
+        <h1 className="text-[18px] font-medium text-gray-900">Toplu deneme sonucu yükle</h1>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
@@ -171,7 +203,7 @@ export default function TopluYuklePage() {
             <table className="w-full text-[12px]">
               <thead className="sticky top-0 bg-gray-50">
                 <tr className="border-b border-gray-200">
-                  <th className="px-2 py-2 text-left font-medium text-gray-500">Excel'deki İsim</th>
+                  <th className="px-2 py-2 text-left font-medium text-gray-500">Excel&apos;deki İsim</th>
                   <th className="px-2 py-2 text-left font-medium text-gray-500">Eşleşen Öğrenci</th>
                   <th className="px-2 py-2 text-center font-medium text-gray-500">Skor</th>
                   <th className="px-2 py-2 text-center font-medium text-gray-500">Durum</th>

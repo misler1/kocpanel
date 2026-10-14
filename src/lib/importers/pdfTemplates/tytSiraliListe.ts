@@ -1,5 +1,5 @@
 import type { PdfTemplate, ExtractedPdfRecord } from './types';
-import { fmtNet, netYKS, trDateToIso, trUpper, toResults, type DY } from './shared';
+import { fmtNet, netYKS, trDateToIso, toResults, type DY } from './shared';
 
 // ───────────────────────── Şablon: TYT sıralı sınıf listesi ─────────────────────────
 // Satır (pdf-parse sırası):  SIRA [ŞB] D Y ×(Türkçe,Tar,Coğ,Fel,Din,Mat) TOPLAM(D Y) PUAN ŞB/KRM/İLÇE/İL/GENEL sıralama
@@ -104,7 +104,7 @@ function parseListeRow(
 
   for (const sira of siraCands) {
     if (!body.startsWith(sira)) continue;
-    let rest = body.slice(sira.length).replace(/^\p{L}/u, ''); // şube harfi
+    const rest = body.slice(sira.length).replace(/^\p{L}/u, ''); // şube harfi
     const ci = rest.indexOf(',');
     if (ci < 3 || !/^\d{3}$/.test(rest.slice(ci - 3, ci)) || !/^\d{3}$/.test(rest.slice(ci + 1, ci + 4))) continue;
     const puan = parseFloat(rest.slice(ci - 3, ci + 4).replace(',', '.'));
@@ -140,10 +140,15 @@ export const tytSiraliListeTemplate: PdfTemplate = {
 
     const records: ExtractedPdfRecord[] = [];
     let expected: number | null = null;
-    for (const line of t.split('\n')) {
-      // veri satırı: rakamla başlar, virgüllü ondalıklar içerir, sonunda isim vardır
-      if (!/^\d/.test(line) || !/\d,\d{2}/.test(line)) continue;
-      const r = parseListeRow(line.trim(), expected);
+
+    // Satır sonlarına güvenmeden: başlıktaki son "D. Y. N." ifadesinden sonrası veri bölgesi.
+    // Her satır:  SIRA [ŞB harfi] <rakamlar ... son net "83,50"> <AD SOYAD>
+    let data = t;
+    const headEnd = [...t.matchAll(/D\.\s*Y\.\s*N\./g)].pop();
+    if (headEnd?.index != null) data = t.slice(headEnd.index + headEnd[0].length);
+    const rowRe = /(\d+\s*\p{Lu}?\s*\d[^\p{L}]*?\d,\d{2})\s*(\p{L}[\p{L} .'’-]*?)(?=\s*\d|\s*$)/gu;
+    for (const m of data.matchAll(rowRe)) {
+      const r = parseListeRow(`${m[1]} ${m[2]}`.trim(), expected);
       if (!r) continue;
       expected = r.sira + 1;
       records.push({ rawName: r.rawName, examName, examDate, puan: r.puan, results: toResults(r.results) });
