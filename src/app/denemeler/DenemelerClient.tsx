@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -101,29 +101,30 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   const supabase = createClient();
   const { matchesFilter } = useExamFilter();
 
-  const [syncedInitialExams, setSyncedInitialExams] = useState(initialExams);
   const [exams, setExams] = useState<any[]>(initialExams);
-  if (syncedInitialExams !== initialExams) {
-    setSyncedInitialExams(initialExams);
+  useEffect(() => {
     setExams(initialExams);
-  }
+  }, [initialExams]);
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'TYT' | 'AYT' | 'LGS'>('ALL');
   const [sinifFilter, setSinifFilter] = useState('');
   const [denemeFilter, setDenemeFilter] = useState(''); // `${type}|${normName}`
-  const [syncedInitialFilter, setSyncedInitialFilter] = useState(initialFilter);
   const [studentIds, setStudentIds] = useState<Set<string>>(
     () => new Set(initialFilter ? [initialFilter] : [])
   );
-  if (syncedInitialFilter !== initialFilter) {
-    setSyncedInitialFilter(initialFilter);
+  useEffect(() => {
     setStudentIds(new Set(initialFilter ? [initialFilter] : []));
-  }
+  }, [initialFilter]);
   const [showStudentPicker, setShowStudentPicker] = useState(false);
 
   const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});
   const [groupSort, setGroupSort] = useState<Record<string, { key: SortKey; dir: 'asc' | 'desc' }>>({});
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Deneme (grup) düzeltme / silme
+  const [renameTarget, setRenameTarget] = useState<{ ids: string[]; name: string; newName: string; examType: string } | null>(null);
+  const [deleteGroupTarget, setDeleteGroupTarget] = useState<{ ids: string[]; name: string; examType: string } | null>(null);
+  const [groupBusy, setGroupBusy] = useState(false);
+  const [groupError, setGroupError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
@@ -266,6 +267,38 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
     setDeletingId(null);
   }
 
+  async function handleRenameGroup() {
+    if (!renameTarget) return;
+    const newName = renameTarget.newName.trim();
+    if (!newName) { setGroupError('Deneme adı boş olamaz.'); return; }
+    setGroupBusy(true);
+    setGroupError(null);
+    const { error } = await (supabase.from('exams') as any).update({ exam_name: newName }).in('id', renameTarget.ids);
+    if (error) {
+      setGroupError(error.message ?? 'Güncellenemedi.');
+    } else {
+      const idSet = new Set(renameTarget.ids);
+      setExams((prev) => prev.map((e) => (idSet.has(e.id) ? { ...e, exam_name: newName } : e)));
+      setRenameTarget(null);
+    }
+    setGroupBusy(false);
+  }
+  async function handleDeleteGroup() {
+    if (!deleteGroupTarget) return;
+    setGroupBusy(true);
+    setGroupError(null);
+    const { error } = await (supabase.from('exams') as any).delete().in('id', deleteGroupTarget.ids);
+    if (error) {
+      setGroupError(error.message ?? 'Silinemedi.');
+    } else {
+      const idSet = new Set(deleteGroupTarget.ids);
+      setExams((prev) => prev.filter((e) => !idSet.has(e.id)));
+      setSelectedCompareIds((prev) => prev.filter((id) => !idSet.has(id)));
+      setDeleteGroupTarget(null);
+    }
+    setGroupBusy(false);
+  }
+
   function toggleStudent(id: string) {
     setStudentIds((prev) => {
       const next = new Set(prev);
@@ -396,6 +429,8 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
             <ExamGroupCard
               key={g.key}
               variant={singleStudent ? 'student' : 'exam'}
+              onRenameRequest={(grp) => { setGroupError(null); setRenameTarget({ ids: grp.rows.map((r: any) => r.id), name: grp.examName, newName: grp.examName, examType: grp.examType }); }}
+              onDeleteGroupRequest={(grp) => { setGroupError(null); setDeleteGroupTarget({ ids: grp.rows.map((r: any) => r.id), name: grp.examName, examType: grp.examType }); }}
               group={g}
               isOpen={isGroupOpen(g.key, idx)}
               onToggle={() => toggleGroup(g.key, isGroupOpen(g.key, idx))}
@@ -449,6 +484,52 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
         </div>
       )}
 
+      {/* Deneme adı düzeltme */}
+      {renameTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
+            <h3 className="mb-1 text-base font-semibold text-gray-900">Deneme adını düzelt</h3>
+            <p className="mb-4 text-[13px] text-gray-500">
+              {renameTarget.ids.length} kaydın deneme adı değişecek ({renameTarget.examType}).
+            </p>
+            <input
+              autoFocus
+              value={renameTarget.newName}
+              onChange={(ev) => setRenameTarget({ ...renameTarget, newName: ev.target.value })}
+              onKeyDown={(ev) => { if (ev.key === 'Enter') handleRenameGroup(); }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
+            {groupError && <p className="mt-2 text-[13px] text-red-600">{groupError}</p>}
+            <div className="mt-5 flex gap-3">
+              <button onClick={() => setRenameTarget(null)} className="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-50">Vazgeç</button>
+              <button onClick={handleRenameGroup} disabled={groupBusy} className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                {groupBusy ? 'Kaydediliyor...' : 'Kaydet'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Denemenin tamamını silme onayı */}
+      {deleteGroupTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
+            <h3 className="mb-2 text-base font-semibold text-gray-900">Denemeyi sil?</h3>
+            <p className="mb-5 text-sm text-gray-500">
+              <span className="font-medium text-gray-800">{deleteGroupTarget.name}</span> denemesine ait{' '}
+              <span className="font-medium text-gray-800">{deleteGroupTarget.ids.length} öğrencinin</span> kaydı kalıcı olarak silinecek.
+            </p>
+            {groupError && <p className="mb-3 text-[13px] text-red-600">{groupError}</p>}
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteGroupTarget(null)} className="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-50">Vazgeç</button>
+              <button onClick={handleDeleteGroup} disabled={groupBusy} className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
+                {groupBusy ? 'Siliniyor...' : 'Evet, sil'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Karşılaştırma modalı */}
       {showCompare && compareExams.length >= 2 && (
         <ExamCompareModal exams={compareExams} onClose={() => setShowCompare(false)} />
@@ -463,8 +544,11 @@ function ExamGroupCard({
   group, isOpen, onToggle, sort, onSortChange, onDirToggle,
   compareMode, selectedCompareIds, onToggleCompare, compareDisabled,
   onToggleAnalysis, togglingId, onDeleteRequest, variant = 'exam',
+  onRenameRequest, onDeleteGroupRequest,
 }: {
   variant?: 'exam' | 'student';
+  onRenameRequest?: (group: ExamGroup) => void;
+  onDeleteGroupRequest?: (group: ExamGroup) => void;
   group: ExamGroup;
   isOpen: boolean;
   onToggle: () => void;
@@ -522,24 +606,46 @@ function ExamGroupCard({
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <button
-        type="button"
-        onClick={isStudent ? undefined : onToggle}
-        className={`flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left ${isStudent ? 'cursor-default' : 'hover:bg-gray-50'}`}
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${typeBadge}`}>{group.examType}</span>
-          <div className="min-w-0">
-            <div className="truncate text-[13px] font-medium text-gray-900">{group.examName}</div>
-            <div className="text-[11px] text-gray-400">
-              {isStudent
-                ? `${group.rows.length} deneme · Ort. net ${avgNet}`
-                : `${dateLabel} · ${group.rows.length} öğrenci · Ort. net ${avgNet}`}
+      <div className={`flex items-center ${isStudent ? '' : 'hover:bg-gray-50'}`}>
+        <button
+          type="button"
+          onClick={isStudent ? undefined : onToggle}
+          className={`flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3.5 text-left ${isStudent ? 'cursor-default' : ''}`}
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${typeBadge}`}>{group.examType}</span>
+            <div className="min-w-0">
+              <div className="truncate text-[13px] font-medium text-gray-900">{group.examName}</div>
+              <div className="text-[11px] text-gray-400">
+                {isStudent
+                  ? `${group.rows.length} deneme · Ort. net ${avgNet}`
+                  : `${dateLabel} · ${group.rows.length} öğrenci · Ort. net ${avgNet}`}
+              </div>
             </div>
           </div>
-        </div>
-        {!isStudent && (isOpen ? <IconChevronUp size={16} className="flex-shrink-0 text-gray-400" /> : <IconChevronDown size={16} className="flex-shrink-0 text-gray-400" />)}
-      </button>
+          {!isStudent && (isOpen ? <IconChevronUp size={16} className="flex-shrink-0 text-gray-400" /> : <IconChevronDown size={16} className="flex-shrink-0 text-gray-400" />)}
+        </button>
+        {!isStudent && (
+          <div className="flex flex-shrink-0 items-center gap-0.5 pr-3">
+            <button
+              type="button"
+              title="Deneme adını düzelt"
+              onClick={() => onRenameRequest?.(group)}
+              className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
+            >
+              <IconEdit size={15} />
+            </button>
+            <button
+              type="button"
+              title="Denemeyi sil"
+              onClick={() => onDeleteGroupRequest?.(group)}
+              className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-500"
+            >
+              <IconTrash size={15} />
+            </button>
+          </div>
+        )}
+      </div>
 
       {open && (
         <div className="border-t border-gray-100">

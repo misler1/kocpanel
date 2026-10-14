@@ -36,6 +36,9 @@ export default function TopluYuklePage() {
   const [allStudents, setAllStudents] = useState<{ id: string; full_name: string }[]>([]);
     // manuel eşleştirme: satır index -> seçilen öğrenci id
   const [overrides, setOverrides] = useState<Record<number, string>>({});
+  // Seçilen türde sistemde zaten kayıtlı denemeler (tekrar yüklemeyi önlemek için)
+  const [existing, setExisting] = useState<{ student_id: string; exam_name: string; exam_date: string }[]>([]);
+  const norm = (s: string) => (s ?? '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
   async function handleParse() {
     if (!file) { setError('Dosya seçin.'); return; }
     setError(null);
@@ -62,6 +65,16 @@ export default function TopluYuklePage() {
       setAllStudents(data.students ?? []);
       setOverrides({});
 
+      // Zaten yüklü denemeleri öğren: aynı öğrenci + aynı tür + (aynı ad veya aynı tarih)
+      try {
+        const et = (data.examType as ExamType) ?? examType;
+        const er = await fetch(`/api/denemeler/toplu-yukle/mevcut?examType=${et}`);
+        const ed = await er.json();
+        setExisting(er.ok ? (ed.existing ?? []) : []);
+      } catch {
+        setExisting([]);
+      }
+
       // PDF'ten deneme adı/tarihi otomatik çıkarıldıysa formu doldur
       if (isPdf) {
         if (data.examName) setExamName(data.examName);
@@ -74,11 +87,33 @@ export default function TopluYuklePage() {
     }
   }
 
-  function resolvedStudentId(r: PreviewRow): string | null {
-    return overrides[r.rowIndex] ?? r.match.studentId;
+  // Bu satırın deneme adı/tarihi (PDF'te satıra özel, yoksa formdaki değer)
+  function rowName(r: PreviewRow) { return (r.examName || examName || '').trim(); }
+  function rowDate(r: PreviewRow) { return r.examDate || examDate; }
+
+  // Seçili öğrencide bu deneme zaten kayıtlı mı?
+  function isAlreadyUploaded(r: PreviewRow, studentId: string | null): boolean {
+    if (!studentId) return false;
+    const n = norm(rowName(r));
+    const d = rowDate(r);
+    return existing.some(
+      (x) => x.student_id === studentId && ((n && norm(x.exam_name) === n) || (d && x.exam_date === d))
+    );
   }
 
-  const unresolvedCount = rows.filter((r) => !resolvedStudentId(r)).length;
+  // Otomatik eşleşen öğrencide deneme zaten yüklüyse seçim boş bırakılır (elle seçilirse korunur)
+  function resolvedStudentId(r: PreviewRow): string | null {
+    if (overrides[r.rowIndex] !== undefined) return overrides[r.rowIndex] || null;
+    const auto = r.match.studentId;
+    return auto && isAlreadyUploaded(r, auto) ? null : auto;
+  }
+  const skippedRows = rows.filter(
+    (r) => overrides[r.rowIndex] === undefined && r.match.studentId && isAlreadyUploaded(r, r.match.studentId)
+  );
+
+  const skippedIds = new Set(skippedRows.map((r) => r.rowIndex));
+  const unresolvedCount = rows.filter((r) => !resolvedStudentId(r) && !skippedIds.has(r.rowIndex)).length;
+  const savableCount = rows.filter((r) => !!resolvedStudentId(r)).length;
 
   async function handleSave() {
     const confirmed = rows
@@ -184,6 +219,11 @@ export default function TopluYuklePage() {
             <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gray-400">
               Eşleştirme Önizlemesi ({rows.length} satır)
             </h2>
+            {skippedRows.length > 0 && (
+              <span className="flex items-center gap-1 text-[12px] text-gray-500">
+                <IconCheck size={14} /> {skippedRows.length} öğrenci zaten yüklü (seçilmedi)
+              </span>
+            )}
             {unresolvedCount > 0 && (
               <span className="flex items-center gap-1 text-[12px] text-amber-600">
                 <IconAlertTriangle size={14} /> {unresolvedCount} satır eşleşmedi
@@ -204,10 +244,17 @@ export default function TopluYuklePage() {
               <tbody className="divide-y divide-gray-100">
                 {rows.map((r) => {
                   const resolvedId = resolvedStudentId(r);
-                  const needsAttention = !r.match.studentId || r.match.isAmbiguous;
+                  const skipped = skippedIds.has(r.rowIndex);
+                  const needsAttention = !skipped && (!r.match.studentId || r.match.isAmbiguous);
+                  const dupManual = !skipped && !!resolvedId && overrides[r.rowIndex] !== undefined && isAlreadyUploaded(r, resolvedId);
                   return (
                     <tr key={r.rowIndex} className={needsAttention ? 'bg-amber-50/50' : ''}>
-                      <td className="px-2 py-2 text-gray-700">{r.rawName}</td>
+                      <td className="px-2 py-2 text-gray-700">
+                        {r.rawName}
+                        {skipped && (
+                          <div className="text-[10.5px] text-gray-400">Zaten yüklü: {r.match.studentName}</div>
+                        )}
+                      </td>
                       <td className="px-2 py-2">
                         <select
                           value={resolvedId ?? ''}
@@ -238,7 +285,11 @@ export default function TopluYuklePage() {
                       </td>
                       <td className="px-2 py-2 text-center text-gray-500">{Math.round(r.match.score * 100)}%</td>
                       <td className="px-2 py-2 text-center">
-                        {resolvedId ? (
+                        {dupManual ? (
+                          <span title="Bu öğrencide bu deneme zaten kayıtlı; yine de kaydedilecek" className="text-[10.5px] font-medium text-amber-600">Zaten kayıtlı!</span>
+                        ) : skipped ? (
+                          <span className="text-[10.5px] text-gray-400">Atlandı</span>
+                        ) : resolvedId ? (
                           <IconCheck size={15} className="mx-auto text-emerald-600" />
                         ) : (
                           <IconAlertTriangle size={15} className="mx-auto text-amber-500" />
@@ -252,9 +303,9 @@ export default function TopluYuklePage() {
           </div>
 
           <div className="mt-4 flex justify-end gap-3">
-            <button onClick={handleSave} disabled={saving || unresolvedCount === rows.length}
+            <button onClick={handleSave} disabled={saving || savableCount === 0}
               className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-              {saving ? 'Kaydediliyor...' : `${rows.length - unresolvedCount} Kaydı Onayla ve Kaydet`}
+              {saving ? 'Kaydediliyor...' : `${savableCount} Kaydı Onayla ve Kaydet`}
             </button>
           </div>
         </div>
