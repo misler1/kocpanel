@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { IconTrash, IconPlus, IconDownload, IconPrinter, IconCopy, IconX, IconEdit, IconDeviceFloppy } from '@tabler/icons-react';
@@ -87,6 +87,32 @@ function getNextBlankProgramStartFromOptions(options: ProgramOption[], weekStart
   return candidate;
 }
 
+// Öğrenci başına son açık hafta hatırlanır (sayfadan çıkıp gelince kalınan yerden devam)
+const WEEK_KEY = (id: string) => `haftalik-takip:hafta:${id}`;
+function readSavedWeek(id: string): string | null {
+  try { return localStorage.getItem(WEEK_KEY(id)); } catch { return null; }
+}
+function rememberWeek(id: string, ws: string) {
+  try { localStorage.setItem(WEEK_KEY(id), ws); } catch { /* yoksay */ }
+}
+
+// Ders renkleri (TYT/AYT/YDT öneki kaldırılıp aynı derse aynı renk verilir)
+const SUBJECT_COLORS: Record<string, string> = {
+  'Türkçe': '#ef4444', 'Paragraf': '#f97316', 'Matematik': '#3b82f6', 'Geometri': '#06b6d4',
+  'Fizik': '#8b5cf6', 'Kimya': '#ec4899', 'Biyoloji': '#22c55e', 'Tarih': '#d97706',
+  'Coğrafya': '#14b8a6', 'Felsefe': '#a855f7', 'Din Kültürü': '#84cc16', 'Edebiyat': '#e11d48',
+  'İngilizce': '#6366f1', 'Fen Bilgisi': '#16a34a', 'İnkılap Tarihi': '#b45309',
+};
+const FALLBACK_COLORS = ['#0ea5e9', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'];
+
+function getSubjectColor(subject: string): string {
+  const base = (subject || '').replace(/^(TYT|AYT|YDT)\s+/, '').trim();
+  if (SUBJECT_COLORS[base]) return SUBJECT_COLORS[base];
+  let h = 0;
+  for (const ch of base) h = (h * 31 + ch.charCodeAt(0)) % 997;
+  return FALLBACK_COLORS[h % FALLBACK_COLORS.length];
+}
+
 function ProgressBar({ done, target }: { done: number; target: number }) {
   if (target === 0) return null;
   const normalPct = Math.min((done / target) * 100, 100);
@@ -163,9 +189,21 @@ export default function HaftalikTakipPage() {
     subject: '', resource: '', topic: '', target: '', topicTarget: '', startTime: '', endTime: '', planDay: '0',
   });
 
-  // Kopyalama
-  const [copyPopoverLogId, setCopyPopoverLogId] = useState<string | null>(null);
-  const [copyDaysSelected, setCopyDaysSelected] = useState<number[]>([]);
+  // Kopyala / yapıştır
+  const loadedStudentRef = useRef('');
+  const [colorMode, setColorMode] = useState(true);
+  const [clipboardLog, setClipboardLog] = useState<any>(null);
+  const [hoverDay, setHoverDay] = useState<number | null>(null);
+
+  useEffect(() => {
+    try { setColorMode(localStorage.getItem('haftalik-takip:renkli') !== '0'); } catch { /* yoksay */ }
+  }, []);
+  function toggleColorMode() {
+    setColorMode((v) => {
+      try { localStorage.setItem('haftalik-takip:renkli', v ? '0' : '1'); } catch { /* yoksay */ }
+      return !v;
+    });
+  }
 
   const [weekStart, setWeekStart] = useState('');
   const [weekEnd, setWeekEnd] = useState('');
@@ -204,25 +242,6 @@ export default function HaftalikTakipPage() {
     const st = students.find((s) => s.id === selectedStudentId) ?? null;
     setSelectedStudent(st);
 
-    const startDay = st?.week_start_day ?? 0;
-    const params = new URLSearchParams(window.location.search);
-    const programParam = params.get('program');
-    const studentParam = params.get('ogrenci');
-    setLogs([]);
-    setWeekStart('');
-    setWeekEnd('');
-    loadProgramOptions(selectedStudentId).then((options) => {
-      const shouldOpenExisting = programParam && (!studentParam || studentParam === selectedStudentId);
-      const initialWeekStart = shouldOpenExisting
-        ? programParam
-        : getNextBlankProgramStartFromOptions(options, startDay);
-      const selectedProgram = options.find((p) => p.weekStart === initialWeekStart);
-      setWeekStart(initialWeekStart);
-      setWeekEnd(selectedProgram?.weekEnd || getWeekEndFromStart(initialWeekStart));
-      setActiveProgramWeek(shouldOpenExisting ? initialWeekStart : '');
-      setProgramPromptWeek(shouldOpenExisting ? initialWeekStart : '');
-    });
-
     const rm: Record<string, string[]> = {};
     if (st?.resources) {
       for (const [subject, sources] of Object.entries(st.resources as Record<string, string[]>)) {
@@ -231,6 +250,32 @@ export default function HaftalikTakipPage() {
       }
     }
     setResourceMap(rm);
+
+    // Aynı öğrencide sadece öğrenci verisi değiştiyse (ör. hafta başlangıç günü) programı SIFIRLAMA
+    if (loadedStudentRef.current === selectedStudentId) return;
+    loadedStudentRef.current = selectedStudentId;
+
+    const startDay = st?.week_start_day ?? 0;
+    const params = new URLSearchParams(window.location.search);
+    const programParam = params.get('program');
+    const studentParam = params.get('ogrenci');
+    setLogs([]);
+    setWeekStart('');
+    setWeekEnd('');
+    loadProgramOptions(selectedStudentId).then((options) => {
+      const shouldOpenExisting = !!programParam && (!studentParam || studentParam === selectedStudentId);
+      const saved = readSavedWeek(selectedStudentId);
+      const initialWeekStart = shouldOpenExisting
+        ? (programParam as string)
+        : saved ?? getNextBlankProgramStartFromOptions(options, startDay);
+      const selectedProgram = options.find((p) => p.weekStart === initialWeekStart);
+      setWeekStart(initialWeekStart);
+      setWeekEnd(selectedProgram?.weekEnd || getWeekEndFromStart(initialWeekStart));
+      setActiveProgramWeek(selectedProgram ? initialWeekStart : '');
+      setProgramPromptWeek(shouldOpenExisting ? initialWeekStart : '');
+      rememberWeek(selectedStudentId, initialWeekStart);
+    });
+
     setAddingDay(null);
     setEditingLogId(null);
     setFormError('');
@@ -253,6 +298,22 @@ export default function HaftalikTakipPage() {
     loadLogs(selectedStudentId, weekStart);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStudentId, weekStart]);
+
+  // Ctrl+V desteği: fareyi günün üstüne getirip Ctrl+V, Esc ile iptal
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'Escape') setClipboardLog(null);
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && clipboardLog && hoverDay !== null) {
+        e.preventDefault();
+        pasteLog(hoverDay);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clipboardLog, hoverDay, weekStart, weekEnd, selectedStudentId]);
 
   async function loadLogs(studentId: string, ws: string) {
     const { data } = await (supabase as any)
@@ -297,6 +358,7 @@ export default function HaftalikTakipPage() {
   function startBlankProgram() {
     const nextWeekStart = getNextBlankProgramStart();
     setWeekStart(nextWeekStart);
+    rememberWeek(selectedStudentId, nextWeekStart);
     setWeekEnd(getWeekEndFromStart(nextWeekStart));
     setLogs([]);
     setActiveProgramWeek('');
@@ -316,6 +378,7 @@ export default function HaftalikTakipPage() {
     }
     const selected = programOptions.find((p) => p.weekStart === value);
     setWeekStart(value);
+    rememberWeek(selectedStudentId, value);
     setWeekEnd(selected?.weekEnd || getWeekEndFromStart(value));
     setActiveProgramWeek(value);
     setProgramPromptWeek(value);
@@ -351,6 +414,7 @@ export default function HaftalikTakipPage() {
       return;
     }
     setWeekStart(nextWeekStart);
+    rememberWeek(selectedStudentId, nextWeekStart);
     setWeekEnd(nextWeekEnd);
     setLogs(data ?? []);
     setActiveProgramWeek(nextWeekStart);
@@ -366,6 +430,26 @@ export default function HaftalikTakipPage() {
     setDraft({ subject: '', resource: '', topic: '', target: '', topicTarget: '', startTime: '', endTime: '', days: [] });
     router.push('/ogrenciler/' + selectedStudentId);
     router.refresh();
+  }
+
+  async function clearProgram() {
+    if (!selectedStudentId || !weekStart || logs.length === 0) return;
+    const ok = window.confirm(
+      `${weekLabel} programındaki ${logs.length} görevin tamamı (yapılan soru/süre bilgileri dahil) silinecek. Emin misiniz?`
+    );
+    if (!ok) return;
+    const { error } = await (supabase as any)
+      .from('question_logs')
+      .delete()
+      .eq('student_id', selectedStudentId)
+      .eq('week_start', weekStart);
+    if (error) { setFormError(error.message); return; }
+    setLogs([]);
+    setAddingDay(null);
+    setEditingLogId(null);
+    setProgramPromptWeek('');
+    setActiveProgramWeek('');
+    await loadProgramOptions(selectedStudentId);
   }
 
   async function syncFromDailyLogs() {
@@ -573,43 +657,32 @@ export default function HaftalikTakipPage() {
     ));
   }
 
-  // ── Mevcut hedefi diğer günlere kopyala ──
-  function openCopyPopover(log: any) {
-    setCopyPopoverLogId(log.id);
-    setCopyDaysSelected([]);
-  }
-
-  function toggleCopyDay(day: number) {
-    setCopyDaysSelected((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
-  }
-
-  async function confirmCopy(log: any) {
-    if (copyDaysSelected.length === 0) { setCopyPopoverLogId(null); return; }
+  // ── Kopyalanan hedefi bir güne yapıştır ──
+  async function pasteLog(day: number) {
+    if (!clipboardLog || !selectedStudentId || !weekStart) return;
     const { data: { user } } = await supabase.auth.getUser();
-    const rows = copyDaysSelected.map((day) => ({
-      student_id: log.student_id,
+    const row = {
+      student_id: selectedStudentId,
       coach_id: user?.id,
-      subject: log.subject,
-      resource_name: log.resource_name,
-      topic: log.topic,
-      week_start: log.week_start,
-      week_end: log.week_end,
+      subject: clipboardLog.subject,
+      resource_name: clipboardLog.resource_name,
+      topic: clipboardLog.topic,
+      week_start: weekStart,
+      week_end: weekEnd,
       plan_day: day,
-      start_time: log.start_time,
-      end_time: log.end_time,
-      target_count: log.target_count,
+      start_time: clipboardLog.start_time,
+      end_time: clipboardLog.end_time,
+      target_count: clipboardLog.target_count ?? 0,
       done_count: 0,
-      topic_target_minutes: log.topic_target_minutes,
+      topic_target_minutes: clipboardLog.topic_target_minutes,
       topic_done_minutes: 0,
-    }));
-    const { data, error } = await (supabase as any).from('question_logs').insert(rows).select();
-    if (error) {
-      setFormError(weeklyPlanErrorMessage(error));
-    } else if (data) {
+    };
+    const { data, error } = await (supabase as any).from('question_logs').insert([row]).select();
+    if (error) { setFormError(weeklyPlanErrorMessage(error)); return; }
+    if (data) {
       setLogs((prev) => [...prev, ...data]);
       await loadProgramOptions(selectedStudentId);
     }
-    setCopyPopoverLogId(null);
   }
 
   function generateReport() {
@@ -648,16 +721,16 @@ export default function HaftalikTakipPage() {
   });
   const plannedLogsByDay = DAYS_TR.map((_, i) => sortedLogs.filter((l) => l.plan_day === i));
   const unscheduledLogs = sortedLogs.filter((l) => typeof l.plan_day !== 'number');
+  const rowCount = Math.max(3, ...plannedLogsByDay.map((l) => l.length));
 
   function renderLogCard(log: any) {
     const pct = log.target_count > 0 ? Math.round((log.done_count / log.target_count) * 100) : 0;
     const isOver = log.done_count > log.target_count;
-    const isCopyOpen = copyPopoverLogId === log.id;
     const isEditing = editingLogId === log.id;
 
     if (isEditing) {
       return (
-        <div key={log.id} className="log-card relative space-y-1.5 rounded-lg border border-[var(--accent)] bg-[var(--card)] p-2">
+        <div key={log.id} className="log-card relative w-full space-y-1.5 rounded-lg border border-[var(--accent)] bg-[var(--card)] p-2">
           <div className="no-print flex items-center justify-between">
             <span className="text-[11px] font-semibold text-[var(--ink)]">Görevi düzenle</span>
             <button onClick={() => setEditingLogId(null)} className="text-[var(--ink-muted)] hover:text-[var(--ink)]">
@@ -691,20 +764,22 @@ export default function HaftalikTakipPage() {
       );
     }
 
+    const c = getSubjectColor(log.subject);
+
     return (
-      <div key={log.id} className="log-card relative rounded-lg border border-[var(--border)] bg-[var(--card)] p-1.5">
+      <div
+        key={log.id}
+        className={`log-card ${colorMode ? 'colored' : ''} relative flex w-full flex-col rounded-lg border border-[var(--border)] bg-[var(--card)] p-1.5`}
+        style={colorMode ? { backgroundColor: `${c}22`, borderLeft: `4px solid ${c}` } : undefined}
+      >
         <div className="flex items-start justify-between gap-1">
           <div className="min-w-0">
             <span className="block text-[12px] font-medium leading-tight text-[var(--ink)]">{log.subject}</span>
-            {log.topic && (
-              <span className="block text-[11px] leading-tight text-[var(--ink-muted)]">{log.topic}</span>
-            )}
-            {log.resource_name && (
-              <span className="block text-[10px] leading-tight text-[var(--ink-muted)]">{log.resource_name}</span>
-            )}
+            {log.topic && <span className="block text-[11px] leading-tight text-[var(--ink-muted)]">{log.topic}</span>}
+            {log.resource_name && <span className="block text-[10px] leading-tight text-[var(--ink-muted)]">{log.resource_name}</span>}
           </div>
           <div className="no-print flex flex-shrink-0 items-center gap-1">
-            <button onClick={() => openCopyPopover(log)} title="Diğer günlere kopyala" className="text-[var(--ink-muted)] hover:text-[var(--accent)]">
+            <button onClick={() => setClipboardLog(log)} title="Kopyala (sonra bir güne yapıştır)" className="text-[var(--ink-muted)] hover:text-[var(--accent)]">
               <IconCopy size={13} />
             </button>
             <button onClick={() => openEdit(log)} title="Düzenle" className="text-[var(--ink-muted)] hover:text-[var(--accent)]">
@@ -716,72 +791,33 @@ export default function HaftalikTakipPage() {
           </div>
         </div>
 
-        {isCopyOpen && (
-          <div className="no-print absolute right-0 top-7 z-20 w-44 rounded-lg border border-[var(--border)] bg-[var(--card)] p-2 shadow-lg">
-            <p className="mb-1.5 text-[11px] font-medium text-[var(--ink-muted)]">Hangi günlere kopyalansın?</p>
-            <div className="mb-2 flex flex-wrap gap-1">
-              {DAYS_SHORT.map((d, i) =>
-                i === log.plan_day ? null : (
-                  <button
-                    key={d}
-                    onClick={() => toggleCopyDay(i)}
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                      copyDaysSelected.includes(i) ? 'bg-[var(--accent)] text-white' : 'bg-[var(--paper)] text-[var(--ink-muted)]'
-                    }`}
-                  >
-                    {d}
-                  </button>
-                )
-              )}
-            </div>
-            <div className="flex gap-1.5">
-              <button onClick={() => setCopyPopoverLogId(null)} className="flex-1 rounded-md border border-[var(--border)] py-1 text-[11px] text-[var(--ink-muted)]">
-                Vazgeç
-              </button>
-              <button onClick={() => confirmCopy(log)} className="flex-1 rounded-md bg-[var(--accent)] py-1 text-[11px] font-medium text-white">
-                Kopyala
-              </button>
-            </div>
+        {/* Alt kısım hep kartın dibinde: kartlar farklı içerikte olsa da hizalı durur */}
+        <div className="mt-auto pt-1.5">
+          <div className="no-print flex flex-wrap items-center gap-1">
+            <input type="time" value={log.start_time?.slice(0, 5) ?? ''} onChange={(e) => updateLogSchedule(log.id, { start_time: e.target.value || null })} title="Başlangıç saati"
+              className="w-[4.5rem] rounded-md border border-[var(--border)] bg-[var(--card)] px-1 py-0.5 text-[11px] text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
+            <input type="time" value={log.end_time?.slice(0, 5) ?? ''} onChange={(e) => updateLogSchedule(log.id, { end_time: e.target.value || null })} title="Bitiş saati"
+              className="w-[4.5rem] rounded-md border border-[var(--border)] bg-[var(--card)] px-1 py-0.5 text-[11px] text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
+            {log.target_count > 0 && (
+              <span className={`ml-auto text-[11px] font-medium ${isOver ? 'text-[var(--track-lgs)]' : pct >= 100 ? 'text-[var(--success)]' : 'text-[var(--ink-muted)]'}`}>
+                {log.done_count}/{log.target_count}
+                {isOver && <span className="ml-0.5 text-[10px]">+{log.done_count - log.target_count}</span>}
+              </span>
+            )}
           </div>
-        )}
-
-        {/* Ekranda: saat girişi */}
-        <div className="no-print mt-1.5 flex flex-wrap items-center gap-1">
-          <input
-            type="time"
-            value={log.start_time?.slice(0, 5) ?? ''}
-            onChange={(e) => updateLogSchedule(log.id, { start_time: e.target.value || null })}
-            title="Başlangıç saati"
-            className="w-[4.5rem] rounded-md border border-[var(--border)] bg-[var(--card)] px-1 py-0.5 text-[11px] text-[var(--ink)] outline-none focus:border-[var(--accent)]"
-          />
-          <input
-            type="time"
-            value={log.end_time?.slice(0, 5) ?? ''}
-            onChange={(e) => updateLogSchedule(log.id, { end_time: e.target.value || null })}
-            title="Bitiş saati"
-            className="w-[4.5rem] rounded-md border border-[var(--border)] bg-[var(--card)] px-1 py-0.5 text-[11px] text-[var(--ink)] outline-none focus:border-[var(--accent)]"
-          />
-          <span className={`ml-auto text-[11px] font-medium ${isOver ? 'text-[var(--track-lgs)]' : pct >= 100 ? 'text-[var(--success)]' : 'text-[var(--ink-muted)]'}`}>
-            {log.done_count}/{log.target_count}
-            {isOver && <span className="ml-0.5 text-[10px]">+{log.done_count - log.target_count}</span>}
-          </span>
-        </div>
-        <div className="no-print mt-1">
-          <ProgressBar done={log.done_count} target={log.target_count} />
-        </div>
-        {log.topic_target_minutes > 0 && (
-          <div className="no-print mt-1 text-[10px] text-[var(--ink-muted)]">
-            Konu: {log.topic_done_minutes ?? 0}/{log.topic_target_minutes} dk
+          {/* Hedef olmasa da yer ayrılır */}
+          <div className="no-print mt-1 h-1.5"><ProgressBar done={log.done_count} target={log.target_count} /></div>
+          <div className="no-print mt-1 h-3.5 text-[10px] text-[var(--ink-muted)]">
+            {log.topic_target_minutes > 0 && <>Konu: {log.topic_done_minutes ?? 0}/{log.topic_target_minutes} dk</>}
           </div>
-        )}
 
-        {/* Yazdırmada: sade çıktı */}
-        <div className="print-only mt-1 items-center justify-between text-[11px] text-black">
-          <span>{[log.start_time?.slice(0, 5), log.end_time?.slice(0, 5)].filter(Boolean).join(' - ')}</span>
-          <span>
-            {log.target_count > 0 ? `☐ ${log.target_count} soru` : ''}
-            {log.topic_target_minutes > 0 ? ` ☐ ${log.topic_target_minutes} dk` : ''}
-          </span>
+          <div className="print-only items-center justify-between text-[11px] text-black">
+            <span>{[log.start_time?.slice(0, 5), log.end_time?.slice(0, 5)].filter(Boolean).join(' - ')}</span>
+            <span>
+              {log.target_count > 0 ? `☐ ${log.target_count} soru` : ''}
+              {log.topic_target_minutes > 0 ? ` ☐ ${log.topic_target_minutes} dk` : ''}
+            </span>
+          </div>
         </div>
       </div>
     );
@@ -897,8 +933,9 @@ export default function HaftalikTakipPage() {
           .print-only { display: flex !important; }
           .print-root { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
           .print-board { min-width: 0 !important; gap: 4px !important; }
-          .day-col { min-height: 0 !important; break-inside: avoid; border: 1px solid #999; background: white !important; }
-          .log-card { break-inside: avoid; border: 1px solid #bbb !important; background: white !important; }
+          .day-cell { background: white !important; border-left: 1px solid #999; border-right: 1px solid #999; }
+          .log-card:not(.colored) { break-inside: avoid; border: 1px solid #bbb !important; background: white !important; }
+          .log-card.colored { break-inside: avoid; border-top: 1px solid #bbb; border-right: 1px solid #bbb; border-bottom: 1px solid #bbb; }
         }
       `}</style>
 
@@ -917,6 +954,20 @@ export default function HaftalikTakipPage() {
             <IconPrinter size={13} /> Yazdır
           </button>
           <button
+            onClick={toggleColorMode}
+            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
+          >
+            {colorMode ? '🎨 Renkli' : '⚫ Siyah-beyaz'}
+          </button>
+          {logs.length > 0 && (
+            <button
+              onClick={clearProgram}
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--danger)]/40 px-3 py-1.5 text-[12px] text-[var(--danger)] hover:bg-[var(--paper)]"
+            >
+              <IconTrash size={13} /> Temizle
+            </button>
+          )}
+          <button
             onClick={syncFromDailyLogs}
             className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
           >
@@ -932,6 +983,21 @@ export default function HaftalikTakipPage() {
           )}
         </div>
       </div>
+
+      {clipboardLog && (
+        <div className="no-print mb-3 flex items-center justify-between rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-2 text-[12px] text-[var(--ink)]">
+          <span>
+            📋 Kopyalanan: <b>{clipboardLog.subject}</b>{clipboardLog.topic ? ` · ${clipboardLog.topic}` : ''} —
+            gün başlığındaki <b>Yapıştır</b> butonuna basın veya fareyi günün üstüne getirip <b>Ctrl+V</b> yapın.
+          </span>
+          <button onClick={() => setClipboardLog(null)} className="ml-3 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[11px]">
+            İptal (Esc)
+          </button>
+        </div>
+      )}
+      {formError && addingDay === null && editingLogId === null && (
+        <p className="no-print mb-3 rounded-md bg-red-50 px-3 py-2 text-[12px] text-red-600">{formError}</p>
+      )}
 
       {filteredStudents.length === 0 ? (
         <p className="text-[13px] text-[var(--ink-muted)]">Henüz öğrenci eklenmemiş.</p>
@@ -1002,12 +1068,15 @@ export default function HaftalikTakipPage() {
               )}
 
               <div className="no-print flex items-center gap-3">
-                <span className="flex-shrink-0 text-[12px] text-[var(--ink-muted)]">Hafta başlangıcı:</span>
+                <span className="flex-shrink-0 text-[12px] text-[var(--ink-muted)]">
+                  Hafta başlangıcı <span className="text-[10px]">(değiştirmek için çift tıkla)</span>:
+                </span>
                 <div className="flex flex-wrap gap-1">
                   {DAYS_SHORT.map((d, i) => (
                     <button
                       key={d}
-                      onClick={() => updateWeekStartDay(i)}
+                      onDoubleClick={() => updateWeekStartDay(i)}
+                      title="Değiştirmek için çift tıklayın"
                       className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
                         (selectedStudent?.week_start_day ?? 0) === i
                           ? 'bg-[var(--accent)] text-white'
@@ -1023,36 +1092,53 @@ export default function HaftalikTakipPage() {
                 )}
               </div>
 
-              {/* 7 günlük tek ekran pano */}
+              {/* 7 günlük tek ekran pano (satır bazlı ızgara: her günün n. görevi aynı satırda) */}
               <div className="overflow-x-auto pb-1 print:overflow-visible">
-                <div className="print-board grid min-w-[1100px] grid-cols-7 gap-2">
-                  {DAYS_TR.map((day, i) => {
-                    const dayLogs = plannedLogsByDay[i];
-                    return (
-                      <div key={day} className="day-col flex min-h-[320px] flex-col rounded-lg bg-[var(--paper)] p-1.5">
-                        <div className="mb-1.5 flex items-center justify-between">
-                          <span className="text-[12px] font-semibold text-[var(--ink)]">{day}</span>
-                          <button
-                            onClick={() => (addingDay === i ? setAddingDay(null) : openAdd(i))}
-                            disabled={subjects.length === 0}
-                            title={`${day} gününe hedef ekle`}
-                            className="no-print flex items-center gap-0.5 rounded-md bg-[var(--card)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--accent-dark)] hover:bg-[var(--accent)] hover:text-white disabled:opacity-40"
-                          >
-                            <IconPlus size={12} /> Ekle
+                <div className="print-board grid min-w-[1100px] grid-cols-7 gap-x-2">
+                  {/* Gün başlıkları */}
+                  {DAYS_TR.map((day, i) => (
+                    <div key={`h-${i}`} onMouseEnter={() => setHoverDay(i)}
+                      className="day-cell flex items-center justify-between rounded-t-lg bg-[var(--paper)] p-1.5 pb-1">
+                      <span className="text-[12px] font-semibold text-[var(--ink)]">{day}</span>
+                      <div className="no-print flex gap-1">
+                        {clipboardLog && (
+                          <button onClick={() => pasteLog(i)} title={`${day} gününe yapıştır`}
+                            className="rounded-md bg-[var(--accent)] px-1.5 py-0.5 text-[11px] font-medium text-white">
+                            Yapıştır
                           </button>
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
-                          {dayLogs.map(renderLogCard)}
-                          {dayLogs.length === 0 && addingDay !== i && (
-                            <p className="no-print py-6 text-center text-[11px] text-[var(--ink-muted)]">Boş</p>
-                          )}
-                        </div>
-
-                        {addingDay === i && renderAddForm(i)}
+                        )}
+                        <button
+                          onClick={() => (addingDay === i ? setAddingDay(null) : openAdd(i))}
+                          disabled={subjects.length === 0}
+                          title={`${day} gününe hedef ekle`}
+                          className="flex items-center gap-0.5 rounded-md bg-[var(--card)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--accent-dark)] hover:bg-[var(--accent)] hover:text-white disabled:opacity-40"
+                        >
+                          <IconPlus size={12} /> Ekle
+                        </button>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
+
+                  {/* Görev satırları */}
+                  {Array.from({ length: rowCount }).flatMap((_, r) =>
+                    DAYS_TR.map((_, i) => {
+                      const log = plannedLogsByDay[i][r];
+                      return (
+                        <div key={`c-${i}-${r}`} onMouseEnter={() => setHoverDay(i)}
+                          className="day-cell flex bg-[var(--paper)] px-1.5 pb-1.5">
+                          {log ? renderLogCard(log) : null}
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {/* Ekleme formları */}
+                  {DAYS_TR.map((_, i) => (
+                    <div key={`f-${i}`} onMouseEnter={() => setHoverDay(i)}
+                      className="day-cell rounded-b-lg bg-[var(--paper)] px-1.5 pb-1.5">
+                      {addingDay === i && renderAddForm(i)}
+                    </div>
+                  ))}
                 </div>
               </div>
 
