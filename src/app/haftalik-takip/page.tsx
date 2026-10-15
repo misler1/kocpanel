@@ -1119,26 +1119,26 @@ export default function HaftalikTakipPage() {
                     </div>
                   ))}
 
+                  {/* Ekleme formları: gün başlığının hemen altında açılır */}
+                  {DAYS_TR.map((_, i) => (
+                    <div key={`f-${i}`} onMouseEnter={() => setHoverDay(i)}
+                      className="day-cell bg-[var(--paper)] px-1.5 pb-1.5">
+                      {addingDay === i && renderAddForm(i)}
+                    </div>
+                  ))}
+
                   {/* Görev satırları */}
                   {Array.from({ length: rowCount }).flatMap((_, r) =>
                     DAYS_TR.map((_, i) => {
                       const log = plannedLogsByDay[i][r];
                       return (
                         <div key={`c-${i}-${r}`} onMouseEnter={() => setHoverDay(i)}
-                          className="day-cell flex bg-[var(--paper)] px-1.5 pb-1.5">
+                          className={`day-cell flex bg-[var(--paper)] px-1.5 pb-1.5 ${r === rowCount - 1 ? 'rounded-b-lg' : ''}`}>
                           {log ? renderLogCard(log) : null}
                         </div>
                       );
                     })
                   )}
-
-                  {/* Ekleme formları */}
-                  {DAYS_TR.map((_, i) => (
-                    <div key={`f-${i}`} onMouseEnter={() => setHoverDay(i)}
-                      className="day-cell rounded-b-lg bg-[var(--paper)] px-1.5 pb-1.5">
-                      {addingDay === i && renderAddForm(i)}
-                    </div>
-                  ))}
                 </div>
               </div>
 
