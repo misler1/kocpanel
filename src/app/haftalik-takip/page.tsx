@@ -212,6 +212,13 @@ export default function HaftalikTakipPage() {
   const [programPromptWeek, setProgramPromptWeek] = useState('');
   const [creatingProgram, setCreatingProgram] = useState(false);
 
+  // Programı başka öğrenciye kopyalama
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [copyTargetId, setCopyTargetId] = useState('');
+  const [copying, setCopying] = useState(false);
+  const [copyError, setCopyError] = useState('');
+  const [copyDone, setCopyDone] = useState<{ id: string; name: string; weekStart: string; weekEnd: string; count: number } | null>(null);
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -685,6 +692,73 @@ export default function HaftalikTakipPage() {
     }
   }
 
+  // ── Mevcut programı başka bir öğrencinin ilk boş haftasına kopyala ──
+  function openCopyModal() {
+    setCopyError('');
+    setCopyDone(null);
+    const first = students.find((s) => s.id !== selectedStudentId && matchesFilter(s));
+    setCopyTargetId(first?.id ?? '');
+    setCopyOpen(true);
+  }
+
+  async function copyProgramToStudent() {
+    if (!copyTargetId || logs.length === 0) return;
+    const target = students.find((s) => s.id === copyTargetId);
+    if (!target) return;
+    setCopying(true);
+    setCopyError('');
+
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: existing, error: existingError } = await (supabase as any)
+      .from('question_logs')
+      .select('week_start')
+      .eq('student_id', copyTargetId);
+    if (existingError) {
+      setCopying(false);
+      setCopyError(existingError.message);
+      return;
+    }
+
+    const taken = Array.from(new Set<string>((existing ?? []).map((r: any) => r.week_start).filter(Boolean)));
+    const options: ProgramOption[] = taken.map((ws) => ({ weekStart: ws, weekEnd: getWeekEndFromStart(ws), count: 0 }));
+    const nextWeekStart = getNextBlankProgramStartFromOptions(options, target.week_start_day ?? 0);
+    const nextWeekEnd = getWeekEndFromStart(nextWeekStart);
+
+    const rows = logs.map((log) => ({
+      student_id: copyTargetId,
+      coach_id: user?.id,
+      subject: log.subject,
+      resource_name: log.resource_name,
+      topic: log.topic,
+      week_start: nextWeekStart,
+      week_end: nextWeekEnd,
+      plan_day: log.plan_day,
+      start_time: log.start_time,
+      end_time: log.end_time,
+      target_count: log.target_count ?? 0,
+      done_count: 0,
+      topic_target_minutes: log.topic_target_minutes,
+      topic_done_minutes: 0,
+    }));
+
+    const { error } = await (supabase as any).from('question_logs').insert(rows);
+    setCopying(false);
+    if (error) {
+      setCopyError(weeklyPlanErrorMessage(error));
+      return;
+    }
+    rememberWeek(copyTargetId, nextWeekStart);
+    setCopyDone({ id: copyTargetId, name: target.full_name, weekStart: nextWeekStart, weekEnd: nextWeekEnd, count: rows.length });
+  }
+
+  function openCopiedStudent() {
+    if (!copyDone) return;
+    setSinifFilter('');
+    setSelectedStudentId(copyDone.id);
+    setCopyOpen(false);
+    setCopyDone(null);
+  }
+
   function generateReport() {
     const lines: string[] = [];
     lines.push(`📊 Haftalık Rapor — ${selectedStudent?.full_name}`);
@@ -981,8 +1055,73 @@ export default function HaftalikTakipPage() {
               <IconDownload size={13} /> Rapor al
             </button>
           )}
+          {logs.length > 0 && (
+            <button
+              onClick={openCopyModal}
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
+            >
+              <IconCopy size={13} /> Başka öğrenciye kopyala
+            </button>
+          )}
         </div>
       </div>
+
+      {copyOpen && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !copying && setCopyOpen(false)}>
+          <div className="w-full max-w-md space-y-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-[14px] font-semibold text-[var(--ink)]">Programı başka öğrenciye kopyala</h2>
+              <button onClick={() => setCopyOpen(false)} className="text-[var(--ink-muted)] hover:text-[var(--ink)]">
+                <IconX size={16} />
+              </button>
+            </div>
+
+            {copyDone ? (
+              <>
+                <p className="rounded-md bg-green-50 px-3 py-2 text-[12px] text-green-700">
+                  {copyDone.count} görev <b>{copyDone.name}</b> için {fmtDate(copyDone.weekStart)} – {fmtDate(copyDone.weekEnd)} haftasına kopyalandı.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => { setCopyOpen(false); setCopyDone(null); }} className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink)] hover:bg-[var(--paper)]">
+                    Kapat
+                  </button>
+                  <button onClick={openCopiedStudent} className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--accent-dark)]">
+                    Öğrencinin programını aç
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-[12px] text-[var(--ink-muted)]">
+                  {selectedStudent?.full_name} öğrencisinin {weekLabel} haftasındaki {logs.length} görevi, seçtiğiniz öğrencinin ilk boş haftasına kopyalanır. Yapılan soru ve süre bilgileri sıfırlanır.
+                </p>
+                <select
+                  value={copyTargetId}
+                  onChange={(e) => setCopyTargetId(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] text-[var(--ink)] focus:outline-none"
+                >
+                  {students.filter((s) => s.id !== selectedStudentId && matchesFilter(s)).map((s: any) => (
+                    <option key={s.id} value={s.id}>{s.full_name}{s.sinif_sube ? ` (${s.sinif_sube})` : ''}</option>
+                  ))}
+                </select>
+                {copyError && <p className="rounded-md bg-red-50 px-2 py-1 text-[11px] text-red-600">{copyError}</p>}
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setCopyOpen(false)} disabled={copying} className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink)] hover:bg-[var(--paper)]">
+                    İptal
+                  </button>
+                  <button
+                    onClick={copyProgramToStudent}
+                    disabled={copying || !copyTargetId}
+                    className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-60"
+                  >
+                    {copying ? 'Kopyalanıyor...' : 'Kopyala'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {clipboardLog && (
         <div className="no-print mb-3 flex items-center justify-between rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-2 text-[12px] text-[var(--ink)]">
@@ -1119,26 +1258,26 @@ export default function HaftalikTakipPage() {
                     </div>
                   ))}
 
+                  {/* Ekleme formları: gün başlığının hemen altında açılır */}
+                  {DAYS_TR.map((_, i) => (
+                    <div key={`f-${i}`} onMouseEnter={() => setHoverDay(i)}
+                      className="day-cell bg-[var(--paper)] px-1.5 pb-1.5">
+                      {addingDay === i && renderAddForm(i)}
+                    </div>
+                  ))}
+
                   {/* Görev satırları */}
                   {Array.from({ length: rowCount }).flatMap((_, r) =>
                     DAYS_TR.map((_, i) => {
                       const log = plannedLogsByDay[i][r];
                       return (
                         <div key={`c-${i}-${r}`} onMouseEnter={() => setHoverDay(i)}
-                          className="day-cell flex bg-[var(--paper)] px-1.5 pb-1.5">
+                          className={`day-cell flex bg-[var(--paper)] px-1.5 pb-1.5 ${r === rowCount - 1 ? 'rounded-b-lg' : ''}`}>
                           {log ? renderLogCard(log) : null}
                         </div>
                       );
                     })
                   )}
-
-                  {/* Ekleme formları */}
-                  {DAYS_TR.map((_, i) => (
-                    <div key={`f-${i}`} onMouseEnter={() => setHoverDay(i)}
-                      className="day-cell rounded-b-lg bg-[var(--paper)] px-1.5 pb-1.5">
-                      {addingDay === i && renderAddForm(i)}
-                    </div>
-                  ))}
                 </div>
               </div>
 
