@@ -11,6 +11,9 @@ import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 const DAYS_TR = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
+// Ders listesinden bağımsız, elle yazılan görev (Branş Denemesi, Ezber vb.)
+const CUSTOM_SUBJECT = '__custom__';
+
 const TRACK_RESOURCES: Record<string, string[]> = {
   YKS_SAY: [
     'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
@@ -144,6 +147,7 @@ type Draft = {
   topicTarget: string;
   startTime: string;
   endTime: string;
+  customSubject: string;
   days: number[];
 };
 
@@ -180,13 +184,13 @@ export default function HaftalikTakipPage() {
   // Günün içinde açılan ekleme formu
   const [addingDay, setAddingDay] = useState<number | null>(null);
   const [draft, setDraft] = useState<Draft>({
-    subject: '', resource: '', topic: '', target: '', topicTarget: '', startTime: '', endTime: '', days: [],
+    subject: '', customSubject: '', resource: '', topic: '', target: '', topicTarget: '', startTime: '', endTime: '', days: [],
   });
   const [adding, setAdding] = useState(false);
   const [formError, setFormError] = useState('');
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<EditDraft>({
-    subject: '', resource: '', topic: '', target: '', topicTarget: '', startTime: '', endTime: '', planDay: '0',
+    subject: '', customSubject: '', resource: '', topic: '', target: '', topicTarget: '', startTime: '', endTime: '', planDay: '0',
   });
 
   // Kopyala / yapıştır
@@ -434,7 +438,7 @@ export default function HaftalikTakipPage() {
     setLogs([]);
     setAddingDay(null);
     setEditingLogId(null);
-    setDraft({ subject: '', resource: '', topic: '', target: '', topicTarget: '', startTime: '', endTime: '', days: [] });
+    setDraft({ subject: '', customSubject: '', resource: '', topic: '', target: '', topicTarget: '', startTime: '', endTime: '', days: [] });
     router.push('/ogrenciler/' + selectedStudentId);
     router.refresh();
   }
@@ -530,6 +534,7 @@ export default function HaftalikTakipPage() {
       topicTarget: '',
       startTime: '',
       endTime: '',
+      customSubject: '',
       days: [day],
     });
     setFormError('');
@@ -560,8 +565,9 @@ export default function HaftalikTakipPage() {
 
   async function addLogs() {
     setFormError('');
-    if (!selectedStudentId || !draft.subject) {
-      setFormError('Ders seçmelisiniz.');
+    const finalSubject = draft.subject === CUSTOM_SUBJECT ? draft.customSubject.trim() : draft.subject;
+    if (!selectedStudentId || !finalSubject) {
+      setFormError(draft.subject === CUSTOM_SUBJECT ? 'Görev adını yazmalısınız.' : 'Ders seçmelisiniz.');
       return;
     }
     if (draft.days.length === 0) {
@@ -576,7 +582,7 @@ export default function HaftalikTakipPage() {
     const rows = draft.days.map((day) => ({
       student_id: selectedStudentId,
       coach_id: user?.id,
-      subject: draft.subject,
+      subject: finalSubject,
       resource_name: draft.resource || null,
       topic: draft.topic || null,
       week_start: weekStart,
@@ -619,8 +625,10 @@ export default function HaftalikTakipPage() {
   function openEdit(log: any) {
     setFormError('');
     setEditingLogId(log.id);
+    const isCustom = !!log.subject && !subjects.includes(log.subject);
     setEditDraft({
-      subject: log.subject ?? '',
+      subject: isCustom ? CUSTOM_SUBJECT : (log.subject ?? ''),
+      customSubject: isCustom ? log.subject : '',
       resource: log.resource_name ?? '',
       topic: log.topic ?? '',
       target: log.target_count ? String(log.target_count) : '',
@@ -632,10 +640,15 @@ export default function HaftalikTakipPage() {
   }
 
   async function saveEdit(id: string) {
+    const finalSubject = editDraft.subject === CUSTOM_SUBJECT ? editDraft.customSubject.trim() : editDraft.subject;
+    if (!finalSubject) {
+      setFormError(editDraft.subject === CUSTOM_SUBJECT ? 'Görev adını yazmalısınız.' : 'Ders seçmelisiniz.');
+      return;
+    }
     const targetCount = editDraft.target ? Number(editDraft.target) : 0;
     const topicTarget = editDraft.topicTarget ? Number(editDraft.topicTarget) : null;
     const updates = {
-      subject: editDraft.subject,
+      subject: finalSubject,
       resource_name: editDraft.resource || null,
       topic: editDraft.topic || null,
       plan_day: Number(editDraft.planDay),
@@ -795,7 +808,8 @@ export default function HaftalikTakipPage() {
   });
   const plannedLogsByDay = DAYS_TR.map((_, i) => sortedLogs.filter((l) => l.plan_day === i));
   const unscheduledLogs = sortedLogs.filter((l) => typeof l.plan_day !== 'number');
-  const rowCount = Math.max(3, ...plannedLogsByDay.map((l) => l.length));
+  // +1: her günün son görevinin altında "Görev ekle" kutusuna yer kalsın
+  const rowCount = Math.max(3, ...plannedLogsByDay.map((l) => l.length + 1));
 
   function renderLogCard(log: any) {
     const pct = log.target_count > 0 ? Math.round((log.done_count / log.target_count) * 100) : 0;
@@ -813,11 +827,19 @@ export default function HaftalikTakipPage() {
           </div>
           <select value={editDraft.subject} onChange={(e) => setEditDraft((d) => ({ ...d, subject: e.target.value, resource: resourceMap[e.target.value]?.[0] ?? '' }))} className={inputCls}>
             {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
+            <option value={CUSTOM_SUBJECT}>✏️ Diğer (kendim yazayım)</option>
           </select>
-          <select value={editDraft.resource} onChange={(e) => setEditDraft((d) => ({ ...d, resource: e.target.value }))} className={inputCls}>
-            <option value="">Kaynak yok</option>
-            {(resourceMap[editDraft.subject] ?? []).map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
+          {editDraft.subject === CUSTOM_SUBJECT ? (
+            <>
+              <input value={editDraft.customSubject} onChange={(e) => setEditDraft((d) => ({ ...d, customSubject: e.target.value }))} placeholder="Görev adı (ör. Branş Denemesi, Ezber)" className={inputCls} />
+              <input value={editDraft.resource} onChange={(e) => setEditDraft((d) => ({ ...d, resource: e.target.value }))} placeholder="Kaynak (opsiyonel)" className={inputCls} />
+            </>
+          ) : (
+            <select value={editDraft.resource} onChange={(e) => setEditDraft((d) => ({ ...d, resource: e.target.value }))} className={inputCls}>
+              <option value="">Kaynak yok</option>
+              {(resourceMap[editDraft.subject] ?? []).map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          )}
           <input value={editDraft.topic} onChange={(e) => setEditDraft((d) => ({ ...d, topic: e.target.value }))} placeholder="Konu" className={inputCls} />
           <div className="grid grid-cols-2 gap-1.5">
             <select value={editDraft.planDay} onChange={(e) => setEditDraft((d) => ({ ...d, planDay: e.target.value }))} className={inputCls}>
@@ -897,9 +919,22 @@ export default function HaftalikTakipPage() {
     );
   }
 
+  function renderAddButton(day: number) {
+    return (
+      <button
+        type="button"
+        onClick={() => openAdd(day)}
+        title={`${DAYS_TR[day]} gününe görev ekle`}
+        className="no-print flex w-full items-center justify-center gap-1 self-start rounded-lg border border-dashed border-[var(--accent)]/50 bg-[var(--card)]/60 py-2 text-[12px] font-medium text-[var(--accent-dark)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-white"
+      >
+        <IconPlus size={13} /> Görev ekle
+      </button>
+    );
+  }
+
   function renderAddForm(day: number) {
     return (
-      <div className="no-print mt-2 space-y-1.5 rounded-lg border border-[var(--accent)]/40 bg-[var(--card)] p-2">
+      <div className="no-print w-full space-y-1.5 rounded-lg border border-[var(--accent)]/40 bg-[var(--card)] p-2">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold text-[var(--ink)]">{DAYS_TR[day]} · yeni hedef</span>
           <button onClick={() => setAddingDay(null)} className="text-[var(--ink-muted)] hover:text-[var(--ink)]">
@@ -909,12 +944,33 @@ export default function HaftalikTakipPage() {
 
         <select value={draft.subject} onChange={(e) => setDraftSubject(e.target.value)} className={inputCls}>
           {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
+          <option value={CUSTOM_SUBJECT}>✏️ Diğer (kendim yazayım)</option>
         </select>
 
-        <select value={draft.resource} onChange={(e) => setDraft((d) => ({ ...d, resource: e.target.value }))} className={inputCls}>
-          <option value="">Kaynak yok</option>
-          {(resourceMap[draft.subject] ?? []).map((r) => <option key={r} value={r}>{r}</option>)}
-        </select>
+        {draft.subject === CUSTOM_SUBJECT ? (
+          <>
+            <input
+              type="text"
+              autoFocus
+              value={draft.customSubject}
+              onChange={(e) => setDraft((d) => ({ ...d, customSubject: e.target.value }))}
+              placeholder="Görev adı (ör. Branş Denemesi, Ezber)"
+              className={inputCls}
+            />
+            <input
+              type="text"
+              value={draft.resource}
+              onChange={(e) => setDraft((d) => ({ ...d, resource: e.target.value }))}
+              placeholder="Kaynak (opsiyonel)"
+              className={inputCls}
+            />
+          </>
+        ) : (
+          <select value={draft.resource} onChange={(e) => setDraft((d) => ({ ...d, resource: e.target.value }))} className={inputCls}>
+            <option value="">Kaynak yok</option>
+            {(resourceMap[draft.subject] ?? []).map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        )}
 
         <input
           type="text"
@@ -1008,6 +1064,7 @@ export default function HaftalikTakipPage() {
           .print-root { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
           .print-board { min-width: 0 !important; gap: 4px !important; }
           .day-cell { background: white !important; border-left: 1px solid #999; border-right: 1px solid #999; }
+          .day-head { background: #eee !important; }
           .log-card:not(.colored) { break-inside: avoid; border: 1px solid #bbb !important; background: white !important; }
           .log-card.colored { break-inside: avoid; border-top: 1px solid #bbb; border-right: 1px solid #bbb; border-bottom: 1px solid #bbb; }
         }
@@ -1221,46 +1278,34 @@ export default function HaftalikTakipPage() {
               {/* 7 günlük tek ekran pano (satır bazlı ızgara: her günün n. görevi aynı satırda) */}
               <div className="overflow-x-auto pb-1 print:overflow-visible">
                 <div className="print-board grid min-w-[1100px] grid-cols-7 gap-x-2">
-                  {/* Gün başlıkları */}
+                  {/* Gün başlıkları (ortalı, ayrışan renk) */}
                   {DAYS_TR.map((day, i) => (
                     <div key={`h-${i}`} onMouseEnter={() => setHoverDay(i)}
-                      className="day-cell flex items-center justify-between rounded-t-lg bg-[var(--paper)] p-1.5 pb-1">
-                      <span className="text-[12px] font-semibold text-[var(--ink)]">{day}</span>
-                      <div className="no-print flex gap-1">
-                        {clipboardLog && (
-                          <button onClick={() => pasteLog(i)} title={`${day} gününe yapıştır`}
-                            className="rounded-md bg-[var(--accent)] px-1.5 py-0.5 text-[11px] font-medium text-white">
-                            Yapıştır
-                          </button>
-                        )}
-                        <button
-                          onClick={() => (addingDay === i ? setAddingDay(null) : openAdd(i))}
-                          disabled={subjects.length === 0}
-                          title={`${day} gününe hedef ekle`}
-                          className="flex items-center gap-0.5 rounded-md bg-[var(--card)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--accent-dark)] hover:bg-[var(--accent)] hover:text-white disabled:opacity-40"
-                        >
-                          <IconPlus size={12} /> Ekle
+                      className="day-cell day-head flex flex-col items-center justify-center gap-1 rounded-t-lg bg-[var(--accent-soft)] px-1.5 py-2 text-center">
+                      <span className="text-[13px] font-semibold text-[var(--accent-dark)]">{day}</span>
+                      {clipboardLog && (
+                        <button onClick={() => pasteLog(i)} title={`${day} gününe yapıştır`}
+                          className="no-print rounded-md bg-[var(--accent)] px-2 py-0.5 text-[11px] font-medium text-white">
+                          Yapıştır
                         </button>
-                      </div>
+                      )}
                     </div>
                   ))}
 
-                  {/* Ekleme formları: gün başlığının hemen altında açılır */}
-                  {DAYS_TR.map((_, i) => (
-                    <div key={`f-${i}`} onMouseEnter={() => setHoverDay(i)}
-                      className="day-cell bg-[var(--paper)] px-1.5 pb-1.5">
-                      {addingDay === i && renderAddForm(i)}
-                    </div>
-                  ))}
-
-                  {/* Görev satırları */}
+                  {/* Görev satırları: her günün son görevinin altında "Görev ekle" kutusu / formu */}
                   {Array.from({ length: rowCount }).flatMap((_, r) =>
                     DAYS_TR.map((_, i) => {
-                      const log = plannedLogsByDay[i][r];
+                      const dayLogs = plannedLogsByDay[i];
+                      const log = dayLogs[r];
+                      const isAddSlot = r === dayLogs.length;
                       return (
                         <div key={`c-${i}-${r}`} onMouseEnter={() => setHoverDay(i)}
                           className={`day-cell flex bg-[var(--paper)] px-1.5 pb-1.5 ${r === rowCount - 1 ? 'rounded-b-lg' : ''}`}>
-                          {log ? renderLogCard(log) : null}
+                          {log
+                            ? renderLogCard(log)
+                            : isAddSlot
+                              ? (addingDay === i ? renderAddForm(i) : renderAddButton(i))
+                              : null}
                         </div>
                       );
                     })
