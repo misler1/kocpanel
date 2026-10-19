@@ -1,38 +1,68 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import {
+  createContext, useContext, useState, useEffect, useMemo, useRef, useCallback, ReactNode,
+} from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 
 export type ExamGroup = 'LGS' | 'YKS' | null;
 export type YksTrack = 'YKS_SAY' | 'YKS_SOZ' | 'YKS_EA' | 'YKS_DIL' | null;
-import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 
 export interface FilterableStudent {
   track?: string | null;
   kurum?: string | null;
   donem?: string | null;
 }
-const FILTER_KEY = 'exam_filter_v1';
+
+interface StudentRow extends FilterableStudent {
+  sinif_sube?: string | null;
+}
+
+const FILTER_KEY = 'exam_filter_v2';
+const OPTIONS_KEY = 'exam_filter_options_v1';
+const FILTER_TTL_MS = 24 * 60 * 60 * 1000; // 24 saat
+
+interface PersistedFilter {
+  userId: string | null;
+  examGroup: ExamGroup;
+  yksTrack: YksTrack;
+  kurum: string | null;
+  donem: string | null;
+  expiresAt: number;
+}
+
+interface PersistedOptions {
+  userId: string;
+  students: StudentRow[];
+  donemler: string[];
+}
+
+/** Çıkış butonun supabase.auth.signOut() çağırmıyorsa bunu elle çağır. */
+export function clearExamFilterStorage() {
+  try {
+    localStorage.removeItem(FILTER_KEY);
+    localStorage.removeItem(OPTIONS_KEY);
+  } catch {}
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 interface ExamFilterContextType {
-  // Sınav türü filtresi
   examGroup: ExamGroup;
   yksTrack: YksTrack;
   setExamGroup: (g: ExamGroup) => void;
   setYksTrack: (t: YksTrack) => void;
   availableGroups: ExamGroup[];
 
-  // Kurum filtresi
-  kurum: string | null; // null = Tümü
+  kurum: string | null;
   setKurum: (k: string | null) => void;
   availableKurumlar: string[];
   getSinifOnerileri: (kurum: string) => string[];
-  
 
-  // Dönem filtresi
-  donem: string | null; // null = Tüm dönemler
+  donem: string | null;
   setDonem: (d: string | null) => void;
-  availableDonemler: string[]; // eskiden yeniye sıralı
+  availableDonemler: string[];
 
   filteredStudentCount: number;
   matchesFilter: (student: FilterableStudent | null | undefined) => boolean;
@@ -58,159 +88,256 @@ const ExamFilterContext = createContext<ExamFilterContextType>({
 });
 
 export function ExamFilterProvider({ children }: { children: ReactNode }) {
+  const supabase = useMemo(() => createClient(), []);
+
   const [examGroup, setExamGroupState] = useState<ExamGroup>(null);
-  const [yksTrack, setYksTrack] = useState<YksTrack>(null);
-  const [availableGroups, setAvailableGroups] = useState<ExamGroup[]>([]);
+  const [yksTrack, setYksTrackState] = useState<YksTrack>(null);
+  const [kurum, setKurumState] = useState<string | null>(null);
+  const [donem, setDonemState] = useState<string | null>(null);
 
-  const [kurum, setKurum] = useState<string | null>(null);
-  const [availableKurumlar, setAvailableKurumlar] = useState<string[]>([]);
-  const [classesByKurum, setClassesByKurum] = useState<Record<string, string[]>>({});
-
-  const [donem, setDonem] = useState<string | null>(null);
+  const [allStudents, setAllStudents] = useState<StudentRow[]>([]);
   const [availableDonemler, setAvailableDonemler] = useState<string[]>([]);
+  const [freshLoaded, setFreshLoaded] = useState(false); // ağdan taze veri geldi mi
+  const [restored, setRestored] = useState(false);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [allStudents, setAllStudents] = useState<any[]>([]);
+  const dirtyRef = useRef(false);                       // kullanıcı filtreyi değiştirdi mi
+  const savedUserIdRef = useRef<string | null>(null);   // kayıtlı filtrenin sahibi
+  const currentUserIdRef = useRef<string | null>(null);
+  const loadedUserRef = useRef<string | null>(null);
+  const inflightRef = useRef<string | null>(null);
 
-  const supabase = createClient();
-    const [restored, setRestored] = useState(false);
-
+  // ---- 1) Açılışta: kayıtlı filtre + önbellekteki seçenekleri anında yükle ----
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(FILTER_KEY);
+      const raw = localStorage.getItem(FILTER_KEY);
       if (raw) {
-        const f = JSON.parse(raw);
-        setExamGroupState(f.examGroup ?? null);
-        setYksTrack(f.yksTrack ?? null);
-        setKurum(f.kurum ?? null);
-        setDonem(f.donem ?? null);
+        const f: PersistedFilter = JSON.parse(raw);
+        if (Date.now() > f.expiresAt) {
+          localStorage.removeItem(FILTER_KEY);
+        } else {
+          savedUserIdRef.current = f.userId ?? null;
+          setExamGroupState(f.examGroup ?? null);
+          setYksTrackState(f.yksTrack ?? null);
+          setKurumState(f.kurum ?? null);
+          setDonemState(f.donem ?? null);
+        }
+      }
+      const rawOpt = localStorage.getItem(OPTIONS_KEY);
+      if (rawOpt) {
+        const o: PersistedOptions = JSON.parse(rawOpt);
+        setAllStudents(o.students ?? []);
+        setAvailableDonemler(o.donemler ?? []);
       }
     } catch {}
     setRestored(true);
   }, []);
 
+  // ---- 2) Filtre değişince kaydet (süre en son değişiklikten itibaren 24 saat) ----
   useEffect(() => {
-    if (!restored) return;
+    if (!restored || !dirtyRef.current) return;
     try {
-      sessionStorage.setItem(FILTER_KEY, JSON.stringify({ examGroup, yksTrack, kurum, donem }));
+      const payload: PersistedFilter = {
+        userId: currentUserIdRef.current ?? savedUserIdRef.current,
+        examGroup, yksTrack, kurum, donem,
+        expiresAt: Date.now() + FILTER_TTL_MS,
+      };
+      localStorage.setItem(FILTER_KEY, JSON.stringify(payload));
     } catch {}
   }, [restored, examGroup, yksTrack, kurum, donem]);
 
-    async function loadAll() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  const resetFilters = useCallback(() => {
+    dirtyRef.current = false;
+    savedUserIdRef.current = null;
+    setExamGroupState(null);
+    setYksTrackState(null);
+    setKurumState(null);
+    setDonemState(null);
+  }, []);
 
-    const includeInterns = document.cookie.split('; ').includes('show_interns=1');
-    const scope = await getStudentScope(supabase, user.id, includeInterns);
+  // ---- 3) Veri yükleme (paralel + tekrar deneme) ----
+  const loadAll = useCallback(async (userIdArg?: string, force = false) => {
+    let userId = userIdArg;
+    if (!userId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      userId = session?.user?.id;
+    }
+    if (!userId) return;
+    if (!force && inflightRef.current === userId) return;
+    inflightRef.current = userId;
 
-    const { data: studentsData, error: studentsError } = await applyStudentScope(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase as any).from('students').select('track, kurum, donem, sinif_sube').neq('status', 'pasif'),
-      scope
-    );
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const includeInterns = document.cookie.split('; ').includes('show_interns=1');
+          const scope = await getStudentScope(supabase, userId, includeInterns);
 
-    const students = studentsData ?? [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const trackCounts = students.reduce((acc: Record<string, number>, s: any) => {
-      const t = s.track ?? 'TRACK_YOK';
-      acc[t] = (acc[t] ?? 0) + 1;
-      return acc;
-    }, {});
-    console.log('FILTER DEBUG', { includeInterns, coachIds: scope.coachIds, toplam: students.length, trackCounts });
-    setAllStudents(students);
+          const studentsQuery = applyStudentScope(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (supabase as any).from('students').select('track, kurum, donem, sinif_sube').neq('status', 'pasif'),
+            scope
+          );
+          const donemQuery = scope.coachIds?.length
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ? (supabase as any).from('donemler').select('donem_adi')
+                .in('coach_id', scope.coachIds).order('created_at', { ascending: true })
+            : Promise.resolve({ data: [], error: null });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tracks: string[] = students.map((s: any) => s.track).filter(Boolean);
-    const hasLgs = tracks.some((t) => t === 'LGS');
-    const hasYks = tracks.some((t) => t.startsWith('YKS'));
-    const groups: ExamGroup[] = [];
-    if (hasLgs) groups.push('LGS');
-    if (hasYks) groups.push('YKS');
-    setAvailableGroups(groups);
-    setExamGroupState((prev) => (prev && groups.includes(prev) ? prev : null));
+          const [studentsRes, donemRes] = await Promise.all([studentsQuery, donemQuery]);
+          if (studentsRes.error) throw studentsRes.error;
+          if (donemRes.error) throw donemRes.error;
 
-    const kurumSet = new Set<string>();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    students.forEach((s: any) => { if (s.kurum && s.kurum.trim()) kurumSet.add(s.kurum.trim()); });
-    const kurumList = Array.from(kurumSet).sort();
-    setAvailableKurumlar(kurumList);
-    setKurum((prev) => (prev && kurumList.includes(prev) ? prev : null));
+          const students: StudentRow[] = studentsRes.data ?? [];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const donemList: string[] = (donemRes.data ?? []).map((d: any) => d.donem_adi);
 
-    const classMap: Record<string, Set<string>> = {};
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    students.forEach((s: any) => {
+          // Kayıtlı filtre başka bir kullanıcıya aitse sıfırla
+          if (savedUserIdRef.current && savedUserIdRef.current !== userId) {
+            resetFilters();
+            clearExamFilterStorage();
+          }
+          currentUserIdRef.current = userId;
+          loadedUserRef.current = userId;
+
+          setAllStudents(students);
+          setAvailableDonemler(donemList);
+          setFreshLoaded(true);
+
+          try {
+            const opt: PersistedOptions = { userId, students, donemler: donemList };
+            localStorage.setItem(OPTIONS_KEY, JSON.stringify(opt));
+          } catch {}
+          return;
+        } catch (err) {
+          console.error('Filtre verisi yüklenemedi, tekrar denenecek:', err);
+          await sleep(1500 * (attempt + 1));
+        }
+      }
+    } finally {
+      inflightRef.current = null;
+    }
+  }, [supabase, resetFilters]);
+
+  // ---- 4) Oturum olaylarını dinle (oturum geç hazırlansa da yükler) ----
+  useEffect(() => {
+    let cancelled = false;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled && session?.user && loadedUserRef.current !== session.user.id) {
+        loadAll(session.user.id);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        loadedUserRef.current = null;
+        currentUserIdRef.current = null;
+        clearExamFilterStorage();
+        resetFilters();
+        setAllStudents([]);
+        setAvailableDonemler([]);
+        setFreshLoaded(false);
+        return;
+      }
+      const u = session?.user;
+      if (u && loadedUserRef.current !== u.id) {
+        // callback içinde doğrudan supabase çağrısı yapma, ertele
+        setTimeout(() => loadAll(u.id), 0);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [supabase, loadAll, resetFilters]);
+
+  // ---- Türetilmiş seçenekler ----
+  const availableGroups = useMemo<ExamGroup[]>(() => {
+    const g: ExamGroup[] = [];
+    if (allStudents.some((s) => s.track === 'LGS')) g.push('LGS');
+    if (allStudents.some((s) => s.track?.startsWith('YKS'))) g.push('YKS');
+    return g;
+  }, [allStudents]);
+
+  const availableKurumlar = useMemo(() => {
+    const set = new Set<string>();
+    allStudents.forEach((s) => { if (s.kurum?.trim()) set.add(s.kurum.trim()); });
+    return Array.from(set).sort();
+  }, [allStudents]);
+
+  const classesByKurum = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    allStudents.forEach((s) => {
       const k = s.kurum?.trim();
       const sube = s.sinif_sube?.trim();
       if (!k || !sube) return;
-      if (!classMap[k]) classMap[k] = new Set();
-      classMap[k].add(sube);
+      (map[k] ??= new Set()).add(sube);
     });
-    const classesByKurumObj: Record<string, string[]> = {};
-    Object.entries(classMap).forEach(([k, set]) => {
-      classesByKurumObj[k] = Array.from(set).sort();
-    });
-    setClassesByKurum(classesByKurumObj);
+    const out: Record<string, string[]> = {};
+    Object.entries(map).forEach(([k, set]) => { out[k] = Array.from(set).sort(); });
+    return out;
+  }, [allStudents]);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: donemlerData } = await (supabase as any)
-      .from('donemler')
-      .select('donem_adi')
-      .in('coach_id', scope.coachIds)
-      .order('created_at', { ascending: true });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const donemList: string[] = (donemlerData ?? []).map((d: any) => d.donem_adi);
-    setAvailableDonemler(donemList);
-
-    // Varsayılan olarak tüm dönemleri göster; kullanıcı isterse dönem filtresi seçer.
-    setDonem((prev) => (prev && donemList.includes(prev) ? prev : null));
-  }
-
+  // Taze veri gelince artık geçersiz olan seçimleri temizle
   useEffect(() => {
-    loadAll();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!freshLoaded) return;
+    setExamGroupState((p) => (p && availableGroups.includes(p) ? p : null));
+    setKurumState((p) => (p && availableKurumlar.includes(p) ? p : null));
+    setDonemState((p) => (p && availableDonemler.includes(p) ? p : null));
+  }, [freshLoaded, availableGroups, availableKurumlar, availableDonemler]);
+
+  // ---- Setter'lar (kullanıcı değişikliğini işaretler) ----
+  const setExamGroup = useCallback((g: ExamGroup) => {
+    dirtyRef.current = true;
+    setExamGroupState(g);
+    setYksTrackState(null);
+  }, []);
+  const setYksTrack = useCallback((t: YksTrack) => {
+    dirtyRef.current = true;
+    setYksTrackState(t);
+  }, []);
+  const setKurum = useCallback((k: string | null) => {
+    dirtyRef.current = true;
+    setKurumState(k);
+  }, []);
+  const setDonem = useCallback((d: string | null) => {
+    dirtyRef.current = true;
+    setDonemState(d);
   }, []);
 
-  function handleSetExamGroup(g: ExamGroup) {
-    setExamGroupState(g);
-    setYksTrack(null);
-  }
-
-    function matchesFilter(student: FilterableStudent | null | undefined) {
+  function matchesFilter(student: FilterableStudent | null | undefined) {
     if (!student) return false;
     if (examGroup === 'LGS' && student.track !== 'LGS') return false;
     if (examGroup === 'YKS') {
       if (!student.track || !student.track.startsWith('YKS')) return false;
       if (yksTrack && student.track !== yksTrack) return false;
     }
-    // Sadece YKS öğrencisi varken LGS/YKS düğmeleri yok, alt tür doğrudan seçilebilir
     if (examGroup !== 'YKS' && yksTrack && student.track !== yksTrack) return false;
     if (kurum && student.kurum !== kurum) return false;
     if (donem && student.donem !== donem) return false;
     return true;
   }
-  
-  function getSinifOnerileri(kurum: string): string[] {
-    if (!kurum) return [];
-    return classesByKurum[kurum.trim()] ?? [];
+
+  function getSinifOnerileri(k: string): string[] {
+    if (!k) return [];
+    return classesByKurum[k.trim()] ?? [];
   }
 
-  const filteredStudentCount = useMemo(() => {
-    return allStudents.filter(matchesFilter).length;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allStudents, examGroup, yksTrack, kurum, donem]);
+  const filteredStudentCount = useMemo(
+    () => allStudents.filter(matchesFilter).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allStudents, examGroup, yksTrack, kurum, donem]
+  );
 
   return (
     <ExamFilterContext.Provider value={{
-      examGroup, yksTrack,
-      setExamGroup: handleSetExamGroup,
-      setYksTrack,
+      examGroup, yksTrack, setExamGroup, setYksTrack,
       availableGroups,
       kurum, setKurum, availableKurumlar, getSinifOnerileri,
       donem, setDonem, availableDonemler,
       filteredStudentCount,
       matchesFilter,
-      refreshOptions: loadAll,
+      refreshOptions: () => { loadAll(undefined, true); },
     }}>
       {children}
     </ExamFilterContext.Provider>

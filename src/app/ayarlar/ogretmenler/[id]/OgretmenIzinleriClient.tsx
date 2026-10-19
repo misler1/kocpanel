@@ -206,6 +206,20 @@ export function OgretmenIzinleriClient({
     });
   }
 
+  function setAllStudentsAllowed(
+  page: PermissionPage,
+  kurum: string,
+  targetStudents: StudentOption[],
+  allowed: boolean
+) {
+  const ids = targetStudents.map((s) => s.id);
+  const current = getScope(page, kurum)?.excludedStudentIds ?? [];
+  updateScope(page, kurum, {
+    excludedStudentIds: allowed
+      ? current.filter((id) => !ids.includes(id))
+      : Array.from(new Set([...current, ...ids])),
+  });
+}
   function visibleScopesFor(page: PermissionPage) {
     return Object.fromEntries(
       Object.entries(permissions[page].scopes).filter(([kurum]) => visibleKurumSet.has(kurum))
@@ -385,7 +399,7 @@ export function OgretmenIzinleriClient({
                                   </button>
                                 </div>
 
-                                {isPageOpen && scope && (
+                                 {isPageOpen && scope && (
                                   <div className="mt-4 space-y-4 pl-7">
                                     <div>
                                       <div className="mb-2 text-[12px] font-semibold text-gray-500">Sınıf / Şube izni</div>
@@ -411,7 +425,30 @@ export function OgretmenIzinleriClient({
                                     </div>
 
                                     <div>
-                                      <div className="mb-2 text-[12px] font-semibold text-gray-500">İzin dışı bırakılacak öğrenciler</div>
+                                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                        <div className="text-[12px] font-semibold text-gray-500">
+                                          İzinli öğrenciler{' '}
+                                          <span className="font-normal text-gray-400">
+                                            ({allowedStudents.filter((s) => !scope.excludedStudentIds.includes(s.id)).length} / {allowedStudents.length})
+                                          </span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => setAllStudentsAllowed(page.key, kurum, allowedStudents, true)}
+                                            className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+                                          >
+                                            Tüm öğrencilere izin ver
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setAllStudentsAllowed(page.key, kurum, allowedStudents, false)}
+                                            className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-100"
+                                          >
+                                            Tüm izinleri kaldır
+                                          </button>
+                                        </div>
+                                      </div>
                                       <div className="grid gap-2 md:grid-cols-2">
                                         {allowedStudents.length === 0 ? (
                                           <span className="text-[12px] text-gray-400">Seçili sınıflarda öğrenci yok.</span>
@@ -419,9 +456,9 @@ export function OgretmenIzinleriClient({
                                           <label key={student.id} className="flex items-center gap-2 rounded-lg border border-gray-100 bg-white px-3 py-2 text-[12px] text-gray-700">
                                             <input
                                               type="checkbox"
-                                              checked={scope.excludedStudentIds.includes(student.id)}
+                                              checked={!scope.excludedStudentIds.includes(student.id)}
                                               onChange={() => toggleExcludedStudent(page.key, kurum, student.id)}
-                                              className="h-4 w-4 accent-red-600"
+                                              className="h-4 w-4 accent-blue-600"
                                             />
                                             <span className="min-w-0 flex-1 truncate">{student.full_name}</span>
                                             <span className="text-gray-400">{student.sinif_sube || 'Sınıfsız'}</span>

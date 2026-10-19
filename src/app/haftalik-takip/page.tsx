@@ -1041,20 +1041,7 @@ export default function HaftalikTakipPage() {
               <IconTrash size={13} /> Temizle
             </button>
           )}
-          <button
-            onClick={syncFromDailyLogs}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
-          >
-            🔄 WhatsApp&apos;tan güncelle
-          </button>
-          {logs.length > 0 && (
-            <button
-              onClick={generateReport}
-              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
-            >
-              <IconDownload size={13} /> Rapor al
-            </button>
-          )}
+          
           {logs.length > 0 && (
             <button
               onClick={openCopyModal}
