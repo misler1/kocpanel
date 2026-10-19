@@ -150,8 +150,17 @@ export default function TopluYuklePage() {
             rows: list.map((r) => ({ studentId: r.studentId, results: r.results, puan: r.puan })),
           }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? 'Kaydedilemedi.');
+        // Sunucu boş/JSON olmayan yanıt dönerse "Unexpected end of JSON input" yerine gerçek durumu göster
+        const raw = await res.text();
+        let data: any = null;
+        try { data = raw ? JSON.parse(raw) : null; } catch { /* JSON değil */ }
+        if (!res.ok || !data) {
+          throw new Error(
+            data?.error ??
+              `Sunucu hatası (HTTP ${res.status}). ${raw ? raw.slice(0, 300) : 'Yanıt boş döndü; terminaldeki (npm run dev) hata satırına bakın.'}`
+          );
+        }
+        if (data.error) throw new Error(data.error);
       }
       router.push('/denemeler');
       router.refresh();
