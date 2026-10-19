@@ -2,7 +2,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { IconPlus, IconTrash, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import {
+  IconPlus,
+  IconTrash,
+  IconChevronDown,
+  IconChevronUp,
+  IconPencil,
+  IconCheck,
+  IconX,
+} from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
@@ -70,6 +78,23 @@ const TOPIC_SELECT =
 
 const norm = (s: string) => s.toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
 
+const collator = new Intl.Collator('tr', { numeric: true, sensitivity: 'base' });
+
+function topicCode(t: Topic): string | null {
+  const i = t.topic.indexOf(' · ');
+  return i > 0 ? t.topic.slice(0, i).trim() : null;
+}
+
+// Kazanım koduna göre doğal sıralama; kodsuzlar sona.
+function compareTopics(a: Topic, b: Topic) {
+  const ca = topicCode(a);
+  const cb = topicCode(b);
+  if (ca && cb) return collator.compare(ca, cb);
+  if (ca) return -1;
+  if (cb) return 1;
+  return 0;
+}
+
 // TYT ve AYT'de aynı ders adı (Matematik) olduğu için ders etiketine ön ek eklenir.
 function subjectLabel(cat: PoolCategory | undefined, subjectName: string) {
   if (cat && (cat.code === 'TYT' || cat.code === 'AYT')) {
@@ -130,6 +155,33 @@ export default function KonuIlerleyisiPage() {
       else next.add(subject);
       return next;
     });
+  }
+
+  // Kazanım düzenleme
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+
+  function startEdit(t: Topic) {
+    setEditingId(t.id);
+    setEditValue(t.topic);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditValue('');
+  }
+
+  async function saveEdit(id: string) {
+    const value = editValue.trim();
+    if (!value) return;
+
+    setTopics((prev) => prev.map((t) => (t.id === id ? { ...t, topic: value } : t)));
+    cancelEdit();
+
+    await (supabase as any)
+      .from('topic_progress')
+      .update({ topic: value, updated_at: new Date().toISOString() })
+      .eq('id', id);
   }
 
   const filteredStudents = students.filter((student) => matchesFilter(student));
@@ -210,6 +262,8 @@ export default function KonuIlerleyisiPage() {
     setNewTopic('');
     setSearch('');
     setExpanded(new Set());
+    setEditingId(null);
+    setEditValue('');
 
     loadTopics(selectedStudentId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,7 +308,11 @@ export default function KonuIlerleyisiPage() {
       .range(0, 999)
       .then(({ data }: any) => {
         if (cancelled) return;
-        setPoolTopics(data ?? []);
+        setPoolTopics(
+          (data ?? []).sort((a: PoolTopic, b: PoolTopic) =>
+            collator.compare(a.code ?? '', b.code ?? '')
+          )
+        );
         setPoolTopicsLoading(false);
       });
     return () => {
@@ -408,6 +466,9 @@ export default function KonuIlerleyisiPage() {
     acc[topic.subject].push(topic);
     return acc;
   }, {});
+
+  // Her dersin konularını kazanım koduna göre sırala
+  Object.values(grouped).forEach((list) => list.sort(compareTopics));
 
   // Arama: ders adı veya konu metnine göre filtrele
   const searchTerm = norm(search);
@@ -765,25 +826,69 @@ export default function KonuIlerleyisiPage() {
 
                         return (
                           <div key={topic.id} className="py-3">
-                            {/* Konu adı + sil */}
-                            <div className="mb-2 flex items-center justify-between">
-                              <span
-                                className={`text-[13px] font-medium ${
-                                  allDone
-                                    ? 'text-[var(--success)]'
-                                    : 'text-[var(--ink)]'
-                                }`}
-                              >
-                                {topic.topic}
-                              </span>
+                            {/* Konu adı + düzenle + sil */}
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              {editingId === topic.id ? (
+                                <input
+                                  autoFocus
+                                  type="text"
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveEdit(topic.id);
+                                    if (e.key === 'Escape') cancelEdit();
+                                  }}
+                                  className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[13px] text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                                />
+                              ) : (
+                                <span
+                                  className={`text-[13px] font-medium ${
+                                    allDone
+                                      ? 'text-[var(--success)]'
+                                      : 'text-[var(--ink)]'
+                                  }`}
+                                >
+                                  {topic.topic}
+                                </span>
+                              )}
 
-                              <button
-                                onClick={() => deleteTopic(topic.id)}
-                                className="text-[var(--ink-muted)] hover:text-[var(--danger)]"
-                                title="Konuyu sil"
-                              >
-                                <IconTrash size={13} />
-                              </button>
+                              <div className="flex flex-shrink-0 items-center gap-2">
+                                {editingId === topic.id ? (
+                                  <>
+                                    <button
+                                      onClick={() => saveEdit(topic.id)}
+                                      className="text-[var(--success)]"
+                                      title="Kaydet"
+                                    >
+                                      <IconCheck size={15} />
+                                    </button>
+                                    <button
+                                      onClick={cancelEdit}
+                                      className="text-[var(--ink-muted)] hover:text-[var(--danger)]"
+                                      title="Vazgeç"
+                                    >
+                                      <IconX size={15} />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => startEdit(topic)}
+                                      className="text-[var(--ink-muted)] hover:text-[var(--accent)]"
+                                      title="Kazanımı düzenle"
+                                    >
+                                      <IconPencil size={13} />
+                                    </button>
+                                    <button
+                                      onClick={() => deleteTopic(topic.id)}
+                                      className="text-[var(--ink-muted)] hover:text-[var(--danger)]"
+                                      title="Konuyu sil"
+                                    >
+                                      <IconTrash size={13} />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </div>
 
                             {/* Konu progress bar */}
