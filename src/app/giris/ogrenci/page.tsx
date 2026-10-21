@@ -81,6 +81,10 @@ export default function OgrenciGirisPage() {
           İlk şifren: telefonunun son 4 hanesi + doğum yılın (örn. 96832009). İlk girişte değiştirmen istenecek.
         </p>
         <p className="mt-4 text-center text-sm text-gray-500">
+          Hesabın yok mu?{' '}
+          <Link href="/kayit/ogrenci" className="font-medium text-blue-600 hover:underline">Kayıt ol</Link>
+        </p>
+        <p className="mt-4 text-center text-sm text-gray-500">
           Koç / öğretmen misin?{' '}
           <Link href="/giris" className="font-medium text-blue-600 hover:underline">Buradan giriş yap</Link>
         </p>

@@ -11,7 +11,6 @@ const ROLES: { value: UserRole; label: string }[] = [
   { value: 'koc', label: 'Koç' },
   { value: 'ogretmen', label: 'Öğretmen' },
   { value: 'veli', label: 'Veli' },
-  { value: 'ogrenci', label: 'Öğrenci' },
 ];
 
 export default function KayitPage() {
@@ -127,6 +126,12 @@ export default function KayitPage() {
         </form>
 
         <p className="mt-5 text-center text-sm text-[var(--ink-muted)]">
+          Öğrenci misiniz?{' '}
+          <Link href="/kayit/ogrenci" className="font-medium text-[var(--accent-dark)] hover:underline">
+            Öğrenci kaydı
+          </Link>
+        </p>
+        <p className="mt-2 text-center text-sm text-[var(--ink-muted)]">
           Zaten hesabınız var mı?{' '}
           <Link href="/giris" className="font-medium text-[var(--accent-dark)] hover:underline">
             Giriş yapın

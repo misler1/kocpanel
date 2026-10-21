@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
@@ -6,11 +7,24 @@ export default async function OnayBekleniyorPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/giris');
 
+  const { data: profile } = await (supabase as any).from('profiles').select('role, is_approved').eq('id', user.id).single();
+  const isStudent = profile?.role === 'ogrenci';
+  if (profile?.is_approved) redirect(isStudent ? '/ogrenci' : '/anasayfa');
+
+  let message = 'Hesabınız yönetici tarafından henüz onaylanmamış. Onaylandıktan sonra sisteme erişebilirsiniz.';
+  if (isStudent) {
+    const { data: reg } = await (supabase as any)
+      .from('student_registrations').select('status, assigned_coach_id').eq('profile_id', user.id).maybeSingle();
+    if (reg?.status === 'koc_bekliyor') message = 'Yönetici onayı tamamlandı. Şimdi seçtiğin koçun onayı bekleniyor.';
+    else if (reg?.status === 'reddedildi') message = 'Kayıt başvurun onaylanmadı. Sorular için koçunla ya da yönetimle iletişime geç.';
+    else message = 'Kayıt başvurun yönetici onayı bekliyor. Onaylandığında giriş yapıp panelini kullanabilirsin.';
+  }
+
   async function handleLogout() {
     'use server';
     const supabase = await createClient();
     await supabase.auth.signOut();
-    redirect('/giris');
+    redirect(isStudent ? '/giris/ogrenci' : '/giris');
   }
 
   return (
@@ -20,9 +34,7 @@ export default async function OnayBekleniyorPage() {
           <span className="text-2xl">⏳</span>
         </div>
         <h1 className="mb-2 text-[18px] font-semibold text-[var(--ink)]">Onay Bekleniyor</h1>
-        <p className="mb-6 text-[13px] text-[var(--ink-muted)]">
-          Hesabınız yönetici tarafından henüz onaylanmamış. Onaylandıktan sonra sisteme erişebilirsiniz.
-        </p>
+        <p className="mb-6 text-[13px] text-[var(--ink-muted)]">{message}</p>
         <form action={handleLogout}>
           <button
             type="submit"
