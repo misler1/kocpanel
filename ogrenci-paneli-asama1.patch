@@ -1,0 +1,1056 @@
+diff --git a/src/app/api/ogrenci/hesap-olustur/route.ts b/src/app/api/ogrenci/hesap-olustur/route.ts
+new file mode 100644
+index 0000000..9485f3f
+--- /dev/null
++++ b/src/app/api/ogrenci/hesap-olustur/route.ts
+@@ -0,0 +1,78 @@
++/* eslint-disable @typescript-eslint/no-explicit-any */
++import { NextResponse } from 'next/server';
++import { createClient as createAdminClient } from '@supabase/supabase-js';
++import { createClient } from '@/lib/supabase/server';
++import { initialStudentPassword, studentEmailFromPhone } from '@/lib/student-account';
++
++// Koçun öğrencileri için giriş hesabı oluşturur.
++// Body: { studentId: string } veya { all: true } (koçun hesabı olmayan tüm öğrencileri)
++export async function POST(request: Request) {
++  const supabase = await createClient();
++  const { data: { user } } = await supabase.auth.getUser();
++  if (!user) return NextResponse.json({ error: 'Giriş gerekli' }, { status: 401 });
++
++  const { data: me } = await (supabase as any)
++    .from('profiles').select('role, is_approved').eq('id', user.id).single();
++  if (!me || me.role === 'ogrenci' || !me.is_approved) {
++    return NextResponse.json({ error: 'Yetkisiz' }, { status: 403 });
++  }
++
++  const body = await request.json().catch(() => ({}));
++
++  // Öğrenci sorgusu kullanıcı oturumuyla (RLS'e tabi) yapılır: koç sadece kendi öğrencilerini görür.
++  let q = (supabase as any)
++    .from('students')
++    .select('id, full_name, phone, birth_date, profile_id, coach_id')
++    .eq('coach_id', user.id)
++    .is('profile_id', null);
++  if (body.studentId) q = q.eq('id', String(body.studentId));
++  else if (!body.all) return NextResponse.json({ error: 'studentId veya all gerekli' }, { status: 400 });
++
++  const { data: students, error } = await q;
++  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
++
++  const admin = createAdminClient(
++    process.env.NEXT_PUBLIC_SUPABASE_URL!,
++    process.env.SUPABASE_SERVICE_ROLE_KEY!,
++    { auth: { autoRefreshToken: false, persistSession: false } }
++  );
++
++  const results: { id: string; name: string; status: 'olusturuldu' | 'atlandi'; reason?: string }[] = [];
++
++  for (const s of (students ?? []) as any[]) {
++    const email = studentEmailFromPhone(s.phone);
++    const password = initialStudentPassword(s.phone, s.birth_date);
++    if (!email || !password) {
++      results.push({ id: s.id, name: s.full_name, status: 'atlandi', reason: 'Telefon veya doğum tarihi eksik' });
++      continue;
++    }
++
++    const { data: created, error: createErr } = await admin.auth.admin.createUser({
++      email, password, email_confirm: true,
++      user_metadata: { full_name: s.full_name, role: 'ogrenci' },
++    });
++    if (createErr || !created.user) {
++      results.push({ id: s.id, name: s.full_name, status: 'atlandi', reason: createErr?.message ?? 'Hesap oluşturulamadı' });
++      continue;
++    }
++
++    const uid = created.user.id;
++    const { error: profErr } = await (admin as any).from('profiles').upsert({
++      id: uid, full_name: s.full_name, role: 'ogrenci', phone: s.phone, email,
++      is_approved: true, must_change_password: true,
++    });
++    // Bağlama: sadece hâlâ bağlanmamış ve bu koça ait öğrenci kaydı güncellenir.
++    const { error: linkErr } = profErr ? { error: profErr } : await (admin as any)
++      .from('students').update({ profile_id: uid })
++      .eq('id', s.id).eq('coach_id', user.id).is('profile_id', null);
++
++    if (profErr || linkErr) {
++      await admin.auth.admin.deleteUser(uid); // yarım kalan hesabı temizle
++      results.push({ id: s.id, name: s.full_name, status: 'atlandi', reason: (profErr ?? linkErr)!.message });
++      continue;
++    }
++    results.push({ id: s.id, name: s.full_name, status: 'olusturuldu' });
++  }
++
++  return NextResponse.json({ results });
++}
+diff --git a/src/app/giris/ogrenci/page.tsx b/src/app/giris/ogrenci/page.tsx
+index 68b7857..abf24f7 100644
+--- a/src/app/giris/ogrenci/page.tsx
++++ b/src/app/giris/ogrenci/page.tsx
+@@ -1,24 +1,90 @@
++'use client';
++
++import { useState } from 'react';
+ import Link from 'next/link';
+-import { fraunces, inter } from '@/lib/fonts';
+-import { MarketingHeader } from '@/components/marketing/MarketingHeader';
+-import { MarketingFooter } from '@/components/marketing/MarketingFooter';
++import Image from 'next/image';
++import { useRouter } from 'next/navigation';
++import { createClient } from '@/lib/supabase/client';
++import { studentEmailFromPhone } from '@/lib/student-account';
+ 
+ export default function OgrenciGirisPage() {
++  const router = useRouter();
++  const supabase = createClient();
++  const [phone, setPhone] = useState('');
++  const [password, setPassword] = useState('');
++  const [error, setError] = useState<string | null>(null);
++  const [loading, setLoading] = useState(false);
++
++  async function handleSubmit(e: React.FormEvent) {
++    e.preventDefault();
++    setError(null);
++
++    const email = studentEmailFromPhone(phone);
++    if (!email) {
++      setError('Lütfen telefon numaranızı 05XX XXX XX XX biçiminde yazın.');
++      return;
++    }
++
++    setLoading(true);
++    const { error: signErr } = await supabase.auth.signInWithPassword({ email, password });
++    if (signErr) {
++      setError('Telefon numarası veya şifre hatalı.');
++      setLoading(false);
++      return;
++    }
++
++    router.push('/ogrenci');
++    router.refresh();
++  }
++
+   return (
+-    <div className={`${fraunces.variable} ${inter.variable} min-h-screen bg-[#FBF9F4] font-[family-name:var(--font-body)]`}>
+-      <MarketingHeader />
+-      <main className="mx-auto flex max-w-lg flex-col items-center px-5 py-24 text-center">
+-        <h1 className="font-[family-name:var(--font-display)] text-3xl text-[#1D2B3A]">Öğrenci Girişi</h1>
+-        <p className="mt-4 text-[15px] leading-relaxed text-[#6B6558]">
+-          Şu an öğrenciler sisteme ayrıca giriş yapmıyor — günlük çalışmalarınızı doğrudan
+-          koçunuzun WhatsApp hattına yazarak paylaşabilirsiniz. Deneme sonuçlarınızı ve
+-          ilerlemenizi koçunuz sizinle düzenli olarak paylaşacaktır.
++    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
++      <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
++        <div className="mb-6">
++          <Image src="/brand/kocdefterim-logo.png" alt="KoçDefterim" width={260} height={75} className="h-14 w-auto max-w-full object-contain" priority />
++        </div>
++
++        <h2 className="mb-1 text-xl font-semibold text-gray-900">Öğrenci girişi</h2>
++        <p className="mb-6 text-sm text-gray-500">Telefon numaran ve şifrenle giriş yap.</p>
++
++        <form onSubmit={handleSubmit} className="space-y-4">
++          <div>
++            <label className="mb-1 block text-sm font-medium text-gray-700">Telefon numarası</label>
++            <input
++              type="tel" inputMode="tel" required autoComplete="username"
++              value={phone} onChange={(e) => setPhone(e.target.value)}
++              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
++              placeholder="05XX XXX XX XX"
++            />
++          </div>
++          <div>
++            <label className="mb-1 block text-sm font-medium text-gray-700">Şifre</label>
++            <input
++              type="password" required autoComplete="current-password"
++              value={password} onChange={(e) => setPassword(e.target.value)}
++              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
++              placeholder="••••••••"
++            />
++          </div>
++
++          {error && <p className="text-sm text-red-600">{error}</p>}
++
++          <button
++            type="submit" disabled={loading}
++            className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
++          >
++            {loading ? 'Giriş yapılıyor...' : 'Giriş yap'}
++          </button>
++        </form>
++
++        <p className="mt-4 text-center text-xs text-gray-400">
++          İlk şifren: telefonunun son 4 hanesi + doğum yılın (örn. 96832009). İlk girişte değiştirmen istenecek.
++        </p>
++        <p className="mt-4 text-center text-sm text-gray-500">
++          Koç / öğretmen misin?{' '}
++          <Link href="/giris" className="font-medium text-blue-600 hover:underline">Buradan giriş yap</Link>
+         </p>
+-        <Link href="/" className="mt-8 text-[14px] font-medium text-[#C1442A] hover:underline">
+-          Anasayfaya dön
+-        </Link>
+-      </main>
+-      <MarketingFooter />
++      </div>
+     </div>
+   );
+-}
+\ No newline at end of file
++}
+diff --git a/src/app/ogrenci/OgrenciBilgilerClient.tsx b/src/app/ogrenci/OgrenciBilgilerClient.tsx
+new file mode 100644
+index 0000000..2e61a5e
+--- /dev/null
++++ b/src/app/ogrenci/OgrenciBilgilerClient.tsx
+@@ -0,0 +1,75 @@
++'use client';
++/* eslint-disable @typescript-eslint/no-explicit-any */
++
++import { IconUsers, IconSchool } from '@tabler/icons-react';
++import {
++  Accordion, InfoRow, GunlukAccordion, TRACK_LABELS, TRACK_RESOURCES,
++} from '../ogrenciler/[id]/OgrenciDetayClient';
++
++// Öğrencinin kendi bilgileri (salt okunur) + Günlük. Koç sayfasındaki bileşenlerin aynısı kullanılır,
++// böylece iki taraf birbirinden ayrışmaz.
++export function OgrenciBilgilerClient({ student }: { student: any }) {
++  const birth = student.birth_date
++    ? new Date(student.birth_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
++    : null;
++  const resources: Record<string, [string, string, string]> = student.resources ?? {};
++  const hasResources = Object.values(resources).some((arr) => arr.some(Boolean));
++  const hasGuardian = student.guardian_name || student.mother_name || student.father_name;
++
++  return (
++    <div className="space-y-3">
++      <div className="rounded-xl border border-gray-200 bg-white px-5 py-5">
++        <h2 className="text-lg font-medium text-gray-900">{student.full_name}</h2>
++        <p className="mt-0.5 text-sm text-gray-500">{TRACK_LABELS[student.track] ?? student.track}</p>
++        <div className="mt-4 border-t border-gray-100 pt-3">
++          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Temel Bilgiler</p>
++          <InfoRow label="Ad Soyad" value={student.full_name} />
++          <InfoRow label="Telefon" value={student.phone} />
++          <InfoRow label="Doğum Tarihi" value={birth} />
++          <InfoRow label="Kurum" value={student.kurum} />
++          <InfoRow label="Sınav Türü" value={TRACK_LABELS[student.track] ?? student.track} />
++          <InfoRow label="Sınıf Düzeyi" value={student.grade_level} />
++          <InfoRow label="Sınıf / Şube" value={student.sinif_sube} />
++          <InfoRow label="Dönem" value={student.donem} />
++        </div>
++      </div>
++
++      {hasGuardian && (
++        <Accordion icon={<IconUsers size={16} />} title="Veli Bilgileri">
++          {student.guardian_name && (
++            <>
++              <InfoRow label="Veli" value={student.guardian_name} />
++              <InfoRow label="Telefon" value={student.guardian_phone} />
++              <InfoRow label="Yakınlık" value={student.guardian_relation} />
++            </>
++          )}
++          <InfoRow label="Anne" value={[student.mother_name, student.mother_phone].filter(Boolean).join(' · ')} />
++          <InfoRow label="Baba" value={[student.father_name, student.father_phone].filter(Boolean).join(' · ')} />
++        </Accordion>
++      )}
++
++      {hasResources && (
++        <Accordion icon={<IconSchool size={16} />} title="Kullanılan Kaynaklar">
++          <div className="space-y-3">
++            {(TRACK_RESOURCES[student.track] ?? Object.keys(resources)).map((subject) => {
++              const filled = (resources[subject] ?? []).filter(Boolean);
++              if (!filled.length) return null;
++              return (
++                <div key={subject}>
++                  <p className="mb-1 text-[12px] font-medium text-gray-700">{subject}</p>
++                  <div className="flex flex-wrap gap-1.5">
++                    {filled.map((b, i) => (
++                      <span key={i} className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[12px] text-blue-700">{b}</span>
++                    ))}
++                  </div>
++                </div>
++              );
++            })}
++          </div>
++        </Accordion>
++      )}
++
++      <GunlukAccordion studentId={student.id} />
++    </div>
++  );
++}
+diff --git a/src/app/ogrenci/StudentNav.tsx b/src/app/ogrenci/StudentNav.tsx
+new file mode 100644
+index 0000000..22a7ede
+--- /dev/null
++++ b/src/app/ogrenci/StudentNav.tsx
+@@ -0,0 +1,56 @@
++'use client';
++
++import Link from 'next/link';
++import { usePathname, useRouter } from 'next/navigation';
++import { IconUser, IconChartBar, IconBooks, IconLogout } from '@tabler/icons-react';
++import { createClient } from '@/lib/supabase/client';
++
++const ITEMS = [
++  { href: '/ogrenci', label: 'Bilgilerim', icon: IconUser },
++  { href: '/ogrenci/denemeler', label: 'Denemeler', icon: IconChartBar },
++  { href: '/ogrenci/konu-ilerleyisi', label: 'Konular', icon: IconBooks },
++];
++
++export function StudentNav() {
++  const pathname = usePathname();
++  const router = useRouter();
++
++  async function logout() {
++    await createClient().auth.signOut();
++    router.push('/giris/ogrenci');
++    router.refresh();
++  }
++
++  return (
++    <>
++      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-gray-200 bg-white px-4 py-2.5">
++        <span className="text-[15px] font-semibold text-gray-900">KoçDefterim</span>
++        <nav className="ml-4 hidden gap-1 md:flex">
++          {ITEMS.map((it) => (
++            <Link key={it.href} href={it.href}
++              className={`rounded-lg px-3 py-1.5 text-[13px] ${pathname === it.href ? 'bg-blue-50 font-medium text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}>
++              {it.label}
++            </Link>
++          ))}
++        </nav>
++        <button onClick={logout} className="ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] text-gray-500 hover:bg-gray-50">
++          <IconLogout size={15} /> Çıkış
++        </button>
++      </header>
++
++      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
++        {ITEMS.map((it) => {
++          const Icon = it.icon;
++          const active = pathname === it.href;
++          return (
++            <Link key={it.href} href={it.href}
++              className={`flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium ${active ? 'text-blue-700' : 'text-gray-500'}`}>
++              <Icon size={20} />
++              {it.label}
++            </Link>
++          );
++        })}
++      </nav>
++    </>
++  );
++}
+diff --git a/src/app/ogrenci/denemeler/KarneClient.tsx b/src/app/ogrenci/denemeler/KarneClient.tsx
+new file mode 100644
+index 0000000..64a7da8
+--- /dev/null
++++ b/src/app/ogrenci/denemeler/KarneClient.tsx
+@@ -0,0 +1,136 @@
++'use client';
++/* eslint-disable @typescript-eslint/no-explicit-any */
++
++import { useState } from 'react';
++import {
++  TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS, type SubjectDef,
++} from '../../denemeler/examConstants';
++
++type Rank = { exam_id: string; rank: number; total: number; avg_net: number; max_net: number };
++
++const subjectsFor = (t: string): SubjectDef[] =>
++  t === 'TYT' ? TYT_SUBJECTS : t === 'AYT' ? AYT_SUBJECTS : LGS_SUBJECTS;
++
++const netOf = (r: any, type: string) => {
++  const d = Number(r?.dogru) || 0;
++  const y = Number(r?.yanlis) || 0;
++  return type === 'LGS' ? calcNetLGS(d, y) : calcNetYKS(d, y);
++};
++const fmt = (n: number) => n.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
++
++function Karne({ exam, rank, prev }: { exam: any; rank?: Rank; prev?: any }) {
++  const subjects = subjectsFor(exam.exam_type);
++  const date = new Date(exam.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
++  const puan = exam.exam_type === 'LGS' ? exam.lgs_puan : exam.exam_type === 'TYT' ? exam.tyt_puan : (exam.say_puan ?? exam.ea_puan ?? exam.soz_puan);
++  const diff = prev ? Number(exam.net_score) - Number(prev.net_score) : null;
++
++  return (
++    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
++      <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
++        <div className="flex items-center justify-between gap-2">
++          <div className="min-w-0">
++            <div className="truncate text-[14px] font-semibold text-gray-900">{exam.exam_name}</div>
++            <div className="text-[11px] text-gray-400">{date}</div>
++          </div>
++          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700">{exam.exam_type}</span>
++        </div>
++      </div>
++
++      <div className="grid grid-cols-3 gap-2 p-3.5">
++        <div className="rounded-lg bg-blue-50 p-2.5 text-center">
++          <div className="text-[10px] text-blue-600">Toplam Net</div>
++          <div className="text-[18px] font-bold text-blue-800">{fmt(Number(exam.net_score))}</div>
++          {diff !== null && (
++            <div className={`text-[10px] ${diff >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
++              {diff >= 0 ? '▲' : '▼'} {fmt(Math.abs(diff))} (önceki denemeye göre)
++            </div>
++          )}
++        </div>
++        <div className="rounded-lg bg-amber-50 p-2.5 text-center">
++          <div className="text-[10px] text-amber-700">Sıralama</div>
++          <div className="text-[18px] font-bold text-amber-800">
++            {rank ? `${rank.rank}` : '–'}<span className="text-[12px] font-medium">{rank ? ` / ${rank.total}` : ''}</span>
++          </div>
++          {rank && rank.total < 2 && <div className="text-[10px] text-amber-700">karşılaştırılacak öğrenci yok</div>}
++        </div>
++        <div className="rounded-lg bg-emerald-50 p-2.5 text-center">
++          <div className="text-[10px] text-emerald-700">{puan ? 'Puan' : 'Ortalama Net'}</div>
++          <div className="text-[18px] font-bold text-emerald-800">{puan ? fmt(Number(puan)) : rank ? fmt(Number(rank.avg_net)) : '–'}</div>
++          {rank && puan && <div className="text-[10px] text-emerald-700">ort. net {fmt(Number(rank.avg_net))}</div>}
++        </div>
++      </div>
++
++      <div className="overflow-x-auto px-3.5 pb-3.5">
++        <table className="w-full text-[12px]">
++          <thead>
++            <tr className="border-b border-gray-100 text-left text-[10px] uppercase tracking-wide text-gray-400">
++              <th className="py-1.5 pr-2 font-medium">Ders</th>
++              <th className="px-2 text-right font-medium">Soru</th>
++              <th className="px-2 text-right font-medium">D</th>
++              <th className="px-2 text-right font-medium">Y</th>
++              <th className="px-2 text-right font-medium">B</th>
++              <th className="pl-2 text-right font-medium">Net</th>
++            </tr>
++          </thead>
++          <tbody>
++            {subjects.map((s) => {
++              const r = exam.subject_results?.[s.key];
++              if (!r) return null;
++              const d = Number(r.dogru) || 0;
++              const y = Number(r.yanlis) || 0;
++              const net = netOf(r, exam.exam_type);
++              const pr = prev?.subject_results?.[s.key];
++              const pnet = pr ? netOf(pr, prev.exam_type) : null;
++              return (
++                <tr key={s.key} className="border-b border-gray-50 last:border-0">
++                  <td className="py-1.5 pr-2 text-gray-800">{s.label}</td>
++                  <td className="px-2 text-right text-gray-400">{s.total}</td>
++                  <td className="px-2 text-right text-emerald-600">{d}</td>
++                  <td className="px-2 text-right text-red-500">{y}</td>
++                  <td className="px-2 text-right text-gray-400">{Math.max(0, s.total - d - y)}</td>
++                  <td className="pl-2 text-right font-semibold text-gray-900">
++                    {fmt(net)}
++                    {pnet !== null && net !== pnet && (
++                      <span className={`ml-1 text-[10px] ${net > pnet ? 'text-emerald-600' : 'text-red-500'}`}>{net > pnet ? '▲' : '▼'}</span>
++                    )}
++                  </td>
++                </tr>
++              );
++            })}
++          </tbody>
++        </table>
++        {rank && <p className="mt-2 text-[11px] text-gray-400">Sınıf ortalaması {fmt(Number(rank.avg_net))} net · en yüksek {fmt(Number(rank.max_net))} net</p>}
++      </div>
++    </div>
++  );
++}
++
++export function KarneClient({ exams, ranks }: { exams: any[]; ranks: Rank[] }) {
++  const types = Array.from(new Set(exams.map((e) => e.exam_type).filter(Boolean))) as string[];
++  const [type, setType] = useState<string>('hepsi');
++  const list = type === 'hepsi' ? exams : exams.filter((e) => e.exam_type === type);
++  const rankMap = new Map(ranks.map((r) => [r.exam_id, r]));
++
++  if (exams.length === 0) {
++    return <p className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">Henüz deneme sonucun yok.</p>;
++  }
++
++  return (
++    <div className="space-y-3">
++      <div className="flex items-center justify-between">
++        <h1 className="text-[17px] font-medium text-gray-900">Deneme Karnelerim</h1>
++        {types.length > 1 && (
++          <select value={type} onChange={(e) => setType(e.target.value)} className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[13px]">
++            <option value="hepsi">Hepsi</option>
++            {types.map((t) => <option key={t} value={t}>{t}</option>)}
++          </select>
++        )}
++      </div>
++      {list.map((e) => {
++        // aynı türdeki bir önceki deneme (liste tarihe göre azalan)
++        const prev = exams.find((o) => o.exam_type === e.exam_type && o.exam_date < e.exam_date);
++        return <Karne key={e.id} exam={e} rank={rankMap.get(e.id)} prev={prev} />;
++      })}
++    </div>
++  );
++}
+diff --git a/src/app/ogrenci/denemeler/page.tsx b/src/app/ogrenci/denemeler/page.tsx
+new file mode 100644
+index 0000000..49e8298
+--- /dev/null
++++ b/src/app/ogrenci/denemeler/page.tsx
+@@ -0,0 +1,16 @@
++/* eslint-disable @typescript-eslint/no-explicit-any */
++import { getStudentContext } from '@/lib/student-context';
++import { KarneClient } from './KarneClient';
++
++export default async function OgrenciDenemelerPage() {
++  const { supabase, student } = await getStudentContext();
++  if (!student) return <p className="text-sm text-gray-500">Öğrenci kaydı bulunamadı.</p>;
++
++  // RLS: öğrenci yalnızca kendi denemelerini görür. student_id filtresi ek güvence.
++  const { data: exams } = await (supabase as any)
++    .from('exams').select('*').eq('student_id', student.id)
++    .order('exam_date', { ascending: false });
++  const { data: ranks } = await (supabase as any).rpc('student_exam_ranks');
++
++  return <KarneClient exams={exams ?? []} ranks={ranks ?? []} />;
++}
+diff --git a/src/app/ogrenci/konu-ilerleyisi/KonuKartlariClient.tsx b/src/app/ogrenci/konu-ilerleyisi/KonuKartlariClient.tsx
+new file mode 100644
+index 0000000..63b6bc7
+--- /dev/null
++++ b/src/app/ogrenci/konu-ilerleyisi/KonuKartlariClient.tsx
+@@ -0,0 +1,111 @@
++'use client';
++/* eslint-disable @typescript-eslint/no-explicit-any */
++
++import { useState } from 'react';
++import { IconCheck, IconX } from '@tabler/icons-react';
++import { createClient } from '@/lib/supabase/client';
++
++type Key = 'konu_tamamlandi' | 'kaynak1_sorular' | 'kaynak2_sorular' | 'kaynak3_sorular' | 'yanlislar_kontrol';
++type Topic = { id: string; subject: string; topic: string } & Record<Key, boolean | null>;
++
++const STEPS: { key: Key; label: string; kaynakIdx?: number }[] = [
++  { key: 'konu_tamamlandi', label: 'Konu' },
++  { key: 'kaynak1_sorular', label: '1. Kaynak', kaynakIdx: 0 },
++  { key: 'kaynak2_sorular', label: '2. Kaynak', kaynakIdx: 1 },
++  { key: 'kaynak3_sorular', label: '3. Kaynak', kaynakIdx: 2 },
++  { key: 'yanlislar_kontrol', label: 'Yanlışlar çözüldü' },
++];
++const collator = new Intl.Collator('tr', { numeric: true, sensitivity: 'base' });
++
++// Kaynak zinciri: 3 işaretlenirse 1-2, 2 işaretlenirse 1 de işaretlenir.
++// İşareti kaldırma: 1 kalkarsa 2-3, 2 kalkarsa 3 de kalkar.
++function applyToggle(t: Topic, key: Key): Partial<Record<Key, boolean>> {
++  const turnOn = !t[key];
++  const patch: Partial<Record<Key, boolean>> = { [key]: turnOn };
++  if (turnOn) {
++    if (key === 'kaynak3_sorular') { patch.kaynak2_sorular = true; patch.kaynak1_sorular = true; }
++    if (key === 'kaynak2_sorular') patch.kaynak1_sorular = true;
++  } else {
++    if (key === 'kaynak1_sorular') { patch.kaynak2_sorular = false; patch.kaynak3_sorular = false; }
++    if (key === 'kaynak2_sorular') patch.kaynak3_sorular = false;
++  }
++  return patch;
++}
++
++function doneCount(t: Topic) {
++  return (['konu_tamamlandi', 'kaynak1_sorular', 'yanlislar_kontrol'] as Key[]).filter((k) => t[k]).length;
++}
++
++export function KonuKartlariClient({ initial, resources }: { initial: Topic[]; resources: Record<string, string[]> }) {
++  const supabase = createClient();
++  const [topics, setTopics] = useState<Topic[]>(initial);
++  const [openId, setOpenId] = useState<string | null>(null);
++  const [error, setError] = useState<string | null>(null);
++
++  async function toggle(t: Topic, key: Key) {
++    const patch = applyToggle(t, key);
++    const before = t;
++    setTopics((prev) => prev.map((x) => (x.id === t.id ? { ...x, ...patch } : x)));
++    const { error: err } = await (supabase.from('topic_progress') as any)
++      .update({ ...patch, updated_at: new Date().toISOString() }).eq('id', t.id);
++    if (err) {
++      setTopics((prev) => prev.map((x) => (x.id === t.id ? before : x)));
++      setError('Kaydedilemedi, tekrar dene.');
++    } else setError(null);
++  }
++
++  if (topics.length === 0) {
++    return <p className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">Koçun henüz konu eklememiş.</p>;
++  }
++
++  const subjects = Array.from(new Set(topics.map((t) => t.subject))).sort(collator.compare);
++
++  return (
++    <div className="space-y-5">
++      <h1 className="text-[17px] font-medium text-gray-900">Konu İlerleyişim</h1>
++      {error && <p className="text-sm text-red-600">{error}</p>}
++
++      {subjects.map((subject) => {
++        const list = topics.filter((t) => t.subject === subject).sort((a, b) => collator.compare(a.topic, b.topic));
++        return (
++          <section key={subject}>
++            <h2 className="mb-2 text-[13px] font-semibold text-gray-700">{subject}</h2>
++            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
++              {list.map((t) => {
++                const n = doneCount(t);
++                const open = openId === t.id;
++                const tone = n === 3 ? 'border-emerald-300 bg-emerald-50' : n > 0 ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white';
++                return (
++                  <div key={t.id} className={`rounded-xl border ${tone} ${open ? 'sm:col-span-2' : ''}`}>
++                    <button type="button" onClick={() => setOpenId(open ? null : t.id)} className="flex w-full items-center gap-2 px-3.5 py-3 text-left">
++                      <span className="flex-1 text-[13px] font-medium text-gray-900">{t.topic}</span>
++                      {n === 3 && <IconCheck size={16} className="text-emerald-600" />}
++                      <span className="text-[11px] text-gray-400">{n}/3</span>
++                    </button>
++                    {open && (
++                      <div className="grid grid-cols-2 gap-2 border-t border-black/5 p-3 sm:grid-cols-5">
++                        {STEPS.map((s) => {
++                          const on = !!t[s.key];
++                          const name = s.kaynakIdx !== undefined ? resources[t.subject]?.[s.kaynakIdx]?.trim() : '';
++                          return (
++                            <button key={s.key} type="button" onClick={() => toggle(t, s.key)}
++                              className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2.5 text-[12px] transition ${
++                                on ? 'border-emerald-400 bg-emerald-100 text-emerald-800' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}>
++                              {on ? <IconCheck size={16} /> : <IconX size={16} className="text-gray-300" />}
++                              <span className="text-center font-medium">{s.label}</span>
++                              {name && <span className="line-clamp-2 text-center text-[10px] opacity-70">{name}</span>}
++                            </button>
++                          );
++                        })}
++                      </div>
++                    )}
++                  </div>
++                );
++              })}
++            </div>
++          </section>
++        );
++      })}
++    </div>
++  );
++}
+diff --git a/src/app/ogrenci/konu-ilerleyisi/page.tsx b/src/app/ogrenci/konu-ilerleyisi/page.tsx
+new file mode 100644
+index 0000000..6abae56
+--- /dev/null
++++ b/src/app/ogrenci/konu-ilerleyisi/page.tsx
+@@ -0,0 +1,16 @@
++/* eslint-disable @typescript-eslint/no-explicit-any */
++import { getStudentContext } from '@/lib/student-context';
++import { KonuKartlariClient } from './KonuKartlariClient';
++
++export default async function OgrenciKonuPage() {
++  const { supabase, student } = await getStudentContext();
++  if (!student) return <p className="text-sm text-gray-500">Öğrenci kaydı bulunamadı.</p>;
++
++  const { data: topics } = await (supabase as any)
++    .from('topic_progress')
++    .select('id, subject, topic, konu_tamamlandi, kaynak1_sorular, kaynak2_sorular, kaynak3_sorular, yanlislar_kontrol')
++    .eq('student_id', student.id)
++    .order('subject');
++
++  return <KonuKartlariClient initial={topics ?? []} resources={student.resources ?? {}} />;
++}
+diff --git a/src/app/ogrenci/layout.tsx b/src/app/ogrenci/layout.tsx
+new file mode 100644
+index 0000000..e67c6d7
+--- /dev/null
++++ b/src/app/ogrenci/layout.tsx
+@@ -0,0 +1,10 @@
++import { StudentNav } from './StudentNav';
++
++export default function OgrenciLayout({ children }: { children: React.ReactNode }) {
++  return (
++    <div className="min-h-screen bg-gray-50">
++      <StudentNav />
++      <main className="mx-auto max-w-3xl p-4 pb-24 md:p-6">{children}</main>
++    </div>
++  );
++}
+diff --git a/src/app/ogrenci/page.tsx b/src/app/ogrenci/page.tsx
+new file mode 100644
+index 0000000..46287a6
+--- /dev/null
++++ b/src/app/ogrenci/page.tsx
+@@ -0,0 +1,16 @@
++/* eslint-disable @typescript-eslint/no-explicit-any */
++import { getStudentContext } from '@/lib/student-context';
++import { OgrenciBilgilerClient } from './OgrenciBilgilerClient';
++
++export default async function OgrenciAnaSayfa() {
++  const { student, profile } = await getStudentContext();
++
++  if (!student) {
++    return (
++      <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-600">
++        Merhaba {profile.full_name}. Hesabın henüz bir öğrenci kaydına bağlanmamış; koçunla iletişime geç.
++      </div>
++    );
++  }
++  return <OgrenciBilgilerClient student={student} />;
++}
+diff --git a/src/app/ogrenci/sifre-degistir/SifreDegistirClient.tsx b/src/app/ogrenci/sifre-degistir/SifreDegistirClient.tsx
+new file mode 100644
+index 0000000..de116ff
+--- /dev/null
++++ b/src/app/ogrenci/sifre-degistir/SifreDegistirClient.tsx
+@@ -0,0 +1,50 @@
++'use client';
++
++import { useState } from 'react';
++import { useRouter } from 'next/navigation';
++import { createClient } from '@/lib/supabase/client';
++
++export function SifreDegistirClient({ forced }: { forced: boolean }) {
++  const router = useRouter();
++  const supabase = createClient();
++  const [pw, setPw] = useState('');
++  const [pw2, setPw2] = useState('');
++  const [error, setError] = useState<string | null>(null);
++  const [loading, setLoading] = useState(false);
++
++  async function submit(e: React.FormEvent) {
++    e.preventDefault();
++    setError(null);
++    if (pw.length < 8) return setError('Şifre en az 8 karakter olmalı.');
++    if (pw !== pw2) return setError('Şifreler aynı değil.');
++    if (/^\d{8}$/.test(pw)) return setError('Şifre sadece rakamlardan oluşmasın; harf de ekle.');
++
++    setLoading(true);
++    const { error: upErr } = await supabase.auth.updateUser({ password: pw });
++    if (upErr) { setError(upErr.message); setLoading(false); return; }
++
++    const { data: { user } } = await supabase.auth.getUser();
++    if (user) await (supabase.from('profiles') as any).update({ must_change_password: false }).eq('id', user.id);
++
++    router.push('/ogrenci');
++    router.refresh();
++  }
++
++  const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
++  return (
++    <div className="mx-auto max-w-sm rounded-2xl border border-gray-200 bg-white p-6">
++      <h1 className="mb-1 text-lg font-semibold text-gray-900">Yeni şifre belirle</h1>
++      <p className="mb-5 text-sm text-gray-500">
++        {forced ? 'Güvenliğin için ilk girişte şifreni değiştirmen gerekiyor.' : 'Yeni şifreni yaz.'}
++      </p>
++      <form onSubmit={submit} className="space-y-4">
++        <input type="password" required autoComplete="new-password" placeholder="Yeni şifre (en az 8 karakter)" value={pw} onChange={(e) => setPw(e.target.value)} className={input} />
++        <input type="password" required autoComplete="new-password" placeholder="Yeni şifre (tekrar)" value={pw2} onChange={(e) => setPw2(e.target.value)} className={input} />
++        {error && <p className="text-sm text-red-600">{error}</p>}
++        <button disabled={loading} className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
++          {loading ? 'Kaydediliyor...' : 'Şifreyi kaydet'}
++        </button>
++      </form>
++    </div>
++  );
++}
+diff --git a/src/app/ogrenci/sifre-degistir/page.tsx b/src/app/ogrenci/sifre-degistir/page.tsx
+new file mode 100644
+index 0000000..14d3b61
+--- /dev/null
++++ b/src/app/ogrenci/sifre-degistir/page.tsx
+@@ -0,0 +1,7 @@
++import { getStudentContext } from '@/lib/student-context';
++import { SifreDegistirClient } from './SifreDegistirClient';
++
++export default async function SifreDegistirPage() {
++  const { profile } = await getStudentContext({ allowPasswordChange: true });
++  return <SifreDegistirClient forced={!!profile.must_change_password} />;
++}
+diff --git a/src/app/ogrenciler/[id]/OgrenciDetayClient.tsx b/src/app/ogrenciler/[id]/OgrenciDetayClient.tsx
+index 997db48..e1fbc27 100644
+--- a/src/app/ogrenciler/[id]/OgrenciDetayClient.tsx
++++ b/src/app/ogrenciler/[id]/OgrenciDetayClient.tsx
+@@ -14,7 +14,7 @@ import { OgrenciProgramlari } from './OgrenciProgramlari';
+ 
+ // ─── Sabitler ────────────────────────────────────────────────
+ 
+-const TRACK_LABELS: Record<string, string> = {
++export const TRACK_LABELS: Record<string, string> = {
+   YKS_SAY: 'YKS · Sayısal', YKS_SOZ: 'YKS · Sözel', YKS_EA: 'YKS · Eşit Ağırlık',
+   YKS_DIL: 'YKS · Dil', LGS: 'LGS', DIGER: 'Diğer',
+ };
+@@ -39,7 +39,7 @@ const AVATAR_COLORS: Record<string, string> = {
+ 
+ 
+ 
+-const TRACK_RESOURCES: Record<string, string[]> = {
++export const TRACK_RESOURCES: Record<string, string[]> = {
+   YKS_SAY: [
+     'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
+     'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
+@@ -71,7 +71,7 @@ const TRACK_RESOURCES: Record<string, string[]> = {
+ };
+ // ─── Accordion ───────────────────────────────────────────────
+ 
+-function Accordion({
++export function Accordion({
+   icon, title, defaultOpen = false, children,
+ }: {
+   icon: React.ReactNode; title: string; defaultOpen?: boolean; children: React.ReactNode;
+@@ -96,7 +96,7 @@ function Accordion({
+ 
+ // ─── InfoRow ─────────────────────────────────────────────────
+ 
+-function InfoRow({ label, value }: { label: string; value?: string | null }) {
++export function InfoRow({ label, value }: { label: string; value?: string | null }) {
+   if (!value) return null;
+   return (
+     <div className="flex items-start gap-2 py-1.5">
+@@ -413,7 +413,7 @@ function logToForm(log: any): LogForm {
+   };
+ }
+ 
+-function GunlukAccordion({ studentId }: { studentId: string }) {
++export function GunlukAccordion({ studentId }: { studentId: string }) {
+   const [logs, setLogs] = useState<any[]>([]);
+   const [loaded, setLoaded] = useState(false);
+   const [selectedLog, setSelectedLog] = useState<any | null>(null);
+diff --git a/src/app/ogrenciler/yeni/page.tsx b/src/app/ogrenciler/yeni/page.tsx
+index 1fed389..0f96239 100644
+--- a/src/app/ogrenciler/yeni/page.tsx
++++ b/src/app/ogrenciler/yeni/page.tsx
+@@ -267,6 +267,16 @@ export default function YeniOgrenciPage() {
+     }
+     if (inserted?.id) {
+       await assignCurriculumForStudent(supabase, inserted.id, track);
++      // Öğrenci giriş hesabı (telefon + doğum tarihi varsa). Başarısız olsa da kayıt tamamlanır.
++      if (phone.trim() && birthDate) {
++        try {
++          await fetch('/api/ogrenci/hesap-olustur', {
++            method: 'POST',
++            headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify({ studentId: inserted.id }),
++          });
++        } catch { /* hesap sonradan oluşturulabilir */ }
++      }
+     }
+     refreshOptions();
+     router.push('/ogrenciler');
+diff --git a/src/lib/student-account.ts b/src/lib/student-account.ts
+new file mode 100644
+index 0000000..4821104
+--- /dev/null
++++ b/src/lib/student-account.ts
+@@ -0,0 +1,25 @@
++// Öğrenci hesabı yardımcıları (hem sunucu hem tarayıcı tarafında kullanılabilir; gizli anahtar İÇERMEZ).
++
++/** Telefonu sadece rakamlardan oluşan, son 10 haneli forma çevirir: 05315579683 -> 5315579683 */
++export function phoneKey(raw: string | null | undefined): string | null {
++  const digits = (raw ?? '').replace(/\D/g, '');
++  if (digits.length < 10) return null;
++  return digits.slice(-10);
++}
++
++/** Telefondan, Supabase Auth için sahte (gerçek posta gönderilmeyen) e-posta üretir. */
++export function studentEmailFromPhone(raw: string | null | undefined): string | null {
++  const key = phoneKey(raw);
++  return key ? `ogr${key}@ogrenci.kocdefterim.com` : null;
++}
++
++/** Başlangıç şifresi: telefonun son 4 hanesi + doğum yılı (örn. 05315579683 + 2009 => 96832009). */
++export function initialStudentPassword(
++  phone: string | null | undefined,
++  birthDate: string | null | undefined
++): string | null {
++  const digits = (phone ?? '').replace(/\D/g, '');
++  const year = (birthDate ?? '').slice(0, 4);
++  if (digits.length < 4 || !/^\d{4}$/.test(year)) return null;
++  return `${digits.slice(-4)}${year}`;
++}
+diff --git a/src/lib/student-context.ts b/src/lib/student-context.ts
+new file mode 100644
+index 0000000..3cc694d
+--- /dev/null
++++ b/src/lib/student-context.ts
+@@ -0,0 +1,21 @@
++/* eslint-disable @typescript-eslint/no-explicit-any */
++import { redirect } from 'next/navigation';
++import { createClient } from '@/lib/supabase/server';
++
++// Öğrenci sayfalarının ortak girişi: oturum + öğrenci kaydı + ilk giriş şifre kontrolü.
++// Öğrenci kaydı yalnızca profile_id = giriş yapan kullanıcı olan satırdır (başka öğrenci görülemez).
++export async function getStudentContext(opts: { allowPasswordChange?: boolean } = {}) {
++  const supabase = await createClient();
++  const { data: { user } } = await supabase.auth.getUser();
++  if (!user) redirect('/giris/ogrenci');
++
++  const { data: profile } = await (supabase as any)
++    .from('profiles').select('id, full_name, role, must_change_password').eq('id', user.id).single();
++  if (!profile || profile.role !== 'ogrenci') redirect('/anasayfa');
++  if (profile.must_change_password && !opts.allowPasswordChange) redirect('/ogrenci/sifre-degistir');
++
++  const { data: student } = await (supabase as any)
++    .from('students').select('*').eq('profile_id', user.id).maybeSingle();
++
++  return { supabase, user, profile, student: student as any | null };
++}
+diff --git a/src/middleware.ts b/src/middleware.ts
+index dedec3f..aa15e87 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -60,29 +60,49 @@ export async function middleware(request: NextRequest) {
+     return NextResponse.redirect(url);
+   }
+ 
+-  if (user && isAuthPage) {
+-    const url = request.nextUrl.clone();
+-    url.pathname = '/anasayfa';
+-    return NextResponse.redirect(url);
+-  }
+-
+-  if (user && !isAuthPage && !isOnayPage) {
++  if (user) {
+     const { data: profile } = await supabase
+       .from('profiles')
+-      .select('is_approved, is_admin')
++      .select('is_approved, is_admin, role')
+       .eq('id', user.id)
+       .single();
+ 
+-    if (profile && !profile.is_approved) {
++    const isStudent = profile?.role === 'ogrenci';
++    const isStudentArea = pathname === '/ogrenci' || pathname.startsWith('/ogrenci/') || pathname.startsWith('/api/ogrenci/');
++
++    // Giriş yapmış kullanıcı giriş/kayıt sayfasına gelirse rolüne göre yönlendir
++    if (isAuthPage) {
+       const url = request.nextUrl.clone();
+-      url.pathname = '/onay-bekleniyor';
++      url.pathname = isStudent ? '/ogrenci' : '/anasayfa';
+       return NextResponse.redirect(url);
+     }
+ 
+-    if (pathname.startsWith('/kazanim-havuzu') && !profile?.is_admin) {
+-      const url = request.nextUrl.clone();
+-      url.pathname = '/anasayfa';
+-      return NextResponse.redirect(url);
++    if (!isOnayPage) {
++      if (profile && !profile.is_approved) {
++        const url = request.nextUrl.clone();
++        url.pathname = '/onay-bekleniyor';
++        return NextResponse.redirect(url);
++      }
++
++      // Öğrenci yalnızca öğrenci alanına girebilir (koç sayfaları ve koç API'leri kapalı)
++      if (isStudent && !isStudentArea && pathname !== '/') {
++        const url = request.nextUrl.clone();
++        url.pathname = '/ogrenci';
++        return NextResponse.redirect(url);
++      }
++
++      // Koç/öğretmen öğrenci sayfalarına girmesin (öğrenci hesap-oluştur API'si koç içindir)
++      if (!isStudent && (pathname === '/ogrenci' || pathname.startsWith('/ogrenci/'))) {
++        const url = request.nextUrl.clone();
++        url.pathname = '/anasayfa';
++        return NextResponse.redirect(url);
++      }
++
++      if (pathname.startsWith('/kazanim-havuzu') && !profile?.is_admin) {
++        const url = request.nextUrl.clone();
++        url.pathname = '/anasayfa';
++        return NextResponse.redirect(url);
++      }
+     }
+   }
+ 
+diff --git a/supabase/student_portal.sql b/supabase/student_portal.sql
+new file mode 100644
+index 0000000..1b5ca47
+--- /dev/null
++++ b/supabase/student_portal.sql
+@@ -0,0 +1,104 @@
++-- Öğrenci paneli (Aşama 1): Supabase Dashboard > SQL Editor'da BİR KEZ çalıştırın.
++-- Hepsi geriye dönük uyumludur; mevcut veri silinmez/değiştirilmez.
++
++-- 1) İlk girişte şifre değiştirtmek için bayrak
++alter table profiles add column if not exists must_change_password boolean not null default false;
++
++-- 2) GÜVENLİK: kullanıcılar kendi profilinde role / is_admin / is_approved alanlarını değiştirememeli.
++--    (profiles_self_update politikası bunu engellemiyordu; öğrenci hesapları açılmadan önce kapatılmalı.)
++create or replace function protect_profile_privileged_columns()
++returns trigger language plpgsql security definer set search_path = public as $$
++begin
++  if auth.uid() is null or auth.role() = 'service_role' then
++    return new;
++  end if;
++  if (new.role is distinct from old.role
++      or new.is_admin is distinct from old.is_admin
++      or new.is_approved is distinct from old.is_approved)
++     and not exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin = true) then
++    raise exception 'Bu alanları değiştirme yetkiniz yok';
++  end if;
++  return new;
++end $$;
++
++drop trigger if exists trg_protect_profile_privileged_columns on profiles;
++create trigger trg_protect_profile_privileged_columns
++  before update on profiles
++  for each row execute function protect_profile_privileged_columns();
++
++-- 3) Öğrenci kendi verilerini OKUYABİLSİN (sadece kendi satırları)
++drop policy if exists "exams_student_select" on exams;
++create policy "exams_student_select" on exams for select
++  using (exists (select 1 from students s where s.id = exams.student_id and s.profile_id = auth.uid()));
++
++drop policy if exists "topic_progress_student_select" on topic_progress;
++create policy "topic_progress_student_select" on topic_progress for select
++  using (exists (select 1 from students s where s.id = topic_progress.student_id and s.profile_id = auth.uid()));
++
++-- Öğrenci konu adımlarını işaretleyebilsin (konu ekleme/silme koçta kalır)
++drop policy if exists "topic_progress_student_update" on topic_progress;
++create policy "topic_progress_student_update" on topic_progress for update
++  using (exists (select 1 from students s where s.id = topic_progress.student_id and s.profile_id = auth.uid()))
++  with check (exists (select 1 from students s where s.id = topic_progress.student_id and s.profile_id = auth.uid()));
++
++drop policy if exists "daily_logs_student_select" on daily_logs;
++create policy "daily_logs_student_select" on daily_logs for select
++  using (exists (select 1 from students s where s.id = daily_logs.student_id and s.profile_id = auth.uid()));
++
++drop policy if exists "daily_logs_student_insert" on daily_logs;
++create policy "daily_logs_student_insert" on daily_logs for insert
++  with check (exists (select 1 from students s where s.id = daily_logs.student_id and s.profile_id = auth.uid()));
++
++drop policy if exists "daily_logs_student_update" on daily_logs;
++create policy "daily_logs_student_update" on daily_logs for update
++  using (exists (select 1 from students s where s.id = daily_logs.student_id and s.profile_id = auth.uid()))
++  with check (exists (select 1 from students s where s.id = daily_logs.student_id and s.profile_id = auth.uid()));
++
++drop policy if exists "daily_logs_student_delete" on daily_logs;
++create policy "daily_logs_student_delete" on daily_logs for delete
++  using (exists (select 1 from students s where s.id = daily_logs.student_id and s.profile_id = auth.uid()));
++
++-- daily_logs.coach_id zorunlu: öğrenci eklerken boş gelirse öğrencinin koçundan doldur
++create or replace function fill_daily_log_coach()
++returns trigger language plpgsql security definer set search_path = public as $$
++begin
++  if new.coach_id is null then
++    select coach_id into new.coach_id from students where id = new.student_id;
++  end if;
++  return new;
++end $$;
++
++drop trigger if exists trg_fill_daily_log_coach on daily_logs;
++create trigger trg_fill_daily_log_coach
++  before insert on daily_logs
++  for each row execute function fill_daily_log_coach();
++
++-- 4) Deneme karnesi sıralaması: başka öğrencilerin verisini AÇMADAN yalnızca sıra/sayı/ortalama döndürür.
++--    "Aynı deneme" = aynı ad + aynı tarih + aynı tür (tüm koçlardaki öğrenciler dahil).
++create or replace function student_exam_ranks()
++returns table (exam_id uuid, rank bigint, total bigint, avg_net numeric, max_net numeric)
++language sql stable security definer set search_path = public as $$
++  with mine as (
++    select e.id, e.exam_name, e.exam_date, e.exam_type, e.net_score
++    from exams e join students s on s.id = e.student_id
++    where s.profile_id = auth.uid()
++  )
++  select m.id,
++         (select count(*) + 1 from exams o
++            where o.exam_name = m.exam_name and o.exam_date = m.exam_date
++              and o.exam_type is not distinct from m.exam_type and o.net_score > m.net_score),
++         (select count(*) from exams o
++            where o.exam_name = m.exam_name and o.exam_date = m.exam_date
++              and o.exam_type is not distinct from m.exam_type),
++         (select round(avg(o.net_score), 2) from exams o
++            where o.exam_name = m.exam_name and o.exam_date = m.exam_date
++              and o.exam_type is not distinct from m.exam_type),
++         (select max(o.net_score) from exams o
++            where o.exam_name = m.exam_name and o.exam_date = m.exam_date
++              and o.exam_type is not distinct from m.exam_type)
++  from mine m;
++$$;
++revoke all on function student_exam_ranks() from public;
++grant execute on function student_exam_ranks() to authenticated;
++
++notify pgrst, 'reload schema';
