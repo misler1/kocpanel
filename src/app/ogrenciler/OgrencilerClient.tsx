@@ -59,6 +59,36 @@ function getSoyad(fullName: string) {
 }
 
 export function OgrencilerClient({ students, archiveMode }: { students: ListedStudent[]; archiveMode: boolean }) {
+  const [accBusy, setAccBusy] = useState(false);
+  const [accMsg, setAccMsg] = useState<string | null>(null);
+
+  // Henüz giriş hesabı olmayan öğrenciler için hesap oluşturur (telefon + doğum tarihi gerekir).
+  async function createStudentAccounts() {
+    if (!window.confirm('Giriş hesabı olmayan öğrencilerin hesapları oluşturulsun mu?\nKullanıcı adı: telefon · İlk şifre: telefonun son 4 hanesi + doğum yılı')) return;
+    setAccBusy(true);
+    setAccMsg(null);
+    try {
+      const res = await fetch('/api/ogrenci/hesap-olustur', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setAccMsg(json.error ?? 'Hesaplar oluşturulamadı.'); return; }
+      const results: { name: string; status: string; reason?: string }[] = json.results ?? [];
+      const ok = results.filter((r) => r.status === 'olusturuldu').length;
+      const skipped = results.filter((r) => r.status !== 'olusturuldu');
+      setAccMsg(
+        `${ok} hesap oluşturuldu.` +
+        (skipped.length ? ` Atlananlar: ${skipped.map((r) => `${r.name} (${r.reason})`).join(', ')}` : '')
+      );
+    } catch {
+      setAccMsg('Bağlantı hatası, tekrar deneyin.');
+    } finally {
+      setAccBusy(false);
+    }
+  }
+
   const { matchesFilter } = useExamFilter();
   const [sinifFilter, setSinifFilter] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('ad');
@@ -134,6 +164,14 @@ export function OgrencilerClient({ students, archiveMode }: { students: ListedSt
             </Link>
           ) : (
             <>
+              <button
+                type="button"
+                onClick={createStudentAccounts}
+                disabled={accBusy}
+                className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)] disabled:opacity-60"
+              >
+                {accBusy ? 'Oluşturuluyor...' : 'Öğrenci Hesapları Oluştur'}
+              </button>
               <Link
                 href="/ogrenciler?arsiv=1"
                 className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
@@ -152,6 +190,10 @@ export function OgrencilerClient({ students, archiveMode }: { students: ListedSt
           )}
         </div>
       </div>
+
+      {accMsg && (
+        <p className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--paper)] px-3.5 py-2 text-[13px] text-[var(--ink)]">{accMsg}</p>
+      )}
 
       <div className="mb-4 flex flex-wrap gap-2">
         {availableSiniflar.length > 0 && (

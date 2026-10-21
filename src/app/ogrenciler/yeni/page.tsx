@@ -267,6 +267,16 @@ export default function YeniOgrenciPage() {
     }
     if (inserted?.id) {
       await assignCurriculumForStudent(supabase, inserted.id, track);
+      // Öğrenci giriş hesabı (telefon + doğum tarihi varsa). Başarısız olsa da kayıt tamamlanır.
+      if (phone.trim() && birthDate) {
+        try {
+          await fetch('/api/ogrenci/hesap-olustur', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentId: inserted.id }),
+          });
+        } catch { /* hesap sonradan oluşturulabilir */ }
+      }
     }
     refreshOptions();
     router.push('/ogrenciler');

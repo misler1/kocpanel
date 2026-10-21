@@ -60,29 +60,49 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthPage) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/anasayfa';
-    return NextResponse.redirect(url);
-  }
-
-  if (user && !isAuthPage && !isOnayPage) {
+  if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_approved, is_admin')
+      .select('is_approved, is_admin, role')
       .eq('id', user.id)
       .single();
 
-    if (profile && !profile.is_approved) {
+    const isStudent = profile?.role === 'ogrenci';
+    const isStudentArea = pathname === '/ogrenci' || pathname.startsWith('/ogrenci/') || pathname.startsWith('/api/ogrenci/');
+
+    // Giriş yapmış kullanıcı giriş/kayıt sayfasına gelirse rolüne göre yönlendir
+    if (isAuthPage) {
       const url = request.nextUrl.clone();
-      url.pathname = '/onay-bekleniyor';
+      url.pathname = isStudent ? '/ogrenci' : '/anasayfa';
       return NextResponse.redirect(url);
     }
 
-    if (pathname.startsWith('/kazanim-havuzu') && !profile?.is_admin) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/anasayfa';
-      return NextResponse.redirect(url);
+    if (!isOnayPage) {
+      if (profile && !profile.is_approved) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/onay-bekleniyor';
+        return NextResponse.redirect(url);
+      }
+
+      // Öğrenci yalnızca öğrenci alanına girebilir (koç sayfaları ve koç API'leri kapalı)
+      if (isStudent && !isStudentArea && pathname !== '/') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/ogrenci';
+        return NextResponse.redirect(url);
+      }
+
+      // Koç/öğretmen öğrenci sayfalarına girmesin (öğrenci hesap-oluştur API'si koç içindir)
+      if (!isStudent && (pathname === '/ogrenci' || pathname.startsWith('/ogrenci/'))) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/anasayfa';
+        return NextResponse.redirect(url);
+      }
+
+      if (pathname.startsWith('/kazanim-havuzu') && !profile?.is_admin) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/anasayfa';
+        return NextResponse.redirect(url);
+      }
     }
   }
 

@@ -14,7 +14,7 @@ import { OgrenciProgramlari } from './OgrenciProgramlari';
 
 // ─── Sabitler ────────────────────────────────────────────────
 
-const TRACK_LABELS: Record<string, string> = {
+export const TRACK_LABELS: Record<string, string> = {
   YKS_SAY: 'YKS · Sayısal', YKS_SOZ: 'YKS · Sözel', YKS_EA: 'YKS · Eşit Ağırlık',
   YKS_DIL: 'YKS · Dil', LGS: 'LGS', DIGER: 'Diğer',
 };
@@ -39,7 +39,7 @@ const AVATAR_COLORS: Record<string, string> = {
 
 
 
-const TRACK_RESOURCES: Record<string, string[]> = {
+export const TRACK_RESOURCES: Record<string, string[]> = {
   YKS_SAY: [
     'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
     'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
@@ -71,7 +71,7 @@ const TRACK_RESOURCES: Record<string, string[]> = {
 };
 // ─── Accordion ───────────────────────────────────────────────
 
-function Accordion({
+export function Accordion({
   icon, title, defaultOpen = false, children,
 }: {
   icon: React.ReactNode; title: string; defaultOpen?: boolean; children: React.ReactNode;
@@ -96,7 +96,7 @@ function Accordion({
 
 // ─── InfoRow ─────────────────────────────────────────────────
 
-function InfoRow({ label, value }: { label: string; value?: string | null }) {
+export function InfoRow({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
     <div className="flex items-start gap-2 py-1.5">
@@ -413,7 +413,7 @@ function logToForm(log: any): LogForm {
   };
 }
 
-function GunlukAccordion({ studentId }: { studentId: string }) {
+export function GunlukAccordion({ studentId }: { studentId: string }) {
   const [logs, setLogs] = useState<any[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
