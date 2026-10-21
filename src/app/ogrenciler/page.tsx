@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { OgrencilerClient } from './OgrencilerClient';
 import type { Student } from '@/types/database';
 import { cookies } from 'next/headers';
+import { BasvuruListesi, type Basvuru } from '@/components/BasvuruListesi';
 import { getStudentScope, applyStudentScope, isInternStudent } from '@/lib/effective-coach';
 
 type OgrenciListStudent = Student & {
@@ -70,5 +71,26 @@ export default async function OgrencilerPage({
         is_intern_student: scope.isMentor && isInternStudent(s as never, user.id),
   }));
 
-  return <OgrencilerClient students={studentsWithMeeting} archiveMode={archiveMode} />;
+  // Bu koçun onayını bekleyen öğrenci başvuruları (RLS: yalnızca atanan koç görür)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: regs } = await (supabase as any)
+    .from('student_registrations')
+    .select('id, full_name, phone, birth_date, status, requested_coach_id, assigned_coach_id, created_at')
+    .eq('assigned_coach_id', user.id)
+    .eq('status', 'koc_bekliyor');
+  const basvurular = (regs ?? []) as Basvuru[];
+
+  return (
+    <>
+      {!archiveMode && basvurular.length > 0 && (
+        <div className="mx-auto mb-4 max-w-3xl rounded-xl border border-amber-200 bg-amber-50">
+          <p className="px-4 pt-3 text-[13px] font-medium text-amber-900">
+            Onayınızı bekleyen {basvurular.length} öğrenci başvurusu var
+          </p>
+          <BasvuruListesi basvurular={basvurular} mode="koc" />
+        </div>
+      )}
+      <OgrencilerClient students={studentsWithMeeting} archiveMode={archiveMode} />
+    </>
+  );
 }

@@ -28,6 +28,8 @@ export async function middleware(request: NextRequest) {
   const isPublicPage =
     pathname.startsWith('/anket') ||
     pathname.startsWith('/kayit-formu') ||
+    pathname === '/api/ogrenci/kayit' ||
+    pathname === '/api/ogrenci/kocler' ||
     isPublicMarketingPath(pathname);
 
   const isWebhook = pathname.startsWith('/api/whatsapp');
