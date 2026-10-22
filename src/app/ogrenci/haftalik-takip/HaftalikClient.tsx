@@ -93,7 +93,7 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
     const { ops, summary } = buildRequest();
     if (ops.length === 0) { setMsg('Henüz bir değişiklik yapmadın.'); return; }
     setBusy(true); setMsg(null);
-    const { data, error } = await (supabase.from('weekly_plan_requests') as any).insert({
+    const { data, error } = await (supabase as any).from('weekly_plan_requests').insert({
       student_id: studentId, coach_id: coachId, kind: 'duzenleme', week_start: week,
       payload: { ops, summary }, note: note.trim() || null, status: 'bekliyor',
     }).select('id, kind, week_start, status, note, created_at, decided_at').single();
@@ -106,7 +106,7 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
 
   async function submitNew() {
     setBusy(true); setMsg(null);
-    const { data, error } = await (supabase.from('weekly_plan_requests') as any).insert({
+    const { data, error } = await (supabase as any).from('weekly_plan_requests').insert({
       student_id: studentId, coach_id: coachId, kind: 'yeni_program', week_start: null,
       payload: {}, note: newNote.trim() || null, status: 'bekliyor',
     }).select('id, kind, week_start, status, note, created_at, decided_at').single();
