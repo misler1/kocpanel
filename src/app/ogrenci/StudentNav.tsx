@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { IconUser, IconChartBar, IconBooks, IconLogout } from '@tabler/icons-react';
+import { IconUser, IconChartBar, IconBooks, IconCalendar, IconLogout } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 
 const ITEMS = [
   { href: '/ogrenci', label: 'Bilgilerim', icon: IconUser },
+  { href: '/ogrenci/haftalik-takip', label: 'Haftalık', icon: IconCalendar },
   { href: '/ogrenci/denemeler', label: 'Denemeler', icon: IconChartBar },
   { href: '/ogrenci/konu-ilerleyisi', label: 'Konular', icon: IconBooks },
 ];
