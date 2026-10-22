@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   if (coachId) {
     const { data: coach } = await (admin as any)
-      .from('profiles').select('id').eq('id', coachId).eq('role', 'koc').eq('is_approved', true).maybeSingle();
+      .from('profiles').select('id').eq('id', coachId).eq('role', 'koc').eq('is_approved', true).eq('student_selectable', true).maybeSingle();
     if (!coach) return bad('Seçilen koç bulunamadı.');
   }
 
