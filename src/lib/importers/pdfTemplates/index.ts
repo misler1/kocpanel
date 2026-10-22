@@ -14,10 +14,11 @@ const TEMPLATES: PdfTemplate[] = [
 
 export function parsePdfWithTemplates(
   text: string,
+  spaced?: string,
 ): { result: PdfParseResult; templateId: string; examType: PdfExamType } {
   for (const t of TEMPLATES) {
     if (!t.canParse(text)) continue;
-    const result = t.parse(text);
+    const result = t.parse(text, spaced);
     if (result.records.length === 0) continue;
     return { result, templateId: t.id, examType: t.examType ?? 'LGS' };
   }

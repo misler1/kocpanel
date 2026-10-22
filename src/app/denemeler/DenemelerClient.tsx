@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
   IconPlus, IconChartBar, IconEdit, IconTrash, IconChevronDown, IconChevronUp,
-  IconArrowsRightLeft, IconX, IconSparkles, IconLoader2, IconUpload, IconPrinter,
+  IconArrowsRightLeft, IconX, IconSparkles, IconLoader2, IconUpload, IconPrinter, IconListDetails,
   IconArrowUp, IconArrowDown, IconEqual, IconCheck,
 } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
@@ -48,6 +48,34 @@ function getSubjectNet(result: any, examType: string): number {
   const d = Number(result.dogru) || 0;
   const y = Number(result.yanlis) || 0;
   return examType === 'LGS' ? calcNetLGS(d, y) : calcNetYKS(d, y);
+}
+
+// ── Sıralama sütunları (PDF'te hangileri varsa o sütunlar açılır) ──
+const RANK_COLS: { key: string; label: string; katilimci?: string }[] = [
+  { key: 'genel', label: 'Genel', katilimci: 'genel' },
+  { key: 'il', label: 'İl' },
+  { key: 'ilce', label: 'İlçe' },
+  { key: 'kurum', label: 'Kurum', katilimci: 'kurum' },
+  { key: 'sube', label: 'Şube', katilimci: 'sube' },
+  { key: 'sinif', label: 'Sınıf', katilimci: 'sinif' },
+  { key: 'osym23', label: 'ÖSYM 23' },
+  { key: 'osym24', label: 'ÖSYM 24' },
+  { key: 'osym25', label: 'ÖSYM 25' },
+];
+const fmtNum = (n: number) => n.toLocaleString('tr-TR');
+const fmtAvg = (n: number) => (Math.round(n * 100) / 100).toFixed(2).replace('.', ',');
+
+// Netin altında küçük, silik "ort." satırı (genel ortalamanın üstünde ▲ / altında ▼)
+function AvgHint({ value, avg }: { value: number; avg: number | null | undefined }) {
+  if (avg === null || avg === undefined || !Number.isFinite(Number(avg))) return null;
+  const a = Number(avg);
+  return (
+    <div className="text-[9px] font-normal leading-tight text-gray-400">
+      ort. {fmtAvg(a)}{' '}
+      {value > a && <span className="text-emerald-400">▲</span>}
+      {value < a && <span className="text-red-300">▼</span>}
+    </div>
+  );
 }
 
 function subjectsFor(examType: string): SubjectDef[] {
@@ -124,6 +152,9 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   const [renameTarget, setRenameTarget] = useState<{ ids: string[]; name: string; newName: string; examType: string } | null>(null);
   const [deleteGroupTarget, setDeleteGroupTarget] = useState<{ ids: string[]; name: string; examType: string } | null>(null);
   const [groupBusy, setGroupBusy] = useState(false);
+  const [questionExam, setQuestionExam] = useState<any | null>(null); // kazanım (konu) analizi penceresi
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfMsg, setPdfMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [groupError, setGroupError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
@@ -283,6 +314,33 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
     }
     setGroupBusy(false);
   }
+  // Eksik bilgileri (kazanım, ortalama, sıralama) karne PDF'inden ekle
+  async function handleAddInfoPdf(file: File) {
+    if (!renameTarget) return;
+    setPdfBusy(true);
+    setPdfMsg(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('examIds', JSON.stringify(renameTarget.ids));
+      const res = await fetch('/api/denemeler/ek-bilgi', { method: 'POST', body: fd });
+      const raw = await res.text();
+      let data: any = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch { /* JSON değil */ }
+      if (!res.ok || !data) throw new Error(data?.error ?? `Sunucu hatası (HTTP ${res.status})`);
+      const patchMap = new Map<string, any>((data.patches ?? []).map((p: any) => [p.id, p.patch]));
+      setExams((prev) => prev.map((e) => (patchMap.has(e.id) ? { ...e, ...patchMap.get(e.id) } : e)));
+      const parts = [`${data.updated} öğrencinin eksik bilgileri eklendi`];
+      if (data.alreadyComplete) parts.push(`${data.alreadyComplete} öğrencide zaten tamdı`);
+      if (data.unmatched?.length) parts.push(`Eşleşmeyen: ${data.unmatched.join(', ')}`);
+      setPdfMsg({ ok: true, text: parts.join(' · ') });
+    } catch (err: any) {
+      setPdfMsg({ ok: false, text: err.message ?? 'Yüklenemedi.' });
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
   async function handleDeleteGroup() {
     if (!deleteGroupTarget) return;
     setGroupBusy(true);
@@ -429,7 +487,8 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
             <ExamGroupCard
               key={g.key}
               variant={singleStudent ? 'student' : 'exam'}
-              onRenameRequest={(grp) => { setGroupError(null); setRenameTarget({ ids: grp.rows.map((r: any) => r.id), name: grp.examName, newName: grp.examName, examType: grp.examType }); }}
+              onShowQuestions={setQuestionExam}
+              onRenameRequest={(grp) => { setGroupError(null); setPdfMsg(null); setRenameTarget({ ids: grp.rows.map((r: any) => r.id), name: grp.examName, newName: grp.examName, examType: grp.examType }); }}
               onDeleteGroupRequest={(grp) => { setGroupError(null); setDeleteGroupTarget({ ids: grp.rows.map((r: any) => r.id), name: grp.examName, examType: grp.examType }); }}
               group={g}
               isOpen={isGroupOpen(g.key, idx)}
@@ -484,6 +543,9 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
         </div>
       )}
 
+      {/* Kazanım (konu) analizi */}
+      {questionExam && <QuestionAnalysisModal exam={questionExam} onClose={() => setQuestionExam(null)} />}
+
       {/* Deneme adı düzeltme */}
       {renameTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -499,9 +561,32 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
               onKeyDown={(ev) => { if (ev.key === 'Enter') handleRenameGroup(); }}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             />
+            <div className="mt-4 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3">
+              <div className="text-[12px] font-medium text-gray-700">Kazanım ve sıralama ekle</div>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-gray-500">
+                Bu denemenin karne PDF'ini yükleyin. Yalnızca eksik bilgiler (kazanımlar, ders ortalamaları, sıralamalar)
+                eklenir; mevcut sonuçlar ve dolu alanlar değişmez.
+              </p>
+              <label className={`mt-2 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-[12px] font-medium text-gray-700 ${pdfBusy ? 'opacity-50' : 'cursor-pointer hover:bg-gray-50'}`}>
+                {pdfBusy ? <IconLoader2 size={14} className="animate-spin" /> : <IconUpload size={14} />}
+                {pdfBusy ? 'Okunuyor...' : 'Kazanım yükle (PDF)'}
+                <input
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  disabled={pdfBusy}
+                  onChange={(ev) => {
+                    const f = ev.target.files?.[0];
+                    if (f) handleAddInfoPdf(f);
+                    ev.target.value = '';
+                  }}
+                />
+              </label>
+              {pdfMsg && <p className={`mt-2 text-[12px] ${pdfMsg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{pdfMsg.text}</p>}
+            </div>
             {groupError && <p className="mt-2 text-[13px] text-red-600">{groupError}</p>}
             <div className="mt-5 flex gap-3">
-              <button onClick={() => setRenameTarget(null)} className="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-50">Vazgeç</button>
+              <button onClick={() => setRenameTarget(null)} className="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 hover:bg-gray-50">Kapat</button>
               <button onClick={handleRenameGroup} disabled={groupBusy} className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
                 {groupBusy ? 'Kaydediliyor...' : 'Kaydet'}
               </button>
@@ -544,8 +629,9 @@ function ExamGroupCard({
   group, isOpen, onToggle, sort, onSortChange, onDirToggle,
   compareMode, selectedCompareIds, onToggleCompare, compareDisabled,
   onToggleAnalysis, togglingId, onDeleteRequest, variant = 'exam',
-  onRenameRequest, onDeleteGroupRequest,
+  onRenameRequest, onDeleteGroupRequest, onShowQuestions,
 }: {
+  onShowQuestions?: (exam: any) => void;
   variant?: 'exam' | 'student';
   onRenameRequest?: (group: ExamGroup) => void;
   onDeleteGroupRequest?: (group: ExamGroup) => void;
@@ -567,6 +653,19 @@ function ExamGroupCard({
   const maxScore = group.examType === 'TYT' ? 120 : group.examType === 'AYT' ? 160 : 90;
   const typeBadge = TYPE_BADGE[group.examType] ?? 'bg-gray-100 text-gray-500';
   const isStudent = variant === 'student';
+  const knownRank = new Set(RANK_COLS.map((c) => c.key));
+  const rankCols = [
+    ...RANK_COLS,
+    ...Array.from(new Set(group.rows.flatMap((e: any) => Object.keys(e.rankings ?? {}))))
+      .filter((k) => k !== 'katilimci' && !knownRank.has(k))
+      .map((k) => ({ key: k, label: k.toUpperCase(), katilimci: undefined as string | undefined })),
+  ].filter((c) => group.rows.some((e: any) => e.rankings?.[c.key] != null));
+  // Deneme geneli ortalamalar (PDF'teki ORT sütunu): tüm öğrencilerde aynıdır, ilk bulunanı al
+  const groupAvg = (key: string): number | null => {
+    const v = group.rows.map((e: any) => e.subject_averages?.[key]).find((x: any) => x != null);
+    return v == null ? null : Number(v);
+  };
+  const hasGroupAvg = !isStudent && group.rows.some((e: any) => e.subject_averages && Object.keys(e.subject_averages).length > 0);
   const open = isStudent || isOpen; // tek öğrenci görünümünde akordeon yok, her zaman açık
 
   const sortedRows = useMemo(() => {
@@ -715,6 +814,11 @@ function ExamGroupCard({
                   ) : (
                     <th rowSpan={2} className="border-l border-gray-200 px-2 py-2 text-center font-medium text-gray-500">Puan</th>
                   )}
+                  {rankCols.map((c, ci) => (
+                    <th key={c.key} rowSpan={2} className={`px-2 py-2 text-center font-medium text-gray-500 ${ci === 0 ? 'border-l border-gray-200' : ''}`}>
+                      {c.label}<br />Sıra
+                    </th>
+                  ))}
                   <th rowSpan={2} className="border-l border-gray-200 px-2 py-2 text-center font-medium text-gray-500">Analiz</th>
                   <th rowSpan={2} className="px-2 py-2 text-center font-medium text-gray-500">İşlem</th>
                 </tr>
@@ -774,11 +878,17 @@ function ExamGroupCard({
                             <td className={`border-l px-1.5 py-2 text-center text-gray-600 ${c.border}`}>{hasData ? d : '—'}</td>
                             <td className="px-1.5 py-2 text-center text-gray-600">{hasData ? y : '—'}</td>
                             <td className="px-1.5 py-2 text-center text-gray-400">{hasData ? bos : '—'}</td>
-                            <td className={`px-1.5 py-2 text-center font-semibold ${hasData ? c.text : 'text-gray-300'}`}>{hasData ? net : '—'}</td>
+                            <td className={`px-1.5 py-2 text-center font-semibold ${hasData ? c.text : 'text-gray-300'}`}>
+                              {hasData ? net : '—'}
+                              {isStudent && hasData && <AvgHint value={net} avg={e.subject_averages?.[s.key]} />}
+                            </td>
                           </Fragment>
                         );
                       })}
-                      <td className={`border-l border-gray-100 px-2 py-2 text-center font-bold ${colors.text}`}>{e.net_score}</td>
+                      <td className={`border-l border-gray-100 px-2 py-2 text-center font-bold ${colors.text}`}>
+                        {e.net_score}
+                        {isStudent && <AvgHint value={Number(e.net_score)} avg={e.subject_averages?.toplam} />}
+                      </td>
                       {group.examType === 'AYT' ? (
                         <>
                           <td className="border-l border-gray-100 px-2 py-2 text-center text-gray-600">{e.say_puan ?? '—'}</td>
@@ -790,6 +900,20 @@ function ExamGroupCard({
                           {(group.examType === 'TYT' ? e.tyt_puan : e.lgs_puan) ?? '—'}
                         </td>
                       )}
+                      {rankCols.map((c, ci) => {
+                        const v = e.rankings?.[c.key];
+                        const n = c.katilimci ? e.rankings?.katilimci?.[c.katilimci] : null;
+                        return (
+                          <td key={c.key} className={`px-2 py-2 text-center text-gray-700 ${ci === 0 ? 'border-l border-gray-100' : ''}`}>
+                            {v != null ? (
+                              <>
+                                {fmtNum(Number(v))}
+                                {n ? <span className="text-[9px] text-gray-400">/{fmtNum(Number(n))}</span> : null}
+                              </>
+                            ) : '—'}
+                          </td>
+                        );
+                      })}
                       <td className="border-l border-gray-100 px-2 py-2 text-center">
                         <button
                           onClick={() => onToggleAnalysis(e)}
@@ -803,6 +927,16 @@ function ExamGroupCard({
                       </td>
                       <td className="px-2 py-2">
                         <div className="flex items-center justify-center gap-1">
+                          {Array.isArray(e.question_results) && e.question_results.length > 0 && (
+                            <button
+                              type="button"
+                              title="Kazanımlar (konu analizi)"
+                              onClick={() => onShowQuestions?.(e)}
+                              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-emerald-600"
+                            >
+                              <IconListDetails size={14} />
+                            </button>
+                          )}
                           <Link href={`/denemeler/${e.id}/duzenle`} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600">
                             <IconEdit size={14} />
                           </Link>
@@ -847,6 +981,37 @@ function ExamGroupCard({
                         {avgPuan(group.examType === 'TYT' ? 'tyt_puan' : 'lgs_puan') ?? '—'}
                       </td>
                     )}
+                    {rankCols.map((c) => <td key={c.key} />)}
+                    <td className="border-l border-gray-100" />
+                    <td />
+                  </tr>
+                </tfoot>
+              )}
+              {hasGroupAvg && (
+                <tfoot>
+                  <tr className="border-t-2 border-gray-300 bg-gray-50/80">
+                    {compareMode && <td className="sticky left-0 z-10 w-8 bg-gray-50" />}
+                    <td className={`sticky ${stickyNameLeft} z-10 whitespace-nowrap bg-gray-50 px-3 py-2 font-semibold text-gray-600`}>
+                      Genel ortalama
+                      <div className="text-[10px] font-normal text-gray-400">karnedeki ORT</div>
+                    </td>
+                    {subjects.map((s, i) => {
+                      const c = subjectColor(i);
+                      const a = groupAvg(s.key);
+                      return (
+                        <Fragment key={s.key}>
+                          <td className={`border-l px-1.5 py-2 ${c.border}`} />
+                          <td />
+                          <td />
+                          <td className="px-1.5 py-2 text-center font-semibold text-gray-500">{a === null ? '—' : fmtAvg(a)}</td>
+                        </Fragment>
+                      );
+                    })}
+                    <td className="border-l border-gray-100 px-2 py-2 text-center font-bold text-gray-600">
+                      {groupAvg('toplam') === null ? '—' : fmtAvg(groupAvg('toplam') as number)}
+                    </td>
+                    {group.examType === 'AYT' ? <><td className="border-l border-gray-100" /><td /><td /></> : <td className="border-l border-gray-100" />}
+                    {rankCols.map((c) => <td key={c.key} />)}
                     <td className="border-l border-gray-100" />
                     <td />
                   </tr>
@@ -856,6 +1021,129 @@ function ExamGroupCard({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Kazanım (konu) analizi penceresi ───────────────────────────
+// Karnedeki "KONU ANALİZİ": her sorunun konusu, doğru cevap, öğrencinin cevabı ve sonucu.
+// Üstte "zayıf kazanımlar" (yanlış/boş bırakılan konular), altta ders ders soru listesi.
+function QuestionAnalysisModal({ exam, onClose }: { exam: any; onClose: () => void }) {
+  const questions: { s: string; n: number; k: string; dc: string; oc: string | null; r: 'D' | 'Y' | 'B' }[] =
+    exam.question_results ?? [];
+  const subjects = subjectsFor(exam.exam_type);
+  const labelOf = (key: string) =>
+    subjects.find((x) => x.key === key)?.label ?? key.charAt(0).toLocaleUpperCase('tr') + key.slice(1);
+
+  const bySubject = useMemo(() => {
+    const map = new Map<string, typeof questions>();
+    questions.forEach((q) => map.set(q.s, [...(map.get(q.s) ?? []), q]));
+    return Array.from(map.entries());
+  }, [questions]);
+
+  // Konu bazında özet: kaç soruda yanlış / boş
+  const weak = useMemo(() => {
+    const map = new Map<string, { s: string; k: string; total: number; y: number; b: number }>();
+    questions.forEach((q) => {
+      const key = `${q.s}|${q.k}`;
+      const cur = map.get(key) ?? { s: q.s, k: q.k, total: 0, y: 0, b: 0 };
+      cur.total++;
+      if (q.r === 'Y') cur.y++;
+      if (q.r === 'B') cur.b++;
+      map.set(key, cur);
+    });
+    return Array.from(map.values())
+      .filter((t) => t.y + t.b > 0)
+      .sort((a, b) => b.y + b.b - (a.y + a.b) || b.y - a.y);
+  }, [questions]);
+
+  const chip = (r: 'D' | 'Y' | 'B') =>
+    r === 'D'
+      ? 'bg-emerald-50 text-emerald-700'
+      : r === 'Y'
+      ? 'bg-red-50 text-red-600'
+      : 'bg-gray-100 text-gray-500';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-gray-900">Kazanımlar (konu analizi)</h3>
+            <p className="text-[12px] text-gray-500">
+              {exam.students?.full_name} · {exam.exam_name} ·{' '}
+              {new Date(exam.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"><IconX size={18} /></button>
+        </div>
+
+        <div className="mb-5 rounded-lg border border-red-100 bg-red-50/40 p-3">
+          <div className="mb-2 text-[13px] font-semibold text-red-700">Eksik kazanımlar ({weak.length})</div>
+          {weak.length === 0 ? (
+            <p className="text-[12px] text-gray-500">Yanlış ya da boş bırakılan soru yok.</p>
+          ) : (
+            <div className="space-y-1">
+              {weak.map((t) => (
+                <div key={`${t.s}|${t.k}`} className="flex items-center justify-between gap-3 text-[12px]">
+                  <span className="min-w-0 text-gray-700">
+                    <span className="mr-1.5 rounded bg-white px-1.5 py-0.5 text-[10px] text-gray-500">{labelOf(t.s)}</span>
+                    {t.k}
+                  </span>
+                  <span className="flex-shrink-0 text-gray-500">
+                    {t.y > 0 && <span className="text-red-600">{t.y} yanlış</span>}
+                    {t.y > 0 && t.b > 0 && ' · '}
+                    {t.b > 0 && <span>{t.b} boş</span>}
+                    <span className="text-gray-400"> / {t.total} soru</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          {bySubject.map(([key, list]) => {
+            const d = list.filter((q) => q.r === 'D').length;
+            const y = list.filter((q) => q.r === 'Y').length;
+            const b = list.filter((q) => q.r === 'B').length;
+            return (
+              <div key={key} className="overflow-hidden rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between bg-gray-50 px-3 py-2 text-[12px]">
+                  <span className="font-semibold text-gray-700">{labelOf(key)}</span>
+                  <span className="text-gray-500">{d} doğru · {y} yanlış · {b} boş</span>
+                </div>
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="border-b border-gray-100 text-[10px] uppercase text-gray-400">
+                      <th className="w-10 px-3 py-1 text-left font-medium">No</th>
+                      <th className="px-2 py-1 text-left font-medium">Konu</th>
+                      <th className="w-14 px-2 py-1 text-center font-medium">Doğru</th>
+                      <th className="w-14 px-2 py-1 text-center font-medium">Cevap</th>
+                      <th className="w-16 px-3 py-1 text-center font-medium">Sonuç</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {list.map((q) => (
+                      <tr key={`${q.s}-${q.n}`}>
+                        <td className="px-3 py-1 text-gray-400">{q.n}</td>
+                        <td className="px-2 py-1 text-gray-700">{q.k}</td>
+                        <td className="px-2 py-1 text-center text-gray-600">{q.dc}</td>
+                        <td className="px-2 py-1 text-center text-gray-600">{q.oc ?? '—'}</td>
+                        <td className="px-3 py-1 text-center">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${chip(q.r)}`}>
+                            {q.r === 'D' ? 'Doğru' : q.r === 'Y' ? 'Yanlış' : 'Boş'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

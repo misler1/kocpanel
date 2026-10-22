@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { parsePdfWithTemplates } from '@/lib/importers/pdfTemplates';
+import { readPdfTexts } from '@/lib/importers/readPdfTexts';
 import { matchStudentName } from '@/lib/matching/matchStudent';
 
 export async function POST(req: NextRequest) {
@@ -12,13 +13,12 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File | null;
   if (!file) return NextResponse.json({ error: 'Dosya eksik' }, { status: 400 });
 
-  const pdfParse = (await import('pdf-parse')).default;
   const buffer = Buffer.from(await file.arrayBuffer());
-  const parsed = await pdfParse(buffer);
+  const parsed = await readPdfTexts(buffer);
 
   let parsedPdf;
   try {
-    parsedPdf = parsePdfWithTemplates(parsed.text);
+    parsedPdf = parsePdfWithTemplates(parsed.text, parsed.spaced);
   } catch (e) {
     if (e instanceof Error && e.message === 'UNKNOWN_FORMAT') {
       return NextResponse.json(
@@ -44,6 +44,9 @@ export async function POST(req: NextRequest) {
     rawName: r.rawName,
     results: r.results,
     puan: r.puan,
+    questions: r.questions,
+    averages: r.averages,
+    rankings: r.rankings,
     examName: r.examName ?? result.examName,
     examDate: r.examDate ?? result.examDate,
     match: matchStudentName(r.rawName, students ?? []),

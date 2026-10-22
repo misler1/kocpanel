@@ -14,6 +14,9 @@ interface PreviewRow {
   puan?: number;
   examName?: string | null;
   examDate?: string | null;
+  questions?: unknown[]; // konu/kazanım analizi (PDF karnelerinde)
+  averages?: Record<string, number>;
+  rankings?: Record<string, unknown>;
   match: {
     studentId: string | null;
     studentName: string | null;
@@ -121,6 +124,9 @@ export default function TopluYuklePage() {
         studentId: resolvedStudentId(r),
         results: r.results,
         puan: r.puan,
+        questions: r.questions,
+        averages: r.averages,
+        rankings: r.rankings,
         // PDF'te her kayıt kendi deneme adı/tarihini taşıyabilir; yoksa formdaki değer
         examName: (r.examName || examName).trim(),
         examDate: r.examDate || examDate,
@@ -147,7 +153,7 @@ export default function TopluYuklePage() {
             examType,
             examName: list[0].examName,
             examDate: list[0].examDate,
-            rows: list.map((r) => ({ studentId: r.studentId, results: r.results, puan: r.puan })),
+            rows: list.map((r) => ({ studentId: r.studentId, results: r.results, puan: r.puan, questions: r.questions, averages: r.averages, rankings: r.rankings })),
           }),
         });
         // Sunucu boş/JSON olmayan yanıt dönerse "Unexpected end of JSON input" yerine gerçek durumu göster
