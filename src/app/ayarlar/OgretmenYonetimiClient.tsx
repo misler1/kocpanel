@@ -25,6 +25,16 @@ export function OgretmenYonetimiClient({ teachers, currentUserId }: { teachers: 
     setList((prev) => prev.map((t) => t.id === id ? { ...t, is_admin: !current } : t));
   }
 
+  // Öğrenci kayıt formunda bu koç listelensin mi? (yalnızca yönetici değiştirebilir; veritabanı da zorlar)
+  async function toggleSelectable(id: string, current: boolean) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from('profiles') as any)
+      .update({ student_selectable: !current })
+      .eq('id', id);
+    if (error) return;
+    setList((prev) => prev.map((t) => t.id === id ? { ...t, student_selectable: !current } : t));
+  }
+
   if (list.length === 0) {
     return <p className="px-4 py-4 text-[13px] text-gray-400">Henüz kayıtlı öğretmen yok.</p>;
   }
@@ -54,6 +64,19 @@ export function OgretmenYonetimiClient({ teachers, currentUserId }: { teachers: 
               >
                 İzinler
               </Link>
+              {t.role === 'koc' && t.is_approved && (
+                <button
+                  onClick={() => toggleSelectable(t.id, !!t.student_selectable)}
+                  title="Öğrenci kayıt formunda bu koç listelensin mi?"
+                  className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
+                    t.student_selectable
+                      ? 'bg-blue-100 text-blue-700 hover:bg-gray-100 hover:text-gray-600'
+                      : 'bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-blue-600'
+                  }`}
+                >
+                  {t.student_selectable ? 'Kayıtta görünür ✓' : 'Kayıtta görünsün'}
+                </button>
+              )}
               {/* Onay butonu */}
               {!isMe && (
                 <button

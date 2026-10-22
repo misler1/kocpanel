@@ -29,7 +29,7 @@ const profile = profileData as { is_admin: boolean } | null;
   if (isAdmin) {
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, is_approved, is_admin, created_at, email')
+      .select('id, full_name, is_approved, is_admin, created_at, email, role, student_selectable')
       .neq('role', 'ogrenci')
       .order('created_at', { ascending: false });
     teachers = data ?? [];
