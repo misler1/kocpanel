@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import {
   IconPlus, IconChartBar, IconEdit, IconTrash, IconChevronDown, IconChevronUp,
-  IconArrowsRightLeft, IconX, IconSparkles, IconLoader2, IconUpload, IconPrinter, IconListDetails,
+  IconArrowsRightLeft, IconX, IconSparkles, IconLoader2, IconUpload, IconPrinter,
   IconArrowUp, IconArrowDown, IconEqual, IconCheck,
 } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
@@ -544,7 +544,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
       )}
 
       {/* Kazanım (konu) analizi */}
-      {questionExam && <QuestionAnalysisModal exam={questionExam} onClose={() => setQuestionExam(null)} />}
+      {questionExam && <ExamReportModal exam={questionExam} onClose={() => setQuestionExam(null)} />}
 
       {/* Deneme adı düzeltme */}
       {renameTarget && (
@@ -856,13 +856,27 @@ function ExamGroupCard({
                       <td className={`sticky ${stickyNameLeft} z-10 whitespace-nowrap bg-white px-3 py-2 font-medium text-gray-800`}>
                         {isStudent ? (
                           <>
-                            <div className="max-w-[220px] truncate" title={e.exam_name}>{e.exam_name}</div>
+                            <button
+                              type="button"
+                              onClick={() => onShowQuestions?.(e)}
+                              title="Karneyi aç"
+                              className="block max-w-[220px] truncate text-left text-indigo-700 hover:underline"
+                            >
+                              {e.exam_name}
+                            </button>
                             <div className="text-[10px] font-normal text-gray-400">
                               {new Date(e.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
                             </div>
                           </>
                         ) : (
-                          e.students?.full_name
+                          <button
+                            type="button"
+                            onClick={() => onShowQuestions?.(e)}
+                            title="Karneyi aç"
+                            className="text-left text-indigo-700 hover:underline"
+                          >
+                            {e.students?.full_name}
+                          </button>
                         )}
                       </td>
                       {subjects.map((s, i) => {
@@ -902,15 +916,9 @@ function ExamGroupCard({
                       )}
                       {rankCols.map((c, ci) => {
                         const v = e.rankings?.[c.key];
-                        const n = c.katilimci ? e.rankings?.katilimci?.[c.katilimci] : null;
                         return (
                           <td key={c.key} className={`px-2 py-2 text-center text-gray-700 ${ci === 0 ? 'border-l border-gray-100' : ''}`}>
-                            {v != null ? (
-                              <>
-                                {fmtNum(Number(v))}
-                                {n ? <span className="text-[9px] text-gray-400">/{fmtNum(Number(n))}</span> : null}
-                              </>
-                            ) : '—'}
+                            {v != null ? fmtNum(Number(v)) : '—'}
                           </td>
                         );
                       })}
@@ -927,16 +935,6 @@ function ExamGroupCard({
                       </td>
                       <td className="px-2 py-2">
                         <div className="flex items-center justify-center gap-1">
-                          {Array.isArray(e.question_results) && e.question_results.length > 0 && (
-                            <button
-                              type="button"
-                              title="Kazanımlar (konu analizi)"
-                              onClick={() => onShowQuestions?.(e)}
-                              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-emerald-600"
-                            >
-                              <IconListDetails size={14} />
-                            </button>
-                          )}
                           <Link href={`/denemeler/${e.id}/duzenle`} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600">
                             <IconEdit size={14} />
                           </Link>
@@ -991,9 +989,8 @@ function ExamGroupCard({
                 <tfoot>
                   <tr className="border-t-2 border-gray-300 bg-gray-50/80">
                     {compareMode && <td className="sticky left-0 z-10 w-8 bg-gray-50" />}
-                    <td className={`sticky ${stickyNameLeft} z-10 whitespace-nowrap bg-gray-50 px-3 py-2 font-semibold text-gray-600`}>
+                    <td className={`sticky ${stickyNameLeft} z-10 whitespace-nowrap bg-gray-50 px-3 py-2 text-[11px] font-normal text-gray-400`}>
                       Genel ortalama
-                      <div className="text-[10px] font-normal text-gray-400">karnedeki ORT</div>
                     </td>
                     {subjects.map((s, i) => {
                       const c = subjectColor(i);
@@ -1003,15 +1000,24 @@ function ExamGroupCard({
                           <td className={`border-l px-1.5 py-2 ${c.border}`} />
                           <td />
                           <td />
-                          <td className="px-1.5 py-2 text-center font-semibold text-gray-500">{a === null ? '—' : fmtAvg(a)}</td>
+                          <td className="px-1.5 py-2 text-center text-[11px] font-normal text-gray-400">{a === null ? '—' : fmtAvg(a)}</td>
                         </Fragment>
                       );
                     })}
-                    <td className="border-l border-gray-100 px-2 py-2 text-center font-bold text-gray-600">
+                    <td className="border-l border-gray-100 px-2 py-2 text-center text-[11px] font-normal text-gray-400">
                       {groupAvg('toplam') === null ? '—' : fmtAvg(groupAvg('toplam') as number)}
                     </td>
                     {group.examType === 'AYT' ? <><td className="border-l border-gray-100" /><td /><td /></> : <td className="border-l border-gray-100" />}
-                    {rankCols.map((c) => <td key={c.key} />)}
+                    {rankCols.map((c, ci) => {
+                      const n = c.katilimci
+                        ? group.rows.map((e: any) => e.rankings?.katilimci?.[c.katilimci as string]).find((x: any) => x != null)
+                        : null;
+                      return (
+                        <td key={c.key} className={`px-2 py-2 text-center text-[11px] font-normal text-gray-400 ${ci === 0 ? 'border-l border-gray-100' : ''}`}>
+                          {n ? `${fmtNum(Number(n))} kişi` : ''}
+                        </td>
+                      );
+                    })}
                     <td className="border-l border-gray-100" />
                     <td />
                   </tr>
@@ -1025,15 +1031,51 @@ function ExamGroupCard({
   );
 }
 
-// ─── Kazanım (konu) analizi penceresi ───────────────────────────
-// Karnedeki "KONU ANALİZİ": her sorunun konusu, doğru cevap, öğrencinin cevabı ve sonucu.
-// Üstte "zayıf kazanımlar" (yanlış/boş bırakılan konular), altta ders ders soru listesi.
-function QuestionAnalysisModal({ exam, onClose }: { exam: any; onClose: () => void }) {
+// ─── Deneme karnesi (öğrenci sonuç belgesi) ─────────────────────
+// Netler, ders ortalamaları, sıralamalar ve kazanım (konu) analizi tek pencerede.
+// Karne ders satırları için yumuşak pastel tonlar (zemin, sol şerit)
+const SOFT_ROWS = [
+  { bg: '#F4F6FF', bar: '#A5B4FC' },
+  { bg: '#F7F4FF', bar: '#C4B5FD' },
+  { bg: '#F0FAF7', bar: '#86D4BC' },
+  { bg: '#FFF8F1', bar: '#FDBA8C' },
+  { bg: '#FFF4F7', bar: '#F9A8C0' },
+  { bg: '#F1F8FE', bar: '#93C5FD' },
+  { bg: '#FFFBEC', bar: '#F5D77A' },
+];
+
+function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) {
   const questions: { s: string; n: number; k: string; dc: string; oc: string | null; r: 'D' | 'Y' | 'B' }[] =
     exam.question_results ?? [];
   const subjects = subjectsFor(exam.exam_type);
+  const avgs = exam.subject_averages ?? {};
+  const ranks = exam.rankings ?? {};
+  const kat = ranks.katilimci ?? {};
+  const maxScore = Number(exam.max_score) || subjects.reduce((s, x) => s + x.total, 0);
+  const net = Number(exam.net_score) || 0;
+  const puan = (exam.exam_type === 'TYT' ? exam.tyt_puan : exam.exam_type === 'LGS' ? exam.lgs_puan : null) ?? null;
+  const pctTotal = maxScore > 0 ? Math.max(0, Math.min(100, (net / maxScore) * 100)) : 0;
   const labelOf = (key: string) =>
     subjects.find((x) => x.key === key)?.label ?? key.charAt(0).toLocaleUpperCase('tr') + key.slice(1);
+
+  const rankItems = [
+    ...RANK_COLS,
+    ...Object.keys(ranks)
+      .filter((k) => k !== 'katilimci' && !RANK_COLS.some((c) => c.key === k))
+      .map((k) => ({ key: k, label: k.toUpperCase(), katilimci: undefined as string | undefined })),
+  ].filter((c) => ranks[c.key] != null);
+
+  const rows = subjects
+    .map((s, i) => {
+      const r = exam.subject_results?.[s.key];
+      if (!r) return null;
+      const d = Number(r.dogru) || 0;
+      const y = Number(r.yanlis) || 0;
+      const b = Math.max(0, s.total - d - y);
+      const n = getSubjectNet(r, exam.exam_type);
+      return { s, i, d, y, b, n, avg: avgs[s.key] != null ? Number(avgs[s.key]) : null };
+    })
+    .filter(Boolean) as { s: SubjectDef; i: number; d: number; y: number; b: number; n: number; avg: number | null }[];
 
   const bySubject = useMemo(() => {
     const map = new Map<string, typeof questions>();
@@ -1041,7 +1083,6 @@ function QuestionAnalysisModal({ exam, onClose }: { exam: any; onClose: () => vo
     return Array.from(map.entries());
   }, [questions]);
 
-  // Konu bazında özet: kaç soruda yanlış / boş
   const weak = useMemo(() => {
     const map = new Map<string, { s: string; k: string; total: number; y: number; b: number }>();
     questions.forEach((q) => {
@@ -1057,91 +1098,288 @@ function QuestionAnalysisModal({ exam, onClose }: { exam: any; onClose: () => vo
       .sort((a, b) => b.y + b.b - (a.y + a.b) || b.y - a.y);
   }, [questions]);
 
-  const chip = (r: 'D' | 'Y' | 'B') =>
-    r === 'D'
-      ? 'bg-emerald-50 text-emerald-700'
-      : r === 'Y'
-      ? 'bg-red-50 text-red-600'
-      : 'bg-gray-100 text-gray-500';
+  const initials = (exam.students?.full_name ?? '?')
+    .split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toLocaleUpperCase('tr');
+  const dateLabel = new Date(exam.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const dot = (r: 'D' | 'Y' | 'B') => (r === 'D' ? 'bg-emerald-500 text-white' : r === 'Y' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-500');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3">
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="text-base font-semibold text-gray-900">Kazanımlar (konu analizi)</h3>
-            <p className="text-[12px] text-gray-500">
-              {exam.students?.full_name} · {exam.exam_name} ·{' '}
-              {new Date(exam.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"><IconX size={18} /></button>
-        </div>
-
-        <div className="mb-5 rounded-lg border border-red-100 bg-red-50/40 p-3">
-          <div className="mb-2 text-[13px] font-semibold text-red-700">Eksik kazanımlar ({weak.length})</div>
-          {weak.length === 0 ? (
-            <p className="text-[12px] text-gray-500">Yanlış ya da boş bırakılan soru yok.</p>
-          ) : (
-            <div className="space-y-1">
-              {weak.map((t) => (
-                <div key={`${t.s}|${t.k}`} className="flex items-center justify-between gap-3 text-[12px]">
-                  <span className="min-w-0 text-gray-700">
-                    <span className="mr-1.5 rounded bg-white px-1.5 py-0.5 text-[10px] text-gray-500">{labelOf(t.s)}</span>
-                    {t.k}
-                  </span>
-                  <span className="flex-shrink-0 text-gray-500">
-                    {t.y > 0 && <span className="text-red-600">{t.y} yanlış</span>}
-                    {t.y > 0 && t.b > 0 && ' · '}
-                    {t.b > 0 && <span>{t.b} boş</span>}
-                    <span className="text-gray-400"> / {t.total} soru</span>
-                  </span>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-3 backdrop-blur-[2px] sm:p-6" onClick={onClose}>
+      <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-slate-50 shadow-2xl ring-1 ring-black/5" onClick={(ev) => ev.stopPropagation()}>
+        {/* Başlık */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-800 px-7 py-7 text-white">
+          <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-sky-400/10 blur-3xl" />
+          <button onClick={onClose} className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white">
+            <IconX size={18} />
+          </button>
+          <div className="relative flex flex-wrap items-center justify-between gap-6">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-white/10 text-xl font-semibold tracking-wide ring-1 ring-white/20 backdrop-blur">
+                {initials}
+              </div>
+              <div className="min-w-0">
+                <div className="mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-200">
+                  <span>Sınav sonuç belgesi</span>
+                  <span className="rounded-full bg-white/15 px-2 py-0.5 tracking-wider text-white">{exam.exam_type}</span>
                 </div>
-              ))}
+                <h3 className="truncate text-2xl font-semibold leading-tight tracking-tight">{exam.students?.full_name}</h3>
+                <div className="mt-1 truncate text-[13px] text-indigo-100/80">{exam.exam_name}</div>
+                <div className="text-[12px] text-indigo-200/60">{dateLabel}</div>
+              </div>
             </div>
-          )}
+            <div className="relative mr-6 flex flex-shrink-0 items-center gap-4">
+              <div className="relative h-24 w-24">
+                <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="7" />
+                  <circle
+                    cx="50" cy="50" r="42" fill="none" stroke="url(#gaugeGrad)" strokeWidth="7" strokeLinecap="round"
+                    strokeDasharray={`${(pctTotal / 100) * 263.9} 263.9`}
+                  />
+                  <defs>
+                    <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#7dd3fc" />
+                      <stop offset="100%" stopColor="#a5b4fc" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-semibold leading-none">{net}</span>
+                  <span className="mt-0.5 text-[10px] text-indigo-200/70">/ {maxScore} net</span>
+                </div>
+              </div>
+              {(puan != null || avgs.toplam != null || exam.say_puan != null || exam.ea_puan != null || exam.soz_puan != null) && (
+                <div className="space-y-2">
+                  {puan != null && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-indigo-200/70">Puan</div>
+                      <div className="text-xl font-semibold leading-none">{puan}</div>
+                    </div>
+                  )}
+                  {exam.exam_type === 'AYT' && (
+                    <div className="flex gap-3">
+                      {[['SAY', exam.say_puan], ['EA', exam.ea_puan], ['SÖZ', exam.soz_puan]].map(([l, v]) => v != null && (
+                        <div key={l as string}>
+                          <div className="text-[10px] uppercase tracking-wider text-indigo-200/70">{l}</div>
+                          <div className="text-base font-semibold leading-none">{v as number}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {avgs.toplam != null && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-indigo-200/70">Genel ort.</div>
+                      <div className="text-sm font-medium leading-none text-indigo-100">{fmtAvg(Number(avgs.toplam))}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-4">
-          {bySubject.map(([key, list]) => {
-            const d = list.filter((q) => q.r === 'D').length;
-            const y = list.filter((q) => q.r === 'Y').length;
-            const b = list.filter((q) => q.r === 'B').length;
-            return (
-              <div key={key} className="overflow-hidden rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between bg-gray-50 px-3 py-2 text-[12px]">
-                  <span className="font-semibold text-gray-700">{labelOf(key)}</span>
-                  <span className="text-gray-500">{d} doğru · {y} yanlış · {b} boş</span>
-                </div>
+        <div className="space-y-6 p-6">
+          {/* Sıralamalar */}
+          {rankItems.length > 0 && (
+            <section>
+              <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Sıralamalar</div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {rankItems.map((c) => {
+                  const r = Number(ranks[c.key]);
+                  const n = c.katilimci && kat[c.katilimci] != null ? Number(kat[c.katilimci]) : null;
+                  const top = n && n > 0 ? Math.max(1, Math.ceil((r / n) * 100)) : null;
+                  return (
+                    <div key={c.key} className="rounded-2xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/70">
+                      <div className="text-[11px] font-medium text-slate-400">{c.label}</div>
+                      <div className="mt-1 flex items-baseline gap-1.5">
+                        <span className="text-2xl font-semibold tracking-tight text-slate-900">{fmtNum(r)}.</span>
+                        {n != null && <span className="text-[12px] text-slate-400">/ {fmtNum(n)} kişi</span>}
+                      </div>
+                      {top != null && (
+                        <>
+                          <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-slate-100">
+                            <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-sky-400" style={{ width: `${Math.max(4, 100 - top + 1)}%` }} />
+                          </div>
+                          <div className="mt-1 text-[10px] text-slate-400">İlk %{top}</div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* Ders sonuçları */}
+          <section>
+            <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Ders sonuçları</div>
+            <div className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/70">
+              <div className="overflow-x-auto">
                 <table className="w-full text-[12px]">
                   <thead>
-                    <tr className="border-b border-gray-100 text-[10px] uppercase text-gray-400">
-                      <th className="w-10 px-3 py-1 text-left font-medium">No</th>
-                      <th className="px-2 py-1 text-left font-medium">Konu</th>
-                      <th className="w-14 px-2 py-1 text-center font-medium">Doğru</th>
-                      <th className="w-14 px-2 py-1 text-center font-medium">Cevap</th>
-                      <th className="w-16 px-3 py-1 text-center font-medium">Sonuç</th>
+                    <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      <th className="px-5 py-2.5 text-left">Ders</th>
+                      <th className="px-2 py-2.5 text-center">Soru</th>
+                      <th className="px-2 py-2.5 text-center">Doğru</th>
+                      <th className="px-2 py-2.5 text-center">Yanlış</th>
+                      <th className="px-2 py-2.5 text-center">Boş</th>
+                      <th className="px-2 py-2.5 text-center">Net</th>
+                      <th className="px-2 py-2.5 text-center">Ort.</th>
+                      <th className="w-44 px-5 py-2.5 text-left">Başarı</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {list.map((q) => (
-                      <tr key={`${q.s}-${q.n}`}>
-                        <td className="px-3 py-1 text-gray-400">{q.n}</td>
-                        <td className="px-2 py-1 text-gray-700">{q.k}</td>
-                        <td className="px-2 py-1 text-center text-gray-600">{q.dc}</td>
-                        <td className="px-2 py-1 text-center text-gray-600">{q.oc ?? '—'}</td>
-                        <td className="px-3 py-1 text-center">
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${chip(q.r)}`}>
-                            {q.r === 'D' ? 'Doğru' : q.r === 'Y' ? 'Yanlış' : 'Boş'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                  <tbody>
+                    {rows.map((r) => {
+                      const c = subjectColor(r.i);
+                      const pct = r.s.total > 0 ? Math.max(0, Math.min(100, (r.n / r.s.total) * 100)) : 0;
+                      const avgPct = r.avg != null && r.s.total > 0 ? Math.max(0, Math.min(100, (r.avg / r.s.total) * 100)) : null;
+                      const diff = r.avg != null ? r.n - r.avg : null;
+                      return (
+                        <tr key={r.s.key} className="border-b-2 border-white" style={{ backgroundColor: SOFT_ROWS[r.i % SOFT_ROWS.length].bg }}>
+                          <td className="px-5 py-2.5 font-medium text-slate-700" style={{ boxShadow: `inset 3px 0 0 ${SOFT_ROWS[r.i % SOFT_ROWS.length].bar}` }}>
+                            {r.s.label}
+                          </td>
+                          <td className="px-2 py-2.5 text-center text-slate-400">{r.s.total}</td>
+                          <td className="px-2 py-2.5 text-center font-medium text-emerald-600">{r.d}</td>
+                          <td className="px-2 py-2.5 text-center font-medium text-red-500">{r.y}</td>
+                          <td className="px-2 py-2.5 text-center text-slate-400">{r.b}</td>
+                          <td className="px-2 py-2.5 text-center text-[13px] font-semibold text-slate-900">{fmtAvg(r.n)}</td>
+                          <td className="px-2 py-2.5 text-center">
+                            {r.avg != null ? (
+                              <span className="text-slate-500">
+                                {fmtAvg(r.avg)}
+                                <span className={`ml-1 text-[9px] ${diff! >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{diff! >= 0 ? '▲' : '▼'}</span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <div className="relative h-1.5 flex-1 rounded-full bg-white/80">
+                                <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: SOFT_ROWS[r.i % SOFT_ROWS.length].bar }} />
+                                {avgPct != null && (
+                                  <div className="absolute -top-0.5 h-2.5 w-0.5 rounded bg-slate-400" style={{ left: `${avgPct}%` }} title={`Genel ortalama ${fmtAvg(r.avg as number)}`} />
+                                )}
+                              </div>
+                              <span className="w-8 text-right text-[10px] text-slate-400">%{Math.round(pct)}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
+                  <tfoot>
+                    <tr className="border-t border-slate-200 bg-slate-50/80 font-semibold text-slate-900">
+                      <td className="px-5 py-2.5">Toplam</td>
+                      <td className="px-2 py-2.5 text-center text-slate-500">{rows.reduce((a, r) => a + r.s.total, 0)}</td>
+                      <td className="px-2 py-2.5 text-center text-emerald-600">{rows.reduce((a, r) => a + r.d, 0)}</td>
+                      <td className="px-2 py-2.5 text-center text-red-500">{rows.reduce((a, r) => a + r.y, 0)}</td>
+                      <td className="px-2 py-2.5 text-center text-slate-500">{rows.reduce((a, r) => a + r.b, 0)}</td>
+                      <td className="px-2 py-2.5 text-center text-[13px]">{fmtAvg(net)}</td>
+                      <td className="px-2 py-2.5 text-center text-slate-500">{avgs.toplam != null ? fmtAvg(Number(avgs.toplam)) : '—'}</td>
+                      <td className="px-5 py-2.5 text-right text-[10px] font-normal text-slate-400">▲▼ genel ortalamaya göre</td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
-            );
-          })}
+            </div>
+          </section>
+
+          {/* Kazanım analizi */}
+          {questions.length > 0 && (
+            <>
+              <section className="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-orange-50/50 p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="text-[13px] font-semibold text-red-700">Öncelikli çalışılacak kazanımlar</div>
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-red-600 ring-1 ring-red-100">{weak.length} konu</span>
+                </div>
+                {weak.length === 0 ? (
+                  <p className="text-[12px] text-gray-500">Yanlış ya da boş bırakılan soru yok. 🎉</p>
+                ) : (
+                  <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+                    {weak.slice(0, 12).map((t) => (
+                      <div key={`${t.s}|${t.k}`} className="flex items-start justify-between gap-2 text-[12px]">
+                        <span className="min-w-0 text-gray-700">
+                          <span className="mr-1 rounded bg-white px-1 py-0.5 text-[9px] font-medium uppercase text-gray-400">{labelOf(t.s)}</span>
+                          {t.k}
+                        </span>
+                        <span className="flex-shrink-0 whitespace-nowrap text-[11px]">
+                          {t.y > 0 && <span className="font-medium text-red-600">{t.y}Y</span>}
+                          {t.y > 0 && t.b > 0 && ' '}
+                          {t.b > 0 && <span className="text-gray-500">{t.b}B</span>}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="space-y-3">
+                <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Kazanım analizi</div>
+                {bySubject.map(([key, list]) => {
+                  const idx = Math.max(0, subjects.findIndex((x) => x.key === key));
+                  const c = subjectColor(idx);
+                  const d = list.filter((q) => q.r === 'D').length;
+                  const y = list.filter((q) => q.r === 'Y').length;
+                  const b = list.filter((q) => q.r === 'B').length;
+                  const topics = new Map<string, typeof list>();
+                  list.forEach((q) => topics.set(q.k, [...(topics.get(q.k) ?? []), q]));
+                  return (
+                    <details key={key} className="group overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/70" open={y + b > 0 && bySubject.length <= 2}>
+                      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-2.5 hover:bg-gray-50">
+                        <span className={`h-2.5 w-2.5 rounded-full ${c.dot}`} />
+                        <span className="text-[13px] font-semibold text-gray-800">{labelOf(key)}</span>
+                        <span className="ml-auto flex items-center gap-2 text-[11px]">
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">{d} D</span>
+                          <span className="rounded-full bg-red-50 px-2 py-0.5 font-medium text-red-600">{y} Y</span>
+                          <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-500">{b} B</span>
+                          <IconChevronDown size={14} className="text-gray-400 transition-transform group-open:rotate-180" />
+                        </span>
+                      </summary>
+                      <div className="divide-y divide-gray-50 border-t border-gray-100">
+                        {Array.from(topics.entries()).map(([topic, qs]) => {
+                          const td = qs.filter((q) => q.r === 'D').length;
+                          const pct = Math.round((td / qs.length) * 100);
+                          return (
+                            <div key={topic} className="flex items-center gap-3 px-4 py-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[12px] text-gray-700">{topic}</div>
+                                <div className="mt-1 h-1 overflow-hidden rounded-full bg-gray-100">
+                                  <div
+                                    className={`h-full rounded-full ${pct >= 70 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-400' : 'bg-red-500'}`}
+                                    style={{ width: `${Math.max(pct, 4)}%` }}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex flex-shrink-0 items-center gap-1">
+                                {qs.map((q) => (
+                                  <span
+                                    key={q.n}
+                                    title={`Soru ${q.n}: doğru ${q.dc}, cevap ${q.oc ?? 'boş'}`}
+                                    className={`flex h-6 w-6 items-center justify-center rounded-md text-[10px] font-semibold ${dot(q.r)}`}
+                                  >
+                                    {q.n}
+                                  </span>
+                                ))}
+                              </div>
+                              <span className="w-9 flex-shrink-0 text-right text-[11px] font-medium text-gray-500">%{pct}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  );
+                })}
+                <div className="flex items-center gap-3 px-1 text-[10px] text-gray-400">
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-emerald-500" />Doğru</span>
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-red-500" />Yanlış</span>
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-gray-200" />Boş</span>
+                  <span>· Kutudaki sayı soru numarasıdır, üzerine gelince cevap görünür.</span>
+                </div>
+              </section>
+            </>
+          )}
         </div>
       </div>
     </div>

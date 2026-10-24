@@ -20,16 +20,21 @@ export async function POST(req: NextRequest) {
   if (!file || !examIds.length) return NextResponse.json({ error: 'Dosya veya deneme eksik' }, { status: 400 });
 
   const parsedText = await readPdfTexts(Buffer.from(await file.arrayBuffer()));
+  try {
+    const sp = parsedText.spaced || parsedText.text;
+    const at = sp.search(/PUAN\s+VE\s+SIRALAMALAR/i);
+    console.log('[ek-bilgi] sıralama bölümü (spaced=' + !!parsedText.spaced + '):', JSON.stringify(at >= 0 ? sp.slice(at, at + 420) : 'BULUNAMADI'));
+  } catch { /* yoksay */ }
   let parsed;
   try {
-    parsed = parsePdfWithTemplates(parsedText.text, parsedText.spaced);
+    parsed = parsePdfWithTemplates(parsedText.text, parsedText.spaced, parsedText.items);
   } catch {
     return NextResponse.json({ error: 'Bu PDF formatı tanınmadı.' }, { status: 422 });
   }
 
   const { data: exams, error } = await (supabase as any)
     .from('exams')
-    .select('id, student_id, exam_type, tyt_puan, lgs_puan, question_results, subject_averages, rankings, students(full_name)')
+    .select('id, student_id, exam_type, tyt_puan, lgs_puan, say_puan, ea_puan, soz_puan, question_results, subject_averages, rankings, students(full_name)')
     .in('id', examIds);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -46,16 +51,29 @@ export async function POST(req: NextRequest) {
   for (const rec of parsed.result.records) {
     const m = matchStudentName(rec.rawName, candidates);
     if (!m.studentId || m.isAmbiguous) { unmatched.push(rec.rawName); continue; }
-    const row = (exams ?? []).find((e: any) => e.student_id === m.studentId);
+    // Bir PDF'te hem TYT hem AYT varsa, kaydı sınav türü eşleşen denemeye uygula
+    const recType = rec.examType ?? parsed.examType;
+    const row = (exams ?? []).find((e: any) => e.student_id === m.studentId && e.exam_type === recType);
     if (!row) { unmatched.push(rec.rawName); continue; }
 
     const patch: Record<string, unknown> = {};
     if (isEmpty(row.question_results) && rec.questions?.length) patch.question_results = rec.questions;
     if (isEmpty(row.subject_averages) && rec.averages && Object.keys(rec.averages).length) patch.subject_averages = rec.averages;
-    if (isEmpty(row.rankings) && rec.rankings && Object.keys(rec.rankings).length) patch.rankings = rec.rankings;
+    if (rec.rankings && Object.keys(rec.rankings).length) {
+      // Var olan sıralamaları bozmadan yalnızca eksik anahtarları (katılımcı sayıları dahil) ekle
+      const cur: any = row.rankings ?? {};
+      const merged: any = { ...rec.rankings, ...cur, katilimci: { ...(rec.rankings.katilimci ?? {}), ...(cur.katilimci ?? {}) } };
+      if (Object.keys(merged.katilimci).length === 0) delete merged.katilimci;
+      if (JSON.stringify(merged) !== JSON.stringify(cur)) patch.rankings = merged;
+    }
     if (rec.puan != null) {
       if (row.exam_type === 'TYT' && row.tyt_puan == null) patch.tyt_puan = rec.puan;
       if (row.exam_type === 'LGS' && row.lgs_puan == null) patch.lgs_puan = rec.puan;
+    }
+    if (row.exam_type === 'AYT' && rec.puanlar) {
+      if (row.say_puan == null && rec.puanlar.say != null) patch.say_puan = rec.puanlar.say;
+      if (row.ea_puan == null && rec.puanlar.ea != null) patch.ea_puan = rec.puanlar.ea;
+      if (row.soz_puan == null && rec.puanlar.soz != null) patch.soz_puan = rec.puanlar.soz;
     }
     if (Object.keys(patch).length === 0) { alreadyComplete++; continue; }
     updates.push({ id: row.id, patch });

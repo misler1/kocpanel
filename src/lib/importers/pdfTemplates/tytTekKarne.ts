@@ -1,6 +1,6 @@
 import type { PdfTemplate, ExtractedPdfRecord } from './types';
 import { parseQuestions } from './questions';
-import { parseRankings } from './rankings';
+import { parseRankings, parseRankingsFromItems } from './rankings';
 import { fmtNet, netYKS, trDateToIso, trUpper, toResults, type DY } from './shared';
 
 // ───────────────────────── Şablon: TYT tek öğrenci karnesi ("DERS ANALİZİ") ─────────────────────────
@@ -48,7 +48,7 @@ export const tytTekKarneTemplate: PdfTemplate = {
   label: 'TYT – Tek öğrenci karnesi (Ders Analizi)',
   examType: 'TYT',
   canParse: (t) => /DERS ANAL[İI]Z[İI]/.test(t) && /Ad Soyad/.test(t) && /TYT-?\s*T[ÜU]RK[ÇC]E/i.test(t),
-  parse: (t, spaced) => {
+  parse: (t, spaced, items) => {
     const records: ExtractedPdfRecord[] = [];
     const blocks = t.split(/(?=Ad Soyad)/).filter((b) => /^Ad Soyad/.test(b));
     const spacedBlocks = spaced ? spaced.split(/(?=Ad Soyad)/).filter((b) => /^Ad Soyad/.test(b)) : [];
@@ -90,7 +90,8 @@ export const tytTekKarneTemplate: PdfTemplate = {
       const ki = block.search(/KONU ANAL[İI]Z[İI]/);
       const questions = ki >= 0 ? parseQuestions(block.slice(ki)) : [];
       // Sıralamalar (genel / kurum / şube / sınıf / ÖSYM…) — mümkünse hücreleri boşluklu metinden
-      const rankings = parseRankings(block, spacedBlocks[bi]);
+      const rankings =
+        (blocks.length === 1 ? parseRankingsFromItems(items, 'TYT')?.rankings : undefined) ?? parseRankings(block, spacedBlocks[bi]);
       records.push({
         rawName, examName, examDate, puan, results: toResults(map),
         ...(questions.length ? { questions } : {}),

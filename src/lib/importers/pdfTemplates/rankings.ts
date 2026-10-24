@@ -1,4 +1,5 @@
 import type { ExamRankings } from './types';
+import { tokenize, clusterRows, type PdfItem, type Row } from './items';
 
 // "PUAN VE SIRALAMALAR" tablosu:
 //   PUAN TÜRÜ  PUAN  GENEL  KURUM  SUBE  SİNİF  OSYM23  OSYM24  OSYM25
@@ -31,6 +32,55 @@ function toNum(tok: string): number | null {
   if (/^\d+$/.test(tok)) return parseInt(tok, 10);
   if (/^\d+,\d+$/.test(tok)) return parseFloat(tok.replace(',', '.'));
   return null;
+}
+
+// Satır sonlarından bağımsız: bölümü tek bir parça (token) akışı olarak okur.
+//   PUAN TÜRÜ PUAN GENEL KURUM SUBE SİNİF OSYM23 OSYM24 OSYM25 TYT 400,94 2.900 5 5 5 71.747 72.784 42.777 KATILIMCI SAYILARI 13663 17 17 17
+function parseTokens(text: string): ExamRankings | null {
+  const si = text.search(/PUAN\s+VE\s+SIRALAMALAR/i);
+  if (si < 0) return null;
+  const toks = text
+    .slice(si)
+    .replace(/PUAN\s+VE\s+SIRALAMALAR/i, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  let i = toks.findIndex((t, k) => /^PUAN$/i.test(t) && /^T[ÜU]R[ÜU]$/i.test(toks[k + 1] ?? ''));
+  if (i < 0) return null;
+  i += 2;
+  const labels: string[] = [];
+  while (i < toks.length && /^(PUAN|GENEL|KURUM|[ŞS]UBE|S[İI]N[İI]F|[İI]L|[İI]L[ÇC]E|OSYM\s?\d{2})$/i.test(toks[i])) labels.push(toks[i++]);
+  if (labels.length < 2) return null;
+  i++; // puan türü (TYT / AYT / LGS…)
+  const vals: number[] = [];
+  while (i < toks.length && vals.length < labels.length) {
+    const v = toNum(toks[i]);
+    if (v === null) break;
+    vals.push(v);
+    i++;
+  }
+  if (vals.length !== labels.length) return null;
+  const out: ExamRankings = {};
+  labels.forEach((lab, j) => {
+    const key = labelKey(lab);
+    if (key !== 'puan') out[key] = vals[j];
+  });
+  while (i < toks.length && !/^KATILIMCI$/i.test(toks[i])) { if (/^SON$/i.test(toks[i])) return out; i++; }
+  if (i < toks.length) {
+    i++;
+    if (/^SAYILARI$/i.test(toks[i] ?? '')) i++;
+    const nums: number[] = [];
+    while (i < toks.length) {
+      const v = toNum(toks[i]);
+      if (v === null) break;
+      nums.push(v);
+      i++;
+    }
+    const keys = labels.slice(1).map(labelKey).filter((k) => !k.startsWith('osym'));
+    const kat: Record<string, number> = {};
+    nums.forEach((n, j) => { if (keys[j]) kat[keys[j]] = n; });
+    if (Object.keys(kat).length) out.katilimci = kat;
+  }
+  return out;
 }
 
 function parseSpaced(spaced: string): ExamRankings | null {
@@ -92,5 +142,59 @@ function parseGluedPartial(glued: string): ExamRankings | null {
 }
 
 export function parseRankings(glued: string, spaced?: string): ExamRankings | undefined {
-  return (spaced ? parseSpaced(spaced) : null) ?? parseSpaced(glued) ?? parseGluedPartial(glued) ?? undefined;
+  return (spaced ? parseTokens(spaced) ?? parseSpaced(spaced) : null) ?? parseTokens(glued) ?? parseSpaced(glued) ?? parseGluedPartial(glued) ?? undefined;
+}
+
+/**
+ * Konuma dayalı okuma (en güvenilir yol): "PUAN VE SIRALAMALAR" tablosunu hücre konumlarından çözer.
+ * puanTuru: hangi satır okunacak (TYT, SAY, EA, SÖZ…). Verilmezse ilk satır.
+ */
+export function parseRankingsFromItems(
+  items: PdfItem[] | undefined,
+  puanTuru?: string,
+): { rankings: ExamRankings; puan: number | null } | null {
+  if (!items?.length) return null;
+  const toks = tokenize(items);
+  const rows = clusterRows(toks, 3);
+  const start = rows.findIndex((r) => /PUAN\s+VE\s+SIRALAMALAR/i.test(r.toks.map((t) => t.s).join(' ')));
+  if (start < 0) return null;
+  const sec: Row[] = [];
+  for (let i = start + 1; i < rows.length && rows[i].page === rows[start].page; i++) {
+    if (/^SON\b/i.test(rows[i].toks[0]?.s ?? '')) break;
+    sec.push(rows[i]);
+  }
+  const hi = sec.findIndex((r) => /^PUAN$/i.test(r.toks[0]?.s) && /^T[ÜU]R[ÜU]$/i.test(r.toks[1]?.s ?? ''));
+  if (hi < 0) return null;
+  const labels = sec[hi].toks.slice(2).map((t) => ({ key: labelKey(t.s), x: t.x }));
+  if (labels.length < 2) return null;
+
+  const want = puanTuru ? puanTuru.toLocaleUpperCase('tr-TR') : null;
+  const out: ExamRankings = {};
+  let puan: number | null = null;
+  let found = false;
+  for (const r of sec.slice(hi + 1)) {
+    const first = r.toks[0]?.s ?? '';
+    if (/^KATILIMCI/i.test(first)) {
+      const nums = r.toks.filter((t) => toNum(t.s) !== null);
+      const cand = labels.filter((l) => l.key !== 'puan' && !l.key.startsWith('osym'));
+      const kat: Record<string, number> = {};
+      for (const t of nums) {
+        let best = cand[0];
+        for (const c of cand) if (Math.abs(c.x - t.x) < Math.abs(best.x - t.x)) best = c;
+        if (best) kat[best.key] = toNum(t.s) as number;
+      }
+      if (Object.keys(kat).length) out.katilimci = kat;
+      break;
+    }
+    if (found) continue;
+    if (want && first.toLocaleUpperCase('tr-TR') !== want) continue;
+    const vals = r.toks.slice(1).map((t) => toNum(t.s));
+    if (vals.length !== labels.length || vals.some((v) => v === null)) continue;
+    found = true;
+    labels.forEach((l, j) => {
+      if (l.key === 'puan') puan = vals[j] as number;
+      else out[l.key] = vals[j] as number;
+    });
+  }
+  return found ? { rankings: out, puan } : null;
 }

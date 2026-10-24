@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { parsePdfWithTemplates } from '@/lib/importers/pdfTemplates';
+import { diag as birlesikDiag } from '@/lib/importers/pdfTemplates/tytAytBirlesikKarne';
+import { qDiag } from '@/lib/importers/pdfTemplates/questionsFromItems';
 import { readPdfTexts } from '@/lib/importers/readPdfTexts';
 import { matchStudentName } from '@/lib/matching/matchStudent';
 
@@ -18,13 +20,16 @@ export async function POST(req: NextRequest) {
 
   let parsedPdf;
   try {
-    parsedPdf = parsePdfWithTemplates(parsed.text, parsed.spaced);
+    parsedPdf = parsePdfWithTemplates(parsed.text, parsed.spaced, parsed.items);
   } catch (e) {
     if (e instanceof Error && e.message === 'UNKNOWN_FORMAT') {
       return NextResponse.json(
         {
           error: 'Bu PDF formatı tanınmadı. Dosyayı bize iletin, yeni şablon ekleyelim.',
-          debugText: parsed.text.slice(0, 3000),
+          debugText:
+            `[teşhis] items=${parsed.items.length} itemsError=${parsed.itemsError ?? '-'} sablon=${birlesikDiag.reason || '-'}\n` +
+            `[ilk parçalar] ${JSON.stringify(parsed.items.slice(0, 40).map((i) => [i.str, Math.round(i.x), Math.round(i.y), Math.round(i.w)]))}\n\n` +
+            parsed.text.slice(0, 1500),
         },
         { status: 422 },
       );
@@ -33,6 +38,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { result, templateId, examType } = parsedPdf;
+  if (qDiag.info) console.log('[parse-pdf] kazanım teşhis:', qDiag.info);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: students } = await (supabase as any)
@@ -44,6 +50,8 @@ export async function POST(req: NextRequest) {
     rawName: r.rawName,
     results: r.results,
     puan: r.puan,
+    puanlar: r.puanlar,
+    examType: r.examType ?? examType,
     questions: r.questions,
     averages: r.averages,
     rankings: r.rankings,

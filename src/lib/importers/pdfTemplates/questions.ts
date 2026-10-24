@@ -32,8 +32,27 @@ const WORD_FIXES: Record<string, string> = {
   Çi: 'Çift',
 };
 
+/** Düşen "ti/tı/ft/fı" ligatürlerini (konumlu okumada \u0000 olarak kalır) bağlamdan geri kazanır. */
+export function fixLigatures(raw: string): string {
+  let s = raw.replace(/[\uFFFD]/g, '\u0000');
+  s = s
+    .replace(/Paragra\u0000n/g, 'Paragrafın')
+    .replace(/Paragra\u0000a/g, 'Paragrafta')
+    .replace(/Paragra\u0000/g, 'Paragrafı')
+    .replace(/Koliga\u0000f/g, 'Koligatif')
+    .replace(/[Çç]i\u0000/g, (m) => m[0] + 'ift');
+  // Kalanlar: ünlü uyumuyla ti / tı
+  let out = '';
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] !== '\u0000') { out += s[i]; continue; }
+    const prev = [...out].reverse().find((c) => /[aeıioöuüAEIİOÖUÜ]/.test(c));
+    out += prev && /[eiöüEİÖÜ]/.test(prev) ? 'ti' : 'tı';
+  }
+  return out;
+}
+
 export function repairTopic(raw: string): string {
-  const clean = raw.replace(/\u0000/g, '').replace(/\s+/g, ' ').trim();
+  const clean = fixLigatures(raw).replace(/\s+/g, ' ').trim();
   return clean
     .split(' ')
     .map((w) => WORD_FIXES[w] ?? w)

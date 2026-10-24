@@ -1,3 +1,4 @@
+import type { PdfItem } from './items';
 /** Karnedeki konu/kazanım analizi satırı (bir soru) */
 export interface ExamQuestion {
   s: string;          // ders anahtarı (turkce, matematik, tarih, …)
@@ -21,6 +22,8 @@ export interface ExtractedPdfRecord {
   rankings?: ExamRankings; // genel/kurum/şube/sınıf/ÖSYM… sıralamaları
   examName?: string | null; // kayıt başına deneme adı (tek öğrencili karnelerde)
   examDate?: string | null; // YYYY-MM-DD
+  examType?: PdfExamType; // bir PDF'te birden çok sınav türü varsa (TYT + AYT) kaydın kendi türü
+  puanlar?: Record<string, number>; // AYT: say / ea / soz puanları
 }
 
 export interface PdfParseResult {
@@ -35,7 +38,7 @@ export interface PdfTemplate {
   id: string;           // örn. 'konu-analizli-sinav-sonuc-belgesi'
   label: string;        // koça gösterilecek isim
   examType?: PdfExamType; // verilmezse LGS varsayılır (ilk şablon)
-  canParse: (text: string) => boolean;
+  canParse: (text: string, items?: PdfItem[]) => boolean;
   /** text: pdf-parse'ın varsayılan (bitişik) çıktısı · spaced: hücreleri boşlukla ayıran çıktı (varsa) */
-  parse: (text: string, spaced?: string) => PdfParseResult;
+  parse: (text: string, spaced?: string, items?: PdfItem[]) => PdfParseResult;
 }

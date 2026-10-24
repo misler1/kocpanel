@@ -7,6 +7,7 @@ interface ConfirmedRow {
   studentId: string;
   results: Record<string, { dogru: string; yanlis: string }>;
   puan?: number;
+  puanlar?: { say?: number; ea?: number; soz?: number }; // AYT puanları
   questions?: unknown[]; // konu/kazanım analizi (varsa exams.question_results'a yazılır)
   averages?: Record<string, number>; // ders ortalamaları → exams.subject_averages
   rankings?: Record<string, unknown>; // sıralamalar → exams.rankings
@@ -58,6 +59,9 @@ export async function POST(req: NextRequest) {
       subject_results: r.results,
       tyt_puan: examType === 'TYT' ? r.puan ?? null : null,
       lgs_puan: examType === 'LGS' ? r.puan ?? null : null,
+      ...(examType === 'AYT' && r.puanlar
+        ? { say_puan: r.puanlar.say ?? null, ea_puan: r.puanlar.ea ?? null, soz_puan: r.puanlar.soz ?? null }
+        : {}),
       analysis_done: false,
       // Sütun yalnızca konu analizi olan satırlarda gönderilir (eski akışlar etkilenmez)
       ...(r.questions && r.questions.length ? { question_results: r.questions } : {}),

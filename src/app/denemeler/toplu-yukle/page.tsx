@@ -12,6 +12,8 @@ interface PreviewRow {
   rawName: string;
   results: Record<string, { dogru: string; yanlis: string }>;
   puan?: number;
+  puanlar?: { say?: number; ea?: number; soz?: number };
+  examType?: ExamType; // bir PDF'te hem TYT hem AYT varsa satırın kendi türü
   examName?: string | null;
   examDate?: string | null;
   questions?: unknown[]; // konu/kazanım analizi (PDF karnelerinde)
@@ -40,7 +42,7 @@ export default function TopluYuklePage() {
     // manuel eşleştirme: satır index -> seçilen öğrenci id
   const [overrides, setOverrides] = useState<Record<number, string>>({});
   // Seçilen türde sistemde zaten kayıtlı denemeler (tekrar yüklemeyi önlemek için)
-  const [existing, setExisting] = useState<{ student_id: string; exam_name: string; exam_date: string }[]>([]);
+  const [existing, setExisting] = useState<Record<string, { student_id: string; exam_name: string; exam_date: string }[]>>({});
   const norm = (s: string) => (s ?? '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
   async function handleParse() {
     if (!file) { setError('Dosya seçin.'); return; }
@@ -70,12 +72,16 @@ export default function TopluYuklePage() {
 
       // Zaten yüklü denemeleri öğren: aynı öğrenci + aynı tür + (aynı ad veya aynı tarih)
       try {
-        const et = (data.examType as ExamType) ?? examType;
-        const er = await fetch(`/api/denemeler/toplu-yukle/mevcut?examType=${et}`);
-        const ed = await er.json();
-        setExisting(er.ok ? (ed.existing ?? []) : []);
+        const types = Array.from(new Set<string>((data.preview as PreviewRow[]).map((r) => r.examType || data.examType || examType)));
+        const map: Record<string, { student_id: string; exam_name: string; exam_date: string }[]> = {};
+        for (const et of types) {
+          const er = await fetch(`/api/denemeler/toplu-yukle/mevcut?examType=${et}`);
+          const ed = await er.json();
+          map[et] = er.ok ? (ed.existing ?? []) : [];
+        }
+        setExisting(map);
       } catch {
-        setExisting([]);
+        setExisting({});
       }
 
       // PDF'ten deneme adı/tarihi otomatik çıkarıldıysa formu doldur
@@ -93,13 +99,14 @@ export default function TopluYuklePage() {
   // Bu satırın deneme adı/tarihi (PDF'te satıra özel, yoksa formdaki değer)
   function rowName(r: PreviewRow) { return (r.examName || examName || '').trim(); }
   function rowDate(r: PreviewRow) { return r.examDate || examDate; }
+  function rowType(r: PreviewRow): ExamType { return r.examType || examType; }
 
   // Seçili öğrencide bu deneme zaten kayıtlı mı?
   function isAlreadyUploaded(r: PreviewRow, studentId: string | null): boolean {
     if (!studentId) return false;
     const n = norm(rowName(r));
     const d = rowDate(r);
-    return existing.some(
+    return (existing[rowType(r)] ?? []).some(
       (x) => x.student_id === studentId && ((n && norm(x.exam_name) === n) || (d && x.exam_date === d))
     );
   }
@@ -124,6 +131,8 @@ export default function TopluYuklePage() {
         studentId: resolvedStudentId(r),
         results: r.results,
         puan: r.puan,
+        puanlar: r.puanlar,
+        examType: rowType(r),
         questions: r.questions,
         averages: r.averages,
         rankings: r.rankings,
@@ -142,7 +151,7 @@ export default function TopluYuklePage() {
       // aynı deneme adı + tarihe sahip satırlar tek istekte kaydedilir
       const groups = new Map<string, typeof confirmed>();
       for (const r of confirmed) {
-        const k = `${r.examName}||${r.examDate}`;
+        const k = `${r.examType}||${r.examName}||${r.examDate}`;
         groups.set(k, [...(groups.get(k) ?? []), r]);
       }
       for (const list of groups.values()) {
@@ -150,10 +159,10 @@ export default function TopluYuklePage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            examType,
+            examType: list[0].examType,
             examName: list[0].examName,
             examDate: list[0].examDate,
-            rows: list.map((r) => ({ studentId: r.studentId, results: r.results, puan: r.puan, questions: r.questions, averages: r.averages, rankings: r.rankings })),
+            rows: list.map((r) => ({ studentId: r.studentId, results: r.results, puan: r.puan, puanlar: r.puanlar, questions: r.questions, averages: r.averages, rankings: r.rankings })),
           }),
         });
         // Sunucu boş/JSON olmayan yanıt dönerse "Unexpected end of JSON input" yerine gerçek durumu göster
@@ -266,6 +275,12 @@ export default function TopluYuklePage() {
                     <tr key={r.rowIndex} className={needsAttention ? 'bg-amber-50/50' : ''}>
                       <td className="px-2 py-2 text-gray-700">
                         {r.rawName}
+                        {r.examType && (
+                          <div className="text-[10.5px] text-gray-400">
+                            <span className="mr-1 rounded bg-blue-50 px-1 font-medium text-blue-700">{r.examType}</span>
+                            {r.examName}
+                          </div>
+                        )}
                         {skipped && (
                           <div className="text-[10.5px] text-gray-400">Zaten yüklü: {r.match.studentName}</div>
                         )}
