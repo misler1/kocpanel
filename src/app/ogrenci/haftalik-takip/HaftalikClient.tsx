@@ -46,8 +46,11 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
   const [msg, setMsg] = useState<string | null>(null);
   const [newNote, setNewNote] = useState('');
   const [showNew, setShowNew] = useState(false);
+  const [extraForm, setExtraForm] = useState<Added | null>(null);
+  const [extraBusy, setExtraBusy] = useState(false);
 
   const weekLogs = logs.filter((l) => l.week_start === week);
+  const currentWeekEnd = weeks.find((w) => w.ws === week)?.we ?? null;
   const openEdit = requests.find((r) => r.status === 'bekliyor' && r.kind === 'duzenleme' && r.week_start === week);
   const openNew = requests.find((r) => r.status === 'bekliyor' && r.kind === 'yeni_program');
   const subjectOptions = Object.keys(resources);
@@ -123,6 +126,27 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
     setNewForm(null); setMsg(null);
   }
 
+  // Koçun verdiği programın dışında, öğrencinin kendi eklediği görev. Onay beklemez, hemen eklenir.
+  async function submitExtraTask() {
+    if (!extraForm || !extraForm.subject.trim() || !week) { setMsg('Ders adını yaz.'); return; }
+    setExtraBusy(true); setMsg(null);
+    const { data, error } = await (supabase as any).from('question_logs').insert({
+      student_id: studentId, subject: extraForm.subject.trim(), topic: extraForm.topic.trim() || null,
+      week_start: week, week_end: currentWeekEnd, plan_day: extraForm.plan_day,
+      target_count: extraForm.target_count, start_time: extraForm.start_time || null, end_time: extraForm.end_time || null,
+    }).select().single();
+    setExtraBusy(false);
+    if (error) { setMsg('Görev eklenemedi: ' + error.message); return; }
+    setLogs((prev) => [...prev, data]);
+    setExtraForm(null);
+  }
+
+  async function removeExtraTask(id: string) {
+    setLogs((prev) => prev.filter((l) => l.id !== id));
+    const { error } = await (supabase as any).from('question_logs').delete().eq('id', id);
+    if (error) setMsg('Silinemedi, tekrar dene.');
+  }
+
   const doneCount = weekLogs.filter((l) => l.student_done).length;
 
   return (
@@ -175,13 +199,15 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
             {DAYS.map((dayName, d) => {
               const dayLogs = weekLogs.filter((l) => l.plan_day === d);
               const dayAdded = added.filter((a) => a.plan_day === d);
-              if (dayLogs.length === 0 && dayAdded.length === 0 && !editMode) return null;
+              // Boş günler de gösterilir: öğrenci o güne ekstra görev ekleyebilmeli.
               return (
                 <div key={d} className="rounded-xl border border-gray-200 bg-white p-2.5">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-[13px] font-semibold text-gray-800">{dayName}</span>
-                    {editMode && (
+                    {editMode ? (
                       <button onClick={() => setNewForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-blue-600"><IconPlus size={12} /> Görev</button>
+                    ) : (
+                      <button onClick={() => setExtraForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-gray-500 hover:text-blue-600"><IconPlus size={12} /> Ekstra görev</button>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -209,16 +235,23 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
                         );
                       }
                       return (
-                        <button key={l.id} type="button" onClick={() => toggleDone(l)}
-                          className={`flex w-full items-start gap-2 rounded-lg border p-2 text-left transition ${done ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-                          <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border ${done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-300 text-transparent'}`}><IconCheck size={13} /></span>
-                          <span className="min-w-0 flex-1">
-                            <span className={`block text-[13px] font-medium ${done ? 'text-emerald-800' : 'text-gray-900'}`}>{l.subject}{l.target_count > 0 && ` · ${l.target_count} soru`}</span>
-                            {l.topic && <span className="block text-[11px] text-gray-500">{l.topic}</span>}
-                            {l.resource_name && <span className="block text-[11px] text-gray-400">{l.resource_name}</span>}
-                            {time && <span className="block text-[11px] text-gray-400">{time}</span>}
-                          </span>
-                        </button>
+                        <div key={l.id} className={`relative flex w-full items-start gap-2 rounded-lg border p-2 text-left transition ${done ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                          <button type="button" onClick={() => toggleDone(l)} className="flex flex-1 items-start gap-2 text-left">
+                            <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border ${done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-300 text-transparent'}`}><IconCheck size={13} /></span>
+                            <span className="min-w-0 flex-1">
+                              <span className={`block text-[13px] font-medium ${done ? 'text-emerald-800' : 'text-gray-900'}`}>
+                                {l.subject}{l.target_count > 0 && ` · ${l.target_count} soru`}
+                                {l.student_added && <span className="ml-1.5 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">Ekstra</span>}
+                              </span>
+                              {l.topic && <span className="block text-[11px] text-gray-500">{l.topic}</span>}
+                              {l.resource_name && <span className="block text-[11px] text-gray-400">{l.resource_name}</span>}
+                              {time && <span className="block text-[11px] text-gray-400">{time}</span>}
+                            </span>
+                          </button>
+                          {l.student_added && (
+                            <button type="button" onClick={() => removeExtraTask(l.id)} title="Sil" className="flex-shrink-0 text-gray-300 hover:text-red-500"><IconTrash size={14} /></button>
+                          )}
+                        </div>
                       );
                     })}
                     {dayAdded.map((a, i) => (
@@ -239,6 +272,22 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
                         <div className="flex gap-2">
                           <button onClick={submitAddForm} className="rounded-md bg-blue-600 px-2.5 py-1 text-[12px] text-white">Ekle</button>
                           <button onClick={() => setNewForm(null)} className="rounded-md border border-gray-200 px-2.5 py-1 text-[12px] text-gray-600">İptal</button>
+                        </div>
+                      </div>
+                    )}
+                    {extraForm && extraForm.plan_day === d && (
+                      <div className="space-y-1.5 rounded-lg border border-gray-300 bg-gray-50 p-2">
+                        <p className="text-[11px] text-gray-500">Koçunun vermediği, kendi yaptığın bir görev. Hemen eklenir, onay gerekmez.</p>
+                        <input list="ders-listesi" value={extraForm.subject} onChange={(e) => setExtraForm({ ...extraForm, subject: e.target.value })} placeholder="Ders" className={`${input} w-full`} />
+                        <input value={extraForm.topic} onChange={(e) => setExtraForm({ ...extraForm, topic: e.target.value })} placeholder="Konu (isteğe bağlı)" className={`${input} w-full`} />
+                        <div className="flex flex-wrap gap-1">
+                          <input type="number" min={0} value={extraForm.target_count} onChange={(e) => setExtraForm({ ...extraForm, target_count: Math.max(0, Number(e.target.value) || 0) })} className={`${input} w-16`} title="Soru sayısı" />
+                          <input type="time" value={extraForm.start_time} onChange={(e) => setExtraForm({ ...extraForm, start_time: e.target.value })} className={`${input} w-[5rem]`} />
+                          <input type="time" value={extraForm.end_time} onChange={(e) => setExtraForm({ ...extraForm, end_time: e.target.value })} className={`${input} w-[5rem]`} />
+                        </div>
+                        <div className="flex gap-2">
+                          <button disabled={extraBusy} onClick={submitExtraTask} className="rounded-md bg-gray-800 px-2.5 py-1 text-[12px] text-white disabled:opacity-50">Ekle</button>
+                          <button onClick={() => setExtraForm(null)} className="rounded-md border border-gray-200 px-2.5 py-1 text-[12px] text-gray-600">İptal</button>
                         </div>
                       </div>
                     )}

@@ -874,6 +874,7 @@ export default function HaftalikTakipPage() {
             {log.topic && <span className="block text-[11px] leading-tight text-[var(--ink-muted)]">{log.topic}</span>}
             {log.resource_name && <span className="block text-[10px] leading-tight text-[var(--ink-muted)]">{log.resource_name}</span>}
             {log.student_done && <span className="no-print mt-0.5 inline-block rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">✓ Öğrenci yaptı</span>}
+            {log.student_added && <span className="no-print ml-1 mt-0.5 inline-block rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">Öğrenci ekledi</span>}
           </div>
           <div className="no-print flex flex-shrink-0 items-center gap-1">
             <button onClick={() => setClipboardLog(log)} title="Kopyala (sonra bir güne yapıştır)" className="text-[var(--ink-muted)] hover:text-[var(--accent)]">
