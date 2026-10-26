@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
+import { studentEmailFromPhone } from '@/lib/student-account';
 
 export default function GirisPage() {
   const router = useRouter();
@@ -19,10 +20,18 @@ export default function GirisPage() {
     setError(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // '@' yoksa telefon numarası kabul edilir (öğrenci hesabı); koç e-postası aynen çalışır.
+    const loginEmail = email.includes('@') ? email.trim() : studentEmailFromPhone(email);
+    if (!loginEmail) {
+      setError('E-posta adresinizi ya da telefon numaranızı yazın.');
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
 
     if (error) {
-      setError('E-posta veya şifre hatalı.');
+      setError('E-posta/telefon veya şifre hatalı.');
       setLoading(false);
       return;
     }
@@ -43,14 +52,16 @@ export default function GirisPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">E-posta</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">E-posta veya telefon</label>
             <input
-              type="email"
+              type="text"
+              inputMode="email"
+              autoComplete="username"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="ornek@email.com"
+              placeholder="ornek@email.com veya 05XX XXX XX XX"
             />
           </div>
           <div>
