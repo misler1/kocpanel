@@ -4,7 +4,7 @@ import { KonuKartlariClient } from './KonuKartlariClient';
 
 export default async function OgrenciKonuPage() {
   const { supabase, student } = await getStudentContext();
-  if (!student) return <p className="text-sm text-gray-500">Öğrenci kaydı bulunamadı.</p>;
+  if (!student) return <p className="text-sm text-[var(--ink-muted)]">Öğrenci kaydı bulunamadı.</p>;
 
   const { data: topics } = await (supabase as any)
     .from('topic_progress')

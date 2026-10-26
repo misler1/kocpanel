@@ -4,7 +4,7 @@ import { HaftalikClient } from './HaftalikClient';
 
 export default async function OgrenciHaftalikPage() {
   const { supabase, student } = await getStudentContext();
-  if (!student) return <p className="text-sm text-gray-500">Öğrenci kaydı bulunamadı.</p>;
+  if (!student) return <p className="text-sm text-[var(--ink-muted)]">Öğrenci kaydı bulunamadı.</p>;
 
   // RLS: öğrenci yalnızca kendi programını görür. student_id filtresi ek güvence.
   const { data: logs } = await (supabase as any)

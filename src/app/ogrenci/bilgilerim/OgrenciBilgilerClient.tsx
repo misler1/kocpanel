@@ -4,7 +4,7 @@
 import { IconUsers, IconSchool } from '@tabler/icons-react';
 import {
   Accordion, InfoRow, GunlukAccordion, TRACK_LABELS, TRACK_RESOURCES,
-} from '../ogrenciler/[id]/OgrenciDetayClient';
+} from '../../ogrenciler/[id]/OgrenciDetayClient';
 
 // Öğrencinin kendi bilgileri (salt okunur) + Günlük. Koç sayfasındaki bileşenlerin aynısı kullanılır,
 // böylece iki taraf birbirinden ayrışmaz.

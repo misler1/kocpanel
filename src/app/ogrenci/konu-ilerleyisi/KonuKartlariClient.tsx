@@ -55,32 +55,32 @@ export function KonuKartlariClient({ initial, resources }: { initial: Topic[]; r
   }
 
   if (topics.length === 0) {
-    return <p className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">Koçun henüz konu eklememiş.</p>;
+    return <p className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--ink-muted)]">Koçun henüz konu eklememiş.</p>;
   }
 
   const subjects = Array.from(new Set(topics.map((t) => t.subject))).sort(collator.compare);
 
   return (
     <div className="space-y-5">
-      <h1 className="text-[17px] font-medium text-gray-900">Konu İlerleyişim</h1>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      <h1 className="text-[17px] font-medium text-[var(--ink)]">Konu İlerleyişim</h1>
+      {error && <p className="text-sm font-medium text-[var(--danger)]">{error}</p>}
 
       {subjects.map((subject) => {
         const list = topics.filter((t) => t.subject === subject).sort((a, b) => collator.compare(a.topic, b.topic));
         return (
           <section key={subject}>
-            <h2 className="mb-2 text-[13px] font-semibold text-gray-700">{subject}</h2>
+            <h2 className="mb-2 text-[13px] font-semibold text-[var(--ink)]">{subject}</h2>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {list.map((t) => {
                 const n = doneCount(t);
                 const open = openId === t.id;
-                const tone = n === 3 ? 'border-emerald-300 bg-emerald-50' : n > 0 ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-white';
+                const tone = n === 3 ? 'border-[var(--success)]/40 bg-[var(--success-soft)]' : n > 0 ? 'border-[var(--accent)]/30 bg-[var(--accent-soft)]' : 'border-[var(--border)] bg-[var(--card)]';
                 return (
                   <div key={t.id} className={`rounded-xl border ${tone} ${open ? 'sm:col-span-2' : ''}`}>
                     <button type="button" onClick={() => setOpenId(open ? null : t.id)} className="flex w-full items-center gap-2 px-3.5 py-3 text-left">
-                      <span className="flex-1 text-[13px] font-medium text-gray-900">{t.topic}</span>
-                      {n === 3 && <IconCheck size={16} className="text-emerald-600" />}
-                      <span className="text-[11px] text-gray-400">{n}/3</span>
+                      <span className="flex-1 text-[13px] font-medium text-[var(--ink)]">{t.topic}</span>
+                      {n === 3 && <IconCheck size={16} className="text-[var(--success)]" />}
+                      <span className="text-[11px] text-[var(--ink-muted)]">{n}/3</span>
                     </button>
                     {open && (
                       <div className="grid grid-cols-2 gap-2 border-t border-black/5 p-3 sm:grid-cols-5">
@@ -90,8 +90,8 @@ export function KonuKartlariClient({ initial, resources }: { initial: Topic[]; r
                           return (
                             <button key={s.key} type="button" onClick={() => toggle(t, s.key)}
                               className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2.5 text-[12px] transition ${
-                                on ? 'border-emerald-400 bg-emerald-100 text-emerald-800' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}>
-                              {on ? <IconCheck size={16} /> : <IconX size={16} className="text-gray-300" />}
+                                on ? 'border-[var(--success)]/50 bg-[var(--success-soft)] text-[var(--success)]' : 'border-[var(--border)] bg-[var(--card)] text-[var(--ink-muted)] hover:bg-[var(--paper)]'}`}>
+                              {on ? <IconCheck size={16} /> : <IconX size={16} className="text-[var(--ink-muted)]/50" />}
                               <span className="text-center font-medium">{s.label}</span>
                               {name && <span className="line-clamp-2 text-center text-[10px] opacity-70">{name}</span>}
                             </button>

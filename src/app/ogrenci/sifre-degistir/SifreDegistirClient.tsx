@@ -30,18 +30,18 @@ export function SifreDegistirClient({ forced }: { forced: boolean }) {
     router.refresh();
   }
 
-  const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
+  const input = 'w-full rounded-lg border border-[var(--border)] bg-[var(--paper)] px-3 py-2.5 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]';
   return (
-    <div className="mx-auto max-w-sm rounded-2xl border border-gray-200 bg-white p-6">
-      <h1 className="mb-1 text-lg font-semibold text-gray-900">Yeni şifre belirle</h1>
-      <p className="mb-5 text-sm text-gray-500">
+    <div className="mx-auto max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6">
+      <h1 className="mb-1 text-lg font-semibold text-[var(--ink)]">Yeni şifre belirle</h1>
+      <p className="mb-5 text-sm text-[var(--ink-muted)]">
         {forced ? 'Güvenliğin için ilk girişte şifreni değiştirmen gerekiyor.' : 'Yeni şifreni yaz.'}
       </p>
       <form onSubmit={submit} className="space-y-4">
         <input type="password" required autoComplete="new-password" placeholder="Yeni şifre (en az 8 karakter)" value={pw} onChange={(e) => setPw(e.target.value)} className={input} />
         <input type="password" required autoComplete="new-password" placeholder="Yeni şifre (tekrar)" value={pw2} onChange={(e) => setPw2(e.target.value)} className={input} />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button disabled={loading} className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
+        {error && <p className="text-sm font-medium text-[var(--danger)]">{error}</p>}
+        <button disabled={loading} className="w-full rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-dark)] disabled:opacity-60">
           {loading ? 'Kaydediliyor...' : 'Şifreyi kaydet'}
         </button>
       </form>

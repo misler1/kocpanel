@@ -4,7 +4,7 @@ import { KarneClient } from './KarneClient';
 
 export default async function OgrenciDenemelerPage() {
   const { supabase, student } = await getStudentContext();
-  if (!student) return <p className="text-sm text-gray-500">Öğrenci kaydı bulunamadı.</p>;
+  if (!student) return <p className="text-sm text-[var(--ink-muted)]">Öğrenci kaydı bulunamadı.</p>;
 
   // RLS: öğrenci yalnızca kendi denemelerini görür. student_id filtresi ek güvence.
   const { data: exams } = await (supabase as any)

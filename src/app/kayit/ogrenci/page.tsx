@@ -40,7 +40,6 @@ export default function OgrenciKayitPage() {
       return;
     }
 
-    // Kayıt tamam: giriş yap, onay bekleme ekranına yönlendirilir.
     const email = studentEmailFromPhone(phone)!;
     const { error: signErr } = await supabase.auth.signInWithPassword({ email, password });
     if (signErr) { router.push('/giris/ogrenci'); return; }
@@ -48,52 +47,52 @@ export default function OgrenciKayitPage() {
     router.refresh();
   }
 
-  const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
+  const input = 'w-full rounded-lg border border-[var(--border)] bg-[var(--paper)] px-3 py-2.5 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]';
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
-      <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--navy-900)] px-4 py-10">
+      <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-8 shadow-xl">
         <div className="mb-6">
           <Image src="/brand/kocdefterim-logo.png" alt="KoçDefterim" width={260} height={75} className="h-14 w-auto max-w-full object-contain" priority />
         </div>
-        <h2 className="mb-1 text-xl font-semibold text-gray-900">Öğrenci kaydı</h2>
-        <p className="mb-6 text-sm text-gray-500">Kaydın yönetici onayından sonra aktif olur.</p>
+        <h2 className="mb-1 text-xl font-semibold text-[var(--ink)]">Öğrenci kaydı</h2>
+        <p className="mb-6 text-sm text-[var(--ink-muted)]">Kaydın yönetici onayından sonra aktif olur.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Ad Soyad</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Ad Soyad</label>
             <input required value={fullName} onChange={(e) => setFullName(e.target.value)} className={input} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Telefon (giriş için kullanıcı adın)</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Telefon (giriş için kullanıcı adın)</label>
             <input type="tel" inputMode="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className={input} placeholder="05XX XXX XX XX" />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Doğum tarihi</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Doğum tarihi</label>
             <input type="date" required value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className={input} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Şifre</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Şifre</label>
             <input type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={input} placeholder="En az 8 karakter" />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Koç öğretmen (isteğe bağlı)</label>
+            <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Koç öğretmen (isteğe bağlı)</label>
             <select value={coachId} onChange={(e) => setCoachId(e.target.value)} className={input}>
               <option value="">Seçmek istemiyorum</option>
               {coaches.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
             </select>
-            <p className="mt-1 text-xs text-gray-400">Seçersen önce yönetici, sonra seçtiğin koç onaylar. Seçmezsen yönetici koç atar.</p>
+            <p className="mt-1 text-xs text-[var(--ink-muted)]">Seçersen önce yönetici, sonra seçtiğin koç onaylar. Seçmezsen yönetici koç atar.</p>
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm font-medium text-[var(--danger)]">{error}</p>}
 
           <button type="submit" disabled={loading}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60">
+            className="w-full rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-dark)] disabled:opacity-60">
             {loading ? 'Kaydediliyor...' : 'Kayıt ol'}
           </button>
         </form>
-        <p className="mt-5 text-center text-sm text-gray-500">
+        <p className="mt-5 text-center text-sm text-[var(--ink-muted)]">
           Zaten hesabın var mı?{' '}
-          <Link href="/giris/ogrenci" className="font-medium text-blue-600 hover:underline">Giriş yap</Link>
+          <Link href="/giris/ogrenci" className="font-medium text-[var(--accent-dark)] hover:underline">Giriş yap</Link>
         </p>
       </div>
     </div>

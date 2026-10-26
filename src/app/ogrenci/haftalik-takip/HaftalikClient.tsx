@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 const STATUS_TEXT: Record<string, string> = { bekliyor: 'Koç onayı bekliyor', onaylandi: 'Onaylandı', reddedildi: 'Reddedildi' };
-const input = 'rounded-md border border-gray-200 bg-white px-1.5 py-1 text-[12px] focus:border-blue-500 focus:outline-none';
+const input = 'rounded-md border border-[var(--border)] bg-[var(--card)] px-1.5 py-1 text-[12px] focus:border-[var(--accent)] focus:outline-none';
 
 type Edits = Record<string, { plan_day?: number; start_time?: string | null; end_time?: string | null; target_count?: number }>;
 type Added = { subject: string; topic: string; plan_day: number; target_count: number; start_time: string; end_time: string };
@@ -128,48 +128,48 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-[17px] font-medium text-gray-900">Haftalık Takip</h1>
+        <h1 className="text-[17px] font-medium text-[var(--ink)]">Haftalık Takip</h1>
         {weeks.length > 0 && (
-          <select value={week} onChange={(e) => { setWeek(e.target.value); resetEdit(); }} className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[13px]">
+          <select value={week} onChange={(e) => { setWeek(e.target.value); resetEdit(); }} className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[13px]">
             {weeks.map((w) => <option key={w.ws} value={w.ws}>{weekLabel(w.ws, w.we)}</option>)}
           </select>
         )}
       </div>
 
-      {msg && <p className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[13px] text-blue-800">{msg}</p>}
-      {openEdit && <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-800">Bu hafta için değişiklik talebin koç onayını bekliyor.</p>}
-      {openNew && <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-800">Yeni program talebin koçuna iletildi, hazırlanmasını bekliyor.</p>}
+      {msg && <p className="rounded-lg border border-[var(--accent)]/20 bg-[var(--accent-soft)] px-3 py-2 text-[13px] text-[var(--accent-dark)]">{msg}</p>}
+      {openEdit && <p className="rounded-lg border border-[var(--track-lgs)]/25 bg-[var(--track-lgs-soft)] px-3 py-2 text-[13px] text-[var(--track-lgs)]">Bu hafta için değişiklik talebin koç onayını bekliyor.</p>}
+      {openNew && <p className="rounded-lg border border-[var(--track-lgs)]/25 bg-[var(--track-lgs-soft)] px-3 py-2 text-[13px] text-[var(--track-lgs)]">Yeni program talebin koçuna iletildi, hazırlanmasını bekliyor.</p>}
 
       {weeks.length === 0 ? (
-        <p className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">Koçun henüz bir haftalık program hazırlamamış.</p>
+        <p className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--ink-muted)]">Koçun henüz bir haftalık program hazırlamamış.</p>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[12px] text-gray-500">{doneCount}/{weekLogs.length} görev tamamlandı</span>
+            <span className="text-[12px] text-[var(--ink-muted)]">{doneCount}/{weekLogs.length} görev tamamlandı</span>
             <div className="ml-auto flex gap-2">
               {!editMode && !openEdit && (
-                <button onClick={() => { setEditMode(true); setMsg(null); }} className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] text-gray-700">
+                <button onClick={() => { setEditMode(true); setMsg(null); }} className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] text-[var(--ink)]">
                   <IconPencil size={14} /> Programı düzenle
                 </button>
               )}
               {editMode && (
-                <button onClick={resetEdit} className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] text-gray-700"><IconX size={14} /> Vazgeç</button>
+                <button onClick={resetEdit} className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] text-[var(--ink)]"><IconX size={14} /> Vazgeç</button>
               )}
               {!openNew && !editMode && (
-                <button onClick={() => setShowNew((v) => !v)} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] text-gray-700">Yeni program iste</button>
+                <button onClick={() => setShowNew((v) => !v)} className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] text-[var(--ink)]">Yeni program iste</button>
               )}
             </div>
           </div>
 
           {showNew && (
-            <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-3">
-              <p className="text-[13px] text-gray-700">Koçundan yeni bir haftalık program hazırlamasını iste.</p>
-              <textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} rows={2} placeholder="İstersen not yaz (örn. gelecek hafta deneme var)" className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-[13px]" />
-              <button disabled={busy} onClick={submitNew} className="rounded-lg bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white disabled:opacity-50">Talebi gönder</button>
+            <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
+              <p className="text-[13px] text-[var(--ink)]">Koçundan yeni bir haftalık program hazırlamasını iste.</p>
+              <textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} rows={2} placeholder="İstersen not yaz (örn. gelecek hafta deneme var)" className="w-full rounded-lg border border-[var(--border)] bg-[var(--paper)] px-2 py-1.5 text-[13px]" />
+              <button disabled={busy} onClick={submitNew} className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-[12px] font-medium text-white disabled:opacity-50 hover:bg-[var(--accent-dark)]">Talebi gönder</button>
             </div>
           )}
 
-          {editMode && <p className="text-[12px] text-gray-500">Değişiklikler hemen uygulanmaz; koçun onaylarsa programına işlenir.</p>}
+          {editMode && <p className="text-[12px] text-[var(--ink-muted)]">Değişiklikler hemen uygulanmaz; koçun onaylarsa programına işlenir.</p>}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {DAYS.map((dayName, d) => {
@@ -177,11 +177,11 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
               const dayAdded = added.filter((a) => a.plan_day === d);
               if (dayLogs.length === 0 && dayAdded.length === 0 && !editMode) return null;
               return (
-                <div key={d} className="rounded-xl border border-gray-200 bg-white p-2.5">
+                <div key={d} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-2.5">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[13px] font-semibold text-gray-800">{dayName}</span>
+                    <span className="text-[13px] font-semibold text-[var(--ink)]">{dayName}</span>
                     {editMode && (
-                      <button onClick={() => setNewForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-blue-600"><IconPlus size={12} /> Görev</button>
+                      <button onClick={() => setNewForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-[var(--accent-dark)]"><IconPlus size={12} /> Görev</button>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -192,10 +192,10 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
                       const time = [hhmm(l.start_time), hhmm(l.end_time)].filter(Boolean).join(' - ');
                       if (editMode) {
                         return (
-                          <div key={l.id} className={`space-y-1.5 rounded-lg border p-2 ${isRemoved ? 'border-red-200 bg-red-50 opacity-70' : 'border-gray-200'}`}>
+                          <div key={l.id} className={`space-y-1.5 rounded-lg border p-2 ${isRemoved ? 'border-[var(--danger)]/30 bg-[var(--danger-soft)] opacity-70' : 'border-[var(--border)]'}`}>
                             <div className="flex items-start justify-between gap-1">
-                              <div className="min-w-0 text-[12px] font-medium text-gray-900">{l.subject}{l.topic && <span className="block text-[11px] font-normal text-gray-500">{l.topic}</span>}</div>
-                              <button onClick={() => setRemoved((p) => { const n = new Set(p); if (n.has(l.id)) n.delete(l.id); else n.add(l.id); return n; })} title={isRemoved ? 'Geri al' : 'Kaldırılsın'} className="text-gray-400 hover:text-red-600"><IconTrash size={14} /></button>
+                              <div className="min-w-0 text-[12px] font-medium text-[var(--ink)]">{l.subject}{l.topic && <span className="block text-[11px] font-normal text-[var(--ink-muted)]">{l.topic}</span>}</div>
+                              <button onClick={() => setRemoved((p) => { const n = new Set(p); if (n.has(l.id)) n.delete(l.id); else n.add(l.id); return n; })} title={isRemoved ? 'Geri al' : 'Kaldırılsın'} className="text-[var(--ink-muted)] hover:text-[var(--danger)]"><IconTrash size={14} /></button>
                             </div>
                             {!isRemoved && (
                               <div className="flex flex-wrap gap-1">
@@ -210,25 +210,25 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
                       }
                       return (
                         <button key={l.id} type="button" onClick={() => toggleDone(l)}
-                          className={`flex w-full items-start gap-2 rounded-lg border p-2 text-left transition ${done ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-                          <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border ${done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-300 text-transparent'}`}><IconCheck size={13} /></span>
+                          className={`flex w-full items-start gap-2 rounded-lg border p-2 text-left transition ${done ? 'border-[var(--success)]/40 bg-[var(--success-soft)]' : 'border-[var(--border)] bg-[var(--card)] hover:bg-[var(--paper)]'}`}>
+                          <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border ${done ? 'border-[var(--success)] bg-[var(--success)] text-white' : 'border-[var(--ink-muted)]/40 text-transparent'}`}><IconCheck size={13} /></span>
                           <span className="min-w-0 flex-1">
-                            <span className={`block text-[13px] font-medium ${done ? 'text-emerald-800' : 'text-gray-900'}`}>{l.subject}{l.target_count > 0 && ` · ${l.target_count} soru`}</span>
-                            {l.topic && <span className="block text-[11px] text-gray-500">{l.topic}</span>}
-                            {l.resource_name && <span className="block text-[11px] text-gray-400">{l.resource_name}</span>}
-                            {time && <span className="block text-[11px] text-gray-400">{time}</span>}
+                            <span className={`block text-[13px] font-medium ${done ? 'text-[var(--success)]' : 'text-[var(--ink)]'}`}>{l.subject}{l.target_count > 0 && ` · ${l.target_count} soru`}</span>
+                            {l.topic && <span className="block text-[11px] text-[var(--ink-muted)]">{l.topic}</span>}
+                            {l.resource_name && <span className="block text-[11px] text-[var(--ink-muted)]">{l.resource_name}</span>}
+                            {time && <span className="block text-[11px] text-[var(--ink-muted)]">{time}</span>}
                           </span>
                         </button>
                       );
                     })}
                     {dayAdded.map((a, i) => (
-                      <div key={i} className="flex items-center justify-between rounded-lg border border-dashed border-blue-300 bg-blue-50 p-2 text-[12px] text-blue-800">
+                      <div key={i} className="flex items-center justify-between rounded-lg border border-dashed border-[var(--accent)]/40 bg-[var(--accent-soft)] p-2 text-[12px] text-[var(--accent-dark)]">
                         <span>+ {a.subject}{a.topic && ` / ${a.topic}`}{a.target_count > 0 && ` · ${a.target_count} soru`}</span>
                         <button onClick={() => setAdded((p) => p.filter((x) => x !== a))}><IconX size={13} /></button>
                       </div>
                     ))}
                     {newForm && newForm.plan_day === d && (
-                      <div className="space-y-1.5 rounded-lg border border-blue-300 p-2">
+                      <div className="space-y-1.5 rounded-lg border border-[var(--accent)]/40 p-2">
                         <input list="ders-listesi" value={newForm.subject} onChange={(e) => setNewForm({ ...newForm, subject: e.target.value })} placeholder="Ders" className={`${input} w-full`} />
                         <input value={newForm.topic} onChange={(e) => setNewForm({ ...newForm, topic: e.target.value })} placeholder="Konu (isteğe bağlı)" className={`${input} w-full`} />
                         <div className="flex flex-wrap gap-1">
@@ -237,8 +237,8 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
                           <input type="time" value={newForm.end_time} onChange={(e) => setNewForm({ ...newForm, end_time: e.target.value })} className={`${input} w-[5rem]`} />
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={submitAddForm} className="rounded-md bg-blue-600 px-2.5 py-1 text-[12px] text-white">Ekle</button>
-                          <button onClick={() => setNewForm(null)} className="rounded-md border border-gray-200 px-2.5 py-1 text-[12px] text-gray-600">İptal</button>
+                          <button onClick={submitAddForm} className="rounded-md bg-[var(--accent)] px-2.5 py-1 text-[12px] text-white hover:bg-[var(--accent-dark)]">Ekle</button>
+                          <button onClick={() => setNewForm(null)} className="rounded-md border border-[var(--border)] px-2.5 py-1 text-[12px] text-[var(--ink-muted)]">İptal</button>
                         </div>
                       </div>
                     )}
@@ -250,24 +250,24 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
           <datalist id="ders-listesi">{subjectOptions.map((s) => <option key={s} value={s} />)}</datalist>
 
           {editMode && (
-            <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-3">
-              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Koçuna not (örn. Cumartesi dersim var, o güne az görev koyalım)" className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-[13px]" />
-              <button disabled={busy} onClick={submitEdit} className="rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white disabled:opacity-50">Koçuma onaya gönder</button>
+            <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
+              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Koçuna not (örn. Cumartesi dersim var, o güne az görev koyalım)" className="w-full rounded-lg border border-[var(--border)] bg-[var(--paper)] px-2 py-1.5 text-[13px]" />
+              <button disabled={busy} onClick={submitEdit} className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-[13px] font-medium text-white disabled:opacity-50 hover:bg-[var(--accent-dark)]">Koçuma onaya gönder</button>
             </div>
           )}
         </>
       )}
 
       {requests.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-3">
-          <p className="mb-1 text-[12px] font-semibold uppercase tracking-wide text-gray-400">Taleplerim</p>
-          <ul className="divide-y divide-gray-100">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
+          <p className="mb-1 text-[12px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Taleplerim</p>
+          <ul className="divide-y divide-[var(--border)]">
             {requests.map((r) => (
               <li key={r.id} className="flex items-center justify-between py-1.5 text-[12px]">
-                <span className="text-gray-700">
+                <span className="text-[var(--ink)]">
                   {r.kind === 'yeni_program' ? 'Yeni program' : `Değişiklik (${weekLabel(r.week_start)})`} · {new Date(r.created_at).toLocaleDateString('tr-TR')}
                 </span>
-                <span className={r.status === 'onaylandi' ? 'text-emerald-600' : r.status === 'reddedildi' ? 'text-red-500' : 'text-amber-600'}>
+                <span className={r.status === 'onaylandi' ? 'text-[var(--success)]' : r.status === 'reddedildi' ? 'text-[var(--danger)]' : 'text-[var(--track-lgs)]'}>
                   {r.kind === 'yeni_program' && r.status === 'onaylandi' ? 'Hazırlandı' : STATUS_TEXT[r.status]}
                 </span>
               </li>
