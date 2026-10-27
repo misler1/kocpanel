@@ -1,1340 +1,327 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { IconCheck, IconPlus, IconTrash, IconPencil, IconX } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
-import { IconTrash, IconPlus, IconDownload, IconPrinter, IconCopy, IconX, IconEdit, IconDeviceFloppy } from '@tabler/icons-react';
-import { useExamFilter } from '@/lib/exam-filter-context';
-import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 
-const DAYS_TR = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+const STATUS_TEXT: Record<string, string> = { bekliyor: 'Koç onayı bekliyor', onaylandi: 'Onaylandı', reddedildi: 'Reddedildi' };
+const input = 'rounded-md border border-[var(--border)] bg-[var(--card)] px-1.5 py-1 text-[12px] focus:border-[var(--accent)] focus:outline-none';
 
-// Ders listesinden bağımsız, elle yazılan görev (Branş Denemesi, Ezber vb.)
-const CUSTOM_SUBJECT = '__custom__';
+type Edits = Record<string, { plan_day?: number; start_time?: string | null; end_time?: string | null; target_count?: number }>;
+type Added = { subject: string; topic: string; plan_day: number; target_count: number; start_time: string; end_time: string };
 
-const TRACK_RESOURCES: Record<string, string[]> = {
-  YKS_SAY: [
-    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
-    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
-    'TYT Felsefe', 'TYT Din Kültürü',
-    'AYT Matematik', 'AYT Geometri', 'AYT Fizik', 'AYT Kimya', 'AYT Biyoloji',
-  ],
-  YKS_EA: [
-    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
-    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
-    'TYT Felsefe', 'TYT Din Kültürü',
-    'AYT Matematik', 'AYT Geometri', 'AYT Edebiyat', 'AYT Tarih', 'AYT Coğrafya',
-  ],
-  YKS_SOZ: [
-    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
-    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
-    'TYT Felsefe', 'TYT Din Kültürü',
-    'AYT Edebiyat', 'AYT Tarih', 'AYT Coğrafya', 'AYT Felsefe', 'AYT Din Kültürü',
-  ],
-  YKS_DIL: [
-    'TYT Türkçe', 'TYT Paragraf', 'TYT Matematik', 'TYT Geometri',
-    'TYT Fizik', 'TYT Kimya', 'TYT Biyoloji', 'TYT Tarih', 'TYT Coğrafya',
-    'TYT Felsefe', 'TYT Din Kültürü', 'YDT İngilizce',
-  ],
-  LGS: [
-    'Türkçe', 'Paragraf', 'Matematik', 'Fen Bilgisi',
-    'İnkılap Tarihi', 'Din Kültürü', 'İngilizce',
-  ],
-  DIGER: [],
+const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : '');
+const weekLabel = (ws: string, we?: string | null) => {
+  const f = (d: string) => new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+  return we ? `${f(ws)} – ${f(we)}` : f(ws);
 };
 
-function getWeekStartDate(weekStartDay: number): Date {
-  const now = new Date();
-  const todayDay = (now.getDay() + 6) % 7;
-  let diff = todayDay - weekStartDay;
-  if (diff < 0) diff += 7;
-  const start = new Date(now);
-  start.setDate(now.getDate() - diff);
-  start.setHours(0, 0, 0, 0);
-  return start;
-}
-
-
-// Yerel tarih (toISOString UTC'ye çevirip günü kaydırıyordu)
-function toDateStr(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function fmtDate(s: string) {
-  const [y, m, d] = s.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
-}
-
-function addDaysToDateStr(dateStr: string, days: number) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  date.setDate(date.getDate() + days);
-  return toDateStr(date);
-}
-
-function getWeekEndFromStart(dateStr: string) {
-  return addDaysToDateStr(dateStr, 6);
-}
-
-function getNextBlankProgramStartFromOptions(options: ProgramOption[], weekStartDay: number) {
-  const taken = new Set(options.map((p) => p.weekStart));
-  let candidate = toDateStr(getWeekStartDate(weekStartDay));
-  while (taken.has(candidate)) {
-    candidate = addDaysToDateStr(candidate, 7);
-  }
-  return candidate;
-}
-
-// Öğrenci başına son açık hafta hatırlanır (sayfadan çıkıp gelince kalınan yerden devam)
-const WEEK_KEY = (id: string) => `haftalik-takip:hafta:${id}`;
-function readSavedWeek(id: string): string | null {
-  try { return localStorage.getItem(WEEK_KEY(id)); } catch { return null; }
-}
-function rememberWeek(id: string, ws: string) {
-  try { localStorage.setItem(WEEK_KEY(id), ws); } catch { /* yoksay */ }
-}
-
-// Ders renkleri (TYT/AYT/YDT öneki kaldırılıp aynı derse aynı renk verilir)
-const SUBJECT_COLORS: Record<string, string> = {
-  'Türkçe': '#ef4444', 'Paragraf': '#f97316', 'Matematik': '#3b82f6', 'Geometri': '#06b6d4',
-  'Fizik': '#8b5cf6', 'Kimya': '#ec4899', 'Biyoloji': '#22c55e', 'Tarih': '#d97706',
-  'Coğrafya': '#14b8a6', 'Felsefe': '#a855f7', 'Din Kültürü': '#84cc16', 'Edebiyat': '#e11d48',
-  'İngilizce': '#6366f1', 'Fen Bilgisi': '#16a34a', 'İnkılap Tarihi': '#b45309',
-};
-const FALLBACK_COLORS = ['#0ea5e9', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'];
-
-function getSubjectColor(subject: string): string {
-  const base = (subject || '').replace(/^(TYT|AYT|YDT)\s+/, '').trim();
-  if (SUBJECT_COLORS[base]) return SUBJECT_COLORS[base];
-  let h = 0;
-  for (const ch of base) h = (h * 31 + ch.charCodeAt(0)) % 997;
-  return FALLBACK_COLORS[h % FALLBACK_COLORS.length];
-}
-
-function ProgressBar({ done, target }: { done: number; target: number }) {
-  if (target === 0) return null;
-  const normalPct = Math.min((done / target) * 100, 100);
-  const extraPct = done > target ? Math.min(((done - target) / target) * 100, 100) : 0;
-  const color =
-    normalPct >= 80 ? 'bg-[var(--success)]' : normalPct >= 50 ? 'bg-[var(--accent)]' : 'bg-[var(--danger)]';
-
-  return (
-    <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-[var(--paper)]">
-      <div
-        className={`absolute left-0 top-0 h-full rounded-full transition-all ${color}`}
-        style={{ width: `${normalPct}%` }}
-      />
-      {extraPct > 0 && (
-        <div
-          className="absolute top-0 h-full rounded-full bg-[var(--track-lgs)] opacity-70 transition-all"
-          style={{ left: `${normalPct - extraPct * (normalPct / 100)}%`, width: `${extraPct}%` }}
-        />
-      )}
-    </div>
-  );
-}
-
-type Draft = {
-  subject: string;
-  resource: string;
-  topic: string;
-  target: string;
-  topicTarget: string;
-  startTime: string;
-  endTime: string;
-  customSubject: string;
-  days: number[];
-};
-
-type EditDraft = Omit<Draft, 'days'> & { planDay: string };
-
-type ProgramOption = {
-  weekStart: string;
-  weekEnd: string;
-  count: number;
-};
-
-const inputCls =
-  'w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-1.5 py-1 text-[12px] text-[var(--ink)] outline-none focus:border-[var(--accent)]';
-
-export default function HaftalikTakipPage() {
-  const router = useRouter();
+export function HaftalikClient({ studentId, coachId, resources, initialLogs, initialRequests }: {
+  studentId: string; coachId: string; resources: Record<string, string[]>; initialLogs: any[]; initialRequests: any[];
+}) {
   const supabase = createClient();
-  const { matchesFilter } = useExamFilter();
-  const [students, setStudents] = useState<any[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [logs, setLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [resourceMap, setResourceMap] = useState<Record<string, string[]>>({});
-  const filteredStudents = students.filter((s) => matchesFilter(s));
-  const [sinifFilter, setSinifFilter] = useState('');
-  const availableSiniflar = Array.from(
-    new Set(filteredStudents.map((s: any) => s.sinif_sube).filter(Boolean))
-  ).sort();
-  const pickerStudents = sinifFilter
-    ? filteredStudents.filter((s: any) => s.sinif_sube === sinifFilter)
-    : filteredStudents;
+  const [logs, setLogs] = useState<any[]>(initialLogs);
+  const [requests, setRequests] = useState<any[]>(initialRequests);
+  const weeks = useMemo(() => {
+    const m = new Map<string, string | null>();
+    logs.forEach((l) => { if (!m.has(l.week_start)) m.set(l.week_start, l.week_end ?? null); });
+    return Array.from(m.entries()).map(([ws, we]) => ({ ws, we })).sort((a, b) => (a.ws < b.ws ? 1 : -1));
+  }, [logs]);
 
-  // Günün içinde açılan ekleme formu
-  const [addingDay, setAddingDay] = useState<number | null>(null);
-  const [draft, setDraft] = useState<Draft>({
-    subject: '', customSubject: '', resource: '', topic: '', target: '', topicTarget: '', startTime: '', endTime: '', days: [],
+  const today = new Date().toISOString().slice(0, 10);
+  const [week, setWeek] = useState<string>(() => {
+    const cur = weeks.find((w) => w.ws <= today && (!w.we || today <= w.we));
+    return (cur ?? weeks[0])?.ws ?? '';
   });
-  const [adding, setAdding] = useState(false);
-  const [formError, setFormError] = useState('');
-  const [editingLogId, setEditingLogId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState<EditDraft>({
-    subject: '', customSubject: '', resource: '', topic: '', target: '', topicTarget: '', startTime: '', endTime: '', planDay: '0',
-  });
+  const [editMode, setEditMode] = useState(false);
+  const [edits, setEdits] = useState<Edits>({});
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
+  const [added, setAdded] = useState<Added[]>([]);
+  const [note, setNote] = useState('');
+  const [newForm, setNewForm] = useState<Added | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [newNote, setNewNote] = useState('');
+  const [showNew, setShowNew] = useState(false);
+  const [extraForm, setExtraForm] = useState<Added | null>(null);
+  const [extraBusy, setExtraBusy] = useState(false);
 
-  // Kopyala / yapıştır
-  const loadedStudentRef = useRef('');
-  const [colorMode, setColorMode] = useState(true);
-  const [clipboardLog, setClipboardLog] = useState<any>(null);
-  const [hoverDay, setHoverDay] = useState<number | null>(null);
+  const weekLogs = logs.filter((l) => l.week_start === week);
+  const currentWeekEnd = weeks.find((w) => w.ws === week)?.we ?? null;
+  const openEdit = requests.find((r) => r.status === 'bekliyor' && r.kind === 'duzenleme' && r.week_start === week);
+  const openNew = requests.find((r) => r.status === 'bekliyor' && r.kind === 'yeni_program');
+  const subjectOptions = Object.keys(resources);
 
-  useEffect(() => {
-    try { setColorMode(localStorage.getItem('haftalik-takip:renkli') !== '0'); } catch { /* yoksay */ }
-  }, []);
-  function toggleColorMode() {
-    setColorMode((v) => {
-      try { localStorage.setItem('haftalik-takip:renkli', v ? '0' : '1'); } catch { /* yoksay */ }
-      return !v;
-    });
-  }
-
-  const [weekStart, setWeekStart] = useState('');
-  const [weekEnd, setWeekEnd] = useState('');
-  const [programOptions, setProgramOptions] = useState<ProgramOption[]>([]);
-  const [activeProgramWeek, setActiveProgramWeek] = useState('');
-  const [programPromptWeek, setProgramPromptWeek] = useState('');
-  const [creatingProgram, setCreatingProgram] = useState(false);
-
-  // Programı başka öğrenciye kopyalama
-  const [copyOpen, setCopyOpen] = useState(false);
-  const [copyTargetId, setCopyTargetId] = useState('');
-  const [copying, setCopying] = useState(false);
-  const [copyError, setCopyError] = useState('');
-  const [copyDone, setCopyDone] = useState<{ id: string; name: string; weekStart: string; weekEnd: string; count: number } | null>(null);
-
-  useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const includeInterns = document.cookie.split('; ').includes('show_interns=1');
-      const scope = await getStudentScope(supabase, user.id, includeInterns);
-      const { data } = await applyStudentScope(
-        (supabase as any)
-          .from('students')
-          .select('id, full_name, resources, week_start_day, track, kurum, donem, sinif_sube, coach_id, responsible_coach_id, responsible_coach_other_name')
-          .neq('status', 'pasif')
-          .order('full_name'),
-        scope
-      );
-      setStudents(data ?? []);
-      const pre = new URLSearchParams(window.location.search).get('ogrenci');
-      if (data?.length) {
-        setSelectedStudentId(pre && data.some((s: any) => s.id === pre) ? pre : data[0].id);
-      }
-      setLoading(false);
-    }
-    load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!selectedStudentId) return;
-    const st = students.find((s) => s.id === selectedStudentId) ?? null;
-    setSelectedStudent(st);
-
-    const rm: Record<string, string[]> = {};
-    if (st?.resources) {
-      for (const [subject, sources] of Object.entries(st.resources as Record<string, string[]>)) {
-        const filtered = (sources as string[]).filter((s) => s.trim() !== '');
-        if (filtered.length > 0) rm[subject] = filtered;
-      }
-    }
-    setResourceMap(rm);
-
-    // Aynı öğrencide sadece öğrenci verisi değiştiyse (ör. hafta başlangıç günü) programı SIFIRLAMA
-    if (loadedStudentRef.current === selectedStudentId) return;
-    loadedStudentRef.current = selectedStudentId;
-
-    const startDay = st?.week_start_day ?? 0;
-    const params = new URLSearchParams(window.location.search);
-    const programParam = params.get('program');
-    const studentParam = params.get('ogrenci');
-    setLogs([]);
-    setWeekStart('');
-    setWeekEnd('');
-    loadProgramOptions(selectedStudentId).then((options) => {
-      const shouldOpenExisting = !!programParam && (!studentParam || studentParam === selectedStudentId);
-      const saved = readSavedWeek(selectedStudentId);
-      const initialWeekStart = shouldOpenExisting
-        ? (programParam as string)
-        : saved ?? getNextBlankProgramStartFromOptions(options, startDay);
-      const selectedProgram = options.find((p) => p.weekStart === initialWeekStart);
-      setWeekStart(initialWeekStart);
-      setWeekEnd(selectedProgram?.weekEnd || getWeekEndFromStart(initialWeekStart));
-      setActiveProgramWeek(selectedProgram ? initialWeekStart : '');
-      setProgramPromptWeek(shouldOpenExisting ? initialWeekStart : '');
-      rememberWeek(selectedStudentId, initialWeekStart);
-    });
-
-    setAddingDay(null);
-    setEditingLogId(null);
-    setFormError('');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStudentId, students]);
-
-  useEffect(() => {
-    if (pickerStudents.length === 0) {
-      setSelectedStudentId('');
-      return;
-    }
-    if (!pickerStudents.some((s) => s.id === selectedStudentId)) {
-      setSelectedStudentId(pickerStudents[0].id);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickerStudents]);
-
-  useEffect(() => {
-    if (!selectedStudentId || !weekStart) return;
-    loadLogs(selectedStudentId, weekStart);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStudentId, weekStart]);
-
-  // Ctrl+V desteği: fareyi günün üstüne getirip Ctrl+V, Esc ile iptal
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-      if (e.key === 'Escape') setClipboardLog(null);
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && clipboardLog && hoverDay !== null) {
-        e.preventDefault();
-        pasteLog(hoverDay);
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clipboardLog, hoverDay, weekStart, weekEnd, selectedStudentId]);
-
-  async function loadLogs(studentId: string, ws: string) {
-    const { data } = await (supabase as any)
-      .from('question_logs')
-      .select('*')
-      .eq('student_id', studentId)
-      .eq('week_start', ws);
-    setLogs(data ?? []);
-    if (data?.[0]?.week_end) setWeekEnd(data[0].week_end);
-  }
-
-  async function loadProgramOptions(studentId: string) {
-    const { data } = await (supabase as any)
-      .from('question_logs')
-      .select('week_start, week_end')
-      .eq('student_id', studentId)
-      .order('week_start', { ascending: false });
-
-    const map = new Map<string, ProgramOption>();
-    for (const row of data ?? []) {
-      if (!row.week_start) continue;
-      const existing = map.get(row.week_start);
-      if (existing) {
-        existing.count += 1;
-      } else {
-        map.set(row.week_start, {
-          weekStart: row.week_start,
-          weekEnd: row.week_end || getWeekEndFromStart(row.week_start),
-          count: 1,
-        });
-      }
-    }
-    const options = Array.from(map.values());
-    setProgramOptions(options);
-    return options;
-  }
-
-  function getNextBlankProgramStart() {
-    return getNextBlankProgramStartFromOptions(programOptions, selectedStudent?.week_start_day ?? 0);
-  }
-
-  function startBlankProgram() {
-    const nextWeekStart = getNextBlankProgramStart();
-    setWeekStart(nextWeekStart);
-    rememberWeek(selectedStudentId, nextWeekStart);
-    setWeekEnd(getWeekEndFromStart(nextWeekStart));
-    setLogs([]);
-    setActiveProgramWeek('');
-    setProgramPromptWeek('');
-    setAddingDay(null);
-    setEditingLogId(null);
-    setFormError('');
-  }
-
-  function handleProgramSelect(value: string) {
-    setFormError('');
-    setAddingDay(null);
-    setEditingLogId(null);
-    if (!value) {
-      startBlankProgram();
-      return;
-    }
-    const selected = programOptions.find((p) => p.weekStart === value);
-    setWeekStart(value);
-    rememberWeek(selectedStudentId, value);
-    setWeekEnd(selected?.weekEnd || getWeekEndFromStart(value));
-    setActiveProgramWeek(value);
-    setProgramPromptWeek(value);
-  }
-
-  async function rebuildProgramFromCurrent() {
-    if (!selectedStudentId || logs.length === 0) return;
-    setCreatingProgram(true);
-    setFormError('');
-    const { data: { user } } = await supabase.auth.getUser();
-    const nextWeekStart = getNextBlankProgramStart();
-    const nextWeekEnd = getWeekEndFromStart(nextWeekStart);
-    const rows = logs.map((log) => ({
-      student_id: selectedStudentId,
-      coach_id: user?.id,
-      subject: log.subject,
-      resource_name: log.resource_name,
-      topic: log.topic,
-      week_start: nextWeekStart,
-      week_end: nextWeekEnd,
-      plan_day: log.plan_day,
-      start_time: log.start_time,
-      end_time: log.end_time,
-      target_count: log.target_count ?? 0,
-      done_count: 0,
-      topic_target_minutes: log.topic_target_minutes,
-      topic_done_minutes: 0,
-    }));
-    const { data, error } = await (supabase as any).from('question_logs').insert(rows).select();
-    setCreatingProgram(false);
+  async function toggleDone(l: any) {
+    if (editMode) return;
+    const next = !l.student_done;
+    setLogs((prev) => prev.map((x) => (x.id === l.id ? { ...x, student_done: next } : x)));
+    const { error } = await (supabase.from('question_logs') as any)
+      .update({ student_done: next, student_done_at: next ? new Date().toISOString() : null }).eq('id', l.id);
     if (error) {
-      setFormError(weeklyPlanErrorMessage(error));
-      return;
-    }
-    setWeekStart(nextWeekStart);
-    rememberWeek(selectedStudentId, nextWeekStart);
-    setWeekEnd(nextWeekEnd);
-    setLogs(data ?? []);
-    setActiveProgramWeek(nextWeekStart);
-    setProgramPromptWeek('');
-    await loadProgramOptions(selectedStudentId);
+      setLogs((prev) => prev.map((x) => (x.id === l.id ? { ...x, student_done: l.student_done } : x)));
+      setMsg('Kaydedilemedi, tekrar dene.');
+    } else setMsg(null);
   }
 
-  function finishProgram() {
-    if (!selectedStudentId) return;
-    setLogs([]);
-    setAddingDay(null);
-    setEditingLogId(null);
-    setDraft({ subject: '', customSubject: '', resource: '', topic: '', target: '', topicTarget: '', startTime: '', endTime: '', days: [] });
-    router.push('/ogrenciler/' + selectedStudentId);
-    router.refresh();
+  function resetEdit() { setEditMode(false); setEdits({}); setRemoved(new Set()); setAdded([]); setNote(''); setNewForm(null); }
+  const setEdit = (id: string, patch: Edits[string]) => setEdits((p) => ({ ...p, [id]: { ...p[id], ...patch } }));
+
+  function buildRequest() {
+    const ops: any[] = [];
+    const summary: string[] = [];
+    for (const l of weekLogs) {
+      const name = `${DAYS_SHORT[l.plan_day ?? 0] ?? ''} · ${l.subject}${l.topic ? ' / ' + l.topic : ''}`;
+      if (removed.has(l.id)) { ops.push({ op: 'delete', log_id: l.id }); summary.push(`${name}: kaldırılsın`); continue; }
+      const e = edits[l.id];
+      if (!e) continue;
+      const fields: any = {}; const parts: string[] = [];
+      if (e.plan_day !== undefined && e.plan_day !== l.plan_day) { fields.plan_day = e.plan_day; parts.push(`gün ${DAYS_SHORT[l.plan_day ?? 0]} → ${DAYS_SHORT[e.plan_day]}`); }
+      if (e.target_count !== undefined && e.target_count !== l.target_count) { fields.target_count = e.target_count; parts.push(`hedef ${l.target_count} → ${e.target_count}`); }
+      if (e.start_time !== undefined && (e.start_time ?? '') !== hhmm(l.start_time)) { fields.start_time = e.start_time || null; parts.push(`başlangıç ${hhmm(l.start_time) || '—'} → ${e.start_time || '—'}`); }
+      if (e.end_time !== undefined && (e.end_time ?? '') !== hhmm(l.end_time)) { fields.end_time = e.end_time || null; parts.push(`bitiş ${hhmm(l.end_time) || '—'} → ${e.end_time || '—'}`); }
+      if (parts.length) { ops.push({ op: 'update', log_id: l.id, fields }); summary.push(`${name}: ${parts.join(', ')}`); }
+    }
+    for (const a of added) {
+      ops.push({ op: 'add', fields: { subject: a.subject, topic: a.topic || null, plan_day: a.plan_day, target_count: a.target_count, start_time: a.start_time || null, end_time: a.end_time || null } });
+      summary.push(`${DAYS_SHORT[a.plan_day]} · ${a.subject}${a.topic ? ' / ' + a.topic : ''}: eklensin${a.target_count ? ` (${a.target_count} soru)` : ''}`);
+    }
+    return { ops, summary };
   }
 
-  async function clearProgram() {
-    if (!selectedStudentId || !weekStart || logs.length === 0) return;
-    const ok = window.confirm(
-      `${weekLabel} programındaki ${logs.length} görevin tamamı (yapılan soru/süre bilgileri dahil) silinecek. Emin misiniz?`
-    );
-    if (!ok) return;
-    const { error } = await (supabase as any)
-      .from('question_logs')
-      .delete()
-      .eq('student_id', selectedStudentId)
-      .eq('week_start', weekStart);
-    if (error) { setFormError(error.message); return; }
-    setLogs([]);
-    setAddingDay(null);
-    setEditingLogId(null);
-    setProgramPromptWeek('');
-    setActiveProgramWeek('');
-    await loadProgramOptions(selectedStudentId);
+  async function submitEdit() {
+    const { ops, summary } = buildRequest();
+    if (ops.length === 0) { setMsg('Henüz bir değişiklik yapmadın.'); return; }
+    setBusy(true); setMsg(null);
+    const { data, error } = await (supabase as any).from('weekly_plan_requests').insert({
+      student_id: studentId, coach_id: coachId, kind: 'duzenleme', week_start: week,
+      payload: { ops, summary }, note: note.trim() || null, status: 'bekliyor',
+    }).select('id, kind, week_start, status, note, created_at, decided_at').single();
+    setBusy(false);
+    if (error) { setMsg(error.code === '23505' ? 'Bu hafta için zaten onay bekleyen bir talebin var.' : 'Talep gönderilemedi: ' + error.message); return; }
+    setRequests((p) => [data, ...p]);
+    resetEdit();
+    setMsg('Değişiklik talebin koçuna gönderildi. Onaylayınca programına uygulanır.');
   }
 
-  async function syncFromDailyLogs() {
-    if (!selectedStudentId || !weekStart || !weekEnd) return;
-    const { data: dailyLogs } = await (supabase as any)
-      .from('daily_logs')
-      .select('question_solved, topic_studies, log_date')
-      .eq('student_id', selectedStudentId)
-      .gte('log_date', weekStart)
-      .lte('log_date', weekEnd);
-
-    if (!dailyLogs) return;
-
-    const subjectTotals: Record<string, number> = {};
-    const topicTotals: Record<string, number> = {};
-    const topicMinutes: Record<string, number> = {};
-
-    for (const dl of dailyLogs) {
-      for (const q of (dl.question_solved ?? [])) {
-        const key = q.subject ?? q.topic;
-        subjectTotals[key] = (subjectTotals[key] ?? 0) + (q.count ?? 0);
-        const topicKey = `${q.subject}__${q.topic}`;
-        topicTotals[topicKey] = (topicTotals[topicKey] ?? 0) + (q.count ?? 0);
-      }
-      for (const t of (dl.topic_studies ?? [])) {
-        const topicKey = `${t.subject}__${t.topic}`;
-        topicMinutes[topicKey] = (topicMinutes[topicKey] ?? 0) + (t.duration_minutes ?? 0);
-      }
-    }
-
-    for (const log of logs) {
-      let newDone = 0;
-      let newTopicDone = 0;
-
-      if (log.topic) {
-        const topicKey = `${log.subject}__${log.topic}`;
-        newDone = topicTotals[topicKey] ?? 0;
-        newTopicDone = topicMinutes[topicKey] ?? 0;
-      } else {
-        for (const [key, val] of Object.entries(subjectTotals)) {
-          if (key.toLowerCase().includes(log.subject.toLowerCase()) ||
-              log.subject.toLowerCase().includes(key.toLowerCase())) {
-            newDone += val;
-          }
-        }
-      }
-
-      if (newDone !== log.done_count || newTopicDone !== (log.topic_done_minutes ?? 0)) {
-        await (supabase as any)
-          .from('question_logs')
-          .update({ done_count: newDone, topic_done_minutes: newTopicDone })
-          .eq('id', log.id);
-      }
-    }
-
-    loadLogs(selectedStudentId, weekStart);
+  async function submitNew() {
+    setBusy(true); setMsg(null);
+    const { data, error } = await (supabase as any).from('weekly_plan_requests').insert({
+      student_id: studentId, coach_id: coachId, kind: 'yeni_program', week_start: null,
+      payload: {}, note: newNote.trim() || null, status: 'bekliyor',
+    }).select('id, kind, week_start, status, note, created_at, decided_at').single();
+    setBusy(false);
+    if (error) { setMsg(error.code === '23505' ? 'Zaten bekleyen bir yeni program talebin var.' : 'Talep gönderilemedi: ' + error.message); return; }
+    setRequests((p) => [data, ...p]);
+    setShowNew(false); setNewNote('');
+    setMsg('Yeni program talebin koçuna gönderildi.');
   }
 
-  const subjects = selectedStudent?.track
-    ? (TRACK_RESOURCES[selectedStudent.track] ?? Object.keys(resourceMap))
-    : Object.keys(resourceMap);
-
-  // ── Kolon içi ekleme formu ──
-  function openAdd(day: number) {
-    const firstSubject = subjects[0] ?? '';
-    setDraft({
-      subject: firstSubject,
-      resource: resourceMap[firstSubject]?.[0] ?? '',
-      topic: '',
-      target: '',
-      topicTarget: '',
-      startTime: '',
-      endTime: '',
-      customSubject: '',
-      days: [day],
-    });
-    setFormError('');
-    setAddingDay(day);
+  function submitAddForm() {
+    if (!newForm || !newForm.subject.trim()) { setMsg('Ders adını yaz.'); return; }
+    setAdded((p) => [...p, { ...newForm, subject: newForm.subject.trim(), topic: newForm.topic.trim() }]);
+    setNewForm(null); setMsg(null);
   }
 
-  function setDraftSubject(subject: string) {
-    setDraft((d) => ({ ...d, subject, resource: resourceMap[subject]?.[0] ?? '' }));
+  async function submitExtraTask() {
+    if (!extraForm || !extraForm.subject.trim() || !week) { setMsg('Ders adını yaz.'); return; }
+    setExtraBusy(true); setMsg(null);
+    const { data, error } = await (supabase as any).from('question_logs').insert({
+      student_id: studentId, subject: extraForm.subject.trim(), topic: extraForm.topic.trim() || null,
+      week_start: week, week_end: currentWeekEnd, plan_day: extraForm.plan_day,
+      target_count: extraForm.target_count, start_time: extraForm.start_time || null, end_time: extraForm.end_time || null,
+      student_added: true,
+    }).select().single();
+    setExtraBusy(false);
+    if (error) { setMsg('Görev eklenemedi: ' + error.message); return; }
+    setLogs((prev) => [...prev, data]);
+    setExtraForm(null);
   }
 
-  function toggleDraftDay(day: number) {
-    setDraft((d) => ({
-      ...d,
-      days: d.days.includes(day) ? d.days.filter((x) => x !== day) : [...d.days, day].sort((a, b) => a - b),
-    }));
-  }
-
-  function weeklyPlanErrorMessage(error: { message?: string; code?: string; details?: string } | null) {
-    const raw = [error?.message, error?.details, error?.code].filter(Boolean).join(' ');
-    if (raw.includes('question_logs_student_id_subject_week_start_key') || error?.code === '23505') {
-      return 'Aynı hafta içinde aynı dersten birden fazla görev ekleyebilmek için Supabase’te weekly_tracking_schedule.sql dosyasını çalıştırmalısınız.';
-    }
-    if (raw.includes('plan_day') || raw.includes('start_time') || raw.includes('end_time')) {
-      return 'Gün ve saat alanları veritabanında yok. Supabase’te weekly_tracking_schedule.sql dosyasını çalıştırmalısınız.';
-    }
-    return error?.message || 'Hedef eklenirken bir hata oluştu.';
-  }
-
-  async function addLogs() {
-    setFormError('');
-    const finalSubject = draft.subject === CUSTOM_SUBJECT ? draft.customSubject.trim() : draft.subject;
-    if (!selectedStudentId || !finalSubject) {
-      setFormError(draft.subject === CUSTOM_SUBJECT ? 'Görev adını yazmalısınız.' : 'Ders seçmelisiniz.');
-      return;
-    }
-    if (draft.days.length === 0) {
-      setFormError('En az bir gün seçmelisiniz.');
-      return;
-    }
-
-    setAdding(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    const targetCount = draft.target ? Number(draft.target) : 0;
-
-    const rows = draft.days.map((day) => ({
-      student_id: selectedStudentId,
-      coach_id: user?.id,
-      subject: finalSubject,
-      resource_name: draft.resource || null,
-      topic: draft.topic || null,
-      week_start: weekStart,
-      week_end: weekEnd,
-      plan_day: day,
-      start_time: draft.startTime || null,
-      end_time: draft.endTime || null,
-      target_count: Number.isFinite(targetCount) ? targetCount : 0,
-      done_count: 0,
-      topic_target_minutes: draft.topicTarget ? Number(draft.topicTarget) : null,
-      topic_done_minutes: 0,
-    }));
-
-    const { data, error } = await (supabase as any).from('question_logs').insert(rows).select();
-    setAdding(false);
-
-    if (error) {
-      setFormError(weeklyPlanErrorMessage(error));
-      return;
-    }
-    if (data) {
-      setLogs((prev) => [...prev, ...data]);
-      setAddingDay(null);
-      setActiveProgramWeek(weekStart);
-      await loadProgramOptions(selectedStudentId);
-    }
-  }
-
-  async function deleteLog(id: string) {
-    await (supabase as any).from('question_logs').delete().eq('id', id);
+  async function removeExtraTask(id: string) {
     setLogs((prev) => prev.filter((l) => l.id !== id));
-    if (selectedStudentId) await loadProgramOptions(selectedStudentId);
+    const { error } = await (supabase as any).from('question_logs').delete().eq('id', id);
+    if (error) setMsg('Silinemedi, tekrar dene.');
   }
 
-  async function updateLogSchedule(id: string, updates: { plan_day?: number; start_time?: string | null; end_time?: string | null }) {
-    await (supabase as any).from('question_logs').update(updates).eq('id', id);
-    setLogs((prev) => prev.map((log) => (log.id === id ? { ...log, ...updates } : log)));
-  }
-
-  function openEdit(log: any) {
-    setFormError('');
-    setEditingLogId(log.id);
-    const isCustom = !!log.subject && !subjects.includes(log.subject);
-    setEditDraft({
-      subject: isCustom ? CUSTOM_SUBJECT : (log.subject ?? ''),
-      customSubject: isCustom ? log.subject : '',
-      resource: log.resource_name ?? '',
-      topic: log.topic ?? '',
-      target: log.target_count ? String(log.target_count) : '',
-      topicTarget: log.topic_target_minutes ? String(log.topic_target_minutes) : '',
-      startTime: log.start_time?.slice(0, 5) ?? '',
-      endTime: log.end_time?.slice(0, 5) ?? '',
-      planDay: typeof log.plan_day === 'number' ? String(log.plan_day) : '0',
-    });
-  }
-
-  async function saveEdit(id: string) {
-    const finalSubject = editDraft.subject === CUSTOM_SUBJECT ? editDraft.customSubject.trim() : editDraft.subject;
-    if (!finalSubject) {
-      setFormError(editDraft.subject === CUSTOM_SUBJECT ? 'Görev adını yazmalısınız.' : 'Ders seçmelisiniz.');
-      return;
-    }
-    const targetCount = editDraft.target ? Number(editDraft.target) : 0;
-    const topicTarget = editDraft.topicTarget ? Number(editDraft.topicTarget) : null;
-    const updates = {
-      subject: finalSubject,
-      resource_name: editDraft.resource || null,
-      topic: editDraft.topic || null,
-      plan_day: Number(editDraft.planDay),
-      start_time: editDraft.startTime || null,
-      end_time: editDraft.endTime || null,
-      target_count: Number.isFinite(targetCount) ? targetCount : 0,
-      topic_target_minutes: topicTarget,
-    };
-    const { error } = await (supabase as any).from('question_logs').update(updates).eq('id', id);
-    if (error) {
-      setFormError(weeklyPlanErrorMessage(error));
-      return;
-    }
-    setLogs((prev) => prev.map((log) => (log.id === id ? { ...log, ...updates } : log)));
-    setEditingLogId(null);
-    if (selectedStudentId) await loadProgramOptions(selectedStudentId);
-  }
-
-  async function updateWeekStartDay(day: number) {
-    await (supabase as any)
-      .from('students')
-      .update({ week_start_day: day })
-      .eq('id', selectedStudentId);
-    setStudents((prev) => prev.map((s) =>
-      s.id === selectedStudentId ? { ...s, week_start_day: day } : s
-    ));
-  }
-
-  // ── Kopyalanan hedefi bir güne yapıştır ──
-  async function pasteLog(day: number) {
-    if (!clipboardLog || !selectedStudentId || !weekStart) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    const row = {
-      student_id: selectedStudentId,
-      coach_id: user?.id,
-      subject: clipboardLog.subject,
-      resource_name: clipboardLog.resource_name,
-      topic: clipboardLog.topic,
-      week_start: weekStart,
-      week_end: weekEnd,
-      plan_day: day,
-      start_time: clipboardLog.start_time,
-      end_time: clipboardLog.end_time,
-      target_count: clipboardLog.target_count ?? 0,
-      done_count: 0,
-      topic_target_minutes: clipboardLog.topic_target_minutes,
-      topic_done_minutes: 0,
-    };
-    const { data, error } = await (supabase as any).from('question_logs').insert([row]).select();
-    if (error) { setFormError(weeklyPlanErrorMessage(error)); return; }
-    if (data) {
-      setLogs((prev) => [...prev, ...data]);
-      await loadProgramOptions(selectedStudentId);
-    }
-  }
-
-  // ── Mevcut programı başka bir öğrencinin ilk boş haftasına kopyala ──
-  function openCopyModal() {
-    setCopyError('');
-    setCopyDone(null);
-    const first = students.find((s) => s.id !== selectedStudentId && matchesFilter(s));
-    setCopyTargetId(first?.id ?? '');
-    setCopyOpen(true);
-  }
-
-  async function copyProgramToStudent() {
-    if (!copyTargetId || logs.length === 0) return;
-    const target = students.find((s) => s.id === copyTargetId);
-    if (!target) return;
-    setCopying(true);
-    setCopyError('');
-
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: existing, error: existingError } = await (supabase as any)
-      .from('question_logs')
-      .select('week_start')
-      .eq('student_id', copyTargetId);
-    if (existingError) {
-      setCopying(false);
-      setCopyError(existingError.message);
-      return;
-    }
-
-    const taken = Array.from(new Set<string>((existing ?? []).map((r: any) => r.week_start).filter(Boolean)));
-    const options: ProgramOption[] = taken.map((ws) => ({ weekStart: ws, weekEnd: getWeekEndFromStart(ws), count: 0 }));
-    const nextWeekStart = getNextBlankProgramStartFromOptions(options, target.week_start_day ?? 0);
-    const nextWeekEnd = getWeekEndFromStart(nextWeekStart);
-
-    const rows = logs.map((log) => ({
-      student_id: copyTargetId,
-      coach_id: user?.id,
-      subject: log.subject,
-      resource_name: log.resource_name,
-      topic: log.topic,
-      week_start: nextWeekStart,
-      week_end: nextWeekEnd,
-      plan_day: log.plan_day,
-      start_time: log.start_time,
-      end_time: log.end_time,
-      target_count: log.target_count ?? 0,
-      done_count: 0,
-      topic_target_minutes: log.topic_target_minutes,
-      topic_done_minutes: 0,
-    }));
-
-    const { error } = await (supabase as any).from('question_logs').insert(rows);
-    setCopying(false);
-    if (error) {
-      setCopyError(weeklyPlanErrorMessage(error));
-      return;
-    }
-    rememberWeek(copyTargetId, nextWeekStart);
-    setCopyDone({ id: copyTargetId, name: target.full_name, weekStart: nextWeekStart, weekEnd: nextWeekEnd, count: rows.length });
-  }
-
-  function openCopiedStudent() {
-    if (!copyDone) return;
-    setSinifFilter('');
-    setSelectedStudentId(copyDone.id);
-    setCopyOpen(false);
-    setCopyDone(null);
-  }
-
-  function generateReport() {
-    const lines: string[] = [];
-    lines.push(`📊 Haftalık Rapor — ${selectedStudent?.full_name}`);
-    lines.push(`📅 ${fmtDate(weekStart)} – ${fmtDate(weekEnd)}`);
-    lines.push('');
-
-    for (const log of logs) {
-      const pct = log.target_count > 0 ? Math.round((log.done_count / log.target_count) * 100) : 0;
-      const status = pct >= 100 ? '✅' : pct >= 50 ? '🟡' : '🔴';
-      lines.push(`${status} ${log.subject}${log.topic ? ` · ${log.topic}` : ''}`);
-      lines.push(`   Soru: ${log.done_count}/${log.target_count} (%${pct})`);
-      if (log.topic_target_minutes) {
-        const topicPct = Math.round((log.topic_done_minutes / log.topic_target_minutes) * 100);
-        lines.push(`   Konu çalışma: ${log.topic_done_minutes}/${log.topic_target_minutes} dk (%${topicPct})`);
-      }
-    }
-
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `rapor-${selectedStudent?.full_name}-${weekStart}.txt`;
-    a.click();
-  }
-
-  const weekLabel = weekStart ? `${fmtDate(weekStart)} – ${fmtDate(weekEnd)}` : '';
-
-  const sortedLogs = [...logs].sort((a, b) => {
-    if (a.start_time && b.start_time) return a.start_time.localeCompare(b.start_time);
-    if (a.start_time) return -1;
-    if (b.start_time) return 1;
-    if (a.end_time && b.end_time) return a.end_time.localeCompare(b.end_time);
-    return 0;
-  });
-  const plannedLogsByDay = DAYS_TR.map((_, i) => sortedLogs.filter((l) => l.plan_day === i));
-  const unscheduledLogs = sortedLogs.filter((l) => typeof l.plan_day !== 'number');
-  // +1: her günün son görevinin altında "Görev ekle" kutusuna yer kalsın
-  const rowCount = Math.max(3, ...plannedLogsByDay.map((l) => l.length + 1));
-
-  function renderLogCard(log: any) {
-    const pct = log.target_count > 0 ? Math.round((log.done_count / log.target_count) * 100) : 0;
-    const isOver = log.done_count > log.target_count;
-    const isEditing = editingLogId === log.id;
-
-    if (isEditing) {
-      return (
-        <div key={log.id} className="log-card relative w-full space-y-1.5 rounded-lg border border-[var(--accent)] bg-[var(--card)] p-2">
-          <div className="no-print flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-[var(--ink)]">Görevi düzenle</span>
-            <button onClick={() => setEditingLogId(null)} className="text-[var(--ink-muted)] hover:text-[var(--ink)]">
-              <IconX size={13} />
-            </button>
-          </div>
-          <select value={editDraft.subject} onChange={(e) => setEditDraft((d) => ({ ...d, subject: e.target.value, resource: resourceMap[e.target.value]?.[0] ?? '' }))} className={inputCls}>
-            {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
-            <option value={CUSTOM_SUBJECT}>✏️ Diğer (kendim yazayım)</option>
-          </select>
-          {editDraft.subject === CUSTOM_SUBJECT ? (
-            <>
-              <input value={editDraft.customSubject} onChange={(e) => setEditDraft((d) => ({ ...d, customSubject: e.target.value }))} placeholder="Görev adı (ör. Branş Denemesi, Ezber)" className={inputCls} />
-              <input value={editDraft.resource} onChange={(e) => setEditDraft((d) => ({ ...d, resource: e.target.value }))} placeholder="Kaynak (opsiyonel)" className={inputCls} />
-            </>
-          ) : (
-            <select value={editDraft.resource} onChange={(e) => setEditDraft((d) => ({ ...d, resource: e.target.value }))} className={inputCls}>
-              <option value="">Kaynak yok</option>
-              {(resourceMap[editDraft.subject] ?? []).map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-          )}
-          <input value={editDraft.topic} onChange={(e) => setEditDraft((d) => ({ ...d, topic: e.target.value }))} placeholder="Konu" className={inputCls} />
-          <div className="grid grid-cols-2 gap-1.5">
-            <select value={editDraft.planDay} onChange={(e) => setEditDraft((d) => ({ ...d, planDay: e.target.value }))} className={inputCls}>
-              {DAYS_TR.map((day, i) => <option key={day} value={i}>{day}</option>)}
-            </select>
-            <input type="number" value={editDraft.target} onChange={(e) => setEditDraft((d) => ({ ...d, target: e.target.value }))} placeholder="Soru" className={inputCls} />
-          </div>
-          <div className="grid grid-cols-2 gap-1.5">
-            <input type="time" value={editDraft.startTime} onChange={(e) => setEditDraft((d) => ({ ...d, startTime: e.target.value }))} title="Başlangıç saati" className={inputCls} />
-            <input type="time" value={editDraft.endTime} onChange={(e) => setEditDraft((d) => ({ ...d, endTime: e.target.value }))} title="Bitiş saati" className={inputCls} />
-          </div>
-          <input type="number" value={editDraft.topicTarget} onChange={(e) => setEditDraft((d) => ({ ...d, topicTarget: e.target.value }))} placeholder="Çalışma süresi (dk)" className={inputCls} />
-          {formError && <p className="rounded-md bg-red-50 px-2 py-1 text-[11px] text-red-600">{formError}</p>}
-          <button onClick={() => saveEdit(log.id)} className="flex w-full items-center justify-center gap-1 rounded-md bg-[var(--accent)] py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--accent-dark)]">
-            <IconDeviceFloppy size={13} /> Kaydet
-          </button>
-        </div>
-      );
-    }
-
-    const c = getSubjectColor(log.subject);
-
-    return (
-      <div
-        key={log.id}
-        className={`log-card ${colorMode ? 'colored' : ''} relative flex w-full flex-col rounded-lg border border-[var(--border)] bg-[var(--card)] p-1.5`}
-        style={colorMode ? { backgroundColor: `${c}22`, borderLeft: `4px solid ${c}` } : undefined}
-      >
-        <div className="flex items-start justify-between gap-1">
-          <div className="min-w-0">
-            <span className="block text-[12px] font-medium leading-tight text-[var(--ink)]">{log.subject}</span>
-            {log.topic && <span className="block text-[11px] leading-tight text-[var(--ink-muted)]">{log.topic}</span>}
-            {log.resource_name && <span className="block text-[10px] leading-tight text-[var(--ink-muted)]">{log.resource_name}</span>}
-            {log.student_done && <span className="no-print mt-0.5 inline-block rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">✓ Öğrenci yaptı</span>}
-          </div>
-          <div className="no-print flex flex-shrink-0 items-center gap-1">
-            <button onClick={() => setClipboardLog(log)} title="Kopyala (sonra bir güne yapıştır)" className="text-[var(--ink-muted)] hover:text-[var(--accent)]">
-              <IconCopy size={13} />
-            </button>
-            <button onClick={() => openEdit(log)} title="Düzenle" className="text-[var(--ink-muted)] hover:text-[var(--accent)]">
-              <IconEdit size={13} />
-            </button>
-            <button onClick={() => deleteLog(log.id)} title="Sil" className="text-[var(--ink-muted)] hover:text-[var(--danger)]">
-              <IconTrash size={13} />
-            </button>
-          </div>
-        </div>
-
-        {/* Alt kısım hep kartın dibinde: kartlar farklı içerikte olsa da hizalı durur */}
-        <div className="mt-auto pt-1.5">
-          <div className="no-print flex flex-wrap items-center gap-1">
-            <input type="time" value={log.start_time?.slice(0, 5) ?? ''} onChange={(e) => updateLogSchedule(log.id, { start_time: e.target.value || null })} title="Başlangıç saati"
-              className="w-[4.5rem] rounded-md border border-[var(--border)] bg-[var(--card)] px-1 py-0.5 text-[11px] text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
-            <input type="time" value={log.end_time?.slice(0, 5) ?? ''} onChange={(e) => updateLogSchedule(log.id, { end_time: e.target.value || null })} title="Bitiş saati"
-              className="w-[4.5rem] rounded-md border border-[var(--border)] bg-[var(--card)] px-1 py-0.5 text-[11px] text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
-            {log.target_count > 0 && (
-              <span className={`ml-auto text-[11px] font-medium ${isOver ? 'text-[var(--track-lgs)]' : pct >= 100 ? 'text-[var(--success)]' : 'text-[var(--ink-muted)]'}`}>
-                {log.done_count}/{log.target_count}
-                {isOver && <span className="ml-0.5 text-[10px]">+{log.done_count - log.target_count}</span>}
-              </span>
-            )}
-          </div>
-          {/* Hedef olmasa da yer ayrılır */}
-          <div className="no-print mt-1 h-1.5"><ProgressBar done={log.done_count} target={log.target_count} /></div>
-          <div className="no-print mt-1 h-3.5 text-[10px] text-[var(--ink-muted)]">
-            {log.topic_target_minutes > 0 && <>Konu: {log.topic_done_minutes ?? 0}/{log.topic_target_minutes} dk</>}
-          </div>
-
-          <div className="print-only items-center justify-between text-[11px] text-black">
-            <span>{[log.start_time?.slice(0, 5), log.end_time?.slice(0, 5)].filter(Boolean).join(' - ')}</span>
-            <span>
-              {log.target_count > 0 ? `☐ ${log.target_count} soru` : ''}
-              {log.topic_target_minutes > 0 ? ` ☐ ${log.topic_target_minutes} dk` : ''}
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function renderAddButton(day: number) {
-    return (
-      <button
-        type="button"
-        onClick={() => openAdd(day)}
-        title={`${DAYS_TR[day]} gününe görev ekle`}
-        className="no-print flex w-full items-center justify-center gap-1 self-start rounded-lg border border-dashed border-[var(--accent)]/50 bg-[var(--card)]/60 py-2 text-[12px] font-medium text-[var(--accent-dark)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-white"
-      >
-        <IconPlus size={13} /> Görev ekle
-      </button>
-    );
-  }
-
-  function renderAddForm(day: number) {
-    return (
-      <div className="no-print w-full space-y-1.5 rounded-lg border border-[var(--accent)]/40 bg-[var(--card)] p-2">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold text-[var(--ink)]">{DAYS_TR[day]} · yeni hedef</span>
-          <button onClick={() => setAddingDay(null)} className="text-[var(--ink-muted)] hover:text-[var(--ink)]">
-            <IconX size={13} />
-          </button>
-        </div>
-
-        <select value={draft.subject} onChange={(e) => setDraftSubject(e.target.value)} className={inputCls}>
-          {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
-          <option value={CUSTOM_SUBJECT}>✏️ Diğer (kendim yazayım)</option>
-        </select>
-
-        {draft.subject === CUSTOM_SUBJECT ? (
-          <>
-            <input
-              type="text"
-              autoFocus
-              value={draft.customSubject}
-              onChange={(e) => setDraft((d) => ({ ...d, customSubject: e.target.value }))}
-              placeholder="Görev adı (ör. Branş Denemesi, Ezber)"
-              className={inputCls}
-            />
-            <input
-              type="text"
-              value={draft.resource}
-              onChange={(e) => setDraft((d) => ({ ...d, resource: e.target.value }))}
-              placeholder="Kaynak (opsiyonel)"
-              className={inputCls}
-            />
-          </>
-        ) : (
-          <select value={draft.resource} onChange={(e) => setDraft((d) => ({ ...d, resource: e.target.value }))} className={inputCls}>
-            <option value="">Kaynak yok</option>
-            {(resourceMap[draft.subject] ?? []).map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
-        )}
-
-        <input
-          type="text"
-          value={draft.topic}
-          onChange={(e) => setDraft((d) => ({ ...d, topic: e.target.value }))}
-          placeholder="Konu (opsiyonel)"
-          className={inputCls}
-        />
-
-        <input
-          type="number"
-          value={draft.target}
-          onChange={(e) => setDraft((d) => ({ ...d, target: e.target.value }))}
-          placeholder="Soru sayısı"
-          className={inputCls}
-        />
-
-        <div className="grid grid-cols-2 gap-1.5">
-          <input
-            type="time"
-            value={draft.startTime}
-            onChange={(e) => setDraft((d) => ({ ...d, startTime: e.target.value }))}
-            title="Başlangıç saati"
-            className="min-w-0 rounded-md border border-[var(--border)] bg-[var(--card)] px-1.5 py-1 text-[12px] text-[var(--ink)] outline-none focus:border-[var(--accent)]"
-          />
-          <input
-            type="time"
-            value={draft.endTime}
-            onChange={(e) => setDraft((d) => ({ ...d, endTime: e.target.value }))}
-            title="Bitiş saati"
-            className="min-w-0 rounded-md border border-[var(--border)] bg-[var(--card)] px-1.5 py-1 text-[12px] text-[var(--ink)] outline-none focus:border-[var(--accent)]"
-          />
-        </div>
-
-        {draft.topic && (
-          <input
-            type="number"
-            value={draft.topicTarget}
-            onChange={(e) => setDraft((d) => ({ ...d, topicTarget: e.target.value }))}
-            placeholder="Çalışma süresi (dk)"
-            className={inputCls}
-          />
-        )}
-
-        <div>
-          <p className="mb-1 text-[10px] text-[var(--ink-muted)]">Şu günlere ekle:</p>
-          <div className="flex flex-wrap gap-1">
-            {DAYS_SHORT.map((d, i) => (
-              <button
-                type="button"
-                key={d}
-                onClick={() => toggleDraftDay(i)}
-                className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                  draft.days.includes(i)
-                    ? 'bg-[var(--accent)] text-white'
-                    : 'border border-[var(--border)] bg-[var(--card)] text-[var(--ink-muted)]'
-                }`}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {formError && <p className="rounded-md bg-red-50 px-2 py-1 text-[11px] text-red-600">{formError}</p>}
-
-        <button
-          onClick={addLogs}
-          disabled={adding}
-          className="w-full rounded-md bg-[var(--accent)] py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-60"
-        >
-          {adding ? 'Ekleniyor...' : `Ekle${draft.days.length > 1 ? ` (${draft.days.length} güne)` : ''}`}
-        </button>
-      </div>
-    );
-  }
-
-  if (loading) return <div className="p-8 text-[13px] text-[var(--ink-muted)]">Yükleniyor...</div>;
+  const doneCount = weekLogs.filter((l) => l.student_done).length;
 
   return (
-    <div className="print-root mx-auto w-full max-w-[1600px]">
-      <style jsx global>{`
-        .print-only { display: none; }
-        @media print {
-          @page { size: A4 landscape; margin: 8mm; }
-          html, body { background: white !important; }
-          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          aside, nav, header { display: none !important; }
-          .no-print { display: none !important; }
-          .print-only { display: flex !important; }
-          .print-root { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-          .print-board { min-width: 0 !important; gap: 4px !important; }
-          .day-cell { background: white !important; border-left: 1px solid #999; border-right: 1px solid #999; }
-          .day-head { background: #eee !important; }
-          .log-card:not(.colored) { break-inside: avoid; border: 1px solid #bbb !important; background: white !important; }
-          .log-card.colored { break-inside: avoid; border-top: 1px solid #bbb; border-right: 1px solid #bbb; border-bottom: 1px solid #bbb; }
-        }
-      `}</style>
-
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-[18px] font-semibold text-[var(--ink)]">
-            Haftalık Program{selectedStudent ? ` — ${selectedStudent.full_name}` : ''}
-          </h1>
-          {weekLabel && <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">{weekLabel}</p>}
-        </div>
-        <div className="no-print flex gap-2">
-          <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
-          >
-            <IconPrinter size={13} /> Yazdır
-          </button>
-          <button
-            onClick={toggleColorMode}
-            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
-          >
-            {colorMode ? '🎨 Renkli' : '⚫ Siyah-beyaz'}
-          </button>
-          {logs.length > 0 && (
-            <button
-              onClick={clearProgram}
-              className="flex items-center gap-1.5 rounded-lg border border-[var(--danger)]/40 px-3 py-1.5 text-[12px] text-[var(--danger)] hover:bg-[var(--paper)]"
-            >
-              <IconTrash size={13} /> Temizle
-            </button>
-          )}
-          
-          {logs.length > 0 && (
-            <button
-              onClick={openCopyModal}
-              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
-            >
-              <IconCopy size={13} /> Başka öğrenciye kopyala
-            </button>
-          )}
-        </div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-[17px] font-medium text-[var(--ink)]">Haftalık Takip</h1>
+        {weeks.length > 0 && (
+          <select value={week} onChange={(e) => { setWeek(e.target.value); resetEdit(); }} className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[13px]">
+            {weeks.map((w) => <option key={w.ws} value={w.ws}>{weekLabel(w.ws, w.we)}</option>)}
+          </select>
+        )}
       </div>
 
-      {copyOpen && (
-        <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !copying && setCopyOpen(false)}>
-          <div className="w-full max-w-md space-y-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h2 className="text-[14px] font-semibold text-[var(--ink)]">Programı başka öğrenciye kopyala</h2>
-              <button onClick={() => setCopyOpen(false)} className="text-[var(--ink-muted)] hover:text-[var(--ink)]">
-                <IconX size={16} />
-              </button>
-            </div>
+      {msg && <p className="rounded-lg border border-[var(--accent)]/20 bg-[var(--accent-soft)] px-3 py-2 text-[13px] text-[var(--accent-dark)]">{msg}</p>}
+      {openEdit && <p className="rounded-lg border border-[var(--track-lgs)]/25 bg-[var(--track-lgs-soft)] px-3 py-2 text-[13px] text-[var(--track-lgs)]">Bu hafta için değişiklik talebin koç onayını bekliyor.</p>}
+      {openNew && <p className="rounded-lg border border-[var(--track-lgs)]/25 bg-[var(--track-lgs-soft)] px-3 py-2 text-[13px] text-[var(--track-lgs)]">Yeni program talebin koçuna iletildi, hazırlanmasını bekliyor.</p>}
 
-            {copyDone ? (
-              <>
-                <p className="rounded-md bg-green-50 px-3 py-2 text-[12px] text-green-700">
-                  {copyDone.count} görev <b>{copyDone.name}</b> için {fmtDate(copyDone.weekStart)} – {fmtDate(copyDone.weekEnd)} haftasına kopyalandı.
-                </p>
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => { setCopyOpen(false); setCopyDone(null); }} className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink)] hover:bg-[var(--paper)]">
-                    Kapat
-                  </button>
-                  <button onClick={openCopiedStudent} className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--accent-dark)]">
-                    Öğrencinin programını aç
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-[12px] text-[var(--ink-muted)]">
-                  {selectedStudent?.full_name} öğrencisinin {weekLabel} haftasındaki {logs.length} görevi, seçtiğiniz öğrencinin ilk boş haftasına kopyalanır. Yapılan soru ve süre bilgileri sıfırlanır.
-                </p>
-                <select
-                  value={copyTargetId}
-                  onChange={(e) => setCopyTargetId(e.target.value)}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] text-[var(--ink)] focus:outline-none"
-                >
-                  {students.filter((s) => s.id !== selectedStudentId && matchesFilter(s)).map((s: any) => (
-                    <option key={s.id} value={s.id}>{s.full_name}{s.sinif_sube ? ` (${s.sinif_sube})` : ''}</option>
-                  ))}
-                </select>
-                {copyError && <p className="rounded-md bg-red-50 px-2 py-1 text-[11px] text-red-600">{copyError}</p>}
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => setCopyOpen(false)} disabled={copying} className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink)] hover:bg-[var(--paper)]">
-                    İptal
-                  </button>
-                  <button
-                    onClick={copyProgramToStudent}
-                    disabled={copying || !copyTargetId}
-                    className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-60"
-                  >
-                    {copying ? 'Kopyalanıyor...' : 'Kopyala'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {clipboardLog && (
-        <div className="no-print mb-3 flex items-center justify-between rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-2 text-[12px] text-[var(--ink)]">
-          <span>
-            📋 Kopyalanan: <b>{clipboardLog.subject}</b>{clipboardLog.topic ? ` · ${clipboardLog.topic}` : ''} —
-            gün başlığındaki <b>Yapıştır</b> butonuna basın veya fareyi günün üstüne getirip <b>Ctrl+V</b> yapın.
-          </span>
-          <button onClick={() => setClipboardLog(null)} className="ml-3 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[11px]">
-            İptal (Esc)
-          </button>
-        </div>
-      )}
-      {formError && addingDay === null && editingLogId === null && (
-        <p className="no-print mb-3 rounded-md bg-red-50 px-3 py-2 text-[12px] text-red-600">{formError}</p>
-      )}
-
-      {filteredStudents.length === 0 ? (
-        <p className="text-[13px] text-[var(--ink-muted)]">Henüz öğrenci eklenmemiş.</p>
+      {weeks.length === 0 ? (
+        <p className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--ink-muted)]">Koçun henüz bir haftalık program hazırlamamış.</p>
       ) : (
         <>
-          <div className="no-print mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-            {availableSiniflar.length > 0 && (
-              <select
-                value={sinifFilter}
-                onChange={(e) => setSinifFilter(e.target.value)}
-                className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] text-[var(--ink)] focus:outline-none sm:w-44"
-              >
-                <option value="">Tüm sınıflar</option>
-                {availableSiniflar.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            )}
-            {pickerStudents.length === 0 ? (
-              <p className="text-[13px] text-[var(--ink-muted)]">Bu sınıfta öğrenci yok.</p>
-            ) : (
-              <select
-                value={selectedStudentId}
-                onChange={(e) => setSelectedStudentId(e.target.value)}
-                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] font-medium text-[var(--ink)] focus:outline-none"
-              >
-                {pickerStudents.map((s: any) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
-              </select>
-            )}
-            {selectedStudent && (
-              <select
-                value={programOptions.some((p) => p.weekStart === activeProgramWeek) ? activeProgramWeek : ''}
-                onChange={(e) => handleProgramSelect(e.target.value)}
-                className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] text-[var(--ink)] focus:outline-none sm:w-72"
-              >
-                <option value="">Yeni program oluştur</option>
-                {programOptions.map((p) => (
-                  <option key={p.weekStart} value={p.weekStart}>
-                    {fmtDate(p.weekStart)} - {fmtDate(p.weekEnd)} ({p.count} görev)
-                  </option>
-                ))}
-              </select>
-            )}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[12px] text-[var(--ink-muted)]">{doneCount}/{weekLogs.length} görev tamamlandı</span>
+            <div className="ml-auto flex gap-2">
+              {!editMode && !openEdit && (
+                <button onClick={() => { setEditMode(true); setMsg(null); }} className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] text-[var(--ink)]">
+                  <IconPencil size={14} /> Programı düzenle
+                </button>
+              )}
+              {editMode && (
+                <button onClick={resetEdit} className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] text-[var(--ink)]"><IconX size={14} /> Vazgeç</button>
+              )}
+              {!openNew && !editMode && (
+                <button onClick={() => setShowNew((v) => !v)} className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] text-[var(--ink)]">Yeni program iste</button>
+              )}
+            </div>
           </div>
 
-          {selectedStudent && (
-            <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 print:border-none print:p-0">
-              {programPromptWeek && (
-                <div className="no-print flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-2">
-                  <div>
-                    <p className="text-[12px] font-semibold text-[var(--ink)]">Seçilen program yüklendi.</p>
-                    <p className="text-[11px] text-[var(--ink-muted)]">Bu kaydı doğrudan düzenleyebilir veya aynı planı yeni bir programa kopyalayabilirsiniz.</p>
+          {showNew && (
+            <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
+              <p className="text-[13px] text-[var(--ink)]">Koçundan yeni bir haftalık program hazırlamasını iste.</p>
+              <textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} rows={2} placeholder="İstersen not yaz (örn. gelecek hafta deneme var)" className="w-full rounded-lg border border-[var(--border)] bg-[var(--paper)] px-2 py-1.5 text-[13px]" />
+              <button disabled={busy} onClick={submitNew} className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-[12px] font-medium text-white disabled:opacity-50 hover:bg-[var(--accent-dark)]">Talebi gönder</button>
+            </div>
+          )}
+
+          {editMode && <p className="text-[12px] text-[var(--ink-muted)]">Değişiklikler hemen uygulanmaz; koçun onaylarsa programına işlenir.</p>}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {DAYS.map((dayName, d) => {
+              const dayLogs = weekLogs.filter((l) => l.plan_day === d);
+              const dayAdded = added.filter((a) => a.plan_day === d);
+              return (
+                <div key={d} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-2.5">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[13px] font-semibold text-[var(--ink)]">{dayName}</span>
+                    {editMode ? (
+                      <button onClick={() => setNewForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-[var(--accent-dark)]"><IconPlus size={12} /> Görev</button>
+                    ) : (
+                      <button onClick={() => setExtraForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-[var(--ink-muted)] hover:text-[var(--accent)]"><IconPlus size={12} /> Ekstra görev</button>
+                    )}
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setProgramPromptWeek('')}
-                      className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] font-semibold text-[var(--ink)] hover:bg-[var(--paper)]"
-                    >
-                      Programı Düzenle
-                    </button>
-                    <button
-                      onClick={rebuildProgramFromCurrent}
-                      disabled={creatingProgram || logs.length === 0}
-                      className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-60"
-                    >
-                      {creatingProgram ? 'Hazırlanıyor...' : 'Yeniden Yap'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="no-print flex items-center gap-3">
-                <span className="flex-shrink-0 text-[12px] text-[var(--ink-muted)]">
-                  Hafta başlangıcı <span className="text-[10px]">(değiştirmek için çift tıkla)</span>:
-                </span>
-                <div className="flex flex-wrap gap-1">
-                  {DAYS_SHORT.map((d, i) => (
-                    <button
-                      key={d}
-                      onDoubleClick={() => updateWeekStartDay(i)}
-                      title="Değiştirmek için çift tıklayın"
-                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
-                        (selectedStudent?.week_start_day ?? 0) === i
-                          ? 'bg-[var(--accent)] text-white'
-                          : 'bg-[var(--paper)] text-[var(--ink-muted)] hover:bg-[var(--border)]'
-                      }`}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
-                {subjects.length === 0 && (
-                  <span className="text-[12px] text-[var(--danger)]">Bu öğrencinin türüne ait ders/kaynak bulunamadı.</span>
-                )}
-              </div>
-
-              {/* 7 günlük tek ekran pano (satır bazlı ızgara: her günün n. görevi aynı satırda) */}
-              <div className="overflow-x-auto pb-1 print:overflow-visible">
-                <div className="print-board grid min-w-[1100px] grid-cols-7 gap-x-2">
-                  {/* Gün başlıkları (ortalı, ayrışan renk) */}
-                  {DAYS_TR.map((day, i) => (
-                    <div key={`h-${i}`} onMouseEnter={() => setHoverDay(i)}
-                      className="day-cell day-head flex flex-col items-center justify-center gap-1 rounded-t-lg bg-[var(--accent-soft)] px-1.5 py-2 text-center">
-                      <span className="text-[13px] font-semibold text-[var(--accent-dark)]">{day}</span>
-                      {clipboardLog && (
-                        <button onClick={() => pasteLog(i)} title={`${day} gününe yapıştır`}
-                          className="no-print rounded-md bg-[var(--accent)] px-2 py-0.5 text-[11px] font-medium text-white">
-                          Yapıştır
-                        </button>
-                      )}
-                    </div>
-                  ))}
-
-                  {/* Görev satırları: her günün son görevinin altında "Görev ekle" kutusu / formu */}
-                  {Array.from({ length: rowCount }).flatMap((_, r) =>
-                    DAYS_TR.map((_, i) => {
-                      const dayLogs = plannedLogsByDay[i];
-                      const log = dayLogs[r];
-                      const isAddSlot = r === dayLogs.length;
+                  <div className="space-y-2">
+                    {dayLogs.map((l) => {
+                      const done = !!l.student_done;
+                      const isRemoved = removed.has(l.id);
+                      const e = edits[l.id] ?? {};
+                      const time = [hhmm(l.start_time), hhmm(l.end_time)].filter(Boolean).join(' - ');
+                      if (editMode) {
+                        return (
+                          <div key={l.id} className={`space-y-1.5 rounded-lg border p-2 ${isRemoved ? 'border-[var(--danger)]/30 bg-[var(--danger-soft)] opacity-70' : 'border-[var(--border)]'}`}>
+                            <div className="flex items-start justify-between gap-1">
+                              <div className="min-w-0 text-[12px] font-medium text-[var(--ink)]">{l.subject}{l.topic && <span className="block text-[11px] font-normal text-[var(--ink-muted)]">{l.topic}</span>}</div>
+                              <button onClick={() => setRemoved((p) => { const n = new Set(p); if (n.has(l.id)) n.delete(l.id); else n.add(l.id); return n; })} title={isRemoved ? 'Geri al' : 'Kaldırılsın'} className="text-[var(--ink-muted)] hover:text-[var(--danger)]"><IconTrash size={14} /></button>
+                            </div>
+                            {!isRemoved && (
+                              <div className="flex flex-wrap gap-1">
+                                <select value={e.plan_day ?? l.plan_day} onChange={(ev) => setEdit(l.id, { plan_day: Number(ev.target.value) })} className={input}>{DAYS_SHORT.map((n, i) => <option key={i} value={i}>{n}</option>)}</select>
+                                <input type="time" value={e.start_time !== undefined ? e.start_time ?? '' : hhmm(l.start_time)} onChange={(ev) => setEdit(l.id, { start_time: ev.target.value || null })} className={`${input} w-[5rem]`} />
+                                <input type="time" value={e.end_time !== undefined ? e.end_time ?? '' : hhmm(l.end_time)} onChange={(ev) => setEdit(l.id, { end_time: ev.target.value || null })} className={`${input} w-[5rem]`} />
+                                <input type="number" min={0} value={e.target_count ?? l.target_count ?? 0} onChange={(ev) => setEdit(l.id, { target_count: Math.max(0, Number(ev.target.value) || 0) })} className={`${input} w-16`} title="Hedef soru" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
                       return (
-                        <div key={`c-${i}-${r}`} onMouseEnter={() => setHoverDay(i)}
-                          className={`day-cell flex bg-[var(--paper)] px-1.5 pb-1.5 ${r === rowCount - 1 ? 'rounded-b-lg' : ''}`}>
-                          {log
-                            ? renderLogCard(log)
-                            : isAddSlot
-                              ? (addingDay === i ? renderAddForm(i) : renderAddButton(i))
-                              : null}
+                        <div key={l.id} className={`relative flex w-full items-start gap-2 rounded-lg border p-2 text-left transition ${done ? 'border-[var(--success)]/40 bg-[var(--success-soft)]' : 'border-[var(--border)] bg-[var(--card)] hover:bg-[var(--paper)]'}`}>
+                          <button type="button" onClick={() => toggleDone(l)} className="flex flex-1 items-start gap-2 text-left">
+                            <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border ${done ? 'border-[var(--success)] bg-[var(--success)] text-white' : 'border-[var(--ink-muted)]/40 text-transparent'}`}><IconCheck size={13} /></span>
+                            <span className="min-w-0 flex-1">
+                              <span className={`block text-[13px] font-medium ${done ? 'text-[var(--success)]' : 'text-[var(--ink)]'}`}>
+                                {l.subject}{l.target_count > 0 && ` · ${l.target_count} soru`}
+                                {l.student_added && <span className="ml-1.5 rounded-full bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent-dark)]">Ekstra</span>}
+                              </span>
+                              {l.topic && <span className="block text-[11px] text-[var(--ink-muted)]">{l.topic}</span>}
+                              {l.resource_name && <span className="block text-[11px] text-[var(--ink-muted)]">{l.resource_name}</span>}
+                              {time && <span className="block text-[11px] text-[var(--ink-muted)]">{time}</span>}
+                            </span>
+                          </button>
+                          {l.student_added && (
+                            <button type="button" onClick={() => removeExtraTask(l.id)} title="Sil" className="flex-shrink-0 text-[var(--ink-muted)] hover:text-[var(--danger)]"><IconTrash size={14} /></button>
+                          )}
                         </div>
                       );
-                    })
-                  )}
-                </div>
-              </div>
-
-              {unscheduledLogs.length > 0 && (
-                <div className="rounded-lg bg-[var(--paper)] p-2">
-                  <p className="mb-2 text-[11px] font-semibold text-[var(--ink-muted)]">Günü seçilmemiş hedefler</p>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                    {unscheduledLogs.map(renderLogCard)}
+                    })}
+                    {dayAdded.map((a, i) => (
+                      <div key={i} className="flex items-center justify-between rounded-lg border border-dashed border-[var(--accent)]/40 bg-[var(--accent-soft)] p-2 text-[12px] text-[var(--accent-dark)]">
+                        <span>+ {a.subject}{a.topic && ` / ${a.topic}`}{a.target_count > 0 && ` · ${a.target_count} soru`}</span>
+                        <button onClick={() => setAdded((p) => p.filter((x) => x !== a))}><IconX size={13} /></button>
+                      </div>
+                    ))}
+                    {newForm && newForm.plan_day === d && (
+                      <div className="space-y-1.5 rounded-lg border border-[var(--accent)]/40 p-2">
+                        <input list="ders-listesi" value={newForm.subject} onChange={(e) => setNewForm({ ...newForm, subject: e.target.value })} placeholder="Ders" className={`${input} w-full`} />
+                        <input value={newForm.topic} onChange={(e) => setNewForm({ ...newForm, topic: e.target.value })} placeholder="Konu (isteğe bağlı)" className={`${input} w-full`} />
+                        <div className="flex flex-wrap gap-1">
+                          <input type="number" min={0} value={newForm.target_count} onChange={(e) => setNewForm({ ...newForm, target_count: Math.max(0, Number(e.target.value) || 0) })} className={`${input} w-16`} title="Hedef soru" />
+                          <input type="time" value={newForm.start_time} onChange={(e) => setNewForm({ ...newForm, start_time: e.target.value })} className={`${input} w-[5rem]`} />
+                          <input type="time" value={newForm.end_time} onChange={(e) => setNewForm({ ...newForm, end_time: e.target.value })} className={`${input} w-[5rem]`} />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={submitAddForm} className="rounded-md bg-[var(--accent)] px-2.5 py-1 text-[12px] text-white hover:bg-[var(--accent-dark)]">Ekle</button>
+                          <button onClick={() => setNewForm(null)} className="rounded-md border border-[var(--border)] px-2.5 py-1 text-[12px] text-[var(--ink-muted)]">İptal</button>
+                        </div>
+                      </div>
+                    )}
+                    {extraForm && extraForm.plan_day === d && (
+                      <div className="space-y-1.5 rounded-lg border border-[var(--border)] bg-[var(--paper)] p-2">
+                        <p className="text-[11px] text-[var(--ink-muted)]">Koçunun vermediği, kendi yaptığın bir görev. Hemen eklenir, onay gerekmez.</p>
+                        <input list="ders-listesi" value={extraForm.subject} onChange={(e) => setExtraForm({ ...extraForm, subject: e.target.value })} placeholder="Ders" className={`${input} w-full`} />
+                        <input value={extraForm.topic} onChange={(e) => setExtraForm({ ...extraForm, topic: e.target.value })} placeholder="Konu (isteğe bağlı)" className={`${input} w-full`} />
+                        <div className="flex flex-wrap gap-1">
+                          <input type="number" min={0} value={extraForm.target_count} onChange={(e) => setExtraForm({ ...extraForm, target_count: Math.max(0, Number(e.target.value) || 0) })} className={`${input} w-16`} title="Soru sayısı" />
+                          <input type="time" value={extraForm.start_time} onChange={(e) => setExtraForm({ ...extraForm, start_time: e.target.value })} className={`${input} w-[5rem]`} />
+                          <input type="time" value={extraForm.end_time} onChange={(e) => setExtraForm({ ...extraForm, end_time: e.target.value })} className={`${input} w-[5rem]`} />
+                        </div>
+                        <div className="flex gap-2">
+                          <button disabled={extraBusy} onClick={submitExtraTask} className="rounded-md bg-[var(--accent)] px-2.5 py-1 text-[12px] text-white disabled:opacity-50">Ekle</button>
+                          <button onClick={() => setExtraForm(null)} className="rounded-md border border-[var(--border)] px-2.5 py-1 text-[12px] text-[var(--ink-muted)]">İptal</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
+              );
+            })}
+          </div>
+          <datalist id="ders-listesi">{subjectOptions.map((s) => <option key={s} value={s} />)}</datalist>
 
-              <div className="no-print flex justify-end border-t border-[var(--border)] pt-3">
-                <button
-                  onClick={finishProgram}
-                  disabled={logs.length === 0}
-                  className="rounded-lg bg-[var(--accent)] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-50"
-                >
-                  Kaydet ve öğrenci sayfasına git
-                </button>
-              </div>
+          {editMode && (
+            <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
+              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Koçuna not (örn. Cumartesi dersim var, o güne az görev koyalım)" className="w-full rounded-lg border border-[var(--border)] bg-[var(--paper)] px-2 py-1.5 text-[13px]" />
+              <button disabled={busy} onClick={submitEdit} className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-[13px] font-medium text-white disabled:opacity-50 hover:bg-[var(--accent-dark)]">Koçuma onaya gönder</button>
             </div>
           )}
         </>
+      )}
+
+      {requests.length > 0 && (
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
+          <p className="mb-1 text-[12px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Taleplerim</p>
+          <ul className="divide-y divide-[var(--border)]">
+            {requests.map((r) => (
+              <li key={r.id} className="flex items-center justify-between py-1.5 text-[12px]">
+                <span className="text-[var(--ink)]">
+                  {r.kind === 'yeni_program' ? 'Yeni program' : `Değişiklik (${weekLabel(r.week_start)})`} · {new Date(r.created_at).toLocaleDateString('tr-TR')}
+                </span>
+                <span className={r.status === 'onaylandi' ? 'text-[var(--success)]' : r.status === 'reddedildi' ? 'text-[var(--danger)]' : 'text-[var(--track-lgs)]'}>
+                  {r.kind === 'yeni_program' && r.status === 'onaylandi' ? 'Hazırlandı' : STATUS_TEXT[r.status]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
