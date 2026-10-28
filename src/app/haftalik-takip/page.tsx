@@ -40,7 +40,7 @@ const weekLabel = (ws: string, we?: string | null) => {
 
 
 
-export function HaftalikClient({ studentId, coachId, resources, initialLogs, initialRequests }: {
+export default function HaftalikClient({ studentId, coachId, resources, initialLogs, initialRequests }: {
 
   studentId: string; coachId: string; resources: Record<string, string[]>; initialLogs: any[]; initialRequests: any[];
 
