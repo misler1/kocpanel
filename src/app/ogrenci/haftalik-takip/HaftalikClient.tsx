@@ -19,8 +19,8 @@ const weekLabel = (ws: string, we?: string | null) => {
   return we ? `${f(ws)} – ${f(we)}` : f(ws);
 };
 
-export function HaftalikClient({ studentId, coachId, resources, initialLogs, initialRequests }: {
-  studentId: string; coachId: string; resources: Record<string, string[]>; initialLogs: any[]; initialRequests: any[];
+export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs = [], initialRequests = [] }: {
+  studentId: string; coachId: string; resources?: Record<string, string[]>; initialLogs?: any[]; initialRequests?: any[];
 }) {
   const supabase = createClient();
   const [logs, setLogs] = useState<any[]>(initialLogs);
@@ -134,6 +134,7 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
       student_id: studentId, subject: extraForm.subject.trim(), topic: extraForm.topic.trim() || null,
       week_start: week, week_end: currentWeekEnd, plan_day: extraForm.plan_day,
       target_count: extraForm.target_count, start_time: extraForm.start_time || null, end_time: extraForm.end_time || null,
+      student_added: true,
     }).select().single();
     setExtraBusy(false);
     if (error) { setMsg('Görev eklenemedi: ' + error.message); return; }
@@ -203,17 +204,11 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
               return (
                 <div key={d} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-2.5">
                   <div className="mb-2 flex items-center justify-between">
-<<<<<<< HEAD
                     <span className="text-[13px] font-semibold text-[var(--ink)]">{dayName}</span>
-                    {editMode && (
-                      <button onClick={() => setNewForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-[var(--accent-dark)]"><IconPlus size={12} /> Görev</button>
-=======
-                    <span className="text-[13px] font-semibold text-gray-800">{dayName}</span>
                     {editMode ? (
-                      <button onClick={() => setNewForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-blue-600"><IconPlus size={12} /> Görev</button>
+                      <button onClick={() => setNewForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-[var(--accent-dark)]"><IconPlus size={12} /> Görev</button>
                     ) : (
-                      <button onClick={() => setExtraForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-gray-500 hover:text-blue-600"><IconPlus size={12} /> Ekstra görev</button>
->>>>>>> 77c422c9b9023d3deb2295dd95fcf9fd3c8f1fb9
+                      <button onClick={() => setExtraForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-[var(--ink-muted)] hover:text-[var(--accent-dark)]"><IconPlus size={12} /> Ekstra görev</button>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -241,36 +236,23 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
                         );
                       }
                       return (
-<<<<<<< HEAD
-                        <button key={l.id} type="button" onClick={() => toggleDone(l)}
-                          className={`flex w-full items-start gap-2 rounded-lg border p-2 text-left transition ${done ? 'border-[var(--success)]/40 bg-[var(--success-soft)]' : 'border-[var(--border)] bg-[var(--card)] hover:bg-[var(--paper)]'}`}>
-                          <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border ${done ? 'border-[var(--success)] bg-[var(--success)] text-white' : 'border-[var(--ink-muted)]/40 text-transparent'}`}><IconCheck size={13} /></span>
-                          <span className="min-w-0 flex-1">
-                            <span className={`block text-[13px] font-medium ${done ? 'text-[var(--success)]' : 'text-[var(--ink)]'}`}>{l.subject}{l.target_count > 0 && ` · ${l.target_count} soru`}</span>
-                            {l.topic && <span className="block text-[11px] text-[var(--ink-muted)]">{l.topic}</span>}
-                            {l.resource_name && <span className="block text-[11px] text-[var(--ink-muted)]">{l.resource_name}</span>}
-                            {time && <span className="block text-[11px] text-[var(--ink-muted)]">{time}</span>}
-                          </span>
-                        </button>
-=======
-                        <div key={l.id} className={`relative flex w-full items-start gap-2 rounded-lg border p-2 text-left transition ${done ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                        <div key={l.id} className={`relative flex w-full items-start gap-2 rounded-lg border p-2 text-left transition ${done ? 'border-[var(--success)]/40 bg-[var(--success-soft)]' : 'border-[var(--border)] bg-[var(--card)] hover:bg-[var(--paper)]'}`}>
                           <button type="button" onClick={() => toggleDone(l)} className="flex flex-1 items-start gap-2 text-left">
-                            <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border ${done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-300 text-transparent'}`}><IconCheck size={13} /></span>
+                            <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border ${done ? 'border-[var(--success)] bg-[var(--success)] text-white' : 'border-[var(--ink-muted)]/40 text-transparent'}`}><IconCheck size={13} /></span>
                             <span className="min-w-0 flex-1">
-                              <span className={`block text-[13px] font-medium ${done ? 'text-emerald-800' : 'text-gray-900'}`}>
+                              <span className={`block text-[13px] font-medium ${done ? 'text-[var(--success)]' : 'text-[var(--ink)]'}`}>
                                 {l.subject}{l.target_count > 0 && ` · ${l.target_count} soru`}
-                                {l.student_added && <span className="ml-1.5 rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">Ekstra</span>}
+                                {l.student_added && <span className="ml-1.5 rounded-full bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent-dark)]">Ekstra</span>}
                               </span>
-                              {l.topic && <span className="block text-[11px] text-gray-500">{l.topic}</span>}
-                              {l.resource_name && <span className="block text-[11px] text-gray-400">{l.resource_name}</span>}
-                              {time && <span className="block text-[11px] text-gray-400">{time}</span>}
+                              {l.topic && <span className="block text-[11px] text-[var(--ink-muted)]">{l.topic}</span>}
+                              {l.resource_name && <span className="block text-[11px] text-[var(--ink-muted)]">{l.resource_name}</span>}
+                              {time && <span className="block text-[11px] text-[var(--ink-muted)]">{time}</span>}
                             </span>
                           </button>
                           {l.student_added && (
-                            <button type="button" onClick={() => removeExtraTask(l.id)} title="Sil" className="flex-shrink-0 text-gray-300 hover:text-red-500"><IconTrash size={14} /></button>
+                            <button type="button" onClick={() => removeExtraTask(l.id)} title="Sil" className="flex-shrink-0 text-[var(--ink-muted)] hover:text-[var(--danger)]"><IconTrash size={14} /></button>
                           )}
                         </div>
->>>>>>> 77c422c9b9023d3deb2295dd95fcf9fd3c8f1fb9
                       );
                     })}
                     {dayAdded.map((a, i) => (
@@ -295,8 +277,8 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
                       </div>
                     )}
                     {extraForm && extraForm.plan_day === d && (
-                      <div className="space-y-1.5 rounded-lg border border-gray-300 bg-gray-50 p-2">
-                        <p className="text-[11px] text-gray-500">Koçunun vermediği, kendi yaptığın bir görev. Hemen eklenir, onay gerekmez.</p>
+                      <div className="space-y-1.5 rounded-lg border border-[var(--border)] bg-[var(--paper)] p-2">
+                        <p className="text-[11px] text-[var(--ink-muted)]">Koçunun vermediği, kendi yaptığın bir görev. Hemen eklenir, onay gerekmez.</p>
                         <input list="ders-listesi" value={extraForm.subject} onChange={(e) => setExtraForm({ ...extraForm, subject: e.target.value })} placeholder="Ders" className={`${input} w-full`} />
                         <input value={extraForm.topic} onChange={(e) => setExtraForm({ ...extraForm, topic: e.target.value })} placeholder="Konu (isteğe bağlı)" className={`${input} w-full`} />
                         <div className="flex flex-wrap gap-1">
@@ -305,8 +287,8 @@ export function HaftalikClient({ studentId, coachId, resources, initialLogs, ini
                           <input type="time" value={extraForm.end_time} onChange={(e) => setExtraForm({ ...extraForm, end_time: e.target.value })} className={`${input} w-[5rem]`} />
                         </div>
                         <div className="flex gap-2">
-                          <button disabled={extraBusy} onClick={submitExtraTask} className="rounded-md bg-gray-800 px-2.5 py-1 text-[12px] text-white disabled:opacity-50">Ekle</button>
-                          <button onClick={() => setExtraForm(null)} className="rounded-md border border-gray-200 px-2.5 py-1 text-[12px] text-gray-600">İptal</button>
+                          <button disabled={extraBusy} onClick={submitExtraTask} className="rounded-md bg-[var(--accent)] px-2.5 py-1 text-[12px] text-white disabled:opacity-50 hover:bg-[var(--accent-dark)]">Ekle</button>
+                          <button onClick={() => setExtraForm(null)} className="rounded-md border border-[var(--border)] px-2.5 py-1 text-[12px] text-[var(--ink-muted)]">İptal</button>
                         </div>
                       </div>
                     )}
