@@ -2,10 +2,21 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { phoneKey, studentEmailFromPhone } from '@/lib/student-account';
+import { clientIp, looksLikeBot, rateLimit } from '@/lib/spam-guard';
+
+// Sistem genelinde bu süre içinde en fazla bu kadar yeni başvuru kabul edilir (bot saldırısına karşı tavan)
+const GLOBAL_WINDOW_MIN = 10;
+const GLOBAL_MAX = 20;
 
 // Herkese açık: öğrenci kendi kendine kayıt olur. Hesap oluşur ama ONAYSIZ başlar (is_approved=false).
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
+
+  if (looksLikeBot(body)) return bad('Kayıt gönderilemedi. Sayfayı yenileyip tekrar deneyin.');
+  if (!rateLimit(`kayit:${clientIp(request)}`, 3, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Çok fazla deneme yapıldı. Lütfen bir saat sonra tekrar deneyin.' }, { status: 429 });
+  }
+
   const fullName = String(body.fullName ?? '').trim().replace(/\s+/g, ' ');
   const phone = String(body.phone ?? '').trim();
   const birthDate = String(body.birthDate ?? '').trim();
@@ -21,6 +32,13 @@ export async function POST(request: Request) {
   if (password.length < 8) return bad('Şifre en az 8 karakter olmalı.');
 
   const admin = createAdminClient();
+
+  const since = new Date(Date.now() - GLOBAL_WINDOW_MIN * 60 * 1000).toISOString();
+  const { count: recentCount } = await (admin as any)
+    .from('student_registrations').select('id', { count: 'exact', head: true }).gte('created_at', since);
+  if ((recentCount ?? 0) >= GLOBAL_MAX) {
+    return NextResponse.json({ error: 'Şu an çok yoğun kayıt var. Lütfen birkaç dakika sonra tekrar deneyin.' }, { status: 429 });
+  }
 
   if (coachId) {
     const { data: coach } = await (admin as any)

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { studentEmailFromPhone } from '@/lib/student-account';
+import { HONEYPOT_FIELD } from '@/lib/spam-guard';
 
 export default function OgrenciKayitPage() {
   const router = useRouter();
@@ -18,6 +19,8 @@ export default function OgrenciKayitPage() {
   const [coachId, setCoachId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [honeypot, setHoneypot] = useState('');
+  const [formStartedAt] = useState(() => Date.now());
 
   useEffect(() => {
     fetch('/api/ogrenci/kocler').then((r) => r.json()).then((j) => setCoaches(j.coaches ?? [])).catch(() => {});
@@ -31,7 +34,7 @@ export default function OgrenciKayitPage() {
     const res = await fetch('/api/ogrenci/kayit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName, phone, birthDate, password, coachId: coachId || null }),
+      body: JSON.stringify({ fullName, phone, birthDate, password, coachId: coachId || null, [HONEYPOT_FIELD]: honeypot, formStartedAt }),
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -58,6 +61,9 @@ export default function OgrenciKayitPage() {
         <p className="mb-6 text-sm text-[var(--ink-muted)]">Kaydın yönetici onayından sonra aktif olur.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Bot tuzağı: ekranda ve klavye gezintisinde görünmez, yalnızca botlar doldurur */}
+          <input type="text" name={HONEYPOT_FIELD} value={honeypot} onChange={(e) => setHoneypot(e.target.value)}
+            tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] h-px w-px opacity-0" />
           <div>
             <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Ad Soyad</label>
             <input required value={fullName} onChange={(e) => setFullName(e.target.value)} className={input} />
