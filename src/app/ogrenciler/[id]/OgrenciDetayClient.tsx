@@ -549,7 +549,6 @@ export function GunlukAccordion({ studentId }: { studentId: string }) {
                   }`}
                 >
                   {d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                  {log.source === 'whatsapp' && <span className="ml-1 text-[10px]">📱</span>}
                 </button>
               );
             })}

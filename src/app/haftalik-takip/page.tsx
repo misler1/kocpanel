@@ -1102,7 +1102,7 @@ export default function HaftalikTakipPage() {
             onClick={syncFromDailyLogs}
             className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
           >
-            🔄 WhatsApp&apos;tan güncelle
+            🔄 Günlükten güncelle
           </button>
           {logs.length > 0 && (
             <button
