@@ -1,4 +1,4 @@
-import { Fraunces, Inter } from 'next/font/google';
+import { Fraunces, Inter, Nunito } from 'next/font/google';
 
 export const fraunces = Fraunces({
   subsets: ['latin-ext'],
@@ -9,4 +9,9 @@ export const fraunces = Fraunces({
 export const inter = Inter({
   subsets: ['latin-ext'],
   variable: '--font-body',
+});
+// Öğrenci paneli: yuvarlak hatlı, samimi bir yazı tipi
+export const nunito = Nunito({
+  subsets: ['latin-ext'],
+  variable: '--font-student',
 });

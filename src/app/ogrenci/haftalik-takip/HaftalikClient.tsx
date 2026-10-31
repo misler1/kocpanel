@@ -4,11 +4,15 @@
 import { useMemo, useState } from 'react';
 import { IconCheck, IconPlus, IconTrash, IconPencil, IconX } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
+import { subjectEmoji, DAY_STYLES, cheer } from '../studentUi';
 
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 const STATUS_TEXT: Record<string, string> = { bekliyor: 'Koç onayı bekliyor', onaylandi: 'Onaylandı', reddedildi: 'Reddedildi' };
-const input = 'rounded-md border border-[var(--border)] bg-[var(--card)] px-1.5 py-1 text-[12px] focus:border-[var(--accent)] focus:outline-none';
+const input = 'rounded-xl border-2 border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-[13px] font-semibold focus:border-[var(--accent)] focus:outline-none';
+const btnGhost = 'flex items-center gap-1.5 rounded-full border-2 border-[var(--border)] bg-[var(--card)] px-3.5 py-2 text-[13px] font-bold text-[var(--ink)] transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--accent-soft)]';
+const btnPrimary = 'rounded-full bg-[var(--accent)] px-4 py-2 text-[13px] font-bold text-white shadow-sm transition-colors hover:bg-[var(--accent-dark)] disabled:opacity-50';
+const btnCancel = 'rounded-full border-2 border-[var(--border)] px-4 py-2 text-[13px] font-bold text-[var(--ink-muted)]';
 
 type Edits = Record<string, { plan_day?: number; start_time?: string | null; end_time?: string | null; target_count?: number }>;
 type Added = { subject: string; topic: string; plan_day: number; target_count: number; start_time: string; end_time: string };
@@ -149,149 +153,179 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   }
 
   const doneCount = weekLogs.filter((l) => l.student_done).length;
+  const weekPct = weekLogs.length > 0 ? Math.round((doneCount / weekLogs.length) * 100) : 0;
+  const isCurrentWeek = !!week && week <= today && (!currentWeekEnd || today <= currentWeekEnd);
+  const todayIndex = (new Date().getDay() + 6) % 7;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-[17px] font-medium text-[var(--ink)]">Haftalık Takip</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-[24px] font-extrabold tracking-tight text-[var(--ink)]">🗓️ Haftalık Takip</h1>
+          <p className="text-[13px] font-medium text-[var(--ink-muted)]">Bitirdiğin görevlere dokun, işaretlensin!</p>
+        </div>
         {weeks.length > 0 && (
-          <select value={week} onChange={(e) => { setWeek(e.target.value); resetEdit(); }} className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[13px]">
+          <select value={week} onChange={(e) => { setWeek(e.target.value); resetEdit(); }} className="rounded-full border-2 border-[var(--border)] bg-[var(--card)] px-3.5 py-2 text-[13px] font-bold text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none">
             {weeks.map((w) => <option key={w.ws} value={w.ws}>{weekLabel(w.ws, w.we)}</option>)}
           </select>
         )}
       </div>
 
-      {msg && <p className="rounded-lg border border-[var(--accent)]/20 bg-[var(--accent-soft)] px-3 py-2 text-[13px] text-[var(--accent-dark)]">{msg}</p>}
-      {openEdit && <p className="rounded-lg border border-[var(--track-lgs)]/25 bg-[var(--track-lgs-soft)] px-3 py-2 text-[13px] text-[var(--track-lgs)]">Bu hafta için değişiklik talebin koç onayını bekliyor.</p>}
-      {openNew && <p className="rounded-lg border border-[var(--track-lgs)]/25 bg-[var(--track-lgs-soft)] px-3 py-2 text-[13px] text-[var(--track-lgs)]">Yeni program talebin koçuna iletildi, hazırlanmasını bekliyor.</p>}
+      {msg && <p className="rounded-2xl border-2 border-[var(--accent)]/20 bg-[var(--accent-soft)] px-4 py-2.5 text-[13px] font-bold text-[var(--accent-dark)]">💬 {msg}</p>}
+      {openEdit && <p className="rounded-2xl border-2 border-[var(--sun)]/30 bg-[var(--sun-soft)] px-4 py-2.5 text-[13px] font-bold text-[#B76E00]">⏳ Bu hafta için değişiklik talebin koç onayını bekliyor.</p>}
+      {openNew && <p className="rounded-2xl border-2 border-[var(--sun)]/30 bg-[var(--sun-soft)] px-4 py-2.5 text-[13px] font-bold text-[#B76E00]">⏳ Yeni program talebin koçuna iletildi, hazırlanmasını bekliyor.</p>}
 
       {weeks.length === 0 ? (
-        <p className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--ink-muted)]">Koçun henüz bir haftalık program hazırlamamış.</p>
+        <div className="rounded-[28px] border-2 border-[var(--border)] bg-[var(--card)] p-8 text-center">
+          <div className="mb-2 text-[48px]">📭</div>
+          <p className="text-[15px] font-bold text-[var(--ink)]">Koçun henüz bir haftalık program hazırlamamış.</p>
+        </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[12px] text-[var(--ink-muted)]">{doneCount}/{weekLogs.length} görev tamamlandı</span>
-            <div className="ml-auto flex gap-2">
+          <div className="rounded-[24px] border-2 border-[var(--border)] bg-[var(--card)] p-4">
+            <div className="mb-1.5 flex items-center justify-between gap-2 text-[13px] font-bold">
+              <span className="text-[var(--ink)]">{cheer(weekPct, weekLogs.length)}</span>
+              <span className="flex-shrink-0 text-[var(--accent-dark)]">{doneCount}/{weekLogs.length} görev</span>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-[var(--accent-soft)]">
+              <div className="h-full rounded-full bg-gradient-to-r from-[#2F9BEA] via-[#8B5CF6] to-[#EC4899] transition-all duration-500" style={{ width: `${weekPct}%` }} />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
               {!editMode && !openEdit && (
-                <button onClick={() => { setEditMode(true); setMsg(null); }} className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] text-[var(--ink)]">
-                  <IconPencil size={14} /> Programı düzenle
+                <button onClick={() => { setEditMode(true); setMsg(null); }} className={btnGhost}>
+                  <IconPencil size={15} /> Programı düzenle
                 </button>
               )}
               {editMode && (
-                <button onClick={resetEdit} className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] text-[var(--ink)]"><IconX size={14} /> Vazgeç</button>
+                <button onClick={resetEdit} className={btnGhost}><IconX size={15} /> Vazgeç</button>
               )}
               {!openNew && !editMode && (
-                <button onClick={() => setShowNew((v) => !v)} className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] text-[var(--ink)]">Yeni program iste</button>
+                <button onClick={() => setShowNew((v) => !v)} className={btnGhost}>✨ Yeni program iste</button>
               )}
             </div>
           </div>
 
           {showNew && (
-            <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
-              <p className="text-[13px] text-[var(--ink)]">Koçundan yeni bir haftalık program hazırlamasını iste.</p>
-              <textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} rows={2} placeholder="İstersen not yaz (örn. gelecek hafta deneme var)" className="w-full rounded-lg border border-[var(--border)] bg-[var(--paper)] px-2 py-1.5 text-[13px]" />
-              <button disabled={busy} onClick={submitNew} className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-[12px] font-medium text-white disabled:opacity-50 hover:bg-[var(--accent-dark)]">Talebi gönder</button>
+            <div className="space-y-2.5 rounded-[24px] border-2 border-[var(--accent)]/30 bg-[var(--card)] p-4">
+              <p className="text-[14px] font-bold text-[var(--ink)]">Koçundan yeni bir haftalık program hazırlamasını iste.</p>
+              <textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} rows={2} placeholder="İstersen not yaz (örn. gelecek hafta deneme var)" className="w-full rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] px-3 py-2 text-[14px] focus:border-[var(--accent)] focus:outline-none" />
+              <button disabled={busy} onClick={submitNew} className={btnPrimary}>Talebi gönder 🚀</button>
             </div>
           )}
 
-          {editMode && <p className="text-[12px] text-[var(--ink-muted)]">Değişiklikler hemen uygulanmaz; koçun onaylarsa programına işlenir.</p>}
+          {editMode && <p className="rounded-2xl bg-[var(--sky-soft)] px-4 py-2.5 text-[13px] font-semibold text-[#1F78BD]">✏️ Düzenleme modundasın. Değişiklikler hemen uygulanmaz; koçun onaylarsa programına işlenir.</p>}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {DAYS.map((dayName, d) => {
               const dayLogs = weekLogs.filter((l) => l.plan_day === d);
               const dayAdded = added.filter((a) => a.plan_day === d);
+              const style = DAY_STYLES[d];
+              const isToday = isCurrentWeek && d === todayIndex;
+              const dayDone = dayLogs.filter((l) => l.student_done).length;
+              const allDone = dayLogs.length > 0 && dayDone === dayLogs.length;
+              const formOpen = newForm?.plan_day === d || extraForm?.plan_day === d;
               // Boş günler de gösterilir: öğrenci o güne ekstra görev ekleyebilmeli.
               return (
-                <div key={d} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-2.5">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[13px] font-semibold text-[var(--ink)]">{dayName}</span>
-                    {editMode ? (
-                      <button onClick={() => setNewForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-[var(--accent-dark)]"><IconPlus size={12} /> Görev</button>
-                    ) : (
-                      <button onClick={() => setExtraForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex items-center gap-0.5 text-[11px] text-[var(--ink-muted)] hover:text-[var(--accent-dark)]"><IconPlus size={12} /> Ekstra görev</button>
-                    )}
+                <div key={d} className={`overflow-hidden rounded-[24px] border-2 bg-[var(--card)] ${isToday ? 'border-[var(--accent)] shadow-[0_6px_20px_rgba(139,92,246,0.18)] sm:col-span-2' : 'border-[var(--border)]'}`}>
+                  <div className={`flex items-center justify-between gap-2 px-3.5 py-2.5 ${style.soft}`}>
+                    <span className={`flex items-center gap-2 text-[15px] font-extrabold ${style.text}`}>
+                      <span className="text-[18px]">{allDone ? '🏅' : style.emoji}</span>
+                      {dayName}
+                      {isToday && <span className={`rounded-full ${style.bar} px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white`}>Bugün</span>}
+                    </span>
+                    {dayLogs.length > 0 && <span className={`text-[12px] font-bold ${style.text}`}>{dayDone}/{dayLogs.length}</span>}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 p-3">
+                    {dayLogs.length === 0 && dayAdded.length === 0 && !formOpen && (
+                      <p className="py-1 text-center text-[12.5px] font-semibold text-[var(--ink-muted)]">Görev yok, dinlenme günü 😌</p>
+                    )}
                     {dayLogs.map((l) => {
                       const done = !!l.student_done;
                       const isRemoved = removed.has(l.id);
                       const e = edits[l.id] ?? {};
                       const time = [hhmm(l.start_time), hhmm(l.end_time)].filter(Boolean).join(' - ');
+                      const detail = [l.topic, l.target_count > 0 ? `${l.target_count} soru` : null].filter(Boolean).join(' · ');
                       if (editMode) {
                         return (
-                          <div key={l.id} className={`space-y-1.5 rounded-lg border p-2 ${isRemoved ? 'border-[var(--danger)]/30 bg-[var(--danger-soft)] opacity-70' : 'border-[var(--border)]'}`}>
+                          <div key={l.id} className={`space-y-2 rounded-2xl border-2 p-2.5 ${isRemoved ? 'border-[var(--danger)]/30 bg-[var(--danger-soft)] opacity-70' : 'border-[var(--border)] bg-[var(--paper)]'}`}>
                             <div className="flex items-start justify-between gap-1">
-                              <div className="min-w-0 text-[12px] font-medium text-[var(--ink)]">{l.subject}{l.topic && <span className="block text-[11px] font-normal text-[var(--ink-muted)]">{l.topic}</span>}</div>
-                              <button onClick={() => setRemoved((p) => { const n = new Set(p); if (n.has(l.id)) n.delete(l.id); else n.add(l.id); return n; })} title={isRemoved ? 'Geri al' : 'Kaldırılsın'} className="text-[var(--ink-muted)] hover:text-[var(--danger)]"><IconTrash size={14} /></button>
+                              <div className="min-w-0 text-[13.5px] font-bold text-[var(--ink)]">{subjectEmoji(l.subject)} {l.subject}{l.topic && <span className="block text-[12px] font-medium text-[var(--ink-muted)]">{l.topic}</span>}</div>
+                              <button onClick={() => setRemoved((p) => { const n = new Set(p); if (n.has(l.id)) n.delete(l.id); else n.add(l.id); return n; })} title={isRemoved ? 'Geri al' : 'Kaldırılsın'} className="rounded-full p-1.5 text-[var(--ink-muted)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"><IconTrash size={16} /></button>
                             </div>
                             {!isRemoved && (
-                              <div className="flex flex-wrap gap-1">
+                              <div className="flex flex-wrap gap-1.5">
                                 <select value={e.plan_day ?? l.plan_day} onChange={(ev) => setEdit(l.id, { plan_day: Number(ev.target.value) })} className={input}>{DAYS_SHORT.map((n, i) => <option key={i} value={i}>{n}</option>)}</select>
-                                <input type="time" value={e.start_time !== undefined ? e.start_time ?? '' : hhmm(l.start_time)} onChange={(ev) => setEdit(l.id, { start_time: ev.target.value || null })} className={`${input} w-[5rem]`} />
-                                <input type="time" value={e.end_time !== undefined ? e.end_time ?? '' : hhmm(l.end_time)} onChange={(ev) => setEdit(l.id, { end_time: ev.target.value || null })} className={`${input} w-[5rem]`} />
-                                <input type="number" min={0} value={e.target_count ?? l.target_count ?? 0} onChange={(ev) => setEdit(l.id, { target_count: Math.max(0, Number(ev.target.value) || 0) })} className={`${input} w-16`} title="Hedef soru" />
+                                <input type="time" value={e.start_time !== undefined ? e.start_time ?? '' : hhmm(l.start_time)} onChange={(ev) => setEdit(l.id, { start_time: ev.target.value || null })} className={`${input} w-[6.5rem]`} />
+                                <input type="time" value={e.end_time !== undefined ? e.end_time ?? '' : hhmm(l.end_time)} onChange={(ev) => setEdit(l.id, { end_time: ev.target.value || null })} className={`${input} w-[6.5rem]`} />
+                                <input type="number" min={0} value={e.target_count ?? l.target_count ?? 0} onChange={(ev) => setEdit(l.id, { target_count: Math.max(0, Number(ev.target.value) || 0) })} className={`${input} w-20`} title="Hedef soru" />
                               </div>
                             )}
                           </div>
                         );
                       }
                       return (
-                        <div key={l.id} className={`relative flex w-full items-start gap-2 rounded-lg border p-2 text-left transition ${done ? 'border-[var(--success)]/40 bg-[var(--success-soft)]' : 'border-[var(--border)] bg-[var(--card)] hover:bg-[var(--paper)]'}`}>
-                          <button type="button" onClick={() => toggleDone(l)} className="flex flex-1 items-start gap-2 text-left">
-                            <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border ${done ? 'border-[var(--success)] bg-[var(--success)] text-white' : 'border-[var(--ink-muted)]/40 text-transparent'}`}><IconCheck size={13} /></span>
+                        <div key={l.id} className={`relative flex w-full items-center gap-2 rounded-2xl border-2 p-2.5 text-left transition-all ${done ? 'border-[var(--success)]/30 bg-[var(--success-soft)]' : 'border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)]/40'}`}>
+                          <button type="button" onClick={() => toggleDone(l)} className="flex flex-1 items-center gap-2.5 text-left active:scale-[0.98]">
+                            <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white text-[20px] shadow-sm">{subjectEmoji(l.subject)}</span>
                             <span className="min-w-0 flex-1">
-                              <span className={`block text-[13px] font-medium ${done ? 'text-[var(--success)]' : 'text-[var(--ink)]'}`}>
-                                {l.subject}{l.target_count > 0 && ` · ${l.target_count} soru`}
-                                {l.student_added && <span className="ml-1.5 rounded-full bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent-dark)]">Ekstra</span>}
+                              <span className="block text-[14px] font-bold">
+                                <span className={done ? 'text-[var(--success)] line-through decoration-2' : 'text-[var(--ink)]'}>{l.subject}</span>
+                                {l.student_added && <span className="ml-1.5 inline-block rounded-full bg-[var(--pink-soft)] px-2 py-0.5 align-middle text-[10px] font-extrabold text-[var(--pink)]">⭐ Ekstra</span>}
                               </span>
-                              {l.topic && <span className="block text-[11px] text-[var(--ink-muted)]">{l.topic}</span>}
-                              {l.resource_name && <span className="block text-[11px] text-[var(--ink-muted)]">{l.resource_name}</span>}
-                              {time && <span className="block text-[11px] text-[var(--ink-muted)]">{time}</span>}
+                              {detail && <span className="block text-[12px] font-medium text-[var(--ink-muted)]">{detail}</span>}
+                              {l.resource_name && <span className="block text-[11.5px] text-[var(--ink-muted)]">📘 {l.resource_name}</span>}
+                              {time && <span className="block text-[11.5px] text-[var(--ink-muted)]">⏰ {time}</span>}
                             </span>
+                            <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${done ? 'student-pop border-[var(--success)] bg-[var(--success)] text-white' : 'border-[var(--ink-muted)]/30 bg-white text-transparent'}`}><IconCheck size={18} strokeWidth={3} /></span>
                           </button>
                           {l.student_added && (
-                            <button type="button" onClick={() => removeExtraTask(l.id)} title="Sil" className="flex-shrink-0 text-[var(--ink-muted)] hover:text-[var(--danger)]"><IconTrash size={14} /></button>
+                            <button type="button" onClick={() => removeExtraTask(l.id)} title="Sil" className="flex-shrink-0 rounded-full p-1.5 text-[var(--ink-muted)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"><IconTrash size={16} /></button>
                           )}
                         </div>
                       );
                     })}
                     {dayAdded.map((a, i) => (
-                      <div key={i} className="flex items-center justify-between rounded-lg border border-dashed border-[var(--accent)]/40 bg-[var(--accent-soft)] p-2 text-[12px] text-[var(--accent-dark)]">
-                        <span>+ {a.subject}{a.topic && ` / ${a.topic}`}{a.target_count > 0 && ` · ${a.target_count} soru`}</span>
-                        <button onClick={() => setAdded((p) => p.filter((x) => x !== a))}><IconX size={13} /></button>
+                      <div key={i} className="flex items-center justify-between rounded-2xl border-2 border-dashed border-[var(--accent)]/40 bg-[var(--accent-soft)] p-2.5 text-[13px] font-bold text-[var(--accent-dark)]">
+                        <span>+ {subjectEmoji(a.subject)} {a.subject}{a.topic && ` / ${a.topic}`}{a.target_count > 0 && ` · ${a.target_count} soru`}</span>
+                        <button onClick={() => setAdded((p) => p.filter((x) => x !== a))} className="rounded-full p-1 hover:bg-white"><IconX size={15} /></button>
                       </div>
                     ))}
                     {newForm && newForm.plan_day === d && (
-                      <div className="space-y-1.5 rounded-lg border border-[var(--accent)]/40 p-2">
+                      <div className="space-y-2 rounded-2xl border-2 border-[var(--accent)]/40 bg-[var(--accent-soft)]/50 p-3">
                         <input list="ders-listesi" value={newForm.subject} onChange={(e) => setNewForm({ ...newForm, subject: e.target.value })} placeholder="Ders" className={`${input} w-full`} />
                         <input value={newForm.topic} onChange={(e) => setNewForm({ ...newForm, topic: e.target.value })} placeholder="Konu (isteğe bağlı)" className={`${input} w-full`} />
-                        <div className="flex flex-wrap gap-1">
-                          <input type="number" min={0} value={newForm.target_count} onChange={(e) => setNewForm({ ...newForm, target_count: Math.max(0, Number(e.target.value) || 0) })} className={`${input} w-16`} title="Hedef soru" />
-                          <input type="time" value={newForm.start_time} onChange={(e) => setNewForm({ ...newForm, start_time: e.target.value })} className={`${input} w-[5rem]`} />
-                          <input type="time" value={newForm.end_time} onChange={(e) => setNewForm({ ...newForm, end_time: e.target.value })} className={`${input} w-[5rem]`} />
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <input type="number" min={0} value={newForm.target_count} onChange={(e) => setNewForm({ ...newForm, target_count: Math.max(0, Number(e.target.value) || 0) })} className={`${input} w-20`} title="Hedef soru" />
+                          <input type="time" value={newForm.start_time} onChange={(e) => setNewForm({ ...newForm, start_time: e.target.value })} className={`${input} w-[6.5rem]`} />
+                          <input type="time" value={newForm.end_time} onChange={(e) => setNewForm({ ...newForm, end_time: e.target.value })} className={`${input} w-[6.5rem]`} />
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={submitAddForm} className="rounded-md bg-[var(--accent)] px-2.5 py-1 text-[12px] text-white hover:bg-[var(--accent-dark)]">Ekle</button>
-                          <button onClick={() => setNewForm(null)} className="rounded-md border border-[var(--border)] px-2.5 py-1 text-[12px] text-[var(--ink-muted)]">İptal</button>
+                          <button onClick={submitAddForm} className={btnPrimary}>Ekle</button>
+                          <button onClick={() => setNewForm(null)} className={btnCancel}>İptal</button>
                         </div>
                       </div>
                     )}
                     {extraForm && extraForm.plan_day === d && (
-                      <div className="space-y-1.5 rounded-lg border border-[var(--border)] bg-[var(--paper)] p-2">
-                        <p className="text-[11px] text-[var(--ink-muted)]">Koçunun vermediği, kendi yaptığın bir görev. Hemen eklenir, onay gerekmez.</p>
+                      <div className="space-y-2 rounded-2xl border-2 border-[var(--pink)]/30 bg-[var(--pink-soft)]/60 p-3">
+                        <p className="text-[12px] font-semibold text-[var(--ink-muted)]">⭐ Koçunun vermediği, kendi yaptığın bir görev. Hemen eklenir, onay gerekmez.</p>
                         <input list="ders-listesi" value={extraForm.subject} onChange={(e) => setExtraForm({ ...extraForm, subject: e.target.value })} placeholder="Ders" className={`${input} w-full`} />
                         <input value={extraForm.topic} onChange={(e) => setExtraForm({ ...extraForm, topic: e.target.value })} placeholder="Konu (isteğe bağlı)" className={`${input} w-full`} />
-                        <div className="flex flex-wrap gap-1">
-                          <input type="number" min={0} value={extraForm.target_count} onChange={(e) => setExtraForm({ ...extraForm, target_count: Math.max(0, Number(e.target.value) || 0) })} className={`${input} w-16`} title="Soru sayısı" />
-                          <input type="time" value={extraForm.start_time} onChange={(e) => setExtraForm({ ...extraForm, start_time: e.target.value })} className={`${input} w-[5rem]`} />
-                          <input type="time" value={extraForm.end_time} onChange={(e) => setExtraForm({ ...extraForm, end_time: e.target.value })} className={`${input} w-[5rem]`} />
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <input type="number" min={0} value={extraForm.target_count} onChange={(e) => setExtraForm({ ...extraForm, target_count: Math.max(0, Number(e.target.value) || 0) })} className={`${input} w-20`} title="Soru sayısı" />
+                          <input type="time" value={extraForm.start_time} onChange={(e) => setExtraForm({ ...extraForm, start_time: e.target.value })} className={`${input} w-[6.5rem]`} />
+                          <input type="time" value={extraForm.end_time} onChange={(e) => setExtraForm({ ...extraForm, end_time: e.target.value })} className={`${input} w-[6.5rem]`} />
                         </div>
                         <div className="flex gap-2">
-                          <button disabled={extraBusy} onClick={submitExtraTask} className="rounded-md bg-[var(--accent)] px-2.5 py-1 text-[12px] text-white disabled:opacity-50 hover:bg-[var(--accent-dark)]">Ekle</button>
-                          <button onClick={() => setExtraForm(null)} className="rounded-md border border-[var(--border)] px-2.5 py-1 text-[12px] text-[var(--ink-muted)]">İptal</button>
+                          <button disabled={extraBusy} onClick={submitExtraTask} className={btnPrimary}>Ekle</button>
+                          <button onClick={() => setExtraForm(null)} className={btnCancel}>İptal</button>
                         </div>
                       </div>
                     )}
+                    {!formOpen && (editMode ? (
+                      <button onClick={() => setNewForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex w-full items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-[var(--accent)]/40 py-2 text-[12.5px] font-bold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]"><IconPlus size={14} /> Görev ekle</button>
+                    ) : (
+                      <button onClick={() => setExtraForm({ subject: '', topic: '', plan_day: d, target_count: 0, start_time: '', end_time: '' })} className="flex w-full items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-[var(--border)] py-2 text-[12.5px] font-bold text-[var(--ink-muted)] transition-colors hover:border-[var(--pink)]/40 hover:bg-[var(--pink-soft)] hover:text-[var(--pink)]"><IconPlus size={14} /> Ekstra görev</button>
+                    ))}
                   </div>
                 </div>
               );
@@ -300,24 +334,24 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
           <datalist id="ders-listesi">{subjectOptions.map((s) => <option key={s} value={s} />)}</datalist>
 
           {editMode && (
-            <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
-              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Koçuna not (örn. Cumartesi dersim var, o güne az görev koyalım)" className="w-full rounded-lg border border-[var(--border)] bg-[var(--paper)] px-2 py-1.5 text-[13px]" />
-              <button disabled={busy} onClick={submitEdit} className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-[13px] font-medium text-white disabled:opacity-50 hover:bg-[var(--accent-dark)]">Koçuma onaya gönder</button>
+            <div className="space-y-2.5 rounded-[24px] border-2 border-[var(--accent)]/30 bg-[var(--card)] p-4">
+              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Koçuna not (örn. Cumartesi dersim var, o güne az görev koyalım)" className="w-full rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] px-3 py-2 text-[14px] focus:border-[var(--accent)] focus:outline-none" />
+              <button disabled={busy} onClick={submitEdit} className={btnPrimary}>Koçuma onaya gönder 📨</button>
             </div>
           )}
         </>
       )}
 
       {requests.length > 0 && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
-          <p className="mb-1 text-[12px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Taleplerim</p>
-          <ul className="divide-y divide-[var(--border)]">
+        <div className="rounded-[24px] border-2 border-[var(--border)] bg-[var(--card)] p-4">
+          <p className="mb-2 text-[15px] font-extrabold text-[var(--ink)]">📬 Taleplerim</p>
+          <ul className="space-y-1.5">
             {requests.map((r) => (
-              <li key={r.id} className="flex items-center justify-between py-1.5 text-[12px]">
-                <span className="text-[var(--ink)]">
+              <li key={r.id} className="flex items-center justify-between gap-2 rounded-xl bg-[var(--paper)] px-3 py-2 text-[12.5px]">
+                <span className="font-semibold text-[var(--ink)]">
                   {r.kind === 'yeni_program' ? 'Yeni program' : `Değişiklik (${weekLabel(r.week_start)})`} · {new Date(r.created_at).toLocaleDateString('tr-TR')}
                 </span>
-                <span className={r.status === 'onaylandi' ? 'text-[var(--success)]' : r.status === 'reddedildi' ? 'text-[var(--danger)]' : 'text-[var(--track-lgs)]'}>
+                <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11.5px] font-bold ${r.status === 'onaylandi' ? 'bg-[var(--success-soft)] text-[var(--success)]' : r.status === 'reddedildi' ? 'bg-[var(--danger-soft)] text-[var(--danger)]' : 'bg-[var(--sun-soft)] text-[#B76E00]'}`}>
                   {r.kind === 'yeni_program' && r.status === 'onaylandi' ? 'Hazırlandı' : STATUS_TEXT[r.status]}
                 </span>
               </li>

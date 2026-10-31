@@ -2,18 +2,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState } from 'react';
-import { IconCheck, IconX } from '@tabler/icons-react';
+import { IconCheck, IconChevronDown } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
+import { subjectEmoji } from '../studentUi';
 
 type Key = 'konu_tamamlandi' | 'kaynak1_sorular' | 'kaynak2_sorular' | 'kaynak3_sorular' | 'yanlislar_kontrol';
 type Topic = { id: string; subject: string; topic: string } & Record<Key, boolean | null>;
 
-const STEPS: { key: Key; label: string; kaynakIdx?: number }[] = [
-  { key: 'konu_tamamlandi', label: 'Konu' },
-  { key: 'kaynak1_sorular', label: '1. Kaynak', kaynakIdx: 0 },
-  { key: 'kaynak2_sorular', label: '2. Kaynak', kaynakIdx: 1 },
-  { key: 'kaynak3_sorular', label: '3. Kaynak', kaynakIdx: 2 },
-  { key: 'yanlislar_kontrol', label: 'Yanlışlar çözüldü' },
+const STEPS: { key: Key; label: string; emoji: string; kaynakIdx?: number }[] = [
+  { key: 'konu_tamamlandi', label: 'Konu', emoji: '📖' },
+  { key: 'kaynak1_sorular', label: '1. Kaynak', emoji: '1️⃣', kaynakIdx: 0 },
+  { key: 'kaynak2_sorular', label: '2. Kaynak', emoji: '2️⃣', kaynakIdx: 1 },
+  { key: 'kaynak3_sorular', label: '3. Kaynak', emoji: '3️⃣', kaynakIdx: 2 },
+  { key: 'yanlislar_kontrol', label: 'Yanlışlar çözüldü', emoji: '🔁' },
 ];
 const collator = new Intl.Collator('tr', { numeric: true, sensitivity: 'base' });
 
@@ -55,45 +56,86 @@ export function KonuKartlariClient({ initial, resources }: { initial: Topic[]; r
   }
 
   if (topics.length === 0) {
-    return <p className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 text-center text-sm text-[var(--ink-muted)]">Koçun henüz konu eklememiş.</p>;
+    return (
+      <div className="rounded-[28px] border-2 border-[var(--border)] bg-[var(--card)] p-8 text-center">
+        <div className="mb-2 text-[48px]">📚</div>
+        <p className="text-[15px] font-bold text-[var(--ink)]">Koçun henüz konu eklememiş.</p>
+      </div>
+    );
   }
 
   const subjects = Array.from(new Set(topics.map((t) => t.subject))).sort(collator.compare);
+  const totalDone = topics.filter((t) => doneCount(t) === 3).length;
+  const totalPct = Math.round((totalDone / topics.length) * 100);
 
   return (
     <div className="space-y-5">
-      <h1 className="text-[17px] font-medium text-[var(--ink)]">Konu İlerleyişim</h1>
-      {error && <p className="text-sm font-medium text-[var(--danger)]">{error}</p>}
+      <div>
+        <h1 className="text-[24px] font-extrabold tracking-tight text-[var(--ink)]">📚 Konu İlerleyişim</h1>
+        <p className="text-[13px] font-medium text-[var(--ink-muted)]">Bir konuya dokun, bitirdiğin adımları işaretle.</p>
+      </div>
+
+      <div className="flex items-center gap-4 rounded-[24px] bg-gradient-to-br from-[#34D399] to-[#16A36F] p-4 text-white shadow-[0_8px_24px_rgba(22,163,111,0.25)]">
+        <div className="text-[40px] leading-none">{totalPct >= 100 ? '🏅' : totalPct >= 50 ? '🌳' : totalPct > 0 ? '🌿' : '🌱'}</div>
+        <div className="flex-1">
+          <div className="text-[13px] font-bold text-white/85">Tamamlanan konular</div>
+          <div className="text-[24px] font-extrabold leading-tight">{totalDone}/{topics.length} <span className="text-[15px] font-bold text-white/85">· %{totalPct}</span></div>
+          <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-white/30">
+            <div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${totalPct}%` }} />
+          </div>
+        </div>
+      </div>
+
+      {error && <p className="rounded-2xl bg-[var(--danger-soft)] px-4 py-2.5 text-[13px] font-bold text-[var(--danger)]">😕 {error}</p>}
 
       {subjects.map((subject) => {
         const list = topics.filter((t) => t.subject === subject).sort((a, b) => collator.compare(a.topic, b.topic));
+        const subjectDone = list.filter((t) => doneCount(t) === 3).length;
         return (
-          <section key={subject}>
-            <h2 className="mb-2 text-[13px] font-semibold text-[var(--ink)]">{subject}</h2>
+          <section key={subject} className="rounded-[24px] border-2 border-[var(--border)] bg-[var(--card)] p-3.5">
+            <div className="mb-3 flex items-center gap-2.5">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[20px]">{subjectEmoji(subject)}</span>
+              <div className="flex-1">
+                <h2 className="text-[16px] font-extrabold text-[var(--ink)]">{subject}</h2>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--accent-soft)]">
+                  <div className="h-full rounded-full bg-[var(--success)] transition-all duration-500" style={{ width: `${(subjectDone / list.length) * 100}%` }} />
+                </div>
+              </div>
+              <span className="text-[12.5px] font-bold text-[var(--ink-muted)]">{subjectDone}/{list.length}</span>
+            </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {list.map((t) => {
                 const n = doneCount(t);
                 const open = openId === t.id;
-                const tone = n === 3 ? 'border-[var(--success)]/40 bg-[var(--success-soft)]' : n > 0 ? 'border-[var(--accent)]/30 bg-[var(--accent-soft)]' : 'border-[var(--border)] bg-[var(--card)]';
+                const tone = n === 3 ? 'border-[var(--success)]/40 bg-[var(--success-soft)]' : n > 0 ? 'border-[var(--accent)]/30 bg-[var(--accent-soft)]' : 'border-[var(--border)] bg-[var(--paper)]';
                 return (
-                  <div key={t.id} className={`rounded-xl border ${tone} ${open ? 'sm:col-span-2' : ''}`}>
-                    <button type="button" onClick={() => setOpenId(open ? null : t.id)} className="flex w-full items-center gap-2 px-3.5 py-3 text-left">
-                      <span className="flex-1 text-[13px] font-medium text-[var(--ink)]">{t.topic}</span>
-                      {n === 3 && <IconCheck size={16} className="text-[var(--success)]" />}
-                      <span className="text-[11px] text-[var(--ink-muted)]">{n}/3</span>
+                  <div key={t.id} className={`rounded-2xl border-2 ${tone} ${open ? 'sm:col-span-2' : ''}`}>
+                    <button type="button" onClick={() => setOpenId(open ? null : t.id)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left">
+                      <span className="flex-1 text-[14px] font-bold text-[var(--ink)]">{t.topic}</span>
+                      <span className="flex gap-1">
+                        {[0, 1, 2].map((i) => (
+                          <span key={i} className={`h-2.5 w-2.5 rounded-full ${i < n ? (n === 3 ? 'bg-[var(--success)]' : 'bg-[var(--accent)]') : 'bg-black/10'}`} />
+                        ))}
+                      </span>
+                      {n === 3 ? <span className="text-[16px]">✅</span> : <IconChevronDown size={16} className={`text-[var(--ink-muted)] transition-transform ${open ? 'rotate-180' : ''}`} />}
                     </button>
                     {open && (
-                      <div className="grid grid-cols-2 gap-2 border-t border-black/5 p-3 sm:grid-cols-5">
+                      <div className="grid grid-cols-2 gap-2 border-t-2 border-black/5 p-3 sm:grid-cols-5">
                         {STEPS.map((s) => {
                           const on = !!t[s.key];
                           const name = s.kaynakIdx !== undefined ? resources[t.subject]?.[s.kaynakIdx]?.trim() : '';
                           return (
                             <button key={s.key} type="button" onClick={() => toggle(t, s.key)}
-                              className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2.5 text-[12px] transition ${
-                                on ? 'border-[var(--success)]/50 bg-[var(--success-soft)] text-[var(--success)]' : 'border-[var(--border)] bg-[var(--card)] text-[var(--ink-muted)] hover:bg-[var(--paper)]'}`}>
-                              {on ? <IconCheck size={16} /> : <IconX size={16} className="text-[var(--ink-muted)]/50" />}
-                              <span className="text-center font-medium">{s.label}</span>
-                              {name && <span className="line-clamp-2 text-center text-[10px] opacity-70">{name}</span>}
+                              className={`relative flex flex-col items-center gap-1 rounded-2xl border-2 px-2 py-3 text-[12.5px] font-bold transition-all active:scale-95 ${
+                                on ? 'border-[var(--success)]/50 bg-white text-[var(--success)]' : 'border-[var(--border)] bg-white text-[var(--ink-muted)] hover:border-[var(--accent)]/40'}`}>
+                              {on && (
+                                <span className="student-pop absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--success)] text-white">
+                                  <IconCheck size={13} strokeWidth={3} />
+                                </span>
+                              )}
+                              <span className={`text-[22px] ${on ? '' : 'opacity-50 grayscale'}`}>{s.emoji}</span>
+                              <span className="text-center">{s.label}</span>
+                              {name && <span className="line-clamp-2 text-center text-[10.5px] font-medium opacity-70">{name}</span>}
                             </button>
                           );
                         })}

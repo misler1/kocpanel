@@ -79,9 +79,6 @@ export default function OgrenciGirisPage() {
           </button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-[var(--ink-muted)]">
-          İlk şifren: telefonunun son 4 hanesi + doğum yılın (örn. 96832009). İlk girişte değiştirmen istenecek.
-        </p>
         <p className="mt-4 text-center text-sm text-[var(--ink-muted)]">
           Hesabın yok mu?{' '}
           <Link href="/kayit/ogrenci" className="font-medium text-[var(--accent-dark)] hover:underline">Kayıt ol</Link>

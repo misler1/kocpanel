@@ -16,13 +16,24 @@ export function OgrenciBilgilerClient({ student }: { student: any }) {
   const hasResources = Object.values(resources).some((arr) => arr.some(Boolean));
   const hasGuardian = student.guardian_name || student.mother_name || student.father_name;
 
+  const initials = student.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-gray-200 bg-white px-5 py-5">
-        <h2 className="text-lg font-medium text-gray-900">{student.full_name}</h2>
-        <p className="mt-0.5 text-sm text-gray-500">{TRACK_LABELS[student.track] ?? student.track}</p>
-        <div className="mt-4 border-t border-gray-100 pt-3">
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Temel Bilgiler</p>
+      <div className="overflow-hidden rounded-[28px] border-2 border-[var(--border)] bg-[var(--card)]">
+        <div className="h-20 bg-gradient-to-r from-[#A78BFA] via-[#F472B6] to-[#FBBF24]" />
+        <div className="px-5 pb-5">
+          <div className="-mt-10 mb-2 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#8B5CF6] to-[#EC4899] text-[26px] font-extrabold text-white ring-[6px] ring-white">
+            {initials}
+          </div>
+          <h2 className="text-[22px] font-extrabold text-[var(--ink)]">{student.full_name}</h2>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[12px] font-bold text-[var(--accent-dark)]">🎓 {TRACK_LABELS[student.track] ?? student.track}</span>
+            {student.grade_level && <span className="rounded-full bg-[var(--sky-soft)] px-3 py-1 text-[12px] font-bold text-[#1F78BD]">🏫 {student.grade_level}</span>}
+          </div>
+        </div>
+        <div className="mx-5 mb-5 rounded-2xl bg-[var(--paper)] px-4 py-3">
+          <p className="mb-1 text-[12px] font-extrabold text-[var(--ink-muted)]">📇 Temel Bilgiler</p>
           <InfoRow label="Ad Soyad" value={student.full_name} />
           <InfoRow label="Telefon" value={student.phone} />
           <InfoRow label="Doğum Tarihi" value={birth} />
@@ -56,10 +67,10 @@ export function OgrenciBilgilerClient({ student }: { student: any }) {
               if (!filled.length) return null;
               return (
                 <div key={subject}>
-                  <p className="mb-1 text-[12px] font-medium text-gray-700">{subject}</p>
+                  <p className="mb-1 text-[13px] font-bold text-[var(--ink)]">{subject}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {filled.map((b, i) => (
-                      <span key={i} className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[12px] text-blue-700">{b}</span>
+                      <span key={i} className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[12px] font-bold text-[var(--accent-dark)]">{b}</span>
                     ))}
                   </div>
                 </div>
