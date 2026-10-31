@@ -21,7 +21,7 @@ export function StudentMobileNav() {
               active ? 'text-[var(--ink)]' : 'text-[var(--ink-muted)]'
             }`}
           >
-            <span className={`flex h-9 w-11 items-center justify-center rounded-2xl transition-all ${active ? `${item.chip} -translate-y-0.5 text-white shadow-md` : ''}`}>
+            <span className={`flex h-9 w-10 items-center justify-center rounded-2xl transition-all ${active ? `${item.chip} -translate-y-0.5 text-white shadow-md` : ''}`}>
               <Icon size={21} strokeWidth={2.2} />
             </span>
             {item.label}

@@ -1,21 +1,22 @@
-import { IconMessageCircle } from '@tabler/icons-react';
+import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { MessagesApp } from '@/components/messages/MessagesApp';
 
-export default function MesajlarPage() {
+export default async function MesajlarPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/giris');
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await (supabase as any).from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role === 'ogrenci') redirect('/ogrenci/mesajlar');
+
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-5">
-        <h1 className="text-[18px] font-medium text-gray-900">Mesajlar</h1>
-        <p className="mt-0.5 text-[13px] text-gray-500">Öğrenci ve öğretmenlerle iletişim</p>
-      </div>
-
-      <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-white py-24">
-        <IconMessageCircle size={40} className="text-gray-200" />
-        <p className="text-[15px] font-medium text-gray-500">Mesajlaşma özelliği hazırlanıyor</p>
-        <p className="text-[13px] text-gray-400 text-center max-w-xs">
-          Koç-öğrenci ve koç-öğretmen mesajlaşması yakında aktif olacak.
-          Gerçek zamanlı bildirimler Supabase Realtime ile çalışacak.
-        </p>
-      </div>
+    <div className="mx-auto max-w-6xl">
+      <Suspense>
+        <MessagesApp variant="coach" meId={user.id} isStaff={profile?.role === 'koc' || profile?.role === 'ogretmen'} />
+      </Suspense>
     </div>
   );
 }

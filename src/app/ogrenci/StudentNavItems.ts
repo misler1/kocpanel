@@ -1,4 +1,4 @@
-import { IconHome, IconUser, IconCalendar, IconChartBar, IconBooks } from '@tabler/icons-react';
+import { IconHome, IconUser, IconCalendar, IconChartBar, IconBooks, IconMessageCircle } from '@tabler/icons-react';
 
 export interface StudentNavItem {
   href: string;
@@ -13,5 +13,6 @@ export const STUDENT_NAV: StudentNavItem[] = [
   { href: '/ogrenci/haftalik-takip', label: 'Haftalık', icon: IconCalendar, chip: 'bg-[#2F9BEA]' },
   { href: '/ogrenci/konu-ilerleyisi', label: 'Konular', icon: IconBooks, chip: 'bg-[#16A36F]' },
   { href: '/ogrenci/denemeler', label: 'Denemeler', icon: IconChartBar, chip: 'bg-[#F59E0B]' },
+  { href: '/ogrenci/mesajlar', label: 'Mesajlar', icon: IconMessageCircle, chip: 'bg-[#14B8A6]' },
   { href: '/ogrenci/bilgilerim', label: 'Bilgilerim', icon: IconUser, chip: 'bg-[#EC4899]' },
 ];

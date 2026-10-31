@@ -2,9 +2,10 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import {
-  IconUser, IconUsers, IconBell, IconLock, IconChevronRight, IconCalendar, IconShield,
+  IconUser, IconUsers, IconBell, IconLock, IconChevronRight, IconCalendar, IconShield, IconBuilding,
 } from '@tabler/icons-react';
 import { OgretmenYonetimiClient } from './OgretmenYonetimiClient';
+import { KurumYonetimiClient } from './KurumYonetimiClient';
 import { BasvuruListesi, type Basvuru, type KocSecenek } from '@/components/BasvuruListesi';
 
 export default async function AyarlarPage() {
@@ -111,6 +112,22 @@ const profile = profileData as { is_admin: boolean } | null;
             </div>
           </div>
         ))}
+
+        <div>
+          <h2 className="mb-2 px-1 text-[12px] font-medium uppercase tracking-wide text-gray-400">Kurumlar</h2>
+          <div className="rounded-xl border border-gray-200 bg-white">
+            <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3.5">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                <IconBuilding size={16} className="text-gray-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-medium text-gray-900">Kurum yönetimi</div>
+                <div className="text-[12px] text-gray-500">Kurum adlarını düzenle, aynı kurumun farklı yazımlarını birleştir</div>
+              </div>
+            </div>
+            <KurumYonetimiClient />
+          </div>
+        </div>
 
         {/* Admin paneli */}
         {isAdmin && (
