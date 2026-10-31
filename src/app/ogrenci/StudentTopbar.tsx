@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { IconLogout } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
+import { NotificationBell } from '@/components/NotificationBell';
 
 export function StudentTopbar({ fullName }: { fullName: string }) {
   const router = useRouter();
@@ -26,6 +27,7 @@ export function StudentTopbar({ fullName }: { fullName: string }) {
         </Link>
 
         <div className="ml-auto flex items-center gap-2.5">
+          <NotificationBell variant="student" />
           <span className="hidden text-[15px] font-bold text-[var(--ink)] md:block">{fullName}</span>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#A78BFA] to-[#F472B6] text-[13px] font-extrabold text-white ring-4 ring-[var(--accent-soft)]">
             {initials}

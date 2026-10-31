@@ -2,8 +2,9 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { IconBell, IconSearch, IconLogout } from '@tabler/icons-react';
+import { IconSearch, IconLogout } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
+import { NotificationBell } from '@/components/NotificationBell';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import type { Profile } from '@/types/database';
 
@@ -48,9 +49,7 @@ export function Topbar({ profile }: { profile: Profile | null }) {
           <button className="rounded-lg p-2 text-[var(--ink-muted)] transition-colors hover:bg-[var(--paper)] hover:text-[var(--ink)]">
             <IconSearch size={18} />
           </button>
-          <button className="relative rounded-lg p-2 text-[var(--ink-muted)] transition-colors hover:bg-[var(--paper)] hover:text-[var(--ink)]">
-            <IconBell size={18} />
-          </button>
+          <NotificationBell />
           <div className="flex items-center gap-2.5 pl-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[12px] font-semibold text-[var(--accent-dark)]">
               {initials}
