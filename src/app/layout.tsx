@@ -1,10 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ExamFilterProvider } from "@/lib/exam-filter-context";
+import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "KoçDefterim",
-  description: "Eğitim koçları için öğrenci takip ve yönetim paneli",
+  // Göreli canonical/og adresleri bu adrese göre tam adrese çevrilir
+  metadataBase: new URL(SITE_URL),
+  title: "Koç Defterim | YKS ve LGS Öğrenci Koçluğu",
+  description: "Koç Defterim (KoçDefterim): YKS ve LGS öğrencileri için eğitim koçluğu, haftalık çalışma takibi, deneme analizi ve veli bilgilendirmesi.",
+  applicationName: "KoçDefterim",
+  openGraph: {
+    type: "website",
+    locale: "tr_TR",
+    siteName: "Koç Defterim",
+  },
   manifest: "/manifest.json",
   icons: {
     icon: "/icon.png",

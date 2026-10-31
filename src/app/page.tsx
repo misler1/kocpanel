@@ -1,5 +1,7 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { SITE_URL } from '@/lib/site';
 import { createClient } from '@/lib/supabase/server';
 import { fraunces, inter } from '@/lib/fonts';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
@@ -16,6 +18,41 @@ const LIGHT_SLIDES = [
   { title: 'Veli bilgilendirme', text: '\u00d6\u011frencinin \u00e7al\u0131\u015fma temposu ve geli\u015fimi veliler i\u00e7in daha anla\u015f\u0131l\u0131r hale gelir.' },
 ];
 
+export const metadata: Metadata = {
+  title: 'Koç Defterim | YKS ve LGS Öğrenci Koçluğu, Deneme Analizi ve Takip',
+  description: 'Koç Defterim (KoçDefterim); YKS ve LGS öğrencileri için birebir eğitim koçluğu, haftalık çalışma programı, deneme analizi, konu takibi ve veli bilgilendirmesi sunar.',
+  alternates: { canonical: '/' },
+  openGraph: {
+    url: '/',
+    title: 'Koç Defterim | YKS ve LGS Öğrenci Koçluğu',
+    description: 'Öğrencinizin çalışma defteri, artık dijital. Haftalık takip, deneme analizi ve veli bilgilendirmesi tek yerde.',
+  },
+};
+
+// Google'a marka adını (bitişik ve ayrı yazımıyla) ve sitenin kime ait olduğunu bildirir
+const JSON_LD = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#organization`,
+      name: 'Koç Defterim',
+      alternateName: ['KoçDefterim', 'Koc Defterim', 'kocdefterim'],
+      url: SITE_URL,
+      logo: `${SITE_URL}/brand/kocdefterim-logo.png`,
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+      name: 'Koç Defterim',
+      alternateName: ['KoçDefterim', 'Koc Defterim'],
+      url: SITE_URL,
+      inLanguage: 'tr-TR',
+      publisher: { '@id': `${SITE_URL}/#organization` },
+    },
+  ],
+};
+
 export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -26,6 +63,7 @@ export default async function Home() {
 
   return (
     <div className={`${fraunces.variable} ${inter.variable} min-h-screen bg-white font-[family-name:var(--font-body)]`}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       <MarketingHeader />
 
       {/* Hero */}
@@ -81,7 +119,7 @@ export default async function Home() {
           <div className="mt-8 grid gap-8 sm:grid-cols-3">
             {[
               { n: '1', title: 'Tanışma ve hedef belirleme', desc: 'Öğrencinin seviyesi ve hedefleri birlikte değerlendirilir.' },
-              { n: '2', title: 'Haftalık çalışma ve takip', desc: 'Günlük çalışmalar WhatsApp\'tan kaydedilir, hedefler izlenir.' },
+              { n: '2', title: 'Haftalık çalışma ve takip', desc: 'Günlük çalışmalar kaydedilir, hedefler izlenir.' },
               { n: '3', title: 'Deneme analizi ve yönlendirme', desc: 'Sonuçlar ders ders incelenir, sonraki adım netleşir.' },
             ].map((s) => (
               <div key={s.n}>
@@ -105,7 +143,7 @@ export default async function Home() {
           </div>
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             {[
-              { icon: IconMessageCircle, title: 'Günlük Çalışma Takibi', desc: 'WhatsApp üzerinden otomatik kayıt ve analiz.' },
+              { icon: IconMessageCircle, title: 'Günlük Çalışma Takibi', desc: 'Günlük çalışmaların kaydı ve analizi.' },
               { icon: IconChartBar, title: 'Deneme Sonuç Analizi', desc: 'TYT, AYT, LGS sonuçları ders ders takip edilir.' },
               { icon: IconTarget, title: 'Haftalık Hedef Planlama', desc: 'Net hedefler, görsel ilerleme takibi.' },
             ].map((s) => (

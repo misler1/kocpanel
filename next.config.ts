@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
             value: 'kocpanell.vercel.app',
           },
         ],
-        destination: 'https://kocdefterim.com.tr/:path*',
+        destination: 'https://www.kocdefterim.com.tr/:path*',
         permanent: true,
       },
     ];
