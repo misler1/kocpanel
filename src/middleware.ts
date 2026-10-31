@@ -11,6 +11,9 @@ const PUBLIC_MARKETING_PREFIXES = [
   '/diger-sinavlar',
 ];
 
+// /sifre-sifirla sayfasıyla aynı ad (orada tarayıcıda yazılıyor)
+const RECOVERY_COOKIE = 'pw_recovery';
+
 function isPublicMarketingPath(pathname: string) {
   return PUBLIC_MARKETING_PREFIXES.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
@@ -30,12 +33,19 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/kayit-formu') ||
     pathname === '/api/ogrenci/kayit' ||
     pathname === '/api/ogrenci/kocler' ||
+    // Arama motoru dosyaları: oturumsuz istekte /giris'e yönlenirse Google robots/sitemap okuyamaz
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml' ||
+    pathname === '/manifest.json' ||
+    /^\/google[0-9a-f]+\.html$/.test(pathname) ||
     isPublicMarketingPath(pathname);
 
-  const isWebhook = pathname.startsWith('/api/whatsapp');
   const isOnayPage = pathname.startsWith('/onay-bekleniyor');
+  const isResetPage = pathname.startsWith('/sifre-sifirla');
+  // Şifre sıfırlama linkiyle açılan oturum: yeni şifre belirlenene kadar yalnızca /sifre-sifirla kullanılabilir.
+  const recoveryPending = request.cookies.get(RECOVERY_COOKIE)?.value === '1';
 
-  if (isPublicPage || isWebhook) {
+  if (isPublicPage) {
     return response;
   }
 
@@ -56,6 +66,11 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  if (!user && recoveryPending) {
+    // Oturum kapanmış: bayrak artık geçersiz (aynı tarayıcıda giriş yapacak başka kullanıcıyı etkilemesin)
+    response.cookies.delete(RECOVERY_COOKIE);
+  }
+
   if (!user && !isAuthPage && !isOnayPage && pathname !== '/') {
     const url = request.nextUrl.clone();
     url.pathname = '/giris';
@@ -69,18 +84,26 @@ export async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
+    if (recoveryPending && !isResetPage) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/sifre-sifirla';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
+
     const isStudent = profile?.role === 'ogrenci';
     const isStudentArea = pathname === '/ogrenci' || pathname.startsWith('/ogrenci/') || pathname.startsWith('/api/ogrenci/');
 
     // Giriş yapmış kullanıcı giriş/kayıt sayfasına gelirse rolüne göre yönlendir
-    if (isAuthPage) {
+    if (isAuthPage && !isResetPage) {
       const url = request.nextUrl.clone();
       url.pathname = isStudent ? '/ogrenci' : '/anasayfa';
       return NextResponse.redirect(url);
     }
 
-    if (!isOnayPage) {
-      if (profile && !profile.is_approved) {
+    if (!isOnayPage && !isResetPage) {
+      // Profili olmayan hesap (ör. kayıt yarıda kaldı ya da API ile doğrudan açıldı) onaylı sayılmaz
+      if (!profile || !profile.is_approved) {
         const url = request.nextUrl.clone();
         url.pathname = '/onay-bekleniyor';
         return NextResponse.redirect(url);

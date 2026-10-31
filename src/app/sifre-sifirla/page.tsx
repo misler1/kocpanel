@@ -3,6 +3,19 @@ import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
+// Şifre sıfırlama linki tıklanınca Supabase hemen oturum açar. Bu bayrak varken middleware
+// kullanıcıyı yeni şifre belirleyene (ya da vazgeçip çıkış yapana) kadar bu sayfada tutar.
+// Ad, src/middleware.ts içindeki RECOVERY_COOKIE ile aynı olmalı.
+const RECOVERY_COOKIE = 'pw_recovery';
+const LINK_ERROR = 'Bu link süresi dolmuş veya daha önce kullanılmış. Lütfen yeni bir şifre sıfırlama e-postası isteyin.';
+
+function setRecoveryCookie(on: boolean) {
+  const secure = window.location.protocol === 'https:' ? '; secure' : '';
+  document.cookie = on
+    ? `${RECOVERY_COOKIE}=1; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax${secure}`
+    : `${RECOVERY_COOKIE}=; path=/; max-age=0; samesite=lax${secure}`;
+}
+
 function SifreSifirlaForm() {
   const supabase = createClient();
   const router = useRouter();
@@ -20,28 +33,27 @@ function SifreSifirlaForm() {
       const tokenHash = searchParams.get('token_hash');
       const type = searchParams.get('type');
 
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (code || (tokenHash && type === 'recovery')) {
+        const { error } = code
+          ? await supabase.auth.exchangeCodeForSession(code)
+          : await supabase.auth.verifyOtp({ token_hash: tokenHash!, type: 'recovery' });
         if (error) {
-          setError('Bu link süresi dolmuş veya daha önce kullanılmış. Lütfen yeni bir şifre sıfırlama e-postası isteyin.');
+          setError(LINK_ERROR);
           setVerifying(false);
           return;
         }
+        setRecoveryCookie(true);
+        // Tek kullanımlık kodu adres çubuğundan sil (sayfa yenilenince tekrar denenmesin)
+        router.replace('/sifre-sifirla');
         setReady(true);
         setVerifying(false);
         return;
       }
 
-      if (tokenHash && type === 'recovery') {
-        const { error } = await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: 'recovery',
-        });
-        if (error) {
-          setError('Bu link süresi dolmuş veya daha önce kullanılmış. Lütfen yeni bir şifre sıfırlama e-postası isteyin.');
-          setVerifying(false);
-          return;
-        }
+      // Link doğrulandıktan sonra sayfa yenilendiyse: sıfırlama oturumu hâlâ açık
+      const hasFlag = document.cookie.split('; ').some((c) => c === `${RECOVERY_COOKIE}=1`);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (hasFlag && user) {
         setReady(true);
         setVerifying(false);
         return;
@@ -62,8 +74,8 @@ function SifreSifirlaForm() {
       setError('Şifreler eşleşmiyor.');
       return;
     }
-    if (password.length < 6) {
-      setError('Şifre en az 6 karakter olmalı.');
+    if (password.length < 8) {
+      setError('Şifre en az 8 karakter olmalı.');
       return;
     }
 
@@ -76,7 +88,18 @@ function SifreSifirlaForm() {
     }
     // Diğer tüm oturumları (bu cihaz hariç) kapat
     await supabase.auth.signOut({ scope: 'others' });
+    setRecoveryCookie(false);
     router.push('/anasayfa');
+    router.refresh();
+  }
+
+  // Şifreyi değiştirmeden çıkmak isteyen kullanıcı: sıfırlama oturumunu kapat
+  async function handleCancel() {
+    setLoading(true);
+    await supabase.auth.signOut();
+    setRecoveryCookie(false);
+    router.push('/giris');
+    router.refresh();
   }
 
   if (verifying) {
@@ -114,7 +137,7 @@ function SifreSifirlaForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]"
-              placeholder="En az 6 karakter"
+              placeholder="En az 8 karakter"
             />
           </div>
           <div>
@@ -137,6 +160,14 @@ function SifreSifirlaForm() {
             {loading ? 'Güncelleniyor...' : 'Şifreyi güncelle'}
           </button>
         </form>
+        <button
+          type="button"
+          onClick={handleCancel}
+          disabled={loading}
+          className="mt-3 w-full text-center text-sm text-[var(--ink-muted)] hover:underline disabled:opacity-60"
+        >
+          Vazgeç ve çıkış yap
+        </button>
       </div>
     </div>
   );
