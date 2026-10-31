@@ -1,14 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getStudentContext } from '@/lib/student-context';
+import { TRACK_RESOURCES } from '@/lib/track-resources';
+import { activeDays, computeBadges, questionTotals, streakInfo, targetRows, trDate } from '@/lib/student-motivation';
 import { OgrenciAnasayfaClient } from './OgrenciAnasayfaClient';
 
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
-
-function todayStr() {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
 
 export default async function OgrenciAnaSayfa() {
   const { supabase, student, profile } = await getStudentContext();
@@ -21,20 +17,29 @@ export default async function OgrenciAnaSayfa() {
     );
   }
 
-  const today = todayStr();
-  const todayIndex = (new Date().getDay() + 6) % 7; // Pazartesi=0
+  // Sunucu UTC'de çalışır; gün sınırı Türkiye saatine göre
+  const today = trDate();
+  const todayIndex = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7; // Pazartesi=0
 
-  const [{ data: weekRows }, { data: topics }, { data: exams }, { data: rank }, { data: pendingReqs }] = await Promise.all([
+  const [
+    { data: weekRows }, { data: topics }, { data: exams }, { data: rank }, { data: pendingReqs },
+    { data: dailyLogs }, { data: allTasks },
+  ] = await Promise.all([
     (supabase as any)
       .from('question_logs').select('*').eq('student_id', student.id)
       .lte('week_start', today).order('week_start', { ascending: false }).limit(60),
     (supabase as any)
       .from('topic_progress').select('konu_tamamlandi, kaynak1_sorular, yanlislar_kontrol').eq('student_id', student.id),
     (supabase as any)
-      .from('exams').select('*').eq('student_id', student.id).order('exam_date', { ascending: false }).limit(1),
+      .from('exams').select('id, exam_name, exam_type, exam_date, net_score').eq('student_id', student.id).order('exam_date', { ascending: false }),
     (supabase as any).rpc('student_exam_ranks'),
     (supabase as any)
       .from('weekly_plan_requests').select('id').eq('student_id', student.id).eq('status', 'bekliyor'),
+    (supabase as any)
+      .from('daily_logs').select('log_date, question_solved, topic_studies').eq('student_id', student.id)
+      .order('log_date', { ascending: false }).limit(800),
+    (supabase as any)
+      .from('question_logs').select('week_start, student_done, student_done_at').eq('student_id', student.id).limit(5000),
   ]);
 
   // Bugünü içeren en güncel hafta
@@ -45,8 +50,20 @@ export default async function OgrenciAnaSayfa() {
   const topicList = topics ?? [];
   const topicsDone = topicList.filter((t: any) => t.konu_tamamlandi && t.kaynak1_sorular && t.yanlislar_kontrol).length;
 
-  const lastExam = exams?.[0] ?? null;
+  const examList = exams ?? [];
+  const lastExam = examList[0] ?? null;
   const lastExamRank = lastExam ? (rank ?? []).find((r: any) => r.exam_id === lastExam.id) : null;
+
+  const logs = dailyLogs ?? [];
+  const tasks = allTasks ?? [];
+  const days = activeDays(logs, tasks);
+  const streak = streakInfo(days, today);
+  const questions = questionTotals(logs, today);
+  const badges = computeBadges({
+    days, bestStreak: streak.best, totalQuestions: questions.total, tasks, exams: examList, topicsDone,
+  });
+  const resourceSubjects = Object.keys(student.resources ?? {});
+  const subjects = resourceSubjects.length ? resourceSubjects : (TRACK_RESOURCES[student.track] ?? []);
 
   return (
     <OgrenciAnasayfaClient
@@ -60,6 +77,11 @@ export default async function OgrenciAnaSayfa() {
       lastExam={lastExam}
       lastExamRank={lastExamRank}
       pendingRequests={pendingReqs?.length ?? 0}
+      streak={streak}
+      todayQuestions={questions.today}
+      targets={targetRows(student.track, student.target_nets ?? {}, examList)}
+      badges={badges}
+      subjects={subjects}
     />
   );
 }

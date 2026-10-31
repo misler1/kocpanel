@@ -5,6 +5,8 @@ import { useMemo, useState } from 'react';
 import { IconCheck, IconPlus, IconTrash, IconPencil, IconX } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { subjectEmoji, DAY_STYLES, cheer } from '../studentUi';
+import { StudyLogSheet } from '../StudyLogSheet';
+import { logStudy, setTaskDone, todayTr, type StudyInput } from '../studyApi';
 
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -35,7 +37,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
     return Array.from(m.entries()).map(([ws, we]) => ({ ws, we })).sort((a, b) => (a.ws < b.ws ? 1 : -1));
   }, [logs]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayTr();
   const [week, setWeek] = useState<string>(() => {
     const cur = weeks.find((w) => w.ws <= today && (!w.we || today <= w.we));
     return (cur ?? weeks[0])?.ws ?? '';
@@ -52,6 +54,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   const [showNew, setShowNew] = useState(false);
   const [extraForm, setExtraForm] = useState<Added | null>(null);
   const [extraBusy, setExtraBusy] = useState(false);
+  const [sheetTask, setSheetTask] = useState<any | null>(null);
 
   const weekLogs = logs.filter((l) => l.week_start === week);
   const currentWeekEnd = weeks.find((w) => w.ws === week)?.we ?? null;
@@ -59,16 +62,32 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   const openNew = requests.find((r) => r.status === 'bekliyor' && r.kind === 'yeni_program');
   const subjectOptions = Object.keys(resources);
 
+  const markDone = (id: string, done: boolean) =>
+    setLogs((prev) => prev.map((x) => (x.id === id ? { ...x, student_done: done } : x)));
+
   async function toggleDone(l: any) {
     if (editMode) return;
-    const next = !l.student_done;
-    setLogs((prev) => prev.map((x) => (x.id === l.id ? { ...x, student_done: next } : x)));
-    const { error } = await (supabase.from('question_logs') as any)
-      .update({ student_done: next, student_done_at: next ? new Date().toISOString() : null }).eq('id', l.id);
-    if (error) {
-      setLogs((prev) => prev.map((x) => (x.id === l.id ? { ...x, student_done: l.student_done } : x)));
-      setMsg('Kaydedilemedi, tekrar dene.');
-    } else setMsg(null);
+    if (!l.student_done) { setSheetTask(l); return; } // tik = "ne çalıştın?" penceresi
+    markDone(l.id, false);
+    const err = await setTaskDone(supabase, l.id, false);
+    if (err) { markDone(l.id, true); setMsg(err); } else setMsg(null);
+  }
+
+  async function saveStudy(input: StudyInput) {
+    const err = await logStudy(supabase, input);
+    if (err) return err;
+    if (input.taskId) markDone(input.taskId, true);
+    setSheetTask(null); setMsg(null);
+    return null;
+  }
+
+  async function skipStudy() {
+    const task = sheetTask;
+    setSheetTask(null);
+    if (!task) return;
+    markDone(task.id, true);
+    const err = await setTaskDone(supabase, task.id, true);
+    if (err) { markDone(task.id, false); setMsg(err); } else setMsg(null);
   }
 
   function resetEdit() { setEditMode(false); setEdits({}); setRemoved(new Set()); setAdded([]); setNote(''); setNewForm(null); }
@@ -155,14 +174,14 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   const doneCount = weekLogs.filter((l) => l.student_done).length;
   const weekPct = weekLogs.length > 0 ? Math.round((doneCount / weekLogs.length) * 100) : 0;
   const isCurrentWeek = !!week && week <= today && (!currentWeekEnd || today <= currentWeekEnd);
-  const todayIndex = (new Date().getDay() + 6) % 7;
+  const todayIndex = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-[24px] font-extrabold tracking-tight text-[var(--ink)]">🗓️ Haftalık Takip</h1>
-          <p className="text-[13px] font-medium text-[var(--ink-muted)]">Bitirdiğin görevlere dokun, işaretlensin!</p>
+          <p className="text-[13px] font-medium text-[var(--ink-muted)]">Bitirdiğin göreve dokun, kaç soru çözdüğünü yaz!</p>
         </div>
         {weeks.length > 0 && (
           <select value={week} onChange={(e) => { setWeek(e.target.value); resetEdit(); }} className="rounded-full border-2 border-[var(--border)] bg-[var(--card)] px-3.5 py-2 text-[13px] font-bold text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none">
@@ -340,6 +359,11 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
             </div>
           )}
         </>
+      )}
+
+      {sheetTask && (
+        <StudyLogSheet task={sheetTask} subjects={subjectOptions} onSave={saveStudy}
+          onSkip={skipStudy} onClose={() => setSheetTask(null)} />
       )}
 
       {requests.length > 0 && (

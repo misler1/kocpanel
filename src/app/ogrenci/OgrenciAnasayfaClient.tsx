@@ -3,9 +3,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { IconCheck, IconClock, IconArrowRight } from '@tabler/icons-react';
+import { useRouter } from 'next/navigation';
+import { IconCheck, IconClock, IconArrowRight, IconPlus } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
+import type { Badge, TargetRow } from '@/lib/student-motivation';
 import { subjectEmoji, dailyQuote, cheer } from './studentUi';
+import { StudyLogSheet } from './StudyLogSheet';
+import { logStudy, setTaskDone, type StudyInput } from './studyApi';
+import { BadgesSection, StreakCard, TargetNetCard } from './Motivation';
 
 function getGreeting(name: string) {
   const h = new Date().getHours();
@@ -38,21 +43,51 @@ const CONFETTI = ['🎉', '⭐', '🎊', '✨', '🌟', '💜'];
 
 export function OgrenciAnasayfaClient({
   fullName, todayLabel, todayLogs, weekTotal, weekDone, topicsDone, topicsTotal, lastExam, lastExamRank, pendingRequests,
+  streak, todayQuestions, targets, badges, subjects,
 }: {
   fullName: string; todayLabel: string; todayLogs: any[]; weekTotal: number; weekDone: number;
   topicsDone: number; topicsTotal: number; lastExam: any; lastExamRank: any; pendingRequests: number;
+  streak: { current: number; best: number; studiedToday: boolean }; todayQuestions: number;
+  targets: TargetRow[]; badges: Badge[]; subjects: string[];
 }) {
   const supabase = createClient();
+  const router = useRouter();
   const [logs, setLogs] = useState(todayLogs);
   const [celebrate, setCelebrate] = useState(0);
+  // undefined: kapalı, null: plan dışı çalışma, nesne: tiklenen görev
+  const [sheet, setSheet] = useState<any | null | undefined>(undefined);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  function markDone(id: string, done: boolean) {
+    const updated = logs.map((x) => (x.id === id ? { ...x, student_done: done } : x));
+    setLogs(updated);
+    if (done && updated.every((x) => x.student_done)) setCelebrate((c) => c + 1);
+  }
 
   async function toggleDone(l: any) {
-    const next = !l.student_done;
-    const updated = logs.map((x) => (x.id === l.id ? { ...x, student_done: next } : x));
-    setLogs(updated);
-    if (next && updated.every((x) => x.student_done)) setCelebrate((c) => c + 1);
-    await (supabase.from('question_logs') as any)
-      .update({ student_done: next, student_done_at: next ? new Date().toISOString() : null }).eq('id', l.id);
+    if (!l.student_done) { setSheet(l); return; } // tik = "ne çalıştın?" penceresi
+    markDone(l.id, false);
+    const err = await setTaskDone(supabase, l.id, false);
+    if (err) { markDone(l.id, true); setMsg(err); } else { setMsg(null); router.refresh(); }
+  }
+
+  async function saveStudy(input: StudyInput) {
+    const err = await logStudy(supabase, input);
+    if (err) return err;
+    if (input.taskId) markDone(input.taskId, true);
+    setSheet(undefined);
+    setMsg(input.taskId ? null : 'Çalışman günlüğüne eklendi! 🌟');
+    router.refresh(); // seri, rozet ve bugünkü soru sayısı yenilensin
+    return null;
+  }
+
+  async function skipStudy() {
+    const task = sheet;
+    setSheet(undefined);
+    if (!task) return;
+    markDone(task.id, true);
+    const err = await setTaskDone(supabase, task.id, true);
+    if (err) { markDone(task.id, false); setMsg(err); } else router.refresh();
   }
 
   const todayDone = logs.filter((l) => l.student_done).length;
@@ -85,6 +120,14 @@ export function OgrenciAnasayfaClient({
         )}
       </div>
 
+      {/* Seri + hedef net */}
+      <div className="grid gap-3 md:grid-cols-2">
+        <StreakCard current={streak.current} best={streak.best} studiedToday={streak.studiedToday} todayQuestions={todayQuestions} />
+        <TargetNetCard rows={targets} />
+      </div>
+
+      {msg && <p className="rounded-2xl border-2 border-[var(--accent)]/20 bg-[var(--accent-soft)] px-4 py-2.5 text-[13px] font-bold text-[var(--accent-dark)]">💬 {msg}</p>}
+
       {/* Bugünün görevleri */}
       <div className="relative overflow-hidden rounded-[28px] border-2 border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
         {celebrate > 0 && (
@@ -116,7 +159,7 @@ export function OgrenciAnasayfaClient({
           <div className="py-6 text-center">
             <div className="mb-2 text-[44px]">🏖️</div>
             <p className="text-[15px] font-bold text-[var(--ink)]">Bugün planlanmış görevin yok</p>
-            <p className="text-[13px] text-[var(--ink-muted)]">İstersen haftalık sayfasından kendine ekstra görev ekleyebilirsin.</p>
+            <p className="text-[13px] text-[var(--ink-muted)]">Yine de çalıştıysan aşağıdan plan dışı çalışma olarak ekleyebilirsin.</p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -147,9 +190,14 @@ export function OgrenciAnasayfaClient({
           </div>
         )}
 
-        <Link href="/ogrenci/haftalik-takip" className="mt-4 inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-4 py-2 text-[13px] font-bold text-[var(--accent-dark)] transition-colors hover:bg-[var(--accent)] hover:text-white">
-          Haftalık programım <IconArrowRight size={15} />
-        </Link>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" onClick={() => setSheet(null)} className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-4 py-2 text-[13px] font-bold text-white shadow-sm transition-colors hover:bg-[var(--accent-dark)]">
+            <IconPlus size={15} /> Plan dışı çalışma ekle
+          </button>
+          <Link href="/ogrenci/haftalik-takip" className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-4 py-2 text-[13px] font-bold text-[var(--accent-dark)] transition-colors hover:bg-[var(--accent)] hover:text-white">
+            Haftalık programım <IconArrowRight size={15} />
+          </Link>
+        </div>
       </div>
 
       {/* Özet kartları */}
@@ -164,6 +212,13 @@ export function OgrenciAnasayfaClient({
             sub={lastExamRank ? `Sıralaman: ${lastExamRank.rank}/${lastExamRank.total}` : lastExam ? lastExam.exam_name : 'Henüz deneme yok'} />
         </div>
       </div>
+
+      <BadgesSection badges={badges} />
+
+      {sheet !== undefined && (
+        <StudyLogSheet task={sheet} subjects={subjects} onSave={saveStudy}
+          onSkip={sheet ? skipStudy : undefined} onClose={() => setSheet(undefined)} />
+      )}
     </div>
   );
 }

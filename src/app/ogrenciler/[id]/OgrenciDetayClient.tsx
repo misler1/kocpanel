@@ -426,14 +426,12 @@ export function GunlukAccordion({ studentId }: { studentId: string }) {
   // Accordion açılır açılmaz otomatik yükle
   useState(() => {
     (async () => {
-      const { data, error } = await (supabase as any)
+      const { data } = await (supabase as any)
         .from('daily_logs')
         .select('*')
         .eq('student_id', studentId)
         .order('log_date', { ascending: false })
         .limit(30);
-      console.log('daily_logs data:', data);
-      console.log('daily_logs error:', error);
       setLogs(data ?? []);
       setLoaded(true);
       if (data && data.length > 0) setSelectedLog(data[0]);
@@ -459,8 +457,8 @@ export function GunlukAccordion({ studentId }: { studentId: string }) {
       student_id: studentId,
       log_date: form.log_date,
       source: 'manual',
-      topic_studies: form.topic_studies.filter((t) => t.topic),
-      question_solved: form.question_solved.filter((q) => q.topic),
+      topic_studies: form.topic_studies.filter((t) => t.topic || t.subject),
+      question_solved: form.question_solved.filter((q) => q.topic || q.subject),
       exams: form.exams.filter((x) => x.exam_name),
       book_reading: form.book_reading.filter((b) => b.book_name),
       raw_message: form.raw_message || null,
@@ -611,7 +609,7 @@ export function GunlukAccordion({ studentId }: { studentId: string }) {
                           {q.subject ? `${q.subject} · ` : ''}{q.topic}
                           {q.resource && <span className="text-gray-400"> ({q.resource})</span>}
                         </span>
-                        <span className="text-[12px] text-gray-400">{q.count} soru</span>
+                        <span className="text-[12px] text-gray-400">{q.count} soru{(q.correct || q.wrong) ? ` · ${q.correct ?? 0}D ${q.wrong ?? 0}Y` : ''}{q.by === 'ogrenci' ? ' · öğrenci girdi' : ''}</span>
                       </div>
                     ))}
                   </div>
