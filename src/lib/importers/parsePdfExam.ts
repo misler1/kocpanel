@@ -14,8 +14,7 @@ const SUBJECT_DEFS: { key: string; label: RegExp; maxSoru: number }[] = [
 ];
 
 function calcNetLGS(dogru: number, yanlis: number): number {
-  const net = dogru - yanlis / 3;
-  return Math.max(0, Math.round(net * 100) / 100);
+  return Math.round((dogru - yanlis / 3) * 100) / 100 || 0;
 }
 
 function formatTrNumber(n: number): string {
@@ -33,11 +32,14 @@ function splitGluedNumbers(token: string, maxSoru: number): { dogru: number; yan
 
   for (let dogru = 0; dogru <= maxSoru; dogru++) {
     for (let yanlis = 0; yanlis <= maxSoru - dogru; yanlis++) {
-      const net = calcNetLGS(dogru, yanlis);
-      const basari = Math.round((net / maxSoru) * 10000) / 100;
-      const candidate = `${dogru}${yanlis}${formatTrNumber(net)}${formatTrNumber(basari)}`;
-      if (candidate === remainder) {
-        return { dogru, yanlis };
+      // PDF eksi neti ya olduğu gibi ya da 0'a kırpılmış yazabilir; ikisi de denenir.
+      const raw = calcNetLGS(dogru, yanlis);
+      for (const net of raw < 0 ? [raw, 0] : [raw]) {
+        const basari = Math.round((net / maxSoru) * 10000) / 100;
+        const candidate = `${dogru}${yanlis}${formatTrNumber(net)}${formatTrNumber(basari)}`;
+        if (candidate === remainder) {
+          return { dogru, yanlis };
+        }
       }
     }
   }

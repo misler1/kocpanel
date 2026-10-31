@@ -9,7 +9,7 @@ import { IconArrowLeft } from '@tabler/icons-react';
 import { SubjectRow } from '../../SubjectRow';
 import {
   TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS,
-  calcNetYKS, calcNetLGS,
+  calcExamNet,
   emptyResult, type ResultMap, type SubjectDef,
 } from '../../examConstants';
 
@@ -21,18 +21,8 @@ function initResults(subjects: SubjectDef[]): ResultMap {
 }
 
 function calcTotalNet(subjects: SubjectDef[], results: ResultMap, fn: 'yks' | 'lgs'): number {
-  let total = 0;
-  const seen = new Set<string>();
-  for (const s of subjects) {
-    if (seen.has(s.key)) continue;
-    seen.add(s.key);
-    const r = results[s.key];
-    if (!r) continue;
-    const d = Number(r.dogru) || 0;
-    const y = Number(r.yanlis) || 0;
-    total += fn === 'yks' ? calcNetYKS(d, y) : calcNetLGS(d, y);
-  }
-  return Math.round(total * 100) / 100;
+  const type = fn === 'lgs' ? 'LGS' : subjects === AYT_SUBJECTS ? 'AYT' : 'TYT';
+  return calcExamNet(type, results);
 }
 
 function matGeoUsed(results: ResultMap): number {

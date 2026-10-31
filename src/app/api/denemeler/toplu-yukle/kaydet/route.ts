@@ -1,7 +1,7 @@
 // src/app/api/denemeler/toplu-yukle/kaydet/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { calcNetYKS, calcNetLGS, TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS } from '@/app/denemeler/examConstants';
+import { calcExamNet } from '@/app/denemeler/examConstants';
 
 interface ConfirmedRow {
   studentId: string;
@@ -32,22 +32,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Eksik veri: ${missing.join(', ')}` }, { status: 400 });
   }
 
-  const subjects = examType === 'TYT' ? TYT_SUBJECTS : examType === 'AYT' ? AYT_SUBJECTS : LGS_SUBJECTS;
   const maxScore = examType === 'TYT' ? 120 : examType === 'AYT' ? 160 : 90;
 
   const inserts = rows.map((r) => {
-    let total = 0;
-    const seen = new Set<string>();
-    for (const s of subjects) {
-      if (seen.has(s.key)) continue;
-      seen.add(s.key);
-      const res = r.results[s.key];
-      if (!res) continue;
-      const d = Number(res.dogru) || 0;
-      const y = Number(res.yanlis) || 0;
-      total += examType === 'LGS' ? calcNetLGS(d, y) : calcNetYKS(d, y);
-    }
-    const netScore = Math.round(total * 100) / 100;
+    const netScore = calcExamNet(examType, r.results);
 
     return {
       student_id: r.studentId,

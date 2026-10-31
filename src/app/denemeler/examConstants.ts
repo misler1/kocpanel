@@ -47,16 +47,34 @@ export const LGS_SUBJECTS: SubjectDef[] = [
 
 // ─── Net hesaplama ────────────────────────────────────────────
 
-// YKS: 4 yanlış = 1 doğru götürür
+// Net sıfırda kırpılmaz: yanlışlar doğruları aşarsa net eksiye düşer (ÖSYM/MEB kuralı).
+const round2 = (n: number) => Math.round(n * 100) / 100 || 0; // -0 → 0
+
+// YKS: 4 yanlış = 1 doğru götürür (her yanlış -0,25 net)
 export function calcNetYKS(dogru: number, yanlis: number): number {
-  const net = dogru - yanlis / 4;
-  return Math.max(0, Math.round(net * 100) / 100);
+  return round2(dogru - yanlis / 4);
 }
 
-// LGS: 3 yanlış = 1 doğru götürür
+// LGS: 3 yanlış = 1 doğru götürür (her yanlış -0,33 net)
 export function calcNetLGS(dogru: number, yanlis: number): number {
-  const net = dogru - yanlis / 3;
-  return Math.max(0, Math.round(net * 100) / 100);
+  return round2(dogru - yanlis / 3);
+}
+
+// Denemenin toplam neti. Yuvarlama en sonda bir kez yapılır; ders ders yuvarlanıp
+// toplanırsa LGS'de (1/3'lük kesirler) toplam 0,01 sapabilir.
+export function calcExamNet(
+  examType: string,
+  results: Record<string, { dogru?: string | number | null; yanlis?: string | number | null }> | null | undefined,
+): number {
+  const perWrong = examType === 'LGS' ? 1 / 3 : 1 / 4;
+  const subjects = examType === 'TYT' ? TYT_SUBJECTS : examType === 'AYT' ? AYT_SUBJECTS : LGS_SUBJECTS;
+  let total = 0;
+  for (const s of subjects) {
+    const r = results?.[s.key];
+    if (!r) continue;
+    total += (Number(r.dogru) || 0) - (Number(r.yanlis) || 0) * perWrong;
+  }
+  return round2(total);
 }
 
 // Mat+Geo toplam soru sayısı = 40 (TYT veya AYT için)

@@ -1033,16 +1033,27 @@ function ExamGroupCard({
 
 // ─── Deneme karnesi (öğrenci sonuç belgesi) ─────────────────────
 // Netler, ders ortalamaları, sıralamalar ve kazanım (konu) analizi tek pencerede.
-// Karne ders satırları için yumuşak pastel tonlar (zemin, sol şerit)
+// Karne ders satırları için yumuşak pastel tonlar (zemin, vurgu rengi)
 const SOFT_ROWS = [
-  { bg: '#F4F6FF', bar: '#A5B4FC' },
-  { bg: '#F7F4FF', bar: '#C4B5FD' },
-  { bg: '#F0FAF7', bar: '#86D4BC' },
-  { bg: '#FFF8F1', bar: '#FDBA8C' },
-  { bg: '#FFF4F7', bar: '#F9A8C0' },
-  { bg: '#F1F8FE', bar: '#93C5FD' },
-  { bg: '#FFFBEC', bar: '#F5D77A' },
+  { bg: '#F4F6FF', bar: '#818CF8' },
+  { bg: '#F7F4FF', bar: '#A78BFA' },
+  { bg: '#EFFAF6', bar: '#34D399' },
+  { bg: '#FFF7EF', bar: '#FB923C' },
+  { bg: '#FFF3F7', bar: '#F472B6' },
+  { bg: '#F0F7FE', bar: '#60A5FA' },
+  { bg: '#FFFAEB', bar: '#FBBF24' },
 ];
+
+const fmtNet = (n: number) => (Math.round(n * 100) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+function ReportSectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-2">
+      <h4 className="text-[14px] font-semibold text-slate-800">{children}</h4>
+      {right}
+    </div>
+  );
+}
 
 function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) {
   const questions: { s: string; n: number; k: string; dc: string; oc: string | null; r: 'D' | 'Y' | 'B' }[] =
@@ -1055,6 +1066,7 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
   const net = Number(exam.net_score) || 0;
   const puan = (exam.exam_type === 'TYT' ? exam.tyt_puan : exam.exam_type === 'LGS' ? exam.lgs_puan : null) ?? null;
   const pctTotal = maxScore > 0 ? Math.max(0, Math.min(100, (net / maxScore) * 100)) : 0;
+  const penaltyRule = exam.exam_type === 'LGS' ? '3 yanlış 1 doğruyu götürür' : '4 yanlış 1 doğruyu götürür';
   const labelOf = (key: string) =>
     subjects.find((x) => x.key === key)?.label ?? key.charAt(0).toLocaleUpperCase('tr') + key.slice(1);
 
@@ -1076,6 +1088,12 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
       return { s, i, d, y, b, n, avg: avgs[s.key] != null ? Number(avgs[s.key]) : null };
     })
     .filter(Boolean) as { s: SubjectDef; i: number; d: number; y: number; b: number; n: number; avg: number | null }[];
+
+  const totD = rows.reduce((a, r) => a + r.d, 0);
+  const totY = rows.reduce((a, r) => a + r.y, 0);
+  const totB = rows.reduce((a, r) => a + r.b, 0);
+  const totQ = rows.reduce((a, r) => a + r.s.total, 0);
+  const lost = Math.round((totY / (exam.exam_type === 'LGS' ? 3 : 4)) * 100) / 100;
 
   const bySubject = useMemo(() => {
     const map = new Map<string, typeof questions>();
@@ -1101,106 +1119,130 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
   const initials = (exam.students?.full_name ?? '?')
     .split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toLocaleUpperCase('tr');
   const dateLabel = new Date(exam.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-  const dot = (r: 'D' | 'Y' | 'B') => (r === 'D' ? 'bg-emerald-500 text-white' : r === 'Y' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-500');
+  const dot = (r: 'D' | 'Y' | 'B') => (r === 'D' ? 'bg-emerald-500 text-white' : r === 'Y' ? 'bg-rose-500 text-white' : 'bg-slate-200 text-slate-500');
+  const card = 'rounded-3xl bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/60';
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-3 backdrop-blur-[2px] sm:p-6" onClick={onClose}>
-      <div className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-slate-50 shadow-2xl ring-1 ring-black/5" onClick={(ev) => ev.stopPropagation()}>
+      <div className="relative w-full max-w-4xl overflow-hidden rounded-[28px] bg-[#F7F7FB] shadow-2xl ring-1 ring-black/5" onClick={(ev) => ev.stopPropagation()}>
         {/* Başlık */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-indigo-800 px-7 py-7 text-white">
-          <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-sky-400/10 blur-3xl" />
-          <button onClick={onClose} className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white">
+        <div className="relative overflow-hidden bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-500 px-6 pb-20 pt-6 text-white sm:px-8">
+          <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-white/10" />
+          <div className="pointer-events-none absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-white/10" />
+          <button onClick={onClose} className="absolute right-4 top-4 z-10 rounded-full bg-white/15 p-1.5 text-white/90 hover:bg-white/25" aria-label="Kapat">
             <IconX size={18} />
           </button>
-          <div className="relative flex flex-wrap items-center justify-between gap-6">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-white/10 text-xl font-semibold tracking-wide ring-1 ring-white/20 backdrop-blur">
-                {initials}
-              </div>
-              <div className="min-w-0">
-                <div className="mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-200">
-                  <span>Sınav sonuç belgesi</span>
-                  <span className="rounded-full bg-white/15 px-2 py-0.5 tracking-wider text-white">{exam.exam_type}</span>
-                </div>
-                <h3 className="truncate text-2xl font-semibold leading-tight tracking-tight">{exam.students?.full_name}</h3>
-                <div className="mt-1 truncate text-[13px] text-indigo-100/80">{exam.exam_name}</div>
-                <div className="text-[12px] text-indigo-200/60">{dateLabel}</div>
-              </div>
+          <div className="relative flex items-center gap-4">
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white text-lg font-bold text-indigo-600 shadow-lg">
+              {initials}
             </div>
-            <div className="relative mr-6 flex flex-shrink-0 items-center gap-4">
-              <div className="relative h-24 w-24">
-                <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="7" />
-                  <circle
-                    cx="50" cy="50" r="42" fill="none" stroke="url(#gaugeGrad)" strokeWidth="7" strokeLinecap="round"
-                    strokeDasharray={`${(pctTotal / 100) * 263.9} 263.9`}
-                  />
-                  <defs>
-                    <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#7dd3fc" />
-                      <stop offset="100%" stopColor="#a5b4fc" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-semibold leading-none">{net}</span>
-                  <span className="mt-0.5 text-[10px] text-indigo-200/70">/ {maxScore} net</span>
-                </div>
+            <div className="min-w-0 pr-8">
+              <div className="mb-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75">
+                <span>Deneme karnesi</span>
+                <span className="rounded-full bg-white/20 px-2 py-0.5 tracking-wider text-white">{exam.exam_type}</span>
               </div>
-              {(puan != null || avgs.toplam != null || exam.say_puan != null || exam.ea_puan != null || exam.soz_puan != null) && (
-                <div className="space-y-2">
-                  {puan != null && (
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-indigo-200/70">Puan</div>
-                      <div className="text-xl font-semibold leading-none">{puan}</div>
-                    </div>
-                  )}
-                  {exam.exam_type === 'AYT' && (
-                    <div className="flex gap-3">
-                      {[['SAY', exam.say_puan], ['EA', exam.ea_puan], ['SÖZ', exam.soz_puan]].map(([l, v]) => v != null && (
-                        <div key={l as string}>
-                          <div className="text-[10px] uppercase tracking-wider text-indigo-200/70">{l}</div>
-                          <div className="text-base font-semibold leading-none">{v as number}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {avgs.toplam != null && (
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-indigo-200/70">Genel ort.</div>
-                      <div className="text-sm font-medium leading-none text-indigo-100">{fmtAvg(Number(avgs.toplam))}</div>
-                    </div>
-                  )}
-                </div>
-              )}
+              <h3 className="truncate text-[22px] font-bold leading-tight tracking-tight sm:text-2xl">{exam.students?.full_name}</h3>
+              <div className="mt-0.5 truncate text-[13px] text-white/85">{exam.exam_name} · {dateLabel}</div>
             </div>
           </div>
         </div>
 
-        <div className="space-y-6 p-6">
+        <div className="relative -mt-14 space-y-5 px-4 pb-6 sm:px-6">
+          {/* Özet: net göstergesi + D/Y/B + puan */}
+          <div className={`${card} flex flex-col gap-5 sm:flex-row sm:items-center`}>
+            <div className="flex items-center gap-4">
+              <div className="relative h-28 w-28 flex-shrink-0">
+                <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="#EEF0F7" strokeWidth="9" />
+                  <circle
+                    cx="50" cy="50" r="42" fill="none" stroke="url(#gaugeGrad)" strokeWidth="9" strokeLinecap="round"
+                    strokeDasharray={`${(pctTotal / 100) * 263.9} 263.9`}
+                  />
+                  <defs>
+                    <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#8B5CF6" />
+                      <stop offset="100%" stopColor="#38BDF8" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`text-[26px] font-bold leading-none ${net < 0 ? 'text-rose-600' : 'text-slate-900'}`}>{fmtNet(net)}</span>
+                  <span className="mt-1 text-[10.5px] font-medium text-slate-400">/ {maxScore} net</span>
+                </div>
+              </div>
+              <div className="sm:hidden">
+                <div className="text-[12px] font-medium text-slate-400">Başarı</div>
+                <div className="text-2xl font-bold text-slate-900">%{Math.round(pctTotal)}</div>
+              </div>
+            </div>
+
+            <div className="grid flex-1 grid-cols-3 gap-2.5">
+              <div className="rounded-2xl bg-emerald-50 p-3 text-center">
+                <div className="text-[11px] font-semibold text-emerald-700">Doğru</div>
+                <div className="text-[22px] font-bold leading-tight text-emerald-700">{totD}</div>
+              </div>
+              <div className="rounded-2xl bg-rose-50 p-3 text-center">
+                <div className="text-[11px] font-semibold text-rose-600">Yanlış</div>
+                <div className="text-[22px] font-bold leading-tight text-rose-600">{totY}</div>
+                {totY > 0 && <div className="text-[10px] font-medium text-rose-500">−{fmtNet(lost)} net</div>}
+              </div>
+              <div className="rounded-2xl bg-slate-100 p-3 text-center">
+                <div className="text-[11px] font-semibold text-slate-500">Boş</div>
+                <div className="text-[22px] font-bold leading-tight text-slate-600">{totB}</div>
+              </div>
+            </div>
+
+            {(puan != null || avgs.toplam != null || exam.say_puan != null || exam.ea_puan != null || exam.soz_puan != null) && (
+              <div className="flex flex-wrap gap-2.5 sm:w-40 sm:flex-col">
+                {puan != null && (
+                  <div className="flex-1 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 px-3.5 py-2.5 ring-1 ring-amber-100">
+                    <div className="text-[11px] font-semibold text-amber-700">Puan</div>
+                    <div className="text-xl font-bold leading-tight text-amber-800">{fmtNet(Number(puan))}</div>
+                  </div>
+                )}
+                {exam.exam_type === 'AYT' && [['SAY', exam.say_puan], ['EA', exam.ea_puan], ['SÖZ', exam.soz_puan]].map(([l, v]) => v != null && (
+                  <div key={l as string} className="flex-1 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 px-3.5 py-2 ring-1 ring-amber-100">
+                    <div className="text-[11px] font-semibold text-amber-700">{l} puan</div>
+                    <div className="text-base font-bold leading-tight text-amber-800">{fmtNet(Number(v))}</div>
+                  </div>
+                ))}
+                {avgs.toplam != null && (
+                  <div className="flex-1 rounded-2xl bg-slate-50 px-3.5 py-2 ring-1 ring-slate-200/70">
+                    <div className="text-[11px] font-semibold text-slate-500">Genel ortalama</div>
+                    <div className="flex items-center gap-1 text-base font-bold leading-tight text-slate-700">
+                      {fmtAvg(Number(avgs.toplam))}
+                      {net !== Number(avgs.toplam) && (
+                        <span className={`text-[11px] ${net > Number(avgs.toplam) ? 'text-emerald-600' : 'text-rose-500'}`}>{net > Number(avgs.toplam) ? '▲' : '▼'}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Sıralamalar */}
           {rankItems.length > 0 && (
-            <section>
-              <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Sıralamalar</div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <section className={card}>
+              <ReportSectionTitle>🏆 Sıralamalar</ReportSectionTitle>
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                 {rankItems.map((c) => {
                   const r = Number(ranks[c.key]);
                   const n = c.katilimci && kat[c.katilimci] != null ? Number(kat[c.katilimci]) : null;
                   const top = n && n > 0 ? Math.max(1, Math.ceil((r / n) * 100)) : null;
                   return (
-                    <div key={c.key} className="rounded-2xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/70">
-                      <div className="text-[11px] font-medium text-slate-400">{c.label}</div>
-                      <div className="mt-1 flex items-baseline gap-1.5">
-                        <span className="text-2xl font-semibold tracking-tight text-slate-900">{fmtNum(r)}.</span>
-                        {n != null && <span className="text-[12px] text-slate-400">/ {fmtNum(n)} kişi</span>}
+                    <div key={c.key} className="rounded-2xl bg-gradient-to-br from-indigo-50/80 to-sky-50/60 p-3.5 ring-1 ring-indigo-100/70">
+                      <div className="text-[11.5px] font-semibold text-indigo-500">{c.label}</div>
+                      <div className="mt-0.5 flex items-baseline gap-1.5">
+                        <span className="text-[22px] font-bold tracking-tight text-slate-900">{fmtNum(r)}.</span>
+                        {n != null && <span className="text-[11.5px] text-slate-400">/ {fmtNum(n)}</span>}
                       </div>
                       {top != null && (
                         <>
-                          <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-slate-100">
-                            <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-sky-400" style={{ width: `${Math.max(4, 100 - top + 1)}%` }} />
+                          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+                            <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-sky-400" style={{ width: `${Math.max(4, 100 - top + 1)}%` }} />
                           </div>
-                          <div className="mt-1 text-[10px] text-slate-400">İlk %{top}</div>
+                          <div className="mt-1 text-[10.5px] font-medium text-slate-500">İlk %{top} içinde</div>
                         </>
                       )}
                     </div>
@@ -1211,103 +1253,87 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
           )}
 
           {/* Ders sonuçları */}
-          <section>
-            <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Ders sonuçları</div>
-            <div className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/70">
-              <div className="overflow-x-auto">
-                <table className="w-full text-[12px]">
-                  <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/80 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                      <th className="px-5 py-2.5 text-left">Ders</th>
-                      <th className="px-2 py-2.5 text-center">Soru</th>
-                      <th className="px-2 py-2.5 text-center">Doğru</th>
-                      <th className="px-2 py-2.5 text-center">Yanlış</th>
-                      <th className="px-2 py-2.5 text-center">Boş</th>
-                      <th className="px-2 py-2.5 text-center">Net</th>
-                      <th className="px-2 py-2.5 text-center">Ort.</th>
-                      <th className="w-44 px-5 py-2.5 text-left">Başarı</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r) => {
-                      const c = subjectColor(r.i);
-                      const pct = r.s.total > 0 ? Math.max(0, Math.min(100, (r.n / r.s.total) * 100)) : 0;
-                      const avgPct = r.avg != null && r.s.total > 0 ? Math.max(0, Math.min(100, (r.avg / r.s.total) * 100)) : null;
-                      const diff = r.avg != null ? r.n - r.avg : null;
-                      return (
-                        <tr key={r.s.key} className="border-b-2 border-white" style={{ backgroundColor: SOFT_ROWS[r.i % SOFT_ROWS.length].bg }}>
-                          <td className="px-5 py-2.5 font-medium text-slate-700" style={{ boxShadow: `inset 3px 0 0 ${SOFT_ROWS[r.i % SOFT_ROWS.length].bar}` }}>
-                            {r.s.label}
-                          </td>
-                          <td className="px-2 py-2.5 text-center text-slate-400">{r.s.total}</td>
-                          <td className="px-2 py-2.5 text-center font-medium text-emerald-600">{r.d}</td>
-                          <td className="px-2 py-2.5 text-center font-medium text-red-500">{r.y}</td>
-                          <td className="px-2 py-2.5 text-center text-slate-400">{r.b}</td>
-                          <td className="px-2 py-2.5 text-center text-[13px] font-semibold text-slate-900">{fmtAvg(r.n)}</td>
-                          <td className="px-2 py-2.5 text-center">
-                            {r.avg != null ? (
-                              <span className="text-slate-500">
-                                {fmtAvg(r.avg)}
-                                <span className={`ml-1 text-[9px] ${diff! >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{diff! >= 0 ? '▲' : '▼'}</span>
-                              </span>
-                            ) : (
-                              <span className="text-slate-300">—</span>
-                            )}
-                          </td>
-                          <td className="px-5 py-2.5">
-                            <div className="flex items-center gap-2">
-                              <div className="relative h-1.5 flex-1 rounded-full bg-white/80">
-                                <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: SOFT_ROWS[r.i % SOFT_ROWS.length].bar }} />
-                                {avgPct != null && (
-                                  <div className="absolute -top-0.5 h-2.5 w-0.5 rounded bg-slate-400" style={{ left: `${avgPct}%` }} title={`Genel ortalama ${fmtAvg(r.avg as number)}`} />
-                                )}
-                              </div>
-                              <span className="w-8 text-right text-[10px] text-slate-400">%{Math.round(pct)}</span>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t border-slate-200 bg-slate-50/80 font-semibold text-slate-900">
-                      <td className="px-5 py-2.5">Toplam</td>
-                      <td className="px-2 py-2.5 text-center text-slate-500">{rows.reduce((a, r) => a + r.s.total, 0)}</td>
-                      <td className="px-2 py-2.5 text-center text-emerald-600">{rows.reduce((a, r) => a + r.d, 0)}</td>
-                      <td className="px-2 py-2.5 text-center text-red-500">{rows.reduce((a, r) => a + r.y, 0)}</td>
-                      <td className="px-2 py-2.5 text-center text-slate-500">{rows.reduce((a, r) => a + r.b, 0)}</td>
-                      <td className="px-2 py-2.5 text-center text-[13px]">{fmtAvg(net)}</td>
-                      <td className="px-2 py-2.5 text-center text-slate-500">{avgs.toplam != null ? fmtAvg(Number(avgs.toplam)) : '—'}</td>
-                      <td className="px-5 py-2.5 text-right text-[10px] font-normal text-slate-400">▲▼ genel ortalamaya göre</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+          <section className={card}>
+            <ReportSectionTitle right={<span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">{penaltyRule}</span>}>
+              📚 Ders sonuçları
+            </ReportSectionTitle>
+            <div className="space-y-2">
+              {rows.map((r) => {
+                const tone = SOFT_ROWS[r.i % SOFT_ROWS.length];
+                const pct = r.s.total > 0 ? Math.max(0, Math.min(100, (r.n / r.s.total) * 100)) : 0;
+                const avgPct = r.avg != null && r.s.total > 0 ? Math.max(0, Math.min(100, (r.avg / r.s.total) * 100)) : null;
+                const diff = r.avg != null ? Math.round((r.n - r.avg) * 100) / 100 : null;
+                return (
+                  <div key={r.s.key} className="rounded-2xl px-4 py-3" style={{ backgroundColor: tone.bg }}>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                      <span className="flex min-w-0 flex-1 items-center gap-2">
+                        <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: tone.bar }} />
+                        <span className="truncate text-[13.5px] font-semibold text-slate-800">{r.s.label}</span>
+                        <span className="text-[11px] text-slate-400">{r.s.total} soru</span>
+                      </span>
+                      <span className="flex items-center gap-1 text-[11.5px] font-semibold">
+                        <span className="rounded-full bg-white px-2 py-0.5 text-emerald-600">{r.d} D</span>
+                        <span className="rounded-full bg-white px-2 py-0.5 text-rose-500">{r.y} Y</span>
+                        <span className="rounded-full bg-white px-2 py-0.5 text-slate-400">{r.b} B</span>
+                      </span>
+                      <span className="flex w-24 items-baseline justify-end gap-1">
+                        <span className={`text-[17px] font-bold ${r.n < 0 ? 'text-rose-600' : 'text-slate-900'}`}>{fmtNet(r.n)}</span>
+                        <span className="text-[10.5px] font-medium text-slate-400">net</span>
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2.5">
+                      <div className="relative h-2 flex-1 rounded-full bg-white">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: tone.bar }} />
+                        {avgPct != null && (
+                          <div className="absolute -top-1 h-4 w-1 rounded-full bg-slate-500/70 ring-2 ring-white" style={{ left: `calc(${avgPct}% - 2px)` }} title={`Genel ortalama ${fmtAvg(r.avg as number)}`} />
+                        )}
+                      </div>
+                      <span className="w-9 text-right text-[11px] font-semibold text-slate-500">%{Math.round(pct)}</span>
+                    </div>
+                    {r.avg != null && (
+                      <div className="mt-1 text-[11px] text-slate-500">
+                        Ortalama {fmtAvg(r.avg)} ·{' '}
+                        <span className={diff! >= 0 ? 'font-semibold text-emerald-600' : 'font-semibold text-rose-500'}>
+                          {diff! >= 0 ? `▲ ${fmtNet(diff!)} üstünde` : `▼ ${fmtNet(Math.abs(diff!))} altında`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-white">
+              <span className="text-[13px] font-semibold">Toplam · {totQ} soru</span>
+              <span className="flex items-center gap-3 text-[12px]">
+                <span className="text-emerald-300">{totD} D</span>
+                <span className="text-rose-300">{totY} Y</span>
+                <span className="text-slate-300">{totB} B</span>
+                <span className={`text-[17px] font-bold ${net < 0 ? 'text-rose-300' : 'text-white'}`}>{fmtNet(net)} net</span>
+              </span>
+            </div>
+            {hasSubjectAverages(avgs) && <p className="mt-2 text-[10.5px] text-slate-400">Çubuktaki dikey çizgi genel ortalamayı gösterir.</p>}
           </section>
 
           {/* Kazanım analizi */}
           {questions.length > 0 && (
             <>
-              <section className="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-orange-50/50 p-5">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="text-[13px] font-semibold text-red-700">Öncelikli çalışılacak kazanımlar</div>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-red-600 ring-1 ring-red-100">{weak.length} konu</span>
-                </div>
+              <section className="rounded-3xl bg-gradient-to-br from-rose-50 via-orange-50 to-amber-50 p-5 ring-1 ring-rose-100">
+                <ReportSectionTitle right={<span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-rose-600 ring-1 ring-rose-100">{weak.length} konu</span>}>
+                  🎯 Öncelikli çalışılacak kazanımlar
+                </ReportSectionTitle>
                 {weak.length === 0 ? (
-                  <p className="text-[12px] text-gray-500">Yanlış ya da boş bırakılan soru yok. 🎉</p>
+                  <p className="text-[13px] font-medium text-emerald-700">Yanlış ya da boş bırakılan soru yok. Harika! 🎉</p>
                 ) : (
-                  <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     {weak.slice(0, 12).map((t) => (
-                      <div key={`${t.s}|${t.k}`} className="flex items-start justify-between gap-2 text-[12px]">
-                        <span className="min-w-0 text-gray-700">
-                          <span className="mr-1 rounded bg-white px-1 py-0.5 text-[9px] font-medium uppercase text-gray-400">{labelOf(t.s)}</span>
+                      <div key={`${t.s}|${t.k}`} className="flex items-start justify-between gap-2 rounded-xl bg-white/80 px-3 py-2 text-[12.5px]">
+                        <span className="min-w-0 text-slate-700">
+                          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">{labelOf(t.s)}</span>
                           {t.k}
                         </span>
-                        <span className="flex-shrink-0 whitespace-nowrap text-[11px]">
-                          {t.y > 0 && <span className="font-medium text-red-600">{t.y}Y</span>}
-                          {t.y > 0 && t.b > 0 && ' '}
-                          {t.b > 0 && <span className="text-gray-500">{t.b}B</span>}
+                        <span className="flex flex-shrink-0 gap-1 whitespace-nowrap text-[11px] font-semibold">
+                          {t.y > 0 && <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-rose-600">{t.y} Y</span>}
+                          {t.b > 0 && <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-slate-500">{t.b} B</span>}
                         </span>
                       </div>
                     ))}
@@ -1315,66 +1341,68 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
                 )}
               </section>
 
-              <section className="space-y-3">
-                <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Kazanım analizi</div>
-                {bySubject.map(([key, list]) => {
-                  const idx = Math.max(0, subjects.findIndex((x) => x.key === key));
-                  const c = subjectColor(idx);
-                  const d = list.filter((q) => q.r === 'D').length;
-                  const y = list.filter((q) => q.r === 'Y').length;
-                  const b = list.filter((q) => q.r === 'B').length;
-                  const topics = new Map<string, typeof list>();
-                  list.forEach((q) => topics.set(q.k, [...(topics.get(q.k) ?? []), q]));
-                  return (
-                    <details key={key} className="group overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/70" open={y + b > 0 && bySubject.length <= 2}>
-                      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-2.5 hover:bg-gray-50">
-                        <span className={`h-2.5 w-2.5 rounded-full ${c.dot}`} />
-                        <span className="text-[13px] font-semibold text-gray-800">{labelOf(key)}</span>
-                        <span className="ml-auto flex items-center gap-2 text-[11px]">
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">{d} D</span>
-                          <span className="rounded-full bg-red-50 px-2 py-0.5 font-medium text-red-600">{y} Y</span>
-                          <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-500">{b} B</span>
-                          <IconChevronDown size={14} className="text-gray-400 transition-transform group-open:rotate-180" />
-                        </span>
-                      </summary>
-                      <div className="divide-y divide-gray-50 border-t border-gray-100">
-                        {Array.from(topics.entries()).map(([topic, qs]) => {
-                          const td = qs.filter((q) => q.r === 'D').length;
-                          const pct = Math.round((td / qs.length) * 100);
-                          return (
-                            <div key={topic} className="flex items-center gap-3 px-4 py-2">
-                              <div className="min-w-0 flex-1">
-                                <div className="text-[12px] text-gray-700">{topic}</div>
-                                <div className="mt-1 h-1 overflow-hidden rounded-full bg-gray-100">
-                                  <div
-                                    className={`h-full rounded-full ${pct >= 70 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-400' : 'bg-red-500'}`}
-                                    style={{ width: `${Math.max(pct, 4)}%` }}
-                                  />
+              <section className={card}>
+                <ReportSectionTitle>🧩 Kazanım analizi</ReportSectionTitle>
+                <div className="space-y-2.5">
+                  {bySubject.map(([key, list]) => {
+                    const idx = Math.max(0, subjects.findIndex((x) => x.key === key));
+                    const tone = SOFT_ROWS[idx % SOFT_ROWS.length];
+                    const d = list.filter((q) => q.r === 'D').length;
+                    const y = list.filter((q) => q.r === 'Y').length;
+                    const b = list.filter((q) => q.r === 'B').length;
+                    const topics = new Map<string, typeof list>();
+                    list.forEach((q) => topics.set(q.k, [...(topics.get(q.k) ?? []), q]));
+                    return (
+                      <details key={key} className="group overflow-hidden rounded-2xl ring-1 ring-slate-200/70" open={y + b > 0 && bySubject.length <= 2}>
+                        <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3" style={{ backgroundColor: tone.bg }}>
+                          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tone.bar }} />
+                          <span className="text-[13.5px] font-semibold text-slate-800">{labelOf(key)}</span>
+                          <span className="ml-auto flex items-center gap-1.5 text-[11px] font-semibold">
+                            <span className="rounded-full bg-white px-2 py-0.5 text-emerald-600">{d} D</span>
+                            <span className="rounded-full bg-white px-2 py-0.5 text-rose-500">{y} Y</span>
+                            <span className="rounded-full bg-white px-2 py-0.5 text-slate-400">{b} B</span>
+                            <IconChevronDown size={15} className="text-slate-400 transition-transform group-open:rotate-180" />
+                          </span>
+                        </summary>
+                        <div className="divide-y divide-slate-100 bg-white">
+                          {Array.from(topics.entries()).map(([topic, qs]) => {
+                            const td = qs.filter((q) => q.r === 'D').length;
+                            const pct = Math.round((td / qs.length) * 100);
+                            return (
+                              <div key={topic} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5">
+                                <div className="min-w-[10rem] flex-1">
+                                  <div className="text-[12.5px] text-slate-700">{topic}</div>
+                                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                                    <div
+                                      className={`h-full rounded-full ${pct >= 70 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-400' : 'bg-rose-500'}`}
+                                      style={{ width: `${Math.max(pct, 4)}%` }}
+                                    />
+                                  </div>
                                 </div>
+                                <div className="flex flex-wrap items-center gap-1">
+                                  {qs.map((q) => (
+                                    <span
+                                      key={q.n}
+                                      title={`Soru ${q.n}: doğru ${q.dc}, cevap ${q.oc ?? 'boş'}`}
+                                      className={`flex h-6 w-6 items-center justify-center rounded-lg text-[10px] font-semibold ${dot(q.r)}`}
+                                    >
+                                      {q.n}
+                                    </span>
+                                  ))}
+                                </div>
+                                <span className={`w-10 flex-shrink-0 text-right text-[11.5px] font-semibold ${pct >= 70 ? 'text-emerald-600' : pct >= 40 ? 'text-amber-600' : 'text-rose-500'}`}>%{pct}</span>
                               </div>
-                              <div className="flex flex-shrink-0 items-center gap-1">
-                                {qs.map((q) => (
-                                  <span
-                                    key={q.n}
-                                    title={`Soru ${q.n}: doğru ${q.dc}, cevap ${q.oc ?? 'boş'}`}
-                                    className={`flex h-6 w-6 items-center justify-center rounded-md text-[10px] font-semibold ${dot(q.r)}`}
-                                  >
-                                    {q.n}
-                                  </span>
-                                ))}
-                              </div>
-                              <span className="w-9 flex-shrink-0 text-right text-[11px] font-medium text-gray-500">%{pct}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </details>
-                  );
-                })}
-                <div className="flex items-center gap-3 px-1 text-[10px] text-gray-400">
+                            );
+                          })}
+                        </div>
+                      </details>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-[10.5px] text-slate-400">
                   <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-emerald-500" />Doğru</span>
-                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-red-500" />Yanlış</span>
-                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-gray-200" />Boş</span>
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-rose-500" />Yanlış</span>
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-slate-200" />Boş</span>
                   <span>· Kutudaki sayı soru numarasıdır, üzerine gelince cevap görünür.</span>
                 </div>
               </section>
@@ -1384,6 +1412,11 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
       </div>
     </div>
   );
+}
+
+// Herhangi bir ders ortalaması var mı (çubuk açıklaması yalnızca o zaman gösterilir)
+function hasSubjectAverages(avgs: Record<string, unknown>) {
+  return Object.keys(avgs).some((k) => k !== 'toplam' && avgs[k] != null);
 }
 
 // ─── Tek bir denemenin ders ders D/Y/Net dökümü ──────────────────
