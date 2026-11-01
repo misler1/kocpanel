@@ -75,7 +75,7 @@ export async function middleware(request: NextRequest) {
 
   if (!user && !isAuthPage && !isOnayPage && pathname !== '/') {
     const url = request.nextUrl.clone();
-    url.pathname = '/giris';
+    url.pathname = pathname === '/veli' || pathname.startsWith('/veli/') ? '/giris/veli' : '/giris';
     return NextResponse.redirect(url);
   }
 
