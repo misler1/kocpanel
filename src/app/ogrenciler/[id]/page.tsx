@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { IconArrowLeft, IconEdit } from '@tabler/icons-react';
 import { OgrenciDetayClient } from './OgrenciDetayClient';
 import { OgrenciArsivdenCikarButton } from './OgrenciArsivdenCikarButton';
+import { VeliErisimPanel } from './VeliErisimPanel';
 
 export default async function OgrenciDetayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -53,6 +54,10 @@ export default async function OgrenciDetayPage({ params }: { params: Promise<{ i
         exams={(rawExams as any[]) ?? []}
         tasks={(rawTasks as any[]) ?? []}
       />
+
+      <div className="mt-3">
+        <VeliErisimPanel student={student} />
+      </div>
     </div>
   );
 }

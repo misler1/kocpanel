@@ -33,6 +33,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/kayit-formu') ||
     pathname === '/api/ogrenci/kayit' ||
     pathname === '/api/ogrenci/kocler' ||
+    // Veliye gönderilen rapor linki: giriş gerektirmez, erişim linkteki tahmin edilemez anahtarla
+    pathname.startsWith('/rapor/') ||
     // Arama motoru dosyaları: oturumsuz istekte /giris'e yönlenirse Google robots/sitemap okuyamaz
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
@@ -92,12 +94,15 @@ export async function middleware(request: NextRequest) {
     }
 
     const isStudent = profile?.role === 'ogrenci';
+    const isParent = profile?.role === 'veli';
     const isStudentArea = pathname === '/ogrenci' || pathname.startsWith('/ogrenci/') || pathname.startsWith('/api/ogrenci/');
+    // '/veli-gorusmeleri' koç sayfasıdır; veli alanı yalnızca '/veli' ve '/veli/...'
+    const isParentArea = pathname === '/veli' || pathname.startsWith('/veli/');
 
     // Giriş yapmış kullanıcı giriş/kayıt sayfasına gelirse rolüne göre yönlendir
     if (isAuthPage && !isResetPage) {
       const url = request.nextUrl.clone();
-      url.pathname = isStudent ? '/ogrenci' : '/anasayfa';
+      url.pathname = isStudent ? '/ogrenci' : isParent ? '/veli' : '/anasayfa';
       return NextResponse.redirect(url);
     }
 
@@ -116,8 +121,20 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
       }
 
+      // Veli yalnızca veli alanına girebilir
+      if (isParent && !isParentArea && pathname !== '/') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/veli';
+        return NextResponse.redirect(url);
+      }
+      if (!isParent && isParentArea) {
+        const url = request.nextUrl.clone();
+        url.pathname = isStudent ? '/ogrenci' : '/anasayfa';
+        return NextResponse.redirect(url);
+      }
+
       // Koç/öğretmen öğrenci sayfalarına girmesin (öğrenci hesap-oluştur API'si koç içindir)
-      if (!isStudent && (pathname === '/ogrenci' || pathname.startsWith('/ogrenci/'))) {
+      if (!isStudent && !isParent && (pathname === '/ogrenci' || pathname.startsWith('/ogrenci/'))) {
         const url = request.nextUrl.clone();
         url.pathname = '/anasayfa';
         return NextResponse.redirect(url);

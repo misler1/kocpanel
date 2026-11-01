@@ -85,3 +85,11 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .student-pop, .student-float, .student-confetti { animation: none; }
 }
+
+/* Veli raporu: yazdırırken (PDF olarak kaydet) butonları gizle, renkleri koru */
+@media print {
+  @page { margin: 12mm; }
+  .no-print { display: none !important; }
+  body { background: #fff !important; }
+  .report-root * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

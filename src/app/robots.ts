@@ -11,6 +11,7 @@ export default function robots(): MetadataRoute.Robots {
         '/api/', '/anasayfa', '/ogrenci', '/ogrenciler', '/denemeler', '/haftalik-takip', '/konu-ilerleyisi',
         '/gorusmeler', '/veli-gorusmeleri', '/mesajlar', '/Ajanda', '/ayarlar', '/hesabim', '/anket',
         '/anketler', '/kazanim-havuzu', '/onay-bekleniyor', '/giris', '/sifremi-unuttum', '/sifre-sifirla',
+        '/rapor/', '/veli', '/mesajlar',
         // '/kayit' tek başına yazılırsa önek eşleşmesiyle herkese açık /kayit-formu da engellenir
         '/kayit$', '/kayit/',
       ],

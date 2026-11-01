@@ -87,6 +87,10 @@ export default function OgrenciGirisPage() {
           Koç / öğretmen misin?{' '}
           <Link href="/giris" className="font-medium text-[var(--accent-dark)] hover:underline">Buradan giriş yap</Link>
         </p>
+        <p className="mt-2 text-center text-sm text-[var(--ink-muted)]">
+          Veli misiniz?{' '}
+          <Link href="/giris/veli" className="font-medium text-[var(--accent-dark)] hover:underline">Veli girişi</Link>
+        </p>
       </div>
     </div>
   );

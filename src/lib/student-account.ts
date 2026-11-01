@@ -23,3 +23,9 @@ export function initialStudentPassword(
   if (digits.length < 4 || !/^\d{4}$/.test(year)) return null;
   return `${digits.slice(-4)}${year}`;
 }
+
+/** Veli hesabı için telefondan sahte e-posta (öğrenci hesabıyla çakışmaz). */
+export function parentEmailFromPhone(raw: string | null | undefined): string | null {
+  const key = phoneKey(raw);
+  return key ? `veli${key}@veli.kocdefterim.com` : null;
+}
