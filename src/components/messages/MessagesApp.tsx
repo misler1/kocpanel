@@ -91,7 +91,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   // Canlı: yeni mesaj gelince açık sohbete ekle, listeyi yenile
   useEffect(() => {
     const channel = supabase
-      .channel(`messages:${meId}`)
+      .channel(`messages:${meId}:${crypto.randomUUID()}`) // örneğe özgü ad: yeniden kurulumda eski kanalla çakışmasın
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: any) => {
         const m = payload.new as Msg;
         if (m.conversation_id === activeRef.current) {

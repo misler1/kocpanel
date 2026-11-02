@@ -53,12 +53,14 @@ export default async function OgrencilerPage({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: meetings } = await (supabase as any)
       .from('meetings')
-      .select('student_id, scheduled_at')
+      .select('student_id, scheduled_at, meeting_type')
       .in('student_id', studentIds)
       .order('scheduled_at', { ascending: false });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (meetings ?? []).forEach((m: any) => {
+      // Veli görüşmesi öğrencinin (haftalık) görüşmesi sayılmaz; yalnızca öğrenciyle yapılan görüşmeler
+      if (m.meeting_type === 'veli') return;
       if (!lastMeetingMap[m.student_id]) {
         lastMeetingMap[m.student_id] = m.scheduled_at;
       }

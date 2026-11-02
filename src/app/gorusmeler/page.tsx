@@ -29,12 +29,14 @@ export default async function GorusmelerPage() {
     const meetings = await fetchChunkedByIds<any>(studentIds, (chunk) =>
       (supabase as any)
         .from('meetings')
-        .select('student_id, scheduled_at')
+        .select('student_id, scheduled_at, meeting_type')
         .in('student_id', chunk)
         .order('scheduled_at', { ascending: false })
     );
 
     meetings.forEach((m: any) => {
+      // Veli görüşmesi öğrencinin (haftalık) görüşmesi sayılmaz; yalnızca öğrenciyle yapılan görüşmeler
+      if (m.meeting_type === 'veli') return;
       if (!lastMeetingMap[m.student_id]) {
         lastMeetingMap[m.student_id] = m.scheduled_at;
       }

@@ -42,13 +42,19 @@ export function NotificationBell({ variant = 'coach' }: { variant?: 'coach' | 's
   useEffect(() => {
     let channel: any = null;
     let timer: ReturnType<typeof setInterval> | null = null;
+    // Kurulum asenkron: bileşen bu arada kapanırsa (React geliştirme modunda çift çalıştırma, sayfa geçişi)
+    // abonelik hiç açılmamalı; aksi halde temizlenemeyen kanal bir sonraki kurulumda hataya yol açar.
+    let cancelled = false;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
       setUserId(user.id);
       await load();
+      if (cancelled) return;
+      // Kanal adı her bileşen örneği için benzersiz: aynı ada sahip kanal istemcide tekrar kullanılır ve
+      // abone olunmuş kanala yeni dinleyici eklenemez (zil sayfada iki kez yer alırsa da çakışmasın)
       channel = supabase
-        .channel(`notifications:${user.id}`)
+        .channel(`notifications:${user.id}:${crypto.randomUUID()}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${user.id}` }, () => load())
         .subscribe();
       timer = setInterval(load, 90_000); // Realtime kopsa bile güncel kalsın
@@ -56,6 +62,7 @@ export function NotificationBell({ variant = 'coach' }: { variant?: 'coach' | 's
     const onFocus = () => load();
     window.addEventListener('focus', onFocus);
     return () => {
+      cancelled = true;
       window.removeEventListener('focus', onFocus);
       if (timer) clearInterval(timer);
       if (channel) supabase.removeChannel(channel);

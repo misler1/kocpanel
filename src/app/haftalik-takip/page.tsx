@@ -239,9 +239,8 @@ export default function HaftalikTakipPage() {
       );
       setStudents(data ?? []);
       const pre = new URLSearchParams(window.location.search).get('ogrenci');
-      if (data?.length) {
-        setSelectedStudentId(pre && data.some((s: any) => s.id === pre) ? pre : data[0].id);
-      }
+      // Öğrenci otomatik seçilmez (yanlış öğrenciye plan yazılmasın); yalnızca linkle gelen öğrenci açılır
+      if (pre && data?.some((s: any) => s.id === pre)) setSelectedStudentId(pre);
       setLoading(false);
     }
     load();
@@ -249,7 +248,12 @@ export default function HaftalikTakipPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedStudentId) return;
+    if (!selectedStudentId) {
+      setSelectedStudent(null);
+      setLogs([]);
+      loadedStudentRef.current = '';
+      return;
+    }
     const st = students.find((s) => s.id === selectedStudentId) ?? null;
     setSelectedStudent(st);
 
@@ -298,8 +302,9 @@ export default function HaftalikTakipPage() {
       setSelectedStudentId('');
       return;
     }
-    if (!pickerStudents.some((s) => s.id === selectedStudentId)) {
-      setSelectedStudentId(pickerStudents[0].id);
+    // Sınıf filtresi değişip seçili öğrenci listeden çıkarsa seçim boşalır; ilk öğrenciye atlanmaz
+    if (selectedStudentId && !pickerStudents.some((s) => s.id === selectedStudentId)) {
+      setSelectedStudentId('');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickerStudents]);
@@ -1218,6 +1223,7 @@ export default function HaftalikTakipPage() {
                 onChange={(e) => setSelectedStudentId(e.target.value)}
                 className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] font-medium text-[var(--ink)] focus:outline-none"
               >
+                <option value="" disabled>Öğrenci seçin…</option>
                 {pickerStudents.map((s: any) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
               </select>
             )}
@@ -1236,6 +1242,12 @@ export default function HaftalikTakipPage() {
               </select>
             )}
           </div>
+
+          {!selectedStudentId && pickerStudents.length > 0 && (
+            <p className="no-print rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] px-4 py-8 text-center text-[13px] text-[var(--ink-muted)]">
+              Program hazırlamak için yukarıdan bir öğrenci seçin.
+            </p>
+          )}
 
           {selectedStudent && (
             <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 print:border-none print:p-0">

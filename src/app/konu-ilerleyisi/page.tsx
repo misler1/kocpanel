@@ -220,9 +220,9 @@ export default function KonuIlerleyisiPage() {
 
       setStudents(data ?? []);
 
-      if (data?.length) {
-        setSelectedStudentId(data[0].id);
-      }
+      // Öğrenci otomatik seçilmez (yanlış öğrenciye konu işlenmesin); yalnızca linkle gelen öğrenci açılır
+      const pre = new URLSearchParams(window.location.search).get('ogrenci');
+      if (pre && data?.some((s: any) => s.id === pre)) setSelectedStudentId(pre);
 
       // Havuz: sınav türleri ve dersler (küçük listeler)
       const [{ data: cats }, { data: subs }] = await Promise.all([
@@ -321,15 +321,10 @@ export default function KonuIlerleyisiPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poolSubjectId]);
 
-  // Filtre değişince, seçili öğrenci artık filtreye uymuyorsa ilk öğrenciye geç.
+  // Filtre değişince, seçili öğrenci artık filtreye uymuyorsa seçim boşalır (ilk öğrenciye atlanmaz).
   useEffect(() => {
-    if (pickerStudents.length === 0) {
+    if (selectedStudentId && !pickerStudents.some((student) => student.id === selectedStudentId)) {
       setSelectedStudentId('');
-      return;
-    }
-
-    if (!pickerStudents.some((student) => student.id === selectedStudentId)) {
-      setSelectedStudentId(pickerStudents[0].id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickerStudents]);
@@ -558,6 +553,7 @@ export default function KonuIlerleyisiPage() {
                 onChange={(e) => setSelectedStudentId(e.target.value)}
                 className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] font-medium text-[var(--ink)] focus:outline-none"
               >
+                <option value="" disabled>Öğrenci seçin…</option>
                 {pickerStudents.map((student: any) => (
                   <option key={student.id} value={student.id}>
                     {student.full_name}
@@ -566,6 +562,12 @@ export default function KonuIlerleyisiPage() {
               </select>
             )}
           </div>
+
+          {!selectedStudentId && pickerStudents.length > 0 && (
+            <p className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] px-4 py-8 text-center text-[13px] text-[var(--ink-muted)]">
+              Konu ilerleyişini görmek için yukarıdan bir öğrenci seçin.
+            </p>
+          )}
 
           {selectedStudentId && (
           <>
