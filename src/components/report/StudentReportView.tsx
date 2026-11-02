@@ -93,7 +93,7 @@ export function StudentReportView({ report, note, actions }: { report: StudentRe
 
       {r.week.subjects.length > 0 && (
         <Section title="Bu haftanın programı (ders bazında)">
-          <table className="w-full text-[13px]">
+          <div className="overflow-x-auto"><table className="w-full text-[13px]">
             <thead>
               <tr className="border-b border-gray-200 text-left text-[11.5px] uppercase tracking-wide text-gray-500">
                 <th className="py-1.5 font-medium">Ders</th>
@@ -112,7 +112,7 @@ export function StudentReportView({ report, note, actions }: { report: StudentRe
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </Section>
       )}
 
@@ -148,7 +148,7 @@ export function StudentReportView({ report, note, actions }: { report: StudentRe
         {r.exams.length === 0 ? (
           <p className="text-[13px] text-gray-500">Henüz deneme sonucu girilmemiş.</p>
         ) : (
-          <table className="w-full text-[13px]">
+          <div className="overflow-x-auto"><table className="w-full text-[13px]">
             <thead>
               <tr className="border-b border-gray-200 text-left text-[11.5px] uppercase tracking-wide text-gray-500">
                 <th className="py-1.5 font-medium">Tarih</th>
@@ -176,7 +176,7 @@ export function StudentReportView({ report, note, actions }: { report: StudentRe
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </Section>
 

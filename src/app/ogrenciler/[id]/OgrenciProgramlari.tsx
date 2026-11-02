@@ -79,11 +79,11 @@ export function OgrenciProgramlari({ studentId }: { studentId: string }) {
               </Link>
             </div>
             <div className="overflow-x-auto">
-              <div className="grid min-w-[760px] grid-cols-7 gap-2">
+              <div className="grid grid-cols-1 gap-2 md:min-w-[760px] md:grid-cols-7">
                 {DAYS_TR.map((day, i) => {
                   const dayLogs = sorted.filter((l) => l.plan_day === i);
                   return (
-                    <div key={day} className="rounded-lg bg-gray-50 p-2">
+                    <div key={day} className={`rounded-lg bg-gray-50 p-2 ${dayLogs.length === 0 ? 'max-md:hidden' : ''}`}>
                       <div className="mb-2 text-[11px] font-semibold text-gray-500">{day}</div>
                       <div className="flex flex-col gap-1.5">
                         {dayLogs.length === 0 ? (

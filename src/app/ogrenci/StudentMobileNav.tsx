@@ -17,14 +17,14 @@ export function StudentMobileNav() {
           <Link
             key={item.href}
             href={item.href}
-            className={`flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-bold transition-colors ${
+            className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1 text-[10.5px] font-bold transition-colors ${
               active ? 'text-[var(--ink)]' : 'text-[var(--ink-muted)]'
             }`}
           >
-            <span className={`flex h-9 w-10 items-center justify-center rounded-2xl transition-all ${active ? `${item.chip} -translate-y-0.5 text-white shadow-md` : ''}`}>
+            <span className={`flex h-9 w-10 items-center justify-center rounded-2xl transition-all max-[360px]:w-9 ${active ? `${item.chip} -translate-y-0.5 text-white shadow-md` : ''}`}>
               <Icon size={21} strokeWidth={2.2} />
             </span>
-            {item.label}
+            <span className="w-full truncate text-center">{item.label}</span>
           </Link>
         );
       })}

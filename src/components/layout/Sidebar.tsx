@@ -10,13 +10,17 @@ import { MAIN_NAV, TAKIP_NAV, BAGLANTI_NAV, YONETIM_NAV, HESAP_NAV } from '@/lib
 import { ExamFilterBar } from './ExamFilterBar';
 import { useExamFilter } from '@/lib/exam-filter-context';
 
-export function Sidebar({ studentCount }: { studentCount?: number }) {
+// Sol menünün renkli zemini; telefondaki açılır menü de aynı zemini kullanır
+export const SIDEBAR_BG = 'bg-gradient-to-b from-indigo-950 via-violet-950 to-fuchsia-950';
+
+/** Menünün içeriği: logo, filtreler, bütün sayfalar ve web sitesi bağlantısı.
+ *  Masaüstünde sol menüde, telefonda alttaki "Menü" düğmesiyle açılan pencerede kullanılır. */
+export function SidebarContent({ studentCount, onNavigate }: { studentCount?: number; onNavigate?: () => void }) {
   const pathname = usePathname();
-    const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
-    
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       const { data: profile } = await supabase
@@ -39,8 +43,8 @@ export function Sidebar({ studentCount }: { studentCount?: number }) {
   ];
 
   return (
-    <aside className="hidden md:flex md:w-64 md:flex-col md:bg-gradient-to-b md:from-indigo-950 md:via-violet-950 md:to-fuchsia-950 md:px-3 md:py-5 md:overflow-y-auto md:h-full">
-      <Link href="/anasayfa" className="mb-4 flex items-center gap-2.5 border-b border-white/10 px-2 pb-5" aria-label="KoçDefterim anasayfa">
+    <>
+      <Link href="/anasayfa" onClick={onNavigate} className="mb-4 flex items-center gap-2.5 border-b border-white/10 px-2 pb-5" aria-label="KoçDefterim anasayfa">
         <Image src="/brand/kocdefterim-mark-beyaz-k-v2.png" alt="KoçDefterim" width={38} height={38} className="h-9 w-9 flex-shrink-0 object-contain" priority />
         <span className="text-[16px] font-semibold tracking-tight text-white">
           KoçDefterim
@@ -64,6 +68,7 @@ export function Sidebar({ studentCount }: { studentCount?: number }) {
                   )}
                   <Link
                     href={item.href}
+                    onClick={onNavigate}
                     className={`relative mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-[15px] transition-colors ${
                       active
                         ? 'bg-gradient-to-r from-indigo-500/45 via-violet-500/35 to-fuchsia-500/20 font-medium text-white shadow-sm ring-1 ring-white/10'
@@ -101,6 +106,14 @@ export function Sidebar({ studentCount }: { studentCount?: number }) {
         <IconExternalLink size={14} />
         Web sitesi
       </Link>
+    </>
+  );
+}
+
+export function Sidebar({ studentCount }: { studentCount?: number }) {
+  return (
+    <aside className={`hidden md:flex md:h-full md:w-64 md:flex-col md:overflow-y-auto md:px-3 md:py-5 ${SIDEBAR_BG}`}>
+      <SidebarContent studentCount={studentCount} />
     </aside>
   );
 }

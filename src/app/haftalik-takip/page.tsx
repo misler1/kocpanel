@@ -200,6 +200,8 @@ export default function HaftalikTakipPage() {
   const [colorMode, setColorMode] = useState(true);
   const [clipboardLog, setClipboardLog] = useState<any>(null);
   const [hoverDay, setHoverDay] = useState<number | null>(null);
+  // Telefonda pano tek gün gösterir (7 sütun dar ekrana sığmaz); varsayılan bugün
+  const [mobileDay, setMobileDay] = useState(() => (new Date().getDay() + 6) % 7);
 
   useEffect(() => {
     try { setColorMode(localStorage.getItem('haftalik-takip:renkli') !== '0'); } catch { /* yoksay */ }
@@ -1072,7 +1074,8 @@ export default function HaftalikTakipPage() {
           .no-print { display: none !important; }
           .print-only { display: flex !important; }
           .print-root { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-          .print-board { min-width: 0 !important; gap: 4px !important; }
+          .print-board { min-width: 0 !important; gap: 4px !important; grid-template-columns: repeat(7, minmax(0, 1fr)) !important; }
+          .print-board > .day-cell { display: flex !important; }
           .day-cell { background: white !important; border-left: 1px solid #999; border-right: 1px solid #999; }
           .day-head { background: #eee !important; }
           .log-card:not(.colored) { break-inside: avoid; border: 1px solid #bbb !important; background: white !important; }
@@ -1311,12 +1314,25 @@ export default function HaftalikTakipPage() {
               </div>
 
               {/* 7 günlük tek ekran pano (satır bazlı ızgara: her günün n. görevi aynı satırda) */}
+              {/* Telefonda gün seçici */}
+              <div className="no-print flex gap-1 overflow-x-auto md:hidden">
+                {DAYS_SHORT.map((d, i) => {
+                  const n = plannedLogsByDay[i].length;
+                  return (
+                    <button key={d} type="button" onClick={() => setMobileDay(i)}
+                      className={`flex min-w-[46px] flex-1 flex-col items-center rounded-xl px-1.5 py-1.5 text-[11.5px] font-medium ${mobileDay === i ? 'bg-indigo-500 text-white' : 'bg-[var(--paper)] text-[var(--ink-muted)]'}`}>
+                      {d}
+                      <span className={`text-[10.5px] ${mobileDay === i ? 'text-white/80' : ''}`}>{n} görev</span>
+                    </button>
+                  );
+                })}
+              </div>
               <div className="overflow-x-auto pb-1 print:overflow-visible">
-                <div className="print-board grid min-w-[1100px] grid-cols-7 gap-x-2">
+                <div className="print-board grid grid-cols-1 gap-x-2 md:min-w-[1100px] md:grid-cols-7">
                   {/* Gün başlıkları (ortalı, ayrışan renk) */}
                   {DAYS_TR.map((day, i) => (
                     <div key={`h-${i}`} onMouseEnter={() => setHoverDay(i)}
-                      className="day-cell day-head flex flex-col items-center justify-center gap-1 rounded-t-lg bg-[var(--accent-soft)] px-1.5 py-2 text-center">
+                      className={`day-cell day-head flex flex-col items-center justify-center gap-1 rounded-t-lg bg-[var(--accent-soft)] px-1.5 py-2 text-center ${i !== mobileDay ? 'max-md:hidden' : ''}`}>
                       <span className="text-[13px] font-semibold text-[var(--accent-dark)]">{day}</span>
                       {clipboardLog && (
                         <button onClick={() => pasteLog(i)} title={`${day} gününe yapıştır`}
@@ -1335,7 +1351,7 @@ export default function HaftalikTakipPage() {
                       const isAddSlot = r === dayLogs.length;
                       return (
                         <div key={`c-${i}-${r}`} onMouseEnter={() => setHoverDay(i)}
-                          className={`day-cell flex bg-[var(--paper)] px-1.5 pb-1.5 ${r === rowCount - 1 ? 'rounded-b-lg' : ''}`}>
+                          className={`day-cell flex bg-[var(--paper)] px-1.5 pb-1.5 ${r === rowCount - 1 ? 'rounded-b-lg' : ''} ${i !== mobileDay || (!log && !isAddSlot) ? 'max-md:hidden' : ''}`}>
                           {log
                             ? renderLogCard(log)
                             : isAddSlot

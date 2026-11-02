@@ -39,7 +39,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           {children}
         </main>
       </div>
-      <MobileBottomNav />
+      <MobileBottomNav studentCount={studentsForCount?.length ?? 0} />
     </div>
   );
 }

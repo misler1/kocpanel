@@ -52,9 +52,10 @@ export const HESAP_NAV: NavItem[] = [
 
 export const ALL_NAV = [...MAIN_NAV, ...TAKIP_NAV, ...BAGLANTI_NAV, ...YONETIM_NAV, ...HESAP_NAV];
 
+// Telefonda alt menüdeki sık kullanılanlar; geri kalan her şey "Menü" düğmesiyle açılan pencerede
 export const MOBILE_NAV: NavItem[] = [
   { href: '/anasayfa', label: 'Ana Sayfa', icon: IconHome },
   { href: '/ogrenciler', label: 'Öğrenciler', icon: IconUsers },
-  { href: '/denemeler', label: 'Denemeler', icon: IconChartBar },
-  { href: '/ayarlar', label: 'Menü', icon: IconSettings },
+  { href: '/haftalik-takip', label: 'Haftalık', icon: IconChecklist },
+  { href: '/ajanda', label: 'Ajanda', icon: IconCalendarWeek },
 ];

@@ -203,7 +203,48 @@ export function AnasayfaClient({ firstName, today, students, weekMeetings, pendi
               <p className="text-[14px] font-medium text-[var(--ink)]">{filter === 'dikkat' ? 'Bu hafta herkes yolunda görünüyor 🎉' : 'Bu filtrede öğrenci yok.'}</p>
             </div>
           ) : (
-            <div className="overflow-x-auto p-2">
+            <>
+            {/* Telefon: her öğrenci bir kart */}
+            <ul className="space-y-2 p-3 md:hidden">
+              {rows.map((s) => {
+                const tp = trackPill(s.track);
+                return (
+                  <li key={s.id}>
+                    <Link href={`/ogrenciler/${s.id}`} className="block rounded-xl border border-[var(--border)] p-3 active:bg-sky-50">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[12px] font-semibold ${avatarColor(s.id)}`}>{initials(s.full_name)}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[14px] font-medium text-[var(--ink)]">{s.full_name}</div>
+                          <div className="mt-0.5 flex items-center gap-1">
+                            {tp && <span className={`rounded px-1.5 py-px text-[10.5px] font-semibold ${tp.cls}`}>{tp.label}</span>}
+                            {s.sinif_sube && <span className="text-[11px] text-[var(--ink-muted)]">{s.sinif_sube}</span>}
+                          </div>
+                        </div>
+                        {s.questions7 > 0 && <span className="text-right text-[11px] text-[var(--ink-muted)]"><b className="block text-[14px] text-sky-700">{s.questions7.toLocaleString('tr-TR')}</b>soru/7 gün</span>}
+                      </div>
+                      <div className="mt-2.5">
+                        {s.program
+                          ? <ProgressBar done={s.program.done} total={s.program.total} />
+                          : <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500 px-2.5 py-1 text-[11.5px] font-semibold text-white"><IconPlus size={12} strokeWidth={3} /> Bu hafta programı yok</span>}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px]">
+                        <ActivityPill days={s.inactiveDays} />
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${s.metThisWeek ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                          {s.metThisWeek && <IconCheck size={12} strokeWidth={3} />}Görüşme: {relDay(s.lastMeetingDays, 'yok')}
+                        </span>
+                        {s.lastExam && (
+                          <span className="rounded-full bg-violet-50 px-2 py-0.5 font-medium text-violet-700">
+                            {s.lastExam.type} {fmtNet(s.lastExam.net)}
+                            {s.lastExam.delta !== null && s.lastExam.delta !== 0 && <> {s.lastExam.delta > 0 ? '▲' : '▼'}{fmtNet(Math.abs(s.lastExam.delta))}</>}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="hidden overflow-x-auto p-2 md:block">
               <table className="w-full min-w-[760px] text-[13px]">
                 <thead>
                   <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">
@@ -279,6 +320,7 @@ export function AnasayfaClient({ firstName, today, students, weekMeetings, pendi
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </section>
 
