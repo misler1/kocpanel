@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { IconChevronDown, IconMenu2, IconX } from '@tabler/icons-react';
 import { ARTICLE_CATEGORIES } from '@/lib/marketing-content';
 import { LANDING_PAGES } from '@/lib/landing-content';
+import { createClient } from '@/lib/supabase/client';
 
 const NAV_LINKS = [
   { href: '/', label: 'Anasayfa' },
@@ -18,6 +19,12 @@ export function MarketingHeader() {
   const [girisOpen, setGirisOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  // Oturum açıksa "Giriş" yerine "Panelim" gösterilir. /giris, giriş yapmış kullanıcıyı rolüne göre
+  // kendi paneline (koç, öğrenci, veli) yönlendirdiği için tek bağlantı herkes için doğru yere gider.
+  const [loggedIn, setLoggedIn] = useState(false);
+  useEffect(() => {
+    createClient().auth.getSession().then(({ data }) => setLoggedIn(!!data.session));
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur">
@@ -103,6 +110,11 @@ export function MarketingHeader() {
         </nav>
 
         <div className="hidden lg:block">
+          {loggedIn ? (
+            <Link href="/giris" className="rounded-full bg-blue-600 px-5 py-2 text-[14px] font-medium text-white transition hover:bg-blue-700">
+              Panelim
+            </Link>
+          ) : (
           <div className="relative">
             <button
               onClick={() => setGirisOpen((v) => !v)}
@@ -123,6 +135,7 @@ export function MarketingHeader() {
               </div>
             )}
           </div>
+          )}
         </div>
 
         <button onClick={() => setMobileOpen((v) => !v)} className="lg:hidden" aria-label="Menü">
@@ -175,6 +188,11 @@ export function MarketingHeader() {
                   </Link>
                 ))}
               </div>
+              {loggedIn ? (
+                <Link href="/giris" className="mt-4 block rounded-full bg-blue-600 py-2 text-center text-[14px] text-white">
+                  Panelim
+                </Link>
+              ) : (
               <div className="mt-4 flex gap-2">
                 <Link href="/giris" className="flex-1 rounded-full border border-gray-300 py-2 text-center text-[14px] text-gray-700">
                   Koç Girişi
@@ -183,6 +201,7 @@ export function MarketingHeader() {
                   Öğrenci Girişi
                 </Link>
               </div>
+              )}
             </div>
           </nav>
         </div>

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { IconExternalLink } from '@tabler/icons-react';
 import { MAIN_NAV, TAKIP_NAV, BAGLANTI_NAV, YONETIM_NAV, HESAP_NAV } from '@/lib/navigation';
 import { ExamFilterBar } from './ExamFilterBar';
 import { useExamFilter } from '@/lib/exam-filter-context';
@@ -89,6 +90,17 @@ export function Sidebar({ studentCount }: { studentCount?: number }) {
           </div>
         ))}
       </nav>
+
+      {/* Tanıtım sitesine dönüş: yeni sekmede açılır, panel açık kalır */}
+      <Link
+        href="/"
+        target="_blank"
+        rel="noopener"
+        className="mt-auto flex items-center gap-1.5 border-t border-white/10 px-2.5 pt-4 text-[12.5px] text-white/40 transition-colors hover:text-white/80"
+      >
+        <IconExternalLink size={14} />
+        Web sitesi
+      </Link>
     </aside>
   );
 }

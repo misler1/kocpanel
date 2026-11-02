@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { SITE_URL } from '@/lib/site';
-import { createClient } from '@/lib/supabase/server';
 import { fraunces, inter } from '@/lib/fonts';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
@@ -53,13 +51,8 @@ const JSON_LD = {
   ],
 };
 
-export default async function Home() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (user) {
-    redirect('/anasayfa');
-  }
+// Giriş yapmış kullanıcı da tanıtım sitesini görebilir; panele üst menüdeki "Panelim" ile döner.
+export default function Home() {
 
   return (
     <div className={`${fraunces.variable} ${inter.variable} min-h-screen bg-white font-[family-name:var(--font-body)]`}>
