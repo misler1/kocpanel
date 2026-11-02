@@ -2,6 +2,7 @@ import { konuAnalizliSinavSonucuTemplate } from './konuAnalizliSinavSonucu';
 import { tytSiraliListeTemplate } from './tytSiraliListe';
 import { tytTekKarneTemplate } from './tytTekKarne';
 import { tytAytBirlesikKarneTemplate } from './tytAytBirlesikKarne';
+import { okulTytNetListesiTemplate } from './okulTytNetListesi';
 import type { PdfItem } from './items';
 import type { PdfTemplate, PdfParseResult, PdfExamType } from './types';
 
@@ -9,6 +10,7 @@ export type { PdfTemplate, PdfParseResult, PdfExamType } from './types';
 
 const TEMPLATES: PdfTemplate[] = [
   tytAytBirlesikKarneTemplate, // iki sütunlu TYT+AYT karnesi, tek öğrenci karnesinden önce denenmeli
+  okulTytNetListesiTemplate, // "OKUL TYT NET LİSTESİ" + öğrenci karneleri (Ders / Test tablosu, cevap anahtarı)
   tytSiraliListeTemplate,
   tytTekKarneTemplate,
   konuAnalizliSinavSonucuTemplate,
