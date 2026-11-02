@@ -6,6 +6,8 @@ import { IconArrowLeft, IconEdit } from '@tabler/icons-react';
 import { OgrenciDetayClient } from './OgrenciDetayClient';
 import { OgrenciArsivdenCikarButton } from './OgrenciArsivdenCikarButton';
 import { VeliErisimPanel } from './VeliErisimPanel';
+import { HedefNetPanel } from './HedefNetPanel';
+import { targetRows } from '@/lib/student-motivation';
 
 export default async function OgrenciDetayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,6 +32,10 @@ export default async function OgrenciDetayPage({ params }: { params: Promise<{ i
   const { data: rawTasks } = await supabase
     .from('tasks').select('*').eq('student_id', id)
     .eq('completed', false).order('created_at', { ascending: false });
+  // Hedef net satırları için tüm denemelerin yalnızca tür ve net bilgisi
+  const { data: rawExamNets } = await supabase
+    .from('exams').select('exam_type, exam_date, net_score').eq('student_id', id);
+  const targets = targetRows(student.track, student.target_nets ?? {}, (rawExamNets as any[]) ?? []);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -54,6 +60,10 @@ export default async function OgrenciDetayPage({ params }: { params: Promise<{ i
         exams={(rawExams as any[]) ?? []}
         tasks={(rawTasks as any[]) ?? []}
       />
+
+      <div className="mt-3">
+        <HedefNetPanel studentId={id} rows={targets} targetNets={student.target_nets ?? null} />
+      </div>
 
       <div className="mt-3">
         <VeliErisimPanel student={student} />

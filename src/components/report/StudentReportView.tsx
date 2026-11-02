@@ -119,14 +119,30 @@ export function StudentReportView({ report, note, actions }: { report: StudentRe
       <Section title="Deneme sonuçları">
         {r.targets.some((t) => t.target || t.current !== null) && (
           <div className="mb-3 grid gap-2 sm:grid-cols-2">
-            {r.targets.map((t) => (
-              <div key={t.type} className="rounded-lg bg-gray-50 px-3 py-2 text-[12.5px] text-gray-700">
-                <span className="font-semibold text-gray-900">{t.type}</span>
-                {t.current !== null ? ` · son: ${fmt(t.current)} net` : ' · henüz deneme yok'}
-                {t.best !== null && ` · en iyi: ${fmt(t.best)}`}
-                {t.target ? ` · hedef: ${fmt(t.target)}` : ''}
-              </div>
-            ))}
+            {r.targets.map((t) => {
+              const pct = t.target && t.current !== null ? Math.max(0, Math.min(100, Math.round((t.current / t.target) * 100))) : 0;
+              const reached = !!t.target && t.current !== null && t.current >= t.target;
+              return (
+                <div key={t.type} className="rounded-lg bg-gray-50 px-3 py-2 text-[12.5px] text-gray-700">
+                  <div>
+                    <span className="font-semibold text-gray-900">{t.type}</span>
+                    {t.current !== null ? ` · son: ${fmt(t.current)} net` : ' · henüz deneme yok'}
+                    {t.best !== null && ` · en iyi: ${fmt(t.best)}`}
+                  </div>
+                  {t.target ? (
+                    <>
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-gray-200">
+                        <div className={`h-full rounded-full ${reached ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="mt-1 text-[12px] text-gray-500">
+                        Hedef: {fmt(t.target)} net
+                        {t.current !== null && (reached ? ' · hedefe ulaştı' : ` · hedefe ${fmt(t.target - t.current)} net kaldı`)}
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         )}
         {r.exams.length === 0 ? (
