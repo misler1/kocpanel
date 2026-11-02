@@ -5,15 +5,16 @@ html, body {
 }
 :root {
   /* KoçPanel design tokens */
-  --paper: #F6F5F1;
+  --paper: #F7F6FC;
   --card: #FFFFFF;
-  --border: #E6E3DA;
+  --border: #E8E5F1;
   --ink: #171A22;
   --ink-muted: #6B6F7A;
 
-  --accent: #7C82E8;
-  --accent-dark: #5B61D6;
-  --accent-soft: #EFEFFC;
+  /* Ana sayfa ve sol menüdeki mor-pembe tasarım diliyle uyumlu vurgu rengi */
+  --accent: #8B5CF6;
+  --accent-dark: #7C3AED;
+  --accent-soft: #F3EEFF;
 
   --track-yks: #3752CC;
   --track-yks-soft: #E9EDFC;

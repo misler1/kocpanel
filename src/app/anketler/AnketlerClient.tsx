@@ -17,6 +17,7 @@ import {
   IconTrash,
   IconDotsVertical,
 } from '@tabler/icons-react';
+import { PageHero } from '@/components/ui/PageHero';
 
 const DEFAULT_OPTIONS = [
   'Konu Eksiğim Yok',
@@ -240,12 +241,13 @@ export function AnketlerClient({ initialSurveys, coachId }: { initialSurveys: an
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-[18px] font-semibold text-[var(--ink)]">Anketler</h1>
-          <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">{surveys.length} anket</p>
-        </div>
-        <div className="flex gap-2">
+      <PageHero
+        theme="rose"
+        icon={<IconClipboardList size={22} />}
+        title="Anketler"
+        subtitle={<>{surveys.length} anket</>}
+        actions={<>
+<div className="flex gap-2">
           <button
             onClick={createFromTemplate}
             disabled={seeding}
@@ -262,7 +264,8 @@ export function AnketlerClient({ initialSurveys, coachId }: { initialSurveys: an
             Yeni anket
           </button>
         </div>
-      </div>
+      </>}
+      />
 
       {creating && (
         <form

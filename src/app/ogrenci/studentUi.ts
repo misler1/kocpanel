@@ -21,6 +21,7 @@ const SUBJECT_EMOJI: [RegExp, string][] = [
 
 export function subjectEmoji(subject?: string | null) {
   if (!subject) return '📚';
+  if (subject === 'Görüşme') return '📅'; // Ajanda'dan gelen koç görüşmesi
   return SUBJECT_EMOJI.find(([re]) => re.test(subject))?.[1] ?? '📚';
 }
 

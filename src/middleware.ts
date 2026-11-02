@@ -28,6 +28,14 @@ export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
   const pathname = request.nextUrl.pathname;
 
+  // Ajanda adresi küçük harfe taşındı. next.config yönlendirmeleri harf duyarsız olduğu için
+  // (/ajanda'yı da yakalayıp döngüye girer) eski adres burada, birebir eşleşmeyle yönlendirilir.
+  if (pathname === '/Ajanda') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/ajanda';
+    return NextResponse.redirect(url, 308);
+  }
+
   const isAuthPage =
     pathname.startsWith('/giris') ||
     (pathname.startsWith('/kayit') && !pathname.startsWith('/kayit-formu')) ||

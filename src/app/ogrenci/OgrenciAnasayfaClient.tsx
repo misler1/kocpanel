@@ -65,6 +65,13 @@ export function OgrenciAnasayfaClient({
   }
 
   async function toggleDone(l: any) {
+    if (!l.student_done && l.appointment_id) {
+      // Ajanda'dan gelen görüşme: "ne çalıştın?" sorulmaz, doğrudan işaretlenir
+      markDone(l.id, true);
+      const err = await setTaskDone(supabase, l.id, true);
+      if (err) { markDone(l.id, false); setMsg(err); } else setMsg(null);
+      return;
+    }
     if (!l.student_done) { setSheet(l); return; } // tik = "ne çalıştın?" penceresi
     markDone(l.id, false);
     const err = await setTaskDone(supabase, l.id, false);

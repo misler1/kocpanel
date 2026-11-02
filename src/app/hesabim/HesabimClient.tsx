@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { IconUser, IconPhone } from '@tabler/icons-react';
+import { IconUser, IconPhone, IconUserCircle } from '@tabler/icons-react';
+import { PageHero } from '@/components/ui/PageHero';
 
 const ROLE_LABELS: Record<string, string> = {
   koc: 'Koç',
@@ -33,10 +34,12 @@ export function HesabimClient({ profile, userId }: { profile: any; userId: strin
 
   return (
     <div className="mx-auto max-w-lg">
-      <div className="mb-5">
-        <h1 className="text-[18px] font-semibold text-[var(--ink)]">Hesabım</h1>
-        <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">Profil bilgilerinizi güncelleyin</p>
-      </div>
+      <PageHero
+        theme="slate"
+        icon={<IconUserCircle size={22} />}
+        title="Hesabım"
+        subtitle="Profil bilgilerinizi güncelleyin"
+      />
 
       <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-5 py-6">
         <div className="mb-6 flex items-center gap-4">

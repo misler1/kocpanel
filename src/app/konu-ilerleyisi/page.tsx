@@ -9,8 +9,9 @@ import {
   IconChevronUp,
   IconPencil,
   IconCheck,
-  IconX,
+  IconX, IconBooks,
 } from '@tabler/icons-react';
+import { PageHero } from '@/components/ui/PageHero';
 import { createClient } from '@/lib/supabase/client';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
@@ -516,14 +517,12 @@ export default function KonuIlerleyisiPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-5">
-        <h1 className="text-[18px] font-semibold text-[var(--ink)]">
-          Konu ilerleyişi
-        </h1>
-        <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">
-          Konuları ders bazında takip edin
-        </p>
-      </div>
+      <PageHero
+        theme="amber"
+        icon={<IconBooks size={22} />}
+        title="Konu ilerleyişi"
+        subtitle="Konuları ders bazında takip edin"
+      />
 
       {filteredStudents.length === 0 ? (
         <p className="text-[13px] text-[var(--ink-muted)]">

@@ -4,9 +4,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { IconTrash, IconPlus, IconDownload, IconPrinter, IconCopy, IconX, IconEdit, IconDeviceFloppy } from '@tabler/icons-react';
+import { IconTrash, IconPlus, IconDownload, IconPrinter, IconCopy, IconX, IconEdit, IconDeviceFloppy, IconChecklist } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
+import { PageHero } from '@/components/ui/PageHero';
 
 const DAYS_TR = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -105,6 +106,7 @@ const SUBJECT_COLORS: Record<string, string> = {
   'Fizik': '#8b5cf6', 'Kimya': '#ec4899', 'Biyoloji': '#22c55e', 'Tarih': '#d97706',
   'Coğrafya': '#14b8a6', 'Felsefe': '#a855f7', 'Din Kültürü': '#84cc16', 'Edebiyat': '#e11d48',
   'İngilizce': '#6366f1', 'Fen Bilgisi': '#16a34a', 'İnkılap Tarihi': '#b45309',
+  'Görüşme': '#0d9488', // Ajanda'dan gelen koç görüşmesi
 };
 const FALLBACK_COLORS = ['#0ea5e9', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'];
 
@@ -346,6 +348,8 @@ export default function HaftalikTakipPage() {
       .from('question_logs')
       .select('week_start, week_end')
       .eq('student_id', studentId)
+      // Ajanda'dan gelen görüşme görevleri program sayılmaz (yalnızca görüşme olan hafta boş kabul edilir)
+      .is('appointment_id', null)
       .order('week_start', { ascending: false });
 
     const map = new Map<string, ProgramOption>();
@@ -407,7 +411,7 @@ export default function HaftalikTakipPage() {
     const { data: { user } } = await supabase.auth.getUser();
     const nextWeekStart = getNextBlankProgramStart();
     const nextWeekEnd = getWeekEndFromStart(nextWeekStart);
-    const rows = logs.map((log) => ({
+    const rows = logs.filter((log) => !log.appointment_id).map((log) => ({
       student_id: selectedStudentId,
       coach_id: user?.id,
       subject: log.subject,
@@ -730,7 +734,8 @@ export default function HaftalikTakipPage() {
     const { data: existing, error: existingError } = await (supabase as any)
       .from('question_logs')
       .select('week_start')
-      .eq('student_id', copyTargetId);
+      .eq('student_id', copyTargetId)
+      .is('appointment_id', null);
     if (existingError) {
       setCopying(false);
       setCopyError(existingError.message);
@@ -742,7 +747,7 @@ export default function HaftalikTakipPage() {
     const nextWeekStart = getNextBlankProgramStartFromOptions(options, target.week_start_day ?? 0);
     const nextWeekEnd = getWeekEndFromStart(nextWeekStart);
 
-    const rows = logs.map((log) => ({
+    const rows = logs.filter((log) => !log.appointment_id).map((log) => ({
       student_id: copyTargetId,
       coach_id: user?.id,
       subject: log.subject,
@@ -1075,14 +1080,12 @@ export default function HaftalikTakipPage() {
         }
       `}</style>
 
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-[18px] font-semibold text-[var(--ink)]">
-            Haftalık Program{selectedStudent ? ` — ${selectedStudent.full_name}` : ''}
-          </h1>
-          {weekLabel && <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">{weekLabel}</p>}
-        </div>
-        <div className="no-print flex gap-2">
+      <PageHero
+        theme="indigo"
+        icon={<IconChecklist size={22} />}
+        title={<>Haftalık Program{selectedStudent ? ` — ${selectedStudent.full_name}` : ''}</>}
+        subtitle={weekLabel || 'Öğrenci seçip haftalık programı hazırlayın'}
+        actions={<>
           <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
@@ -1125,7 +1128,14 @@ export default function HaftalikTakipPage() {
               <IconCopy size={13} /> Başka öğrenciye kopyala
             </button>
           )}
-        </div>
+      </>}
+      />
+      {/* Yazdırırken renkli başlık gizlenir; kâğıtta sade başlık çıkar */}
+      <div className="mb-3 hidden print:block">
+        <h1 className="text-[18px] font-semibold text-black">
+          Haftalık Program{selectedStudent ? ` — ${selectedStudent.full_name}` : ''}
+        </h1>
+        {weekLabel && <p className="text-[13px] text-gray-600">{weekLabel}</p>}
       </div>
 
       {copyOpen && (

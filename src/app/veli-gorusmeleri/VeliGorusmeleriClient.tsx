@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { IconPlus, IconUsersGroup } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
+import { PageHero } from '@/components/ui/PageHero';
 
 export function VeliGorusmeleriClient({ meetings }: { meetings: any[] }) {
   const { matchesFilter } = useExamFilter();
@@ -14,19 +15,21 @@ export function VeliGorusmeleriClient({ meetings }: { meetings: any[] }) {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-5 flex items-center justify-between">
-        <div>
-          <h1 className="text-[18px] font-semibold text-[var(--ink)]">Veli görüşmeleri</h1>
-          <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">{filtered.length} veli görüşmesi</p>
-        </div>
-        <Link
+      <PageHero
+        theme="fuchsia"
+        icon={<IconUsersGroup size={22} />}
+        title="Veli görüşmeleri"
+        subtitle={<>{filtered.length} veli görüşmesi</>}
+        actions={<>
+<Link
           href="/gorusmeler/yeni"
           className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
         >
           <IconPlus size={15} />
           Görüşme ekle
         </Link>
-      </div>
+      </>}
+      />
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20">

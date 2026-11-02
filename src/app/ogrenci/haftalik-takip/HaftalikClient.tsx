@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { IconCheck, IconPlus, IconTrash, IconPencil, IconX } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { subjectEmoji, DAY_STYLES, cheer } from '../studentUi';
@@ -50,6 +50,16 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   const [newForm, setNewForm] = useState<Added | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // Ajanda'dan gelen görüşmeler: talep durumu ve "saat değişikliği iste" penceresi
+  const [apptInfo, setApptInfo] = useState<Record<string, { starts_at: string; change_requested_at: string | null }>>({});
+  const [changeFor, setChangeFor] = useState<any | null>(null);
+  const apptIds = useMemo(() => logs.map((l) => l.appointment_id).filter(Boolean) as string[], [logs]);
+  useEffect(() => {
+    if (apptIds.length === 0) return;
+    (supabase as any).from('appointments').select('id, starts_at, change_requested_at').in('id', apptIds)
+      .then(({ data }: any) => setApptInfo(Object.fromEntries((data ?? []).map((a: any) => [a.id, a]))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apptIds.join(',')]);
   const [newNote, setNewNote] = useState('');
   const [showNew, setShowNew] = useState(false);
   const [extraForm, setExtraForm] = useState<Added | null>(null);
@@ -67,6 +77,13 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
 
   async function toggleDone(l: any) {
     if (editMode) return;
+    if (!l.student_done && l.appointment_id) {
+      // Ajanda'dan gelen görüşme: "ne çalıştın?" sorulmaz, doğrudan işaretlenir
+      markDone(l.id, true);
+      const err = await setTaskDone(supabase, l.id, true);
+      if (err) { markDone(l.id, false); setMsg(err); } else setMsg(null);
+      return;
+    }
     if (!l.student_done) { setSheetTask(l); return; } // tik = "ne çalıştın?" penceresi
     markDone(l.id, false);
     const err = await setTaskDone(supabase, l.id, false);
@@ -264,6 +281,14 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                       const e = edits[l.id] ?? {};
                       const time = [hhmm(l.start_time), hhmm(l.end_time)].filter(Boolean).join(' - ');
                       const detail = [l.topic, l.target_count > 0 ? `${l.target_count} soru` : null].filter(Boolean).join(' · ');
+                      if (editMode && l.appointment_id) {
+                        return (
+                          <div key={l.id} className="rounded-2xl border-2 border-teal-200 bg-teal-50 p-2.5 text-[12.5px] font-semibold text-teal-900">
+                            📅 {l.subject}{l.topic ? ` · ${l.topic}` : ''}{time ? ` · ${time}` : ''}
+                            <span className="mt-0.5 block text-[11.5px] font-medium text-teal-700">Görüşme saati buradan değişmez; düzenlemeden çıkıp &quot;Saat değişikliği iste&quot;yi kullan.</span>
+                          </div>
+                        );
+                      }
                       if (editMode) {
                         return (
                           <div key={l.id} className={`space-y-2 rounded-2xl border-2 p-2.5 ${isRemoved ? 'border-[var(--danger)]/30 bg-[var(--danger-soft)] opacity-70' : 'border-[var(--border)] bg-[var(--paper)]'}`}>
@@ -297,6 +322,16 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                             </span>
                             <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${done ? 'student-pop border-[var(--success)] bg-[var(--success)] text-white' : 'border-[var(--ink-muted)]/30 bg-white text-transparent'}`}><IconCheck size={18} strokeWidth={3} /></span>
                           </button>
+                          {l.appointment_id && !done && (
+                            apptInfo[l.appointment_id]?.change_requested_at ? (
+                              <span className="flex-shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10.5px] font-bold text-amber-800">Talep iletildi ⏳</span>
+                            ) : (
+                              <button type="button" onClick={() => setChangeFor(l)} title="Görüşme saati için değişiklik iste"
+                                className="flex-shrink-0 rounded-full bg-teal-100 px-2.5 py-1 text-[11px] font-bold text-teal-800 hover:bg-teal-200">
+                                🕒 Saat değişikliği iste
+                              </button>
+                            )
+                          )}
                           {l.student_added && (
                             <button type="button" onClick={() => removeExtraTask(l.id)} title="Sil" className="flex-shrink-0 rounded-full p-1.5 text-[var(--ink-muted)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"><IconTrash size={16} /></button>
                           )}
@@ -361,6 +396,18 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
         </>
       )}
 
+      {changeFor && (
+        <AppointmentChangeSheet
+          task={changeFor}
+          onClose={() => setChangeFor(null)}
+          onSent={() => {
+            setApptInfo((p) => ({ ...p, [changeFor.appointment_id]: { ...(p[changeFor.appointment_id] ?? { starts_at: '' }), change_requested_at: new Date().toISOString() } }));
+            setChangeFor(null);
+            setMsg('Talebin koçuna iletildi. Koçun saati değiştirince programın da güncellenir. 📨');
+          }}
+        />
+      )}
+
       {sheetTask && (
         <StudyLogSheet task={sheetTask} subjects={subjectOptions} onSave={saveStudy}
           onSkip={skipStudy} onClose={() => setSheetTask(null)} />
@@ -383,6 +430,55 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Öğrencinin, Ajanda'dan gelen görüşme için yeni saat önerdiği pencere */
+function AppointmentChangeSheet({ task, onClose, onSent }: { task: any; onClose: () => void; onSent: () => void }) {
+  const supabase = createClient();
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send() {
+    if (!note.trim() && !(date && time)) { setError('Önerdiğin günü ve saati seç ya da koçuna bir not yaz.'); return; }
+    if ((date && !time) || (!date && time)) { setError('Önerdiğin zaman için hem günü hem saati seç.'); return; }
+    setBusy(true); setError(null);
+    const proposed = date && time ? new Date(`${date}T${time}:00`).toISOString() : null;
+    const { error: err } = await (supabase as any).rpc('request_appointment_change', { p_id: task.appointment_id, p_proposed: proposed, p_note: note });
+    setBusy(false);
+    if (err) { setError(err.code === 'PGRST202' ? 'Bu özellik henüz etkin değil.' : err.message); return; }
+    onSent();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={() => !busy && onClose()}>
+      <div className="w-full max-w-md space-y-3 rounded-t-[28px] bg-[var(--card)] p-5 shadow-xl sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[17px] font-extrabold text-[var(--ink)]">🕒 Görüşme saatini değiştirelim mi?</p>
+            <p className="mt-0.5 text-[13px] font-medium text-[var(--ink-muted)]">
+              {task.topic || 'Görüşme'}{task.start_time ? ` · şu an ${hhmm(task.start_time)}` : ''}. Koçuna uygun olduğun zamanı öner; koçun saati değiştirirse programın da güncellenir.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full p-1.5 text-[var(--ink-muted)] hover:bg-[var(--paper)]"><IconX size={18} /></button>
+        </div>
+        <div className="flex gap-2">
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${input} flex-1`} />
+          <input type="time" value={time} step={300} onChange={(e) => setTime(e.target.value)} className={`${input} w-[7rem]`} />
+        </div>
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={500}
+          placeholder="Koçuna not (örn. O saatte okulda sınavım var, akşam 6'dan sonra uygunum)"
+          className="w-full rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] px-3 py-2 text-[14px] focus:border-[var(--accent)] focus:outline-none" />
+        {error && <p className="rounded-xl bg-[var(--danger-soft)] px-3 py-2 text-[13px] font-semibold text-[var(--danger)]">{error}</p>}
+        <div className="flex gap-2">
+          <button type="button" onClick={send} disabled={busy} className={btnPrimary}>{busy ? 'Gönderiliyor…' : 'Koçuma gönder 📨'}</button>
+          <button type="button" onClick={onClose} disabled={busy} className={btnCancel}>Vazgeç</button>
+        </div>
+      </div>
     </div>
   );
 }

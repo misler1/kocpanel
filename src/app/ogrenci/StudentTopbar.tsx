@@ -19,7 +19,7 @@ export function StudentTopbar({ fullName }: { fullName: string }) {
   const initials = fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || 'ÖĞ';
 
   return (
-    <header className="border-b border-[var(--border)] bg-white/80 backdrop-blur">
+    <header className="relative z-40 border-b border-[var(--border)] bg-white/80 backdrop-blur">
       <div className="flex h-16 items-center justify-between px-4 md:px-8">
         <Link href="/ogrenci" className="flex items-center gap-2 md:hidden" aria-label="KoçDefterim ana sayfa">
           <Image src="/brand/kocdefterim-mark-beyaz-k-v2.png" alt="KoçDefterim" width={34} height={34} className="h-9 w-9 rounded-xl object-contain" priority />

@@ -36,7 +36,7 @@ export function Topbar({ profile }: { profile: Profile | null }) {
   const showFilter = availableGroups.length >= 2;
 
   return (
-    <header className="border-b border-[var(--border)] bg-[var(--card)]">
+    <header className="relative z-40 border-b border-[var(--border)] bg-[var(--card)]">
       <div className="flex h-14 items-center justify-between px-4 md:px-6">
         {/* Mobilde logo */}
         <Link href="/anasayfa" className="flex items-center gap-2 md:hidden" aria-label="KoçDefterim anasayfa">

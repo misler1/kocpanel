@@ -8,7 +8,7 @@ export function trDate(d: Date | string = new Date()) {
   return new Date(d).toLocaleDateString('sv-SE', { timeZone: TZ });
 }
 
-function shiftDay(date: string, days: number) {
+export function shiftDay(date: string, days: number) {
   const d = new Date(`${date}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);

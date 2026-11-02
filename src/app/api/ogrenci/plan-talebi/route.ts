@@ -70,13 +70,18 @@ export async function POST(request: Request) {
     if (ops.length === 0 || ops.length > 100) throw new Error('Talepte geçerli değişiklik yok');
 
     const { data: weekLogs, error: wErr } = await db.from('question_logs')
-      .select('id, week_end').eq('student_id', req.student_id).eq('week_start', req.week_start);
+      .select('id, week_end, appointment_id').eq('student_id', req.student_id).eq('week_start', req.week_start);
     if (wErr) throw new Error(wErr.message);
-    const ids = new Set((weekLogs ?? []).map((l: any) => l.id));
+    // Ajanda'dan gelen görüşme görevleri programdan değiştirilemez (görüşmeyle senkron kalmalı)
+    const meetingIds = new Set((weekLogs ?? []).filter((l: any) => l.appointment_id).map((l: any) => l.id));
+    const ids = new Set((weekLogs ?? []).filter((l: any) => !l.appointment_id).map((l: any) => l.id));
     const weekEnd = weekLogs?.[0]?.week_end ?? null;
 
     // Önce hepsini doğrula (yarım uygulama olmasın)
     const prepared = ops.map((op) => {
+      if ((op.op === 'update' || op.op === 'delete') && meetingIds.has(op.log_id)) {
+        throw new Error("Görüşme görevi programdan değiştirilemez; görüşmeyi Ajanda'dan düzenleyin");
+      }
       if (op.op === 'update') {
         if (!ids.has(op.log_id)) throw new Error('Talepteki görev bu haftada bulunamadı (program değişmiş olabilir)');
         const fields = cleanFields(op.fields, false);

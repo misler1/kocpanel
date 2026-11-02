@@ -10,6 +10,7 @@ import {
   IconArrowsRightLeft, IconX, IconSparkles, IconLoader2, IconUpload, IconPrinter,
   IconArrowUp, IconArrowDown, IconEqual, IconCheck,
 } from '@tabler/icons-react';
+import { PageHero } from '@/components/ui/PageHero';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS, type SubjectDef } from './examConstants';
 
@@ -372,12 +373,13 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
   return (
     <div className={`mx-auto max-w-6xl ${compareMode && selectedCompareIds.length > 0 ? 'pb-20' : ''}`}>
       {/* Başlık */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-[18px] font-medium text-gray-900">Deneme sonuçları</h1>
-          <p className="mt-0.5 text-[13px] text-gray-500">{totalCount} kayıt · {singleStudent ? totalCount : groups.length} deneme</p>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHero
+        theme="violet"
+        icon={<IconChartBar size={22} />}
+        title="Deneme sonuçları"
+        subtitle={<>{totalCount} kayıt · {singleStudent ? totalCount : groups.length} deneme</>}
+        actions={<>
+<div className="flex items-center gap-2">
           <button
             onClick={() => (compareMode ? exitCompareMode() : setCompareMode(true))}
             className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[13px] font-medium transition ${
@@ -396,7 +398,8 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
             Deneme gir
           </Link>
         </div>
-      </div>
+      </>}
+      />
 
       {/* Filtreler */}
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white p-3">

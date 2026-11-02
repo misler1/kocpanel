@@ -2,8 +2,9 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import {
-  IconUser, IconUsers, IconBell, IconLock, IconChevronRight, IconCalendar, IconShield, IconBuilding,
+  IconUser, IconUsers, IconBell, IconLock, IconChevronRight, IconCalendar, IconShield, IconBuilding, IconSettings,
 } from '@tabler/icons-react';
+import { PageHero } from '@/components/ui/PageHero';
 import { OgretmenYonetimiClient } from './OgretmenYonetimiClient';
 import { KurumYonetimiClient } from './KurumYonetimiClient';
 import { BasvuruListesi, type Basvuru, type KocSecenek } from '@/components/BasvuruListesi';
@@ -79,9 +80,11 @@ const profile = profileData as { is_admin: boolean } | null;
 
   return (
     <div className="mx-auto max-w-lg">
-      <div className="mb-5">
-        <h1 className="text-[18px] font-medium text-gray-900">Ayarlar</h1>
-      </div>
+      <PageHero
+        theme="slate"
+        icon={<IconSettings size={22} />}
+        title="Ayarlar"
+      />
 
       <div className="space-y-4">
         {SECTIONS.map((section) => (

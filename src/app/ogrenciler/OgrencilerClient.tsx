@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import type { Student } from '@/types/database';
-import { IconArchive, IconChevronRight, IconPlus } from '@tabler/icons-react';
+import { IconArchive, IconChevronRight, IconPlus, IconUsers } from '@tabler/icons-react';
+import { PageHero } from '@/components/ui/PageHero';
+import { avatarColor, initials as initialsOf, trackPill } from '@/lib/ui-colors';
 
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
@@ -15,18 +17,7 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   pasif: { label: 'Arşiv', className: 'bg-[var(--paper)] text-[var(--ink-muted)]' },
 };
 
-const AVATAR_COLORS: Record<string, string> = {
-  'av-blue': 'bg-[#E6F1FB] text-[#185FA5]',
-  'av-teal': 'bg-[#E1F5EE] text-[#0F6E56]',
-  'av-purple': 'bg-[#EEEDFE] text-[#534AB7]',
-  'av-amber': 'bg-[#FAEEDA] text-[#854F0B]',
-  'av-coral': 'bg-[#FAECE7] text-[#993C1D]',
-};
 
-const TRACK_LABELS: Record<string, string> = {
-  YKS_SAY: 'YKS · SAY', YKS_SOZ: 'YKS · SÖZ', YKS_EA: 'YKS · EA',
-  YKS_DIL: 'YKS · DİL', LGS: 'LGS', DIGER: 'Diğer',
-};
 
 type SortKey = 'ad' | 'soyad' | 'sinif' | 'dogum' | 'gorusme_yeni' | 'gorusme_eski';
 
@@ -46,12 +37,6 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'gorusme_yeni', label: 'Son görüşme (yeniden eskiye)' },
   { value: 'gorusme_eski', label: 'Son görüşme (eskiden yeniye)' },
 ];
-
-function trackColor(track: string) {
-  if (track.startsWith('YKS')) return 'text-[var(--track-yks)]';
-  if (track === 'LGS') return 'text-[var(--track-lgs)]';
-  return 'text-[var(--ink-muted)]';
-}
 
 function getSoyad(fullName: string) {
   const parts = fullName.trim().split(/\s+/);
@@ -145,51 +130,45 @@ export function OgrencilerClient({ students, archiveMode }: { students: ListedSt
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-[18px] font-semibold text-[var(--ink)]">
-            {archiveMode ? 'Arşivdeki öğrenciler' : 'Öğrenciler'}
-          </h1>
-          <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">
-            {archiveMode ? `${filtered.length} arşivde öğrenci` : `${filtered.length} aktif öğrenci`}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {archiveMode ? (
+      <PageHero
+        theme="sky"
+        icon={<IconUsers size={22} />}
+        title={archiveMode ? 'Arşivdeki öğrenciler' : 'Öğrenciler'}
+        subtitle={archiveMode ? `${filtered.length} arşivde öğrenci` : `${filtered.length} aktif öğrenci`}
+        actions={archiveMode ? (
+          <Link
+            href="/ogrenciler"
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
+          >
+            Öğrencilere dön
+          </Link>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={createStudentAccounts}
+              disabled={accBusy}
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)] disabled:opacity-60"
+            >
+              {accBusy ? 'Oluşturuluyor...' : 'Öğrenci Hesapları Oluştur'}
+            </button>
             <Link
-              href="/ogrenciler"
+              href="/ogrenciler?arsiv=1"
               className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
             >
-              Öğrencilere dön
+              <IconArchive size={15} />
+              Arşivden Öğrenci Al
             </Link>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={createStudentAccounts}
-                disabled={accBusy}
-                className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)] disabled:opacity-60"
-              >
-                {accBusy ? 'Oluşturuluyor...' : 'Öğrenci Hesapları Oluştur'}
-              </button>
-              <Link
-                href="/ogrenciler?arsiv=1"
-                className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
-              >
-                <IconArchive size={15} />
-                Arşivden Öğrenci Al
-              </Link>
-              <Link
-                href="/ogrenciler/yeni"
-                className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
-              >
-                <IconPlus size={15} />
-                Öğrenci ekle
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
+            <Link
+              href="/ogrenciler/yeni"
+              className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-sky-500 to-indigo-500 px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              <IconPlus size={15} />
+              Öğrenci ekle
+            </Link>
+          </>
+        )}
+      />
 
       {accMsg && (
         <p className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--paper)] px-3.5 py-2 text-[13px] text-[var(--ink)]">{accMsg}</p>
@@ -235,43 +214,37 @@ export function OgrencilerClient({ students, archiveMode }: { students: ListedSt
 }
 
 function StudentRow({ student: s }: { student: ListedStudent }) {
-  const initials = s.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-  const avatarClass = AVATAR_COLORS[s.avatar_color] ?? AVATAR_COLORS['av-blue'];
   const status = STATUS_MAP[s.status] ?? STATUS_MAP['aktif'];
-  const date = new Date(s.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
   const isPasif = s.status === 'pasif';
+  const tp = trackPill(s.track);
+  const lastMeeting = s.last_meeting_at
+    ? new Date(s.last_meeting_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })
+    : null;
 
   return (
     <Link
       href={`/ogrenciler/${s.id}`}
-      className={`group flex items-center gap-3.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--paper)] ${isPasif ? 'opacity-75' : ''}`}
+      className={`group flex items-center gap-3.5 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 shadow-sm transition-all hover:-translate-y-px hover:border-sky-200 hover:bg-sky-50/50 hover:shadow-md ${isPasif ? 'opacity-75' : ''}`}
     >
-      <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-medium ${avatarClass}`}>
-        {initials}
+      <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-semibold ${avatarColor(s.id)}`}>
+        {initialsOf(s.full_name)}
       </div>
 
-       <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1">
         <div className="truncate text-[14px] font-medium text-[var(--ink)]">{s.full_name}</div>
-        <div className="mt-0.5 flex items-center gap-2 text-[12px]">
-          {/* ... track, sınıf, katılım tarihi: dokunma ... */}
+        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[12px] text-[var(--ink-muted)]">
+          {tp && <span className={`rounded px-1.5 py-px text-[10.5px] font-semibold ${tp.cls}`}>{tp.label}</span>}
+          {s.sinif_sube && <span>{s.sinif_sube}</span>}
+          {lastMeeting && <span>· Son görüşme {lastMeeting}</span>}
         </div>
       </div>
 
       {s.is_intern_student && (
-        <span className="hidden flex-shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 sm:inline-block">
+        <span className="hidden flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 sm:inline-block">
           Stajyer{s.responsible_coach_other_name ? `: ${s.responsible_coach_other_name}` : ''}
         </span>
       )}
       <span className={`hidden flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium sm:inline-block ${status.className}`}>
-              {s.is_intern_student && (
-        <span className="hidden flex-shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 sm:inline-block">
-          Stajyer
-        </span>
-      )}
-
-      <span className={`hidden flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium sm:inline-block ${status.className}`}>
-        {status.label}
-      </span>
         {status.label}
       </span>
 

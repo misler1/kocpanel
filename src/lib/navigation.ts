@@ -11,6 +11,7 @@ import {
   IconMessageCircle,
   IconClipboardList,
   IconDatabase,
+  IconCalendarWeek,
 } from '@tabler/icons-react';
 
 export interface NavItem {
@@ -24,6 +25,7 @@ export interface NavItem {
 export const MAIN_NAV: NavItem[] = [
   { href: '/anasayfa', label: 'Ana sayfa', icon: IconHome },
   { href: '/ogrenciler', label: 'Öğrenciler', icon: IconUsers },
+  { href: '/ajanda', label: 'Ajanda', icon: IconCalendarWeek },
 ];
 
 export const TAKIP_NAV: NavItem[] = [

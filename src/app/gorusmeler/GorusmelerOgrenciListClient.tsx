@@ -5,8 +5,9 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { createClient } from '@/lib/supabase/client';
-import { IconChevronRight, IconCalendar } from '@tabler/icons-react';
+import { IconChevronRight, IconCalendar, IconNotes } from '@tabler/icons-react';
 import { MeetingDetailModal } from './MeetingDetailModal';
+import { PageHero } from '@/components/ui/PageHero';
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
   aktif: { label: 'Aktif', className: 'bg-[var(--success-soft)] text-[var(--success)]' },
@@ -235,20 +236,20 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-5 flex items-center justify-between">
-        <div>
-          <h1 className="text-[18px] font-semibold text-[var(--ink)]">Görüşme kayıtları</h1>
-          <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">
-            {viewMode === 'ogrenciler' ? 'Görüşme eklemek/görmek için bir öğrenci seçin' : `${allMeetingsFilteredSorted.length} görüşme`}
-          </p>
-        </div>
-        <button
+      <PageHero
+        theme="teal"
+        icon={<IconNotes size={22} />}
+        title="Görüşme kayıtları"
+        subtitle={<>{viewMode === 'ogrenciler' ? 'Görüşme eklemek/görmek için bir öğrenci seçin' : `${allMeetingsFilteredSorted.length} görüşme`}</>}
+        actions={<>
+<button
           onClick={() => setViewMode((v) => (v === 'ogrenciler' ? 'tumu' : 'ogrenciler'))}
           className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3.5 py-2 text-[13px] font-medium text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
         >
           {viewMode === 'ogrenciler' ? 'Tüm görüşmeler' : 'Öğrenciler'}
         </button>
-      </div>
+      </>}
+      />
 
       {viewMode === 'ogrenciler' ? (
         <>
