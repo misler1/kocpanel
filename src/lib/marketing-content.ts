@@ -1,4 +1,8 @@
-﻿export type ArticleCategorySlug = 'yks' | 'lgs' | 'dil-sinav-koclugu';
+import { yksGuideArticles } from './articles/yks-guides';
+import { lgsGuideArticles } from './articles/lgs-guides';
+import { dilGuideArticles } from './articles/dil-guides';
+
+export type ArticleCategorySlug = 'yks' | 'lgs' | 'dil-sinav-koclugu';
 
 export type ArticleSummary = {
   slug: string;
@@ -305,51 +309,7 @@ const yksArticles: Article[] = [
       { title: 'World Economic Forum, Türkiye ülke değerlendirmesi.', detail: 'Türkiye’de hızlı büyümesi beklenen meslekler ve 2030 beceri değişimi tahminleri için kullanılmıştır.' },
     ],
   },
-  {
-    category: 'yks',
-    slug: 'netlerim-neden-artmiyor',
-    title: 'Netlerim Neden Artmıyor?',
-    description: 'Çok çalıştığı halde netleri artmayan öğrencinin önce çalışma biçimini ve deneme sonrası davranışını incelemek gerekir.',
-    intro: [
-      'Netlerin artmaması öğrenciyi çok yorar. “Bu kadar çalışıyorum, neden olmuyor?” sorusu bir süre sonra motivasyonu da düşürür. Fakat net artışı bazen emekten hemen sonra gelmez; çalışma biçimi yanlışsa hiç gelmeyebilir.',
-      'Bu noktada öğrencinin ne kadar çalıştığından önce nasıl çalıştığına bakmak gerekir.',
-    ],
-    sections: [
-      { title: 'Yanlış analizi yapılmıyor olabilir', body: 'Denemeden sonra yalnızca nete bakmak yeterli değildir. Yanlış soruların hangi konudan geldiği, neden yanlış yapıldığı ve aynı hatanın tekrar edip etmediği incelenmelidir.' },
-      { title: 'Konu bitirmek öğrenmek değildir', body: 'Bir konuyu dinlemek veya kitaptan bitirmek, o konunun sınavda kullanılabildiği anlamına gelmez. Öğrencinin farklı soru tipleriyle karşılaşması ve bilgiyi denemede kullanabilmesi gerekir.' },
-      { title: 'Sabır ve doğru takip', body: 'Net artışı bazen birkaç haftalık düzenli çalışmadan sonra görünür. Önemli olan gelişimi sadece bir deneme üzerinden değil, birkaç denemenin toplam eğilimiyle değerlendirmektir.' },
-    ],
-  },
-  {
-    category: 'yks',
-    slug: 'tyt-mi-ayt-mi-oncelikli',
-    title: 'TYT mi AYT mi Öncelikli?',
-    description: 'TYT ve AYT önceliği öğrencinin sınıf düzeyine, netlerine, hedef bölümüne ve eksiklerine göre değişir.',
-    intro: [
-      'YKS öğrencilerinin en sık sorduğu sorulardan biri şudur: “TYT mi çalışayım, AYT mi?” Bu soruya herkes için geçerli tek bir cevap vermek doğru olmaz.',
-      'TYT temel becerileri ve süre yönetimini, AYT ise alan bilgisini daha belirgin ölçer. Hedefe göre bu iki sınavın ağırlığı değişebilir.',
-    ],
-    sections: [
-      { title: 'TYT temel oluşturur', body: 'TYT’de Türkçe, matematik, sosyal ve fen alanındaki temel beceriler öğrencinin sınav dayanıklılığını etkiler. Süre yönetimi zayıf olan öğrenci TYT’yi tamamen geri plana atmamalıdır.' },
-      { title: 'AYT hedefi belirler', body: 'Özellikle yüksek sıralama isteyen öğrenciler için AYT güçlü bir belirleyicidir. Alan derslerindeki konu eksikleri ertelendikçe son aylarda baskı artar.' },
-      { title: 'Denge kişiye göre kurulur', body: 'Doğru plan öğrencinin mevcut netlerine, hedef bölümüne ve zamanına göre yapılır. Bazı haftalar TYT ağırlıklı, bazı haftalar AYT ağırlıklı ilerlemek daha mantıklı olabilir.' },
-    ],
-  },
-  {
-    category: 'yks',
-    slug: 'yksde-zaman-yetmiyor-ne-yapmaliyim',
-    title: 'YKS’de Zaman Yetmiyor: Ne Yapmalıyım?',
-    description: 'Zaman sorunu yalnızca hızlı soru çözerek değil, doğru sıra, soru seçimi ve düzenli deneme analiziyle çözülür.',
-    intro: [
-      'YKS’de zamanın yetmemesi çok yaygın bir sorun. Öğrenci konuyu biliyor olabilir ama soruyu okuma, yorumlama veya işlem sürecinde fazla vakit kaybedebilir.',
-      'Bu durumda çözüm her zaman “daha hızlı ol” demek değildir. Önce zamanın nerede kaybolduğunu görmek gerekir.',
-    ],
-    sections: [
-      { title: 'Süre kaybının kaynağı bulunmalı', body: 'Bazı öğrenciler uzun paragraf sorularında, bazıları işlem gerektiren matematik sorularında, bazıları da kararsız kaldığı sorularda zaman kaybeder. Çözüm, sorunun kaynağına göre değişir.' },
-      { title: 'Soru seçimi öğrenilebilir', body: 'Her soruya aynı inatla yaklaşmak sınav stratejisi değildir. Öğrenci takıldığı soruyu bırakıp geri dönmeyi öğrenmelidir. Bu alışkanlık denemelerde kazanılır.' },
-      { title: 'Deneme sonrası süre analizi', body: 'Denemeden sonra yalnızca doğru ve yanlışlara bakmak yetmez. Hangi bölümde kaç dakika harcandığı da takip edilmelidir. Zaman yönetimi, ölçüldükçe gelişir.' },
-    ],
-  },
+  ...yksGuideArticles,
 ];
 
 const lgsArticles: Article[] = [
@@ -525,141 +485,11 @@ const lgsArticles: Article[] = [
       { title: "American Academy of Sleep Medicine - Teen Sleep Duration Health Advisory.", detail: "13-18 yaş arasındaki gençler için düzenli olarak 8-10 saat uyku önerisi ve yetersiz uykunun dikkat ve öğrenmeyle ilişkisi için kullanılmıştır." },
     ],
   },
-{
-    category: 'lgs',
-    slug: 'son-senenin-taban-puanlari',
-    title: 'Son Senenin Taban Puanları',
-    description: 'LGS taban puanları tercih döneminde yol gösterir; ancak karar verirken yüzdelik dilim daha sağlıklı bir ölçüdür.',
-    intro: ['Taban puanlar velilerin en çok baktığı verilerden biridir. Yine de puanlar her yıl sınavın zorluğuna ve öğrenci dağılımına göre değişebilir.', 'Bu nedenle lise tercihi yapılırken yalnızca puana değil, yüzdelik dilime ve okulun önceki yıllardaki eğilimine bakmak daha sağlıklı olur.'],
-    sections: [
-      { title: 'Puan neden değişir?', body: 'Sınavın zorluk derecesi, öğrenci başarısı ve tercih yoğunluğu taban puanları etkiler. Geçen yılın puanı fikir verir ama tek başına kesin sonuç göstermez.' },
-      { title: 'Yüzdelik dilim daha anlamlıdır', body: 'Yüzdelik dilim öğrencinin genel sıralamadaki yerini gösterdiği için tercih döneminde daha güvenilir bir kıyaslama sağlar.' },
-      { title: 'Güncel kılavuz izlenmeli', body: 'Tercih yaparken MEB tarafından yayımlanan güncel kılavuz ve okul kontenjanları esas alınmalıdır. Eski veriler yalnızca ön değerlendirme için kullanılmalıdır.' },
-    ],
-  },
-{
-    category: 'lgs',
-    slug: 'lgs-matematik-fen-turkce-nasil-calisilir',
-    title: 'LGS Matematik, Fen ve Türkçe Nasıl Çalışılır?',
-    description: 'LGS’de ders çalışmak, konu öğrenme ile yeni nesil soru pratiğini dengeli götürmeyi gerektirir.',
-    intro: ['LGS’de Matematik, Fen ve Türkçe öğrencinin yorumlama, dikkat ve işlem becerisini birlikte ölçer. Bu yüzden çalışma yalnızca konu tekrarıyla sınırlı kalmamalıdır.', 'Her dersin çalışma biçimi biraz farklıdır. Öğrenci bunu fark ettiğinde zamanı daha doğru kullanır.'],
-    sections: [
-      { title: 'Matematikte işlem ve yorum birlikte gider', body: 'Öğrenci önce temel kazanımları öğrenmeli, ardından farklı soru tipleriyle karşılaşmalıdır. Yeni nesil sorularda metni anlamak da işlem yapmak kadar önemlidir.' },
-      { title: 'Fen bilgisinde neden-sonuç ilişkisi', body: 'Fen çalışırken kavramları ezberlemek yerine deney, grafik ve günlük hayat bağlantıları üzerinden düşünmek gerekir. Yanlış yapılan soruların konusu mutlaka not edilmelidir.' },
-      { title: 'Türkçede düzenli okuma etkili olur', body: 'Paragraf, anlam ve dil bilgisi sorularında düzenli pratik önemlidir. Öğrenci yalnızca çok soru çözmekle kalmamalı, neden yanlış yaptığını da anlamalıdır.' },
-    ],
-  },
-{
-    category: 'lgs',
-    slug: 'lgsde-stres-oluyorum-sinav-korkusu',
-    title: 'LGS’de Stres Oluyorum, Sınav Korkusu',
-    description: 'LGS stresi yönetilebilir; önemli olan öğrencinin duygusunu ciddiye almak ve süreci daha kontrol edilebilir hale getirmektir.',
-    intro: ['LGS öğrencisi için sınav yalnızca akademik bir süreç değildir. Aile beklentisi, okul ortamı ve arkadaşlarla kıyaslanma hissi öğrenciyi yorabilir.', 'Stres tamamen yok edilmesi gereken bir şey değildir. Belli düzeyde kaygı öğrenciyi harekete geçirebilir; sorun, kaygının çalışmayı ve denemeyi engellemesidir.'],
-    sections: [
-      { title: 'Kaygı konuşulabilir olmalı', body: 'Öğrenci korktuğunu söylediğinde bunu küçümsemek yerine neyin zor geldiği anlaşılmalıdır. Belirsizlik azaldıkça kaygı da daha yönetilebilir hale gelir.' },
-      { title: 'Deneme alışkanlığı rahatlatır', body: 'Sınav ortamını sık sık deneyimleyen öğrenci, gerçek sınavda neyle karşılaşacağını daha iyi bilir. Bu da kontrol duygusunu artırır.' },
-      { title: 'Aile dili önemlidir', body: 'Sürekli sonuç konuşmak öğrencinin baskısını artırabilir. Emek, düzen ve gelişim üzerinden konuşmak daha sağlıklı bir destek sağlar.' },
-    ],
-  },
-{
-    category: 'lgs',
-    slug: 'ders-calismak-istemiyorum-motivasyonum-dustu',
-    title: 'Ders Çalışmak İstemiyorum, Motivasyonum Düştü',
-    description: 'Motivasyon düştüğünde öğrenciyi suçlamak yerine programı, hedefi ve çalışma yükünü yeniden düzenlemek gerekir.',
-    intro: ['Her LGS öğrencisi yıl boyunca aynı enerjiyle çalışamaz. Bazı dönemlerde isteksizlik, erteleme ve yorulma görülebilir.', 'Bu durum öğrencinin umursamadığı anlamına gelmez. Bazen hedef uzak görünür, bazen program ağır gelir, bazen de öğrenci çabasının karşılığını göremediği için geri çekilir.'],
-    sections: [
-      { title: 'Küçük hedefler işe yarar', body: 'Motivasyon düştüğünde çok büyük programlar öğrenciyi daha da zorlayabilir. Daha kısa, net ve tamamlanabilir görevlerle yeniden başlamak daha doğru olabilir.' },
-      { title: 'Başarı hissi güçlendirilmeli', body: 'Öğrenci yaptığı küçük ilerlemeleri fark ettiğinde çalışma isteği artabilir. Bu yüzden yalnızca eksikleri değil, tamamlanan adımları da görmek gerekir.' },
-      { title: 'Dinlenme ihmal edilmemeli', body: 'Sürekli çalışma baskısı öğrenciyi tüketebilir. Sağlıklı bir planın içinde uyku, mola ve nefes alacak zaman da bulunmalıdır.' },
-    ],
-  },
-{
-    category: 'lgs',
-    slug: 'yuzdelik-dilim-nedir-lise-tercihi-nasil-yapilir',
-    title: 'Yüzdelik Dilim Nedir, Lise Tercihi Nasıl Yapılır?',
-    description: 'Yüzdelik dilim, LGS tercih sürecinde öğrencinin konumunu anlamak için en önemli göstergelerden biridir.',
-    intro: ['LGS tercih döneminde puan kadar yüzdelik dilim de konuşulur. Hatta çoğu zaman yüzdelik dilim daha sağlıklı bir rehberdir.', 'Yüzdelik dilim, öğrencinin sınava girenler arasındaki yerini gösterir. Bu bilgi tercih listesi hazırlanırken daha gerçekçi seçimler yapmayı sağlar.'],
-    sections: [
-      { title: 'Yüzdelik dilim neyi gösterir?', body: 'Öğrencinin kaç puan aldığı kadar, bu puanın genel sıralamada nereye denk geldiği önemlidir. Yüzdelik dilim bu konumu gösterir.' },
-      { title: 'Tercih listesi nasıl kurulmalı?', body: 'Liste hazırlanırken öğrencinin yüzdelik dilimine yakın okullar, biraz daha yüksek hedefler ve daha güvenli seçenekler birlikte düşünülmelidir.' },
-      { title: 'Okul araştırması yapılmalı', body: 'Tercih yalnızca tablo üzerinden yapılmamalıdır. Okulun ulaşımı, imkanları, akademik ortamı ve öğrencinin beklentileri de değerlendirilmelidir.' },
-    ],
-  },
+  ...lgsGuideArticles,
 ];
 
 const dilArticles: Article[] = [
-  {
-    category: 'dil-sinav-koclugu',
-    slug: 'ydt-nedir-soru-dagilimi',
-    title: 'YDT Nedir, Soru Dağılımı',
-    description: 'YDT, dil puanıyla tercih yapmak isteyen öğrenciler için kelime, okuma, dil bilgisi ve yorum becerisini ölçen önemli bir sınavdır.',
-    intro: ['YDT, dil alanından üniversite tercihi yapmak isteyen öğrencilerin girdiği sınavdır. Sınavda yalnızca kelime bilmek değil, okuduğunu anlama ve dili sınav mantığıyla kullanma becerisi de önemlidir.', 'Soru dağılımını bilmek öğrencinin çalışma planını daha doğru kurmasını sağlar. Hangi başlığa ne kadar zaman ayrılacağı bu tabloya göre netleşir.'],
-    sections: [
-      { title: 'YDT neyi ölçer?', body: 'Sınav; kelime bilgisi, dil bilgisi, çeviri, paragraf, anlam bütünlüğü ve okuduğunu yorumlama gibi farklı becerileri birlikte yoklar.' },
-      { title: 'Çalışma planına etkisi', body: 'Soru dağılımını bilen öğrenci yalnızca sevdiği konulara çalışmaz. Zayıf olduğu ama sınavda ağırlığı olan başlıklara da düzenli zaman ayırır.' },
-      { title: 'Güncel kılavuz önemli', body: 'YDT soru dağılımı ve sınav ayrıntıları için güncel ÖSYM bilgileri esas alınmalıdır. Hazırlık planı bu bilgilere göre güncellenmelidir.' },
-    ],
-  },
-  {
-    category: 'dil-sinav-koclugu',
-    slug: 'gunde-kac-kelime-ogrenilmeli-kelime-nasil-kalici-ogrenilir',
-    title: 'Günde Kaç Kelime Öğrenilmeli, Kelime Nasıl Kalıcı Öğrenilir?',
-    description: 'YDT hazırlığında kelime öğrenmek sayıdan çok tekrar, bağlam ve kullanım alışkanlığıyla kalıcı hale gelir.',
-    intro: ['Dil öğrencilerinin en sık sorduğu sorulardan biri günlük kelime sayısıdır. Fakat kelime öğrenmede mesele yalnızca sayıyı artırmak değildir.', 'Bir kelimeyi listede görmek başka, okuma parçasında tanımak ve doğru anlamıyla kullanmak başka bir şeydir.'],
-    sections: [
-      { title: 'Az ama düzenli öğrenmek', body: 'Her gün çok fazla kelime ezberlemeye çalışmak kısa sürede yorucu olabilir. Daha makul bir sayı belirleyip düzenli tekrar yapmak çoğu öğrenci için daha kalıcıdır.' },
-      { title: 'Bağlam içinde öğrenmek', body: 'Kelimeyi tek başına ezberlemek yerine cümle içinde görmek, anlamını ve kullanımını güçlendirir. Reading çalışmaları bu yüzden kelime gelişimini destekler.' },
-      { title: 'Tekrar sistemi kurulmalı', body: 'Öğrenilen kelimeler belirli aralıklarla tekrar edilmezse unutulur. Haftalık tekrar listesi ve küçük kelime testleri süreci canlı tutar.' },
-    ],
-  },
-  {
-    category: 'dil-sinav-koclugu',
-    slug: 'ydtde-60-netten-70-nete-nasil-cikilir',
-    title: 'YDT’de 60 Netten 70 Nete Nasıl Çıkılır?',
-    description: 'YDT’de net artırmak için genel tekrar yerine yanlış türlerini ve zaman kaybını hedef alan bir plan gerekir.',
-    intro: ['YDT’de 60 net seviyesine gelen öğrenci belli bir temel oluşturmuştur. Bundan sonra artış daha ince çalışmayı gerektirir.', 'Bu seviyede her yanlışın sebebi önemlidir. Kelime mi eksik, paragraf mı yavaş, dil bilgisi mi karışıyor, yoksa dikkatsizlik mi baskın?'],
-    sections: [
-      { title: 'Yanlış türleri ayrılmalı', body: 'Tüm yanlışları aynı torbaya koymak gelişimi yavaşlatır. Öğrenci hangi soru tipinde puan kaybettiğini görmelidir.' },
-      { title: 'Reading hızı artırılmalı', body: 'YDT’de okuma hızı net artışında belirleyici olabilir. Düzenli reading çalışması, hem kelimeyi hem de anlam takibini güçlendirir.' },
-      { title: 'Deneme sonrası hedef', body: 'Her denemeden sonra bir sonraki haftanın özel hedefi belirlenmelidir. Örneğin yalnızca paragraf, yalnızca çeviri ya da kelime tekrarına ağırlık verilebilir.' },
-    ],
-  },
-  {
-    category: 'dil-sinav-koclugu',
-    slug: 'reading-hizini-artirma-yontemleri',
-    title: 'Reading Hızını Artırma Yöntemleri',
-    description: 'Reading hızını artırmak için düzenli okuma, kelime takibi ve soru çözüm stratejisi birlikte geliştirilmelidir.',
-    intro: ['YDT hazırlığında reading çoğu öğrencinin zamanını alır. Metni anlamaya çalışırken süre hızla geçer ve öğrenci bazı soruları aceleye getirebilir.', 'Reading hızı bir anda artmaz. Düzenli pratik ve doğru yöntemle gelişir.'],
-    sections: [
-      { title: 'Her kelimeye takılmamak', body: 'Metindeki her kelimeyi bilmek gerekmez. Öğrenci ana fikri, bağlamı ve cümlenin yönünü takip etmeyi öğrenmelidir.' },
-      { title: 'Düzenli metin okumak', body: 'Sadece soru çözmek değil, farklı konularda kısa ve orta uzunlukta metinler okumak da hızı artırır. Okuma alışkanlığı zamanla göz aşinalığı kazandırır.' },
-      { title: 'Soru kökünü doğru okumak', body: 'Reading sorularında soru kökü ne istediğini net söyler. Öğrenci metne dönmeden önce sorunun ne aradığını anlamalıdır.' },
-    ],
-  },
-  {
-    category: 'dil-sinav-koclugu',
-    slug: 'ydtde-gunluk-kac-soru-cozulmeli',
-    title: 'YDT’de Günlük Kaç Soru Çözülmeli?',
-    description: '',
-    intro: ['Günlük soru sayısı, dil öğrencileri için iyi bir takip göstergesi olabilir. Yine de tek başına yeterli değildir.', 'Çok soru çözmek, yanlışlar analiz edilmediğinde beklenen gelişimi getirmeyebilir.'],
-    sections: [
-      { title: 'Seviyeye göre plan', body: 'Başlangıç seviyesindeki öğrenci daha çok konu ve kelime temeli kurarken, ileri seviyedeki öğrenci deneme ve soru tipi analizine ağırlık verebilir.' },
-      { title: 'Soru çeşitliliği', body: 'Yalnızca sevilen soru tiplerini çözmek yanıltıcı olur. Kelime, grammar, cloze test, çeviri ve reading dengeli ilerlemelidir.' },
-      { title: 'Yanlış analizi şart', body: 'Çözülen soruların değeri, sonrasında yapılan analizle artar. Öğrenci yanlışlarını not edip tekrar gördüğünde gelişim daha kalıcı olur.' },
-    ],
-  },
-  {
-    category: 'dil-sinav-koclugu',
-    slug: 'dil-puaniyla-hangi-bolumler-tercih-edilebilir',
-    title: 'Dil Puanıyla Hangi Bölümler Tercih Edilebilir?',
-    description: 'Dil puanı; öğretmenlik, çeviri, dil ve edebiyat, turizm, iletişim ve farklı uluslararası alanlara kapı açabilir.',
-    intro: ['Dil puanıyla tercih yapacak öğrenciler bazen seçeneklerinin sınırlı olduğunu düşünür. Oysa dil alanı farklı ilgi ve becerilere göre çeşitli yollar sunar.', 'Önemli olan yalnızca bölüm adını bilmek değil, o bölümün mezuniyet sonrası hangi alanlara açıldığını da incelemektir.'],
-    sections: [
-      { title: 'Bölüm içerikleri incelenmeli', body: 'İngilizce öğretmenliği, mütercim-tercümanlık, dil ve edebiyat bölümleri birbirine benzese de ders yapısı ve mesleki yönü farklıdır.' },
-      { title: 'Yabancı dil tek başına yetmez', body: 'Dil alanında güçlü olmak önemlidir; fakat iletişim, yazma, kültür bilgisi, teknoloji kullanımı ve ikinci dil gibi beceriler öğrenciyi öne çıkarabilir.' },
-      { title: 'Tercih hedefle birlikte yapılmalı', body: 'Öğrenci akademik kariyer, öğretmenlik, çeviri, özel sektör veya uluslararası alanlardan hangisine daha yakın olduğunu düşünmelidir.' },
-    ],
-  },
+  ...dilGuideArticles,
 ];
 
 export const ARTICLE_CATEGORIES: Category[] = [
