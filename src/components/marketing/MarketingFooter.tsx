@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LANDING_PAGES } from '@/lib/landing-content';
 
 export function MarketingFooter() {
   return (
@@ -10,12 +11,18 @@ export function MarketingFooter() {
             YKS ve LGS hazırlık sürecinde her öğrenciye özel takip ve rehberlik.
           </p>
         </div>
-        <div className="flex gap-12 text-[13px]">
+        <div className="flex flex-wrap gap-x-12 gap-y-6 text-[13px]">
           <div className="flex flex-col gap-2">
             <span className="font-medium text-[#1D2B3A]">Kurumsal</span>
             <Link href="/hakkimizda" className="text-[#6B6558] hover:text-[#1D2B3A]">Hakkımızda</Link>
             <Link href="/koclarimiz" className="text-[#6B6558] hover:text-[#1D2B3A]">Koçlarımız</Link>
             <Link href="/hizmetlerimiz" className="text-[#6B6558] hover:text-[#1D2B3A]">Hizmetlerimiz</Link>
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="font-medium text-[#1D2B3A]">Koç Defterim</span>
+            {LANDING_PAGES.map((p) => (
+              <Link key={p.slug} href={`/${p.slug}`} className="text-[#6B6558] hover:text-[#1D2B3A]">{p.navLabel}</Link>
+            ))}
           </div>
           <div className="flex flex-col gap-2">
             <span className="font-medium text-[#1D2B3A]">Giriş</span>

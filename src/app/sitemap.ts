@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { SITE_URL } from '@/lib/site';
 import { ARTICLE_CATEGORIES } from '@/lib/marketing-content';
+import { LANDING_PAGES } from '@/lib/landing-content';
 
 // Google'a dizine alınacak tanıtım sayfalarını bildirir. Yeni bir tanıtım sayfası eklenirse buraya da eklenmeli;
 // rehber yazılar marketing-content'ten otomatik gelir.
@@ -16,11 +17,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/dil-sinav-koclugu', priority: 0.7 },
     { path: '/diger-sinavlar', priority: 0.6 },
   ];
+  const landings = LANDING_PAGES.map((p) => ({ path: `/${p.slug}`, priority: 0.9 }));
   const articles = ARTICLE_CATEGORIES.flatMap((c) =>
     c.articles.map((a) => ({ path: `/${c.slug}/${a.slug}`, priority: 0.6 })),
   );
 
-  return [...pages, ...articles].map(({ path, priority }) => ({
+  return [...pages, ...landings, ...articles].map(({ path, priority }) => ({
     url: `${SITE_URL}${path}`,
     changeFrequency: 'monthly',
     priority,

@@ -9,6 +9,12 @@ const PUBLIC_MARKETING_PREFIXES = [
   '/lgs',
   '/dil-sinav-koclugu',
   '/diger-sinavlar',
+  // Arama odaklı tanıtım sayfaları (src/lib/landing-content.ts)
+  '/koc-defterim',
+  '/yks-kocu',
+  '/lgs-kocu',
+  '/egitim-kocu',
+  '/ders-takibi',
 ];
 
 // /sifre-sifirla sayfasıyla aynı ad (orada tarayıcıda yazılıyor)

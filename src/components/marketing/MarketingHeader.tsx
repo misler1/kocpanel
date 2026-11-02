@@ -1,10 +1,11 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { IconChevronDown, IconMenu2, IconX } from '@tabler/icons-react';
 import { ARTICLE_CATEGORIES } from '@/lib/marketing-content';
+import { LANDING_PAGES } from '@/lib/landing-content';
 
 const NAV_LINKS = [
   { href: '/', label: 'Anasayfa' },
@@ -26,6 +27,31 @@ export function MarketingHeader() {
         </Link>
 
         <nav className="hidden items-center gap-5 lg:flex">
+          <div
+            className="relative"
+            onMouseEnter={() => setActiveMenu('koc-defterim')}
+            onMouseLeave={() => setActiveMenu((current) => (current === 'koc-defterim' ? null : current))}
+          >
+            <Link href="/koc-defterim" className="flex items-center gap-1 text-[14px] font-medium text-gray-700 transition hover:text-gray-950">
+              Koç Defterim
+              <IconChevronDown size={14} className={`transition-transform ${activeMenu === 'koc-defterim' ? 'rotate-180' : ''}`} />
+            </Link>
+            {activeMenu === 'koc-defterim' && (
+              <div className="absolute left-0 top-full w-64 pt-3">
+                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white py-2 shadow-xl">
+                  {LANDING_PAGES.map((page) => (
+                    <Link
+                      key={page.slug}
+                      href={`/${page.slug}`}
+                      className="block px-4 py-2.5 text-[13px] leading-snug text-gray-700 hover:bg-[#FBF9F4] hover:text-[#C1442A]"
+                    >
+                      {page.navLabel}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           {ARTICLE_CATEGORIES.map((category) => (
             <div
               key={category.slug}
@@ -107,6 +133,18 @@ export function MarketingHeader() {
       {mobileOpen && (
         <div className="max-h-[calc(100vh-76px)] overflow-y-auto border-t border-gray-200 bg-white px-5 py-4 lg:hidden">
           <nav className="flex flex-col gap-5">
+            <div>
+              <Link href="/koc-defterim" onClick={() => setMobileOpen(false)} className="text-[15px] font-semibold text-gray-950">
+                Koç Defterim
+              </Link>
+              <div className="mt-2 flex flex-col gap-2 border-l border-gray-200 pl-3">
+                {LANDING_PAGES.map((page) => (
+                  <Link key={page.slug} href={`/${page.slug}`} onClick={() => setMobileOpen(false)} className="text-[13px] leading-snug text-gray-600">
+                    {page.navLabel}
+                  </Link>
+                ))}
+              </div>
+            </div>
             {ARTICLE_CATEGORIES.map((category) => (
               <div key={category.slug}>
                 <Link href={`/${category.slug}`} onClick={() => setMobileOpen(false)} className="text-[15px] font-semibold text-gray-950">
