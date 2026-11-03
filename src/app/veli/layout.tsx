@@ -3,13 +3,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getRequestUser } from '@/lib/supabase/request-cache';
 import { VeliLogoutButton } from './VeliLogoutButton';
 
 export const metadata: Metadata = { title: 'Veli Paneli | Koç Defterim', robots: { index: false, follow: false } };
 
 export default async function VeliLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris/veli');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: profile } = await (supabase as any).from('profiles').select('full_name, role').eq('id', user.id).single();

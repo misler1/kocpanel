@@ -1,11 +1,12 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getRequestUser } from '@/lib/supabase/request-cache';
 import { DuzenleClient } from './DuzenleClient';
 
 export default async function AnketDuzenlePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

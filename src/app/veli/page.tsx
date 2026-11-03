@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getRequestUser } from '@/lib/supabase/request-cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { loadStudentReport } from '@/lib/student-report';
 import { StudentReportView } from '@/components/report/StudentReportView';
@@ -11,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export default async function VeliPage({ searchParams }: { searchParams: Promise<{ ogrenci?: string }> }) {
   const { ogrenci } = await searchParams;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris/veli');
 
   const { data: profile } = await (supabase as any).from('profiles').select('must_change_password').eq('id', user.id).single();

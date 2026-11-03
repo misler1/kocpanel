@@ -43,22 +43,24 @@ export type StudentScope = {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getStudentScope(supabase: any, userId: string, includeInterns = false): Promise<StudentScope> {
-  const { data: own } = await supabase
-    .from('teacher_access_profiles')
-    .select('status, mentor_id')
-    .eq('teacher_id', userId)
-    .maybeSingle();
+  // İki sorgu birbirini beklemesin (her biri veritabanına ayrı bir gidiş-dönüş)
+  const [{ data: own }, { data: interns }] = await Promise.all([
+    supabase
+      .from('teacher_access_profiles')
+      .select('status, mentor_id')
+      .eq('teacher_id', userId)
+      .maybeSingle(),
+    supabase
+      .from('teacher_access_profiles')
+      .select('teacher_id')
+      .eq('mentor_id', userId)
+      .neq('status', 'coach'),
+  ]);
 
   // stajyer hesabı: eskisi gibi çalışır
   if (own && own.status !== 'coach' && own.mentor_id) {
     return { userId, coachIds: [own.mentor_id, userId], isMentor: false, ownOnly: false };
   }
-
-  const { data: interns } = await supabase
-    .from('teacher_access_profiles')
-    .select('teacher_id')
-    .eq('mentor_id', userId)
-    .neq('status', 'coach');
 
   const internIds = (interns ?? []).map((i: { teacher_id: string }) => i.teacher_id);
   return { userId, coachIds: [userId, ...internIds], isMentor: true, ownOnly: !includeInterns };

@@ -1,11 +1,12 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getRequestUser } from '@/lib/supabase/request-cache';
 import { OgretmenIzinleriClient } from './OgretmenIzinleriClient';
 
 export default async function OgretmenIzinleriPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris');
 
   const { data: currentProfile } = await supabase

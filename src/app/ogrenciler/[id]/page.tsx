@@ -2,6 +2,7 @@
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { getRequestUser } from '@/lib/supabase/request-cache';
 import { IconArrowLeft, IconEdit } from '@tabler/icons-react';
 import { OgrenciDetayClient } from './OgrenciDetayClient';
 import { OgrenciArsivdenCikarButton } from './OgrenciArsivdenCikarButton';
@@ -12,7 +13,7 @@ import { targetRows } from '@/lib/student-motivation';
 export default async function OgrenciDetayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris');
 
   const { data: rawStudent } = await supabase

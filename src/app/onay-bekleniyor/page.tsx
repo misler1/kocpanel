@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@/lib/supabase/server';
+import { getRequestUser } from '@/lib/supabase/request-cache';
 import { redirect } from 'next/navigation';
 
 export default async function OnayBekleniyorPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris');
 
   const { data: profile } = await (supabase as any).from('profiles').select('role, is_approved').eq('id', user.id).single();

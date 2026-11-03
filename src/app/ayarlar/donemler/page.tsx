@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getRequestUser } from '@/lib/supabase/request-cache';
 import { DonemYonetimiClient } from './DonemYonetimiClient';
 
 export default async function DonemlerPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris');
 
   const { data: rawDonemler } = await (supabase as any)

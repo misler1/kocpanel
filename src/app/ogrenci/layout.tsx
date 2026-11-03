@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getRequestUser } from '@/lib/supabase/request-cache';
 import { nunito } from '@/lib/fonts';
 import { StudentSidebar } from './StudentSidebar';
 import { StudentTopbar } from './StudentTopbar';
@@ -7,7 +8,7 @@ import { StudentMobileNav } from './StudentMobileNav';
 
 export default async function OgrenciLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris/ogrenci');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

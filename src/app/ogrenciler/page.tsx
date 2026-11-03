@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getRequestUser, getRequestScope } from '@/lib/supabase/request-cache';
 import { OgrencilerClient } from './OgrencilerClient';
 import type { Student } from '@/types/database';
 import { cookies } from 'next/headers';
 import { BasvuruListesi, type Basvuru } from '@/components/BasvuruListesi';
-import { getStudentScope, applyStudentScope, isInternStudent } from '@/lib/effective-coach';
+import { applyStudentScope, isInternStudent } from '@/lib/effective-coach';
 
 type OgrenciListStudent = Student & {
   birth_date?: string | null;
@@ -22,7 +23,7 @@ export default async function OgrencilerPage({
   const archiveMode = params.arsiv === '1';
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,7 +34,7 @@ export default async function OgrencilerPage({
     .maybeSingle();
 
   const includeInterns = (await cookies()).get('show_interns')?.value === '1';
-  const scope = await getStudentScope(supabase, user.id, includeInterns);
+  const scope = await getRequestScope(user.id, includeInterns);
 
   let studentsQuery = applyStudentScope(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

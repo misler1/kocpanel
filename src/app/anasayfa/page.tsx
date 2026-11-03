@@ -2,7 +2,8 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
-import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
+import { getRequestUser, getRequestScope } from '@/lib/supabase/request-cache';
+import { applyStudentScope } from '@/lib/effective-coach';
 import { fetchChunkedByIds } from '@/lib/chunked-in';
 import { activeDays, shiftDay, trDate } from '@/lib/student-motivation';
 import { AnasayfaClient, type DashStudent, type DashMeeting, type DashExam } from './AnasayfaClient';
@@ -23,7 +24,7 @@ const daysBetween = (from: string, to: string) =>
 
 export default async function AnasayfaPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris');
 
   const today = trDate();
@@ -33,7 +34,7 @@ export default async function AnasayfaPage() {
   const { data: profile } = await (supabase as any).from('profiles').select('full_name').eq('id', user.id).single();
 
   const includeInterns = (await cookies()).get('show_interns')?.value === '1';
-  const scope = await getStudentScope(supabase, user.id, includeInterns);
+  const scope = await getRequestScope(user.id, includeInterns);
   const { data: rawStudents } = await applyStudentScope(
     (supabase as any)
       .from('students')

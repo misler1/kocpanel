@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { getRequestUser } from '@/lib/supabase/request-cache';
 import {
   IconUser, IconUsers, IconBell, IconLock, IconChevronRight, IconCalendar, IconShield, IconBuilding, IconSettings,
 } from '@tabler/icons-react';
@@ -11,7 +12,7 @@ import { BasvuruListesi, type Basvuru, type KocSecenek } from '@/components/Basv
 
 export default async function AyarlarPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris');
 
   // Admin mi kontrol et

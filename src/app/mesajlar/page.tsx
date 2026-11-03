@@ -1,11 +1,12 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getRequestUser } from '@/lib/supabase/request-cache';
 import { MessagesApp } from '@/components/messages/MessagesApp';
 
 export default async function MesajlarPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

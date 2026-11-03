@@ -2,19 +2,20 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { getRequestUser, getRequestScope } from '@/lib/supabase/request-cache';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
+import { applyStudentScope } from '@/lib/effective-coach';
 import { AjandaClient } from './AjandaClient';
 
 // Ajanda: haftalık takvim. Koç/öğretmen istediği gün ve saate görüşme planlar;
 // öğrenci ya da öğretmen/koç seçilirse ona panel içi bildirim gider (supabase/appointments.sql).
 export default async function AjandaPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris');
 
   const includeInterns = (await cookies()).get('show_interns')?.value === '1';
-  const scope = await getStudentScope(supabase, user.id, includeInterns);
+  const scope = await getRequestScope(user.id, includeInterns);
   const { data: students } = await applyStudentScope(
     (supabase as any)
       .from('students')

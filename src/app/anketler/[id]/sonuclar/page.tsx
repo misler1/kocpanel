@@ -2,13 +2,14 @@
 import { redirect, notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
-import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
+import { getRequestUser, getRequestScope } from '@/lib/supabase/request-cache';
+import { applyStudentScope } from '@/lib/effective-coach';
 import { SonuclarClient } from './SonuclarClient';
 
 export default async function SonuclarPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getRequestUser();
   if (!user) redirect('/giris');
 
   const { data: survey } = await (supabase.from('surveys') as any)
@@ -36,7 +37,7 @@ export default async function SonuclarPage({ params }: { params: Promise<{ id: s
     .eq('question_type', 'text');
 
   const includeInterns = (await cookies()).get('show_interns')?.value === '1';
-  const scope = await getStudentScope(supabase, user.id, includeInterns);
+  const scope = await getRequestScope(user.id, includeInterns);
   const { data: students } = await applyStudentScope(
     (supabase as any)
       .from('students')
