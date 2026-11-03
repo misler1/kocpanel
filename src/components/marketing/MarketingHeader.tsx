@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { IconChevronDown, IconMenu2, IconX } from '@tabler/icons-react';
+import { IconChevronDown, IconDeviceMobileDown, IconMenu2, IconX } from '@tabler/icons-react';
 import { ARTICLE_CATEGORIES } from '@/lib/marketing-content';
 import { LANDING_PAGES } from '@/lib/landing-content';
 import { createClient } from '@/lib/supabase/client';
@@ -109,7 +109,10 @@ export function MarketingHeader() {
           ))}
         </nav>
 
-        <div className="hidden lg:block">
+        <div className="hidden items-center gap-2 lg:flex">
+          <Link href="/uygulama" className="flex items-center gap-1.5 rounded-full border border-gray-300 px-4 py-2 text-[14px] font-medium text-gray-700 transition hover:border-gray-400 hover:text-gray-950">
+            <IconDeviceMobileDown size={16} /> Uygulamayı İndir
+          </Link>
           {loggedIn ? (
             <Link href="/giris" className="rounded-full bg-blue-600 px-5 py-2 text-[14px] font-medium text-white transition hover:bg-blue-700">
               Panelim
@@ -138,9 +141,14 @@ export function MarketingHeader() {
           )}
         </div>
 
-        <button onClick={() => setMobileOpen((v) => !v)} className="lg:hidden" aria-label="Menü">
+        <div className="flex items-center gap-3 lg:hidden">
+          <Link href="/uygulama" className="flex items-center gap-1 rounded-full bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white">
+            <IconDeviceMobileDown size={15} /> İndir
+          </Link>
+        <button onClick={() => setMobileOpen((v) => !v)} aria-label="Menü">
           {mobileOpen ? <IconX size={22} /> : <IconMenu2 size={22} />}
         </button>
+        </div>
       </div>
 
       {mobileOpen && (

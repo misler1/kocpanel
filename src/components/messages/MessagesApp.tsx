@@ -83,6 +83,14 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadConvs(); }, [loadConvs]);
 
+  // Sayfa açıkken adres değişirse (ör. telefon bildirimine dokunuldu) o sohbete geç
+  const paramConv = params.get('c');
+  useEffect(() => {
+    if (!paramConv || paramConv === activeRef.current) return;
+    activeRef.current = paramConv;
+    setActiveId(paramConv);
+  }, [paramConv]);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (activeId) loadThread(activeId);
@@ -274,10 +282,18 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
       {/* Sohbet */}
       <div className={`${card} ${activeId ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col overflow-hidden`}>
         {!active ? (
-          <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-[var(--ink-muted)]">
-            <div className="mb-2 text-[44px]">💌</div>
-            <p className="text-[14px]">{activeId && loaded ? 'Sohbet bulunamadı.' : 'Soldan bir sohbet seç.'}</p>
-          </div>
+          activeId && !loaded ? (
+            // Bildirimden ya da bağlantıdan doğrudan bir sohbete gelindi: liste yüklenirken "sohbet seç" yazısı görünmesin
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center text-[var(--ink-muted)]">
+              <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-[var(--accent-soft)] border-t-[var(--accent)]" />
+              <p className="text-[14px]">Sohbet açılıyor…</p>
+            </div>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-[var(--ink-muted)]">
+              <div className="mb-2 text-[44px]">💌</div>
+              <p className="text-[14px]">{activeId ? 'Sohbet bulunamadı.' : 'Soldan bir sohbet seç.'}</p>
+            </div>
+          )
         ) : (
           <>
             <div className="relative flex items-center gap-3 border-b border-[var(--border)] px-3 py-2.5">

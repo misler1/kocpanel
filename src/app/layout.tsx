@@ -3,6 +3,8 @@ import "./globals.css";
 import { ExamFilterProvider } from "@/lib/exam-filter-context";
 import { SITE_URL } from "@/lib/site";
 import { PwaRegister } from "@/components/PwaRegister";
+import { NavigationProgress } from "@/components/NavigationProgress";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   // Göreli canonical/og adresleri bu adrese göre tam adrese çevrilir
@@ -51,6 +53,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-gray-50">
         <PwaRegister />
+        <Suspense>
+          <NavigationProgress />
+        </Suspense>
         <ExamFilterProvider>
           {children}
         </ExamFilterProvider>

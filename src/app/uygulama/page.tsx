@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { fraunces, inter } from '@/lib/fonts';
 import { MarketingHeader } from '@/components/marketing/MarketingHeader';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
@@ -14,6 +15,24 @@ const NOTIFY_STEPS = [
   'Ana ekrandaki KoçDefterim ikonundan uygulamayı aç ve giriş yap.',
   'Sağ üstteki zil simgesine dokun.',
   'En alttaki “Bildirimler telefonuma da gelsin” düğmesine dokun ve çıkan pencerede “İzin ver”i seç.',
+];
+
+const NEXT_STEPS = [
+  {
+    emoji: '🎒', title: 'Öğrenciysen', color: 'bg-[#F3EEFF] text-[#6D28D9]',
+    text: 'Kayıt formunu doldur ve kendine bir şifre belirle. İstersen koçunu da formdan seç. Kaydın onaylanınca aynı telefon numarası ve şifreyle giriş yaparsın.',
+    href: '/kayit/ogrenci', cta: 'Öğrenci kaydı',
+  },
+  {
+    emoji: '🧑‍🏫', title: 'Koç ya da öğretmensen', color: 'bg-[#E8F7F5] text-[#0F766E]',
+    text: 'Koç kaydını oluştur. Hesabın onaylanınca öğrencilerini ekleyebilir, haftalık programlarını ve görüşmelerini yönetebilirsin.',
+    href: '/kayit', cta: 'Koç kaydı',
+  },
+  {
+    emoji: '👪', title: 'Veliysen', color: 'bg-[#FCEBE5] text-[#B4381F]',
+    text: 'Veli hesabını çocuğunun koçu açar. Giriş bilgilerin sana koçundan gelir; gelişim raporunu buradan takip edersin.',
+    href: '/giris/veli', cta: 'Veli girişi',
+  },
 ];
 
 const FAQ = [
@@ -40,6 +59,25 @@ export default function UygulamaPage() {
         <div className="mt-9">
           <InstallGuide />
         </div>
+
+        <section className="mt-12">
+          <h2 className="font-[family-name:var(--font-display)] text-3xl text-[#1D2B3A]">Yükledin, şimdi ne yapacaksın?</h2>
+          <p className="mt-3 text-[15.5px] leading-relaxed text-[#4A4438]">
+            Uygulamayı ana ekrandaki ikondan aç. Hesabın varsa giriş yap; yoksa aşağıdan sana uyan kaydı seç.
+          </p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {NEXT_STEPS.map((n) => (
+              <article key={n.title} className="flex flex-col rounded-2xl border border-[#D9D2C2] bg-white p-5">
+                <span className={`flex h-11 w-11 items-center justify-center rounded-xl text-[22px] ${n.color}`}>{n.emoji}</span>
+                <h3 className="mt-3 text-[16px] font-semibold text-[#1D2B3A]">{n.title}</h3>
+                <p className="mt-1.5 flex-1 text-[14px] leading-relaxed text-[#4A4438]">{n.text}</p>
+                <Link href={n.href} className="mt-4 rounded-full bg-[#1D2B3A] px-4 py-2 text-center text-[14px] font-semibold text-white transition-colors hover:bg-[#2C3E50]">
+                  {n.cta}
+                </Link>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <section className="mt-12">
           <h2 className="font-[family-name:var(--font-display)] text-3xl text-[#1D2B3A]">Bildirimleri aç</h2>

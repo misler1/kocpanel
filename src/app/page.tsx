@@ -78,6 +78,9 @@ export default function Home() {
                 Öğrenci Girişi
               </Link>
             </div>
+            <Link href="/uygulama" className="mt-4 inline-flex items-center gap-1.5 text-[14px] font-medium text-blue-600 hover:underline">
+              📲 Uygulamayı telefonuna ücretsiz indir →
+            </Link>
           </div>
           <ReportCardVisual />
         </div>

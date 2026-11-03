@@ -1,6 +1,7 @@
 // KoçDefterim service worker: telefon bildirimleri + bağlantı yokken gösterilen sayfa.
 // Panel sayfaları kişiye özel olduğu için önbelleğe alınmaz; yalnızca çevrimdışı sayfası saklanır.
 const OFFLINE_CACHE = 'kd-offline-v1';
+// Bu dosya her değiştiğinde tarayıcı yeni sürümü kendisi kurar (sw.js önbelleğe alınmaz: updateViaCache 'none').
 const OFFLINE_URL = '/offline.html';
 
 self.addEventListener('install', (event) => {
@@ -56,12 +57,9 @@ self.addEventListener('notificationclick', (event) => {
     for (const client of windows) {
       if (new URL(client.url).origin !== self.location.origin) continue;
       await client.focus();
-      try {
-        await client.navigate(url);
-      } catch {
-        // kontrol edilmeyen pencere: yeni pencere açılır
-        await self.clients.openWindow(url);
-      }
+      // Uygulama zaten açık: sayfayı baştan yüklemek yerine (beyaz ekran) uygulama içinden geçiş yapılır.
+      // Sayfadaki dinleyici (src/components/PwaRegister.tsx) 'open-url' mesajını alıp yönlendirir.
+      client.postMessage({ type: 'open-url', url });
       return;
     }
     await self.clients.openWindow(url);
