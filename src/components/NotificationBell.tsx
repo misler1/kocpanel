@@ -13,7 +13,7 @@ type Notification = {
 };
 
 const KIND_EMOJI: Record<string, string> = {
-  basvuru: '🧑‍🎓', koc: '🧑‍🏫', plan_talebi: '📬', gorev: '📋', deneme: '📊', mesaj: '💬', randevu: '📅',
+  basvuru: '🧑‍🎓', koc: '🧑‍🏫', plan_talebi: '📬', gorev: '📋', deneme: '📊', mesaj: '💬', randevu: '📅', hatirlatma: '⏰',
 };
 
 function timeAgo(iso: string) {

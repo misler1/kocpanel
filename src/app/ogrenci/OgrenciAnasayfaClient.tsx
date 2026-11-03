@@ -1,9 +1,9 @@
 'use client';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { IconCheck, IconClock, IconArrowRight, IconPlus } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import type { Badge, TargetRow } from '@/lib/student-motivation';
@@ -52,10 +52,28 @@ export function OgrenciAnasayfaClient({
 }) {
   const supabase = createClient();
   const router = useRouter();
+  const params = useSearchParams();
+  const tasksRef = useRef<HTMLDivElement>(null);
+  const [focusTasks, setFocusTasks] = useState(false);
   const [logs, setLogs] = useState(todayLogs);
   const [celebrate, setCelebrate] = useState(0);
   // undefined: kapalı, null: plan dışı çalışma, nesne: tiklenen görev
   const [sheet, setSheet] = useState<any | null | undefined>(undefined);
+
+  // Çalışma hatırlatması bildirimi /ogrenci?gunluk=1 açar: bugünün görevlerine kaydır ve vurgula;
+  // bugün görev yoksa doğrudan "plan dışı çalışma" penceresini aç.
+  const gunluk = params.get('gunluk') === '1';
+  useEffect(() => {
+    if (!gunluk) return;
+    const t = setTimeout(() => {
+      tasksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setFocusTasks(true);
+      if (todayLogs.length === 0) setSheet(null);
+      router.replace('/ogrenci', { scroll: false });
+    }, 150);
+    const off = setTimeout(() => setFocusTasks(false), 2600);
+    return () => { clearTimeout(t); clearTimeout(off); };
+  }, [gunluk, todayLogs.length, router]);
   const [msg, setMsg] = useState<string | null>(null);
 
   function markDone(id: string, done: boolean) {
@@ -136,7 +154,8 @@ export function OgrenciAnasayfaClient({
       {msg && <p className="rounded-2xl border-2 border-[var(--accent)]/20 bg-[var(--accent-soft)] px-4 py-2.5 text-[13px] font-bold text-[var(--accent-dark)]">💬 {msg}</p>}
 
       {/* Bugünün görevleri */}
-      <div className="relative overflow-hidden rounded-[28px] border-2 border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
+      <div ref={tasksRef} className={`relative scroll-mt-4 overflow-hidden rounded-[28px] border-2 bg-[var(--card)] p-4 transition-shadow duration-500 md:p-5 ${focusTasks
+        ? 'border-[var(--accent)] shadow-[0_0_0_4px_rgba(139,92,246,0.25)]' : 'border-[var(--border)]'}`}>
         {celebrate > 0 && (
           <div key={celebrate} className="pointer-events-none absolute inset-x-0 top-0 flex justify-around">
             {CONFETTI.map((c, i) => (

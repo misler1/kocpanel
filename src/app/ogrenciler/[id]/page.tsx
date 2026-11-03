@@ -8,6 +8,8 @@ import { OgrenciDetayClient } from './OgrenciDetayClient';
 import { OgrenciArsivdenCikarButton } from './OgrenciArsivdenCikarButton';
 import { VeliErisimPanel } from './VeliErisimPanel';
 import { HedefNetPanel } from './HedefNetPanel';
+import { HatirlatmaPanel } from './HatirlatmaPanel';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { targetRows } from '@/lib/student-motivation';
 
 export default async function OgrenciDetayPage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,6 +39,11 @@ export default async function OgrenciDetayPage({ params }: { params: Promise<{ i
   const { data: rawExamNets } = await supabase
     .from('exams').select('exam_type, exam_date, net_score').eq('student_id', id);
   const targets = targetRows(student.track, student.target_nets ?? {}, (rawExamNets as any[]) ?? []);
+  // Öğrencinin telefon bildirimi açık mı (abonelikler yalnızca sunucudan okunur; tarayıcıya yalnızca evet/hayır gider)
+  const { count: pushCount } = student.profile_id
+    ? await (createAdminClient() as any).from('push_subscriptions')
+      .select('id', { count: 'exact', head: true }).eq('user_id', student.profile_id)
+    : { count: 0 };
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -64,6 +71,11 @@ export default async function OgrenciDetayPage({ params }: { params: Promise<{ i
 
       <div className="mt-3">
         <HedefNetPanel studentId={id} rows={targets} targetNets={student.target_nets ?? null} />
+      </div>
+
+      <div className="mt-3">
+        <HatirlatmaPanel studentId={id} coachId={user.id} times={student.reminder_times ?? []}
+          days={student.reminder_days ?? [0, 1, 2, 3, 4, 5, 6]} hasAccount={!!student.profile_id} pushOn={(pushCount ?? 0) > 0} />
       </div>
 
       <div className="mt-3">
