@@ -120,7 +120,8 @@ export function NotificationBell({ variant = 'coach' }: { variant?: 'coach' | 's
       </button>
 
       {open && (
-        <div className={`absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden border border-[var(--border)] bg-[var(--card)] shadow-xl ${student ? 'rounded-3xl' : 'rounded-xl'}`}>
+        // Telefonda zilin sağında başka düğmeler olduğu için kutu zile değil ekrana hizalanır (aksi halde soldan taşar)
+        <div className={`z-50 overflow-hidden border border-[var(--border)] bg-[var(--card)] shadow-xl max-sm:fixed max-sm:inset-x-3 max-sm:top-[68px] sm:absolute sm:right-0 sm:mt-2 sm:w-[22rem] ${student ? 'rounded-3xl' : 'rounded-xl'}`}>
           <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
             <span className={`text-[14px] text-[var(--ink)] ${student ? 'font-extrabold' : 'font-semibold'}`}>Bildirimler</span>
             {unread > 0 && (
@@ -129,6 +130,7 @@ export function NotificationBell({ variant = 'coach' }: { variant?: 'coach' | 's
               </button>
             )}
           </div>
+          <PushToggle variant="bell" />
           <div className="max-h-[60vh] overflow-y-auto">
             {items.length === 0 ? (
               <p className="px-4 py-10 text-center text-[13px] text-[var(--ink-muted)]">{student ? 'Henüz bildirimin yok 😊' : 'Henüz bildirim yok.'}</p>
@@ -145,7 +147,6 @@ export function NotificationBell({ variant = 'coach' }: { variant?: 'coach' | 's
               </button>
             ))}
           </div>
-          <PushToggle variant="bell" />
         </div>
       )}
     </div>

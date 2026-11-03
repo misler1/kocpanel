@@ -51,7 +51,7 @@ begin
     cross join lateral unnest(s.reminder_times) as t(slot)
     cross join (values (v_today), (v_today - 1)) as d(day)
     where s.profile_id is not null
-      and coalesce(s.status, '') <> 'pasif'
+      and s.status is distinct from 'pasif'
       and (extract(isodow from d.day)::int - 1) = any(s.reminder_days)
       and d.day + t.slot <= v_now and d.day + t.slot > v_now - interval '20 minutes'
   loop
@@ -88,6 +88,9 @@ begin
   return v_sent;
 end $$;
 revoke all on function send_study_reminders() from public, anon, authenticated;
+-- Sunucu tarafı (service_role) sorun incelerken gönderim kaydını okuyabilsin ve fonksiyonu elle çalıştırabilsin
+grant execute on function send_study_reminders() to service_role;
+grant select on study_reminder_log to service_role;
 
 -- 5 dakikada bir
 do $$ begin

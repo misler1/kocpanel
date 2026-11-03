@@ -17,9 +17,10 @@ function usePushState() {
 
 /**
  * Telefon bildirimi aç/kapat.
- * variant="card": Hesabım sayfalarında tüm durumlarıyla; variant="bell": zil menüsünün altında, yalnızca açılabilecekken.
+ * variant="card": Hesabım sayfalarında tüm durumlarıyla. variant="bell" (zil menüsünün üstü) ve "banner" (öğrenci ana sayfası):
+ * yalnızca bildirim açılabilecekken görünen, dikkat çeken kart.
  */
-export function PushToggle({ variant = 'card' }: { variant?: 'card' | 'bell' }) {
+export function PushToggle({ variant = 'card' }: { variant?: 'card' | 'bell' | 'banner' }) {
   const [state, setState] = usePushState();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -42,24 +43,40 @@ export function PushToggle({ variant = 'card' }: { variant?: 'card' | 'bell' }) 
     setBusy(false);
   }
 
-  if (variant === 'bell') {
-    if (state === 'off') {
-      return (
-        <button type="button" onClick={turnOn} disabled={busy}
-          className="flex w-full items-center justify-center gap-2 border-t border-[var(--border)] bg-[var(--accent-soft)] px-4 py-3 text-[13px] font-bold text-[var(--accent-dark)] transition-colors hover:bg-[var(--accent-soft)]/70 disabled:opacity-60">
-          <IconBellRinging size={16} /> {busy ? 'Açılıyor…' : 'Bildirimler telefonuma da gelsin'}
-        </button>
-      );
-    }
-    if (state === 'ios-install') {
-      return (
-        <Link href="/uygulama"
-          className="flex w-full items-center justify-center gap-2 border-t border-[var(--border)] bg-[var(--accent-soft)] px-4 py-3 text-[12.5px] font-bold text-[var(--accent-dark)] hover:underline">
-          <IconDeviceMobile size={16} /> Telefona bildirim için uygulamayı ana ekrana ekleyin
-        </Link>
-      );
-    }
-    return null;
+  if (variant === 'bell' || variant === 'banner') {
+    // Yalnızca açılabilecekken görünür; açılınca kaybolur
+    if (state !== 'off' && state !== 'ios-install') return null;
+    const banner = variant === 'banner';
+    const body = state === 'off'
+      ? 'Görevler, mesajlar ve çalışma hatırlatmaları telefonuna bildirim olarak gelsin.'
+      : 'iPhone’da bildirim almak için önce uygulamayı ana ekrana ekle, sonra oradan aç.';
+    return (
+      <div className={`bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white ${banner
+        ? 'flex flex-col gap-3 rounded-[28px] p-4 shadow-[0_8px_24px_rgba(139,92,246,0.25)] sm:flex-row sm:items-center md:p-5'
+        : 'flex flex-col gap-2.5 border-b border-[var(--border)] px-4 py-3.5'}`}>
+        <div className="flex items-start gap-3">
+          <span className={`flex flex-shrink-0 items-center justify-center rounded-2xl bg-white/20 ${banner ? 'h-11 w-11' : 'h-9 w-9'}`}>
+            <IconBellRinging size={banner ? 22 : 19} />
+          </span>
+          <span className="min-w-0">
+            <span className={`block font-extrabold leading-snug ${banner ? 'text-[16px]' : 'text-[14px]'}`}>Bildirimleri telefonuna aç</span>
+            <span className={`mt-0.5 block leading-snug text-white/90 ${banner ? 'text-[13.5px]' : 'text-[12.5px]'}`}>{body}</span>
+          </span>
+        </div>
+        {state === 'off' ? (
+          <button type="button" onClick={turnOn} disabled={busy}
+            className={`flex flex-shrink-0 items-center justify-center gap-1.5 rounded-full bg-white font-extrabold text-[#7C3AED] shadow-sm transition-transform active:scale-95 disabled:opacity-70 ${banner ? 'px-5 py-2.5 text-[14.5px] sm:ml-auto' : 'py-2 text-[13.5px]'}`}>
+            <IconBellRinging size={16} /> {busy ? 'Açılıyor…' : 'Bildirimleri aç'}
+          </button>
+        ) : (
+          <Link href="/uygulama"
+            className={`flex flex-shrink-0 items-center justify-center gap-1.5 rounded-full bg-white font-extrabold text-[#7C3AED] shadow-sm ${banner ? 'px-5 py-2.5 text-[14.5px] sm:ml-auto' : 'py-2 text-[13.5px]'}`}>
+            <IconDeviceMobile size={16} /> Nasıl eklenir?
+          </Link>
+        )}
+        {error && <span className="text-[12.5px] font-semibold text-white">{error}</span>}
+      </div>
+    );
   }
 
   const text: Record<PushState, string> = {

@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { Badge, TargetRow } from '@/lib/student-motivation';
 import { subjectEmoji, dailyQuote, cheer } from './studentUi';
 import { StudyLogSheet } from './StudyLogSheet';
+import { PushToggle } from '@/components/PushToggle';
 import { logStudy, setTaskDone, type StudyInput } from './studyApi';
 import { BadgesSection, StreakCard, TargetNetCard } from './Motivation';
 
@@ -125,6 +126,8 @@ export function OgrenciAnasayfaClient({
   return (
     <div className="space-y-5">
       {/* Karşılama kartı */}
+      <PushToggle variant="banner" />
+
       <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#8B5CF6] via-[#A855F7] to-[#EC4899] p-5 text-white shadow-[0_10px_30px_rgba(139,92,246,0.3)] md:p-6">
         <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/15" />
         <div className="pointer-events-none absolute -bottom-10 right-16 h-24 w-24 rounded-full bg-white/10" />
