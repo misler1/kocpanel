@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { IconUser, IconPhone, IconUserCircle } from '@tabler/icons-react';
 import { PageHero } from '@/components/ui/PageHero';
+import { PushToggle } from '@/components/PushToggle';
 
 const ROLE_LABELS: Record<string, string> = {
   koc: 'Koç',
@@ -89,6 +90,10 @@ export function HesabimClient({ profile, userId }: { profile: any; userId: strin
             {saved && <span className="text-sm font-medium text-[var(--success)]">✓ Kaydedildi</span>}
           </div>
         </form>
+      </div>
+
+      <div className="mt-4">
+        <PushToggle />
       </div>
     </div>
   );

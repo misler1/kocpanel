@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { IconUsers, IconSchool } from '@tabler/icons-react';
+import { PushToggle } from '@/components/PushToggle';
 import {
   Accordion, InfoRow, GunlukAccordion, TRACK_LABELS, TRACK_RESOURCES,
 } from '../../ogrenciler/[id]/OgrenciDetayClient';
@@ -79,6 +80,8 @@ export function OgrenciBilgilerClient({ student }: { student: any }) {
           </div>
         </Accordion>
       )}
+
+      <PushToggle />
 
       <GunlukAccordion studentId={student.id} />
     </div>

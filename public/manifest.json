@@ -1,11 +1,14 @@
 {
+  "id": "/",
   "name": "KoçDefterim",
   "short_name": "KoçDefterim",
-  "description": "Eğitim koçları için öğrenci takip paneli",
-  "start_url": "/anasayfa",
+  "description": "YKS ve LGS öğrenci koçluğu: haftalık program, deneme takibi, görüşmeler ve mesajlar",
+  "start_url": "/uygulama/ac",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#003c78",
+  "lang": "tr",
   "icons": [
     {
       "src": "/icon-192.png",

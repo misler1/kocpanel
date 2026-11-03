@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { IconBell, IconChecks } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
+import { syncPush } from '@/lib/push-client';
+import { PushToggle } from '@/components/PushToggle';
 
 type Notification = {
   id: string; kind: string; title: string; body: string | null; link: string | null; read_at: string | null; created_at: string;
@@ -49,6 +51,7 @@ export function NotificationBell({ variant = 'coach' }: { variant?: 'coach' | 's
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
       setUserId(user.id);
+      syncPush();
       await load();
       if (cancelled) return;
       // Kanal adı her bileşen örneği için benzersiz: aynı ada sahip kanal istemcide tekrar kullanılır ve
@@ -142,6 +145,7 @@ export function NotificationBell({ variant = 'coach' }: { variant?: 'coach' | 's
               </button>
             ))}
           </div>
+          <PushToggle variant="bell" />
         </div>
       )}
     </div>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { IconLogout } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
+import { forgetPushOnThisDevice } from '@/lib/push-client';
 import { NotificationBell } from '@/components/NotificationBell';
 import type { Profile } from '@/types/database';
 
@@ -13,6 +14,7 @@ export function Topbar({ profile }: { profile: Profile | null }) {
   const supabase = createClient();
 
   async function handleLogout() {
+    await forgetPushOnThisDevice();
     await supabase.auth.signOut();
     router.push('/');
     router.refresh();

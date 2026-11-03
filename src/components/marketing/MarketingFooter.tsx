@@ -28,6 +28,7 @@ export function MarketingFooter() {
             <span className="font-medium text-[#1D2B3A]">Giriş</span>
             <Link href="/giris" className="text-[#6B6558] hover:text-[#1D2B3A]">Koç Girişi</Link>
             <Link href="/giris/ogrenci" className="text-[#6B6558] hover:text-[#1D2B3A]">Öğrenci Girişi</Link>
+            <Link href="/uygulama" className="text-[#6B6558] hover:text-[#1D2B3A]">Uygulamayı Yükle</Link>
           </div>
         </div>
       </div>

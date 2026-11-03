@@ -15,6 +15,8 @@ const PUBLIC_MARKETING_PREFIXES = [
   '/lgs-kocu',
   '/egitim-kocu',
   '/ders-takibi',
+  // Uygulama kurulum rehberi
+  '/uygulama',
 ];
 
 // /sifre-sifirla sayfasıyla aynı ad (orada tarayıcıda yazılıyor)
@@ -53,6 +55,10 @@ export async function middleware(request: NextRequest) {
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
     pathname === '/manifest.json' ||
+    // PWA: service worker, çevrimdışı sayfası ve veritabanının telefon bildirimi çağrısı (kendi parolasıyla doğrulanır)
+    pathname === '/sw.js' ||
+    pathname === '/offline.html' ||
+    pathname === '/api/push/send' ||
     /^\/google[0-9a-f]+\.html$/.test(pathname) ||
     isPublicMarketingPath(pathname);
 
@@ -112,6 +118,8 @@ export async function middleware(request: NextRequest) {
     const isStudentArea = pathname === '/ogrenci' || pathname.startsWith('/ogrenci/') || pathname.startsWith('/api/ogrenci/');
     // '/veli-gorusmeleri' koç sayfasıdır; veli alanı yalnızca '/veli' ve '/veli/...'
     const isParentArea = pathname === '/veli' || pathname.startsWith('/veli/');
+    // Her rolün kullandığı ortak API (telefon bildirimi aboneliği)
+    const isSharedApi = pathname.startsWith('/api/push/');
 
     // Giriş yapmış kullanıcı giriş/kayıt sayfasına gelirse rolüne göre yönlendir
     if (isAuthPage && !isResetPage) {
@@ -129,14 +137,14 @@ export async function middleware(request: NextRequest) {
       }
 
       // Öğrenci yalnızca öğrenci alanına girebilir (koç sayfaları ve koç API'leri kapalı)
-      if (isStudent && !isStudentArea && pathname !== '/') {
+      if (isStudent && !isStudentArea && !isSharedApi && pathname !== '/') {
         const url = request.nextUrl.clone();
         url.pathname = '/ogrenci';
         return NextResponse.redirect(url);
       }
 
       // Veli yalnızca veli alanına girebilir
-      if (isParent && !isParentArea && pathname !== '/') {
+      if (isParent && !isParentArea && !isSharedApi && pathname !== '/') {
         const url = request.nextUrl.clone();
         url.pathname = '/veli';
         return NextResponse.redirect(url);

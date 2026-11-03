@@ -5,12 +5,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { IconLogout } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
+import { forgetPushOnThisDevice } from '@/lib/push-client';
 import { NotificationBell } from '@/components/NotificationBell';
 
 export function StudentTopbar({ fullName }: { fullName: string }) {
   const router = useRouter();
 
   async function handleLogout() {
+    await forgetPushOnThisDevice();
     await createClient().auth.signOut();
     router.push('/');
     router.refresh();

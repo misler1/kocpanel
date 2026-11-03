@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ExamFilterProvider } from "@/lib/exam-filter-context";
 import { SITE_URL } from "@/lib/site";
+import { PwaRegister } from "@/components/PwaRegister";
 
 export const metadata: Metadata = {
   // Göreli canonical/og adresleri bu adrese göre tam adrese çevrilir
@@ -49,6 +50,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="KoçDefterim" />
       </head>
       <body className="min-h-full flex flex-col bg-gray-50">
+        <PwaRegister />
         <ExamFilterProvider>
           {children}
         </ExamFilterProvider>
