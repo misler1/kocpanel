@@ -28,12 +28,12 @@ export function MarketingHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-        <Link href="/" className="flex items-center">
+      <div className="mx-auto flex max-w-[1440px] items-center gap-6 px-5 py-4">
+        <Link href="/" className="flex flex-shrink-0 items-center">
           <Image src="/brand/kocdefterim-logo.png" alt="KoçDefterim" width={230} height={67} className="h-11 w-auto object-contain" priority />
         </Link>
 
-        <nav className="hidden items-center gap-5 lg:flex">
+        <nav className="ml-auto hidden items-center gap-4 whitespace-nowrap min-[1360px]:flex min-[1500px]:gap-5">
           <div
             className="relative"
             onMouseEnter={() => setActiveMenu('koc-defterim')}
@@ -102,15 +102,16 @@ export function MarketingHeader() {
             Diğer Sınavlar
           </Link>
           <span className="h-5 w-px bg-gray-200" />
-          {NAV_LINKS.map((l) => (
+          {NAV_LINKS.filter((l) => l.href !== '/').map((l) => (
             <Link key={l.href} href={l.href} className="text-[14px] text-gray-600 transition hover:text-gray-900">
               {l.label}
             </Link>
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 lg:flex">
-          <Link href="/uygulama" className="flex items-center gap-1.5 rounded-full border border-gray-300 px-4 py-2 text-[14px] font-medium text-gray-700 transition hover:border-gray-400 hover:text-gray-950">
+        <div className="hidden flex-shrink-0 items-center gap-2 min-[1360px]:flex">
+          {/* Giriş düğmesiyle aynı boy: kenarlık dahil yükseklik eşit olsun diye dikey boşluk 1px az */}
+          <Link href="/uygulama" className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-gray-300 px-5 py-[7px] text-[14px] font-medium text-gray-700 transition hover:border-gray-400 hover:text-gray-950">
             <IconDeviceMobileDown size={16} /> Uygulamayı İndir
           </Link>
           {loggedIn ? (
@@ -141,7 +142,7 @@ export function MarketingHeader() {
           )}
         </div>
 
-        <div className="flex items-center gap-3 lg:hidden">
+        <div className="ml-auto flex items-center gap-3 min-[1360px]:hidden">
           <Link href="/uygulama" className="flex items-center gap-1 rounded-full bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white">
             <IconDeviceMobileDown size={15} /> İndir
           </Link>
@@ -152,7 +153,7 @@ export function MarketingHeader() {
       </div>
 
       {mobileOpen && (
-        <div className="max-h-[calc(100vh-76px)] overflow-y-auto border-t border-gray-200 bg-white px-5 py-4 lg:hidden">
+        <div className="max-h-[calc(100vh-76px)] overflow-y-auto border-t border-gray-200 bg-white px-5 py-4 min-[1360px]:hidden">
           <nav className="flex flex-col gap-5">
             <div>
               <Link href="/koc-defterim" onClick={() => setMobileOpen(false)} className="text-[15px] font-semibold text-gray-950">
