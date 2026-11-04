@@ -34,7 +34,28 @@ export async function POST(req: NextRequest) {
 
   const maxScore = examType === 'TYT' ? 120 : examType === 'AYT' ? 160 : 90;
 
-  const inserts = rows.map((r) => {
+  // Aynı deneme (tür + ad + tarih) aynı öğrenciye ikinci kez eklenmez: hem bu istekteki tekrarlar
+  // hem de daha önce kaydedilmiş olanlar atlanır (çift tıklama / yeniden gönderme koruması).
+  const norm = (s: string) => (s ?? '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
+  const studentIds = [...new Set(rows.map((r) => r.studentId).filter(Boolean))];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: prev, error: prevErr } = await (supabase as any)
+    .from('exams').select('student_id, exam_name')
+    .in('student_id', studentIds).eq('exam_type', examType).eq('exam_date', examDate);
+  if (prevErr) return NextResponse.json({ error: prevErr.message }, { status: 500 });
+  const taken = new Set<string>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (prev ?? []).filter((e: any) => norm(e.exam_name) === norm(examName)).map((e: any) => e.student_id as string),
+  );
+  const toInsert = rows.filter((r) => {
+    if (!r.studentId || taken.has(r.studentId)) return false;
+    taken.add(r.studentId);
+    return true;
+  });
+  const skipped = rows.length - toInsert.length;
+  if (toInsert.length === 0) return NextResponse.json({ inserted: 0, skipped });
+
+  const inserts = toInsert.map((r) => {
     const netScore = calcExamNet(examType, r.results);
 
     return {
@@ -62,5 +83,5 @@ export async function POST(req: NextRequest) {
   const { error, data } = await (supabase as any).from('exams').insert(inserts).select('id');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ inserted: data?.length ?? 0 });
+  return NextResponse.json({ inserted: data?.length ?? 0, skipped });
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { IconArrowLeft, IconUpload, IconCheck, IconAlertTriangle } from '@tabler/icons-react';
@@ -36,6 +36,9 @@ export default function TopluYuklePage() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Kayıt bittikten sonra yönlendirme sürerken düğme tekrar tıklanıp aynı kayıtlar ikinci kez eklenmesin
+  const [saved, setSaved] = useState<string | null>(null);
+  const savingRef = useRef(false);
   const [error, setError] = useState<string | null>(null); 
   const [rows, setRows] = useState<PreviewRow[]>([]);
   const [allStudents, setAllStudents] = useState<{ id: string; full_name: string }[]>([]);
@@ -145,9 +148,21 @@ export default function TopluYuklePage() {
     if (confirmed.length === 0) { setError('Eşleştirilmiş satır yok.'); return; }
     if (confirmed.some((r) => !r.examName)) { setError('Deneme adı boş olamaz.'); return; }
     if (confirmed.some((r) => !r.examDate)) { setError('Tarih seçin.'); return; }
+    // Aynı öğrenci iki satıra eşleştirildiyse aynı deneme iki kez kaydedilir
+    const dupe = confirmed.find((r, i) => confirmed.findIndex((x) => x.studentId === r.studentId && x.examType === r.examType && x.examName === r.examName && x.examDate === r.examDate) !== i);
+    if (dupe) {
+      const name = allStudents.find((s) => s.id === dupe.studentId)?.full_name ?? 'Bir öğrenci';
+      setError(`${name} birden fazla satıra eşleştirilmiş. Her öğrenci yalnızca bir satıra seçilmeli.`);
+      return;
+    }
+    if (savingRef.current || saved) return;
+    savingRef.current = true;
     setSaving(true);
     setError(null);
+    let ok = false;
     try {
+      let inserted = 0;
+      let skipped = 0;
       // aynı deneme adı + tarihe sahip satırlar tek istekte kaydedilir
       const groups = new Map<string, typeof confirmed>();
       for (const r of confirmed) {
@@ -176,13 +191,21 @@ export default function TopluYuklePage() {
           );
         }
         if (data.error) throw new Error(data.error);
+        inserted += Number(data.inserted) || 0;
+        skipped += Number(data.skipped) || 0;
       }
+      ok = true;
+      setSaved(`${inserted} kayıt eklendi${skipped ? `, ${skipped} öğrencide bu deneme zaten kayıtlı olduğu için atlandı` : ''}. Denemeler sayfasına yönlendiriliyor…`);
       router.push('/denemeler');
       router.refresh();
     } catch (e: any) {
       setError(e.message ?? 'Bir hata oluştu.');
     } finally {
-      setSaving(false);
+      // Başarılı kayıttan sonra kilit açılmaz (sayfadan çıkılana kadar düğme kapalı kalır)
+      if (!ok) {
+        savingRef.current = false;
+        setSaving(false);
+      }
     }
   }
 
@@ -332,10 +355,11 @@ export default function TopluYuklePage() {
             </table>
           </div>
 
-          <div className="mt-4 flex justify-end gap-3">
-            <button onClick={handleSave} disabled={saving || savableCount === 0}
+          <div className="mt-4 flex items-center justify-end gap-3">
+            {saved && <span className="text-sm text-emerald-700">{saved}</span>}
+            <button onClick={handleSave} disabled={saving || !!saved || savableCount === 0}
               className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-              {saving ? 'Kaydediliyor...' : `${savableCount} Kaydı Onayla ve Kaydet`}
+              {saved ? 'Kaydedildi ✓' : saving ? 'Kaydediliyor...' : `${savableCount} Kaydı Onayla ve Kaydet`}
             </button>
           </div>
         </div>
