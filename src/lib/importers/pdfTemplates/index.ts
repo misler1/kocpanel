@@ -3,13 +3,15 @@ import { tytSiraliListeTemplate } from './tytSiraliListe';
 import { tytTekKarneTemplate } from './tytTekKarne';
 import { tytAytBirlesikKarneTemplate } from './tytAytBirlesikKarne';
 import { okulTytNetListesiTemplate } from './okulTytNetListesi';
-import type { PdfItem } from './items';
+import { denemeSonucBelgesiTemplate } from './denemeSonucBelgesi';
+import type { PdfItem, FillRect } from './items';
 import type { PdfTemplate, PdfParseResult, PdfExamType } from './types';
 
 export type { PdfTemplate, PdfParseResult, PdfExamType } from './types';
 
 const TEMPLATES: PdfTemplate[] = [
   tytAytBirlesikKarneTemplate, // iki sütunlu TYT+AYT karnesi, tek öğrenci karnesinden önce denenmeli
+  denemeSonucBelgesiTemplate, // "DENEME SINAVI SONUÇ BELGESİ" (sıralama listesi + karneler, renkli cevap çizelgesi)
   okulTytNetListesiTemplate, // "OKUL TYT NET LİSTESİ" + öğrenci karneleri (Ders / Test tablosu, cevap anahtarı)
   tytSiraliListeTemplate,
   tytTekKarneTemplate,
@@ -21,10 +23,11 @@ export function parsePdfWithTemplates(
   text: string,
   spaced?: string,
   items?: PdfItem[],
+  rects?: FillRect[],
 ): { result: PdfParseResult; templateId: string; examType: PdfExamType } {
   for (const t of TEMPLATES) {
     if (!t.canParse(text, items)) continue;
-    const result = t.parse(text, spaced, items);
+    const result = t.parse(text, spaced, items, rects);
     if (result.records.length === 0) {
       // İki sütunlu TYT+AYT karnesi tanındıysa ama okunamadıysa, yanlış şablona düşüp hatalı veri üretme
       if (t.id === tytAytBirlesikKarneTemplate.id) throw new Error('UNKNOWN_FORMAT');

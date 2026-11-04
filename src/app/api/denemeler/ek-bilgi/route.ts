@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   } catch { /* yoksay */ }
   let parsed;
   try {
-    parsed = parsePdfWithTemplates(parsedText.text, parsedText.spaced, parsedText.items);
+    parsed = parsePdfWithTemplates(parsedText.text, parsedText.spaced, parsedText.items, parsedText.rects);
   } catch {
     return NextResponse.json({ error: 'Bu PDF formatı tanınmadı.' }, { status: 422 });
   }

@@ -76,3 +76,12 @@ export function clusterRows(toks: Tok[], tol = 2.5): Row[] {
 }
 
 export const rowText = (r: Row) => r.toks.map((t) => t.s).join(' ');
+/** Dolgu rengiyle çizilmiş dikdörtgen (PDF koordinatı; rgb 0–255) */
+export interface FillRect {
+  page: number;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  rgb: [number, number, number];
+}

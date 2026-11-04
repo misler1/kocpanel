@@ -1,4 +1,4 @@
-import type { PdfItem } from './items';
+import type { PdfItem, FillRect } from './items';
 /** Karnedeki konu/kazanım analizi satırı (bir soru) */
 export interface ExamQuestion {
   s: string;          // ders anahtarı (turkce, matematik, tarih, …)
@@ -40,5 +40,6 @@ export interface PdfTemplate {
   examType?: PdfExamType; // verilmezse LGS varsayılır (ilk şablon)
   canParse: (text: string, items?: PdfItem[]) => boolean;
   /** text: pdf-parse'ın varsayılan (bitişik) çıktısı · spaced: hücreleri boşlukla ayıran çıktı (varsa) */
-  parse: (text: string, spaced?: string, items?: PdfItem[]) => PdfParseResult;
+  /** rects: renkli hücreler (yalnızca cevap çizelgesi renkle verilen formatlarda dolu) */
+  parse: (text: string, spaced?: string, items?: PdfItem[], rects?: FillRect[]) => PdfParseResult;
 }

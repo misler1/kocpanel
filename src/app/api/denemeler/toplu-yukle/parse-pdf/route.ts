@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { parsePdfWithTemplates } from '@/lib/importers/pdfTemplates';
 import { diag as birlesikDiag } from '@/lib/importers/pdfTemplates/tytAytBirlesikKarne';
 import { qDiag } from '@/lib/importers/pdfTemplates/questionsFromItems';
+import { dsDiag } from '@/lib/importers/pdfTemplates/denemeSonucBelgesi';
 import { readPdfTexts } from '@/lib/importers/readPdfTexts';
 import { matchStudentName } from '@/lib/matching/matchStudent';
 
@@ -20,14 +21,14 @@ export async function POST(req: NextRequest) {
 
   let parsedPdf;
   try {
-    parsedPdf = parsePdfWithTemplates(parsed.text, parsed.spaced, parsed.items);
+    parsedPdf = parsePdfWithTemplates(parsed.text, parsed.spaced, parsed.items, parsed.rects);
   } catch (e) {
     if (e instanceof Error && e.message === 'UNKNOWN_FORMAT') {
       return NextResponse.json(
         {
           error: 'Bu PDF formatı tanınmadı. Dosyayı bize iletin, yeni şablon ekleyelim.',
           debugText:
-            `[teşhis] items=${parsed.items.length} itemsError=${parsed.itemsError ?? '-'} sablon=${birlesikDiag.reason || '-'}\n` +
+            `[teşhis] items=${parsed.items.length} itemsError=${parsed.itemsError ?? '-'} sablon=${[birlesikDiag.reason, dsDiag.reason].filter(Boolean).join(' | ') || '-'} renk=${parsed.rects.length}\n` +
             `[ilk parçalar] ${JSON.stringify(parsed.items.slice(0, 40).map((i) => [i.str, Math.round(i.x), Math.round(i.y), Math.round(i.w)]))}\n\n` +
             parsed.text.slice(0, 1500),
         },
