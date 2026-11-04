@@ -115,7 +115,7 @@ export function MarketingHeader() {
             <IconDeviceMobileDown size={16} /> Uygulamayı İndir
           </Link>
           {loggedIn ? (
-            <Link href="/giris" className="rounded-full bg-blue-600 px-5 py-2 text-[14px] font-medium text-white transition hover:bg-blue-700">
+            <Link href="/giris" className="rounded-full bg-navy-600 px-5 py-2 text-[14px] font-medium text-white transition hover:bg-navy-700">
               Panelim
             </Link>
           ) : (
@@ -123,7 +123,7 @@ export function MarketingHeader() {
             <button
               onClick={() => setGirisOpen((v) => !v)}
               onBlur={() => setTimeout(() => setGirisOpen(false), 150)}
-              className="flex items-center gap-1.5 rounded-full bg-blue-600 px-5 py-2 text-[14px] font-medium text-white transition hover:bg-blue-700"
+              className="flex items-center gap-1.5 rounded-full bg-navy-600 px-5 py-2 text-[14px] font-medium text-white transition hover:bg-navy-700"
             >
               Giriş
               <IconChevronDown size={15} className={`transition-transform ${girisOpen ? 'rotate-180' : ''}`} />
@@ -143,7 +143,7 @@ export function MarketingHeader() {
         </div>
 
         <div className="ml-auto flex items-center gap-3 min-[1360px]:hidden">
-          <Link href="/uygulama" className="flex items-center gap-1 rounded-full bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white">
+          <Link href="/uygulama" className="flex items-center gap-1 rounded-full bg-navy-600 px-3 py-1.5 text-[13px] font-medium text-white">
             <IconDeviceMobileDown size={15} /> İndir
           </Link>
         <button onClick={() => setMobileOpen((v) => !v)} aria-label="Menü">
@@ -198,7 +198,7 @@ export function MarketingHeader() {
                 ))}
               </div>
               {loggedIn ? (
-                <Link href="/giris" className="mt-4 block rounded-full bg-blue-600 py-2 text-center text-[14px] text-white">
+                <Link href="/giris" className="mt-4 block rounded-full bg-navy-600 py-2 text-center text-[14px] text-white">
                   Panelim
                 </Link>
               ) : (
@@ -206,7 +206,7 @@ export function MarketingHeader() {
                 <Link href="/giris" className="flex-1 rounded-full border border-gray-300 py-2 text-center text-[14px] text-gray-700">
                   Koç Girişi
                 </Link>
-                <Link href="/giris/ogrenci" className="flex-1 rounded-full bg-blue-600 py-2 text-center text-[14px] text-white">
+                <Link href="/giris/ogrenci" className="flex-1 rounded-full bg-navy-600 py-2 text-center text-[14px] text-white">
                   Öğrenci Girişi
                 </Link>
               </div>
