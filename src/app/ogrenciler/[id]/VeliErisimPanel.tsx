@@ -14,7 +14,7 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('tr-TR', { day: 'n
 /** Öğrenci detayında: veliye rapor linki gönderme + veli hesabı açma. */
 export function VeliErisimPanel({ student }: { student: any }) {
   return (
-    <Accordion icon={<IconShare size={16} />} title="Veli erişimi">
+    <Accordion theme="emerald" icon={<IconShare size={16} />} title="Veli erişimi">
       <div className="space-y-6">
         <RaporLinkleri studentId={student.id} />
         <VeliHesaplari student={student} />

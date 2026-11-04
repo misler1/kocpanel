@@ -59,7 +59,7 @@ export function HatirlatmaPanel({ studentId, coachId, times: initialTimes, days:
     : 'Kapalı';
 
   return (
-    <Accordion icon={<IconAlarm size={16} />} title={`Çalışma hatırlatması · ${summary}`}>
+    <Accordion theme="amber" icon={<IconAlarm size={16} />} title={`Çalışma hatırlatması · ${summary}`}>
       <p className="mb-3 text-[12.5px] leading-relaxed text-gray-500">
         Seçtiğiniz saatlerde öğrenciye “Günlüğünü doldurma zamanı” bildirimi gider; dokununca doğrudan bugünün görevleri açılır.
         O günün görevlerini zaten işaretlediyse hatırlatma gönderilmez.

@@ -6,11 +6,27 @@ const AVATAR_COLORS = [
   'bg-teal-100 text-teal-700', 'bg-fuchsia-100 text-fuchsia-700', 'bg-orange-100 text-orange-700',
 ];
 
-/** Aynı öğrenci her yerde aynı renkte görünür (kimliğinden türetilir) */
-export function avatarColor(id: string) {
+// AVATAR_COLORS ile aynı sırada: kartların üst şeridi rozetle aynı renk ailesinden olsun
+const AVATAR_GRADIENTS = [
+  'from-sky-400 to-blue-500', 'from-violet-400 to-purple-500', 'from-emerald-400 to-teal-500',
+  'from-amber-400 to-orange-500', 'from-rose-400 to-pink-500', 'from-indigo-400 to-violet-500',
+  'from-teal-400 to-cyan-500', 'from-fuchsia-400 to-pink-500', 'from-orange-400 to-red-400',
+];
+
+function colorIndex(id: string) {
   let h = 0;
   for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+  return h % AVATAR_COLORS.length;
+}
+
+/** Aynı öğrenci her yerde aynı renkte görünür (kimliğinden türetilir) */
+export function avatarColor(id: string) {
+  return AVATAR_COLORS[colorIndex(id)];
+}
+
+/** avatarColor ile aynı renk ailesinden degrade (bg-gradient-to-* ile kullanılır) */
+export function avatarGradient(id: string) {
+  return AVATAR_GRADIENTS[colorIndex(id)];
 }
 
 export const initials = (name: string) =>

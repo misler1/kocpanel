@@ -1,6 +1,7 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { formatTurkishNumber } from '@/lib/format';
@@ -8,8 +9,9 @@ import {
   IconChevronDown, IconChevronUp,
   IconCalendar, IconChartBar, IconCheckbox, IconBooks,
   IconUsers, IconSchool, IconTrophy,
-  IconEdit, IconTrash, IconNotebook, IconTarget,
+  IconEdit, IconTrash, IconNotebook, IconTarget, IconArrowLeft, IconCalendarPlus, IconUser,
 } from '@tabler/icons-react';
+import { avatarColor, initials, trackPill } from '@/lib/ui-colors';
 import { OgrenciProgramlari } from './OgrenciProgramlari';
 
 // ─── Sabitler ────────────────────────────────────────────────
@@ -29,13 +31,6 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   pasif: { label: 'Pasif', className: 'bg-gray-100 text-gray-500' },
 };
 
-const AVATAR_COLORS: Record<string, string> = {
-  'av-blue': 'bg-[#E6F1FB] text-[#185FA5]',
-  'av-teal': 'bg-[#E1F5EE] text-[#0F6E56]',
-  'av-purple': 'bg-[#EEEDFE] text-[#534AB7]',
-  'av-amber': 'bg-[#FAEEDA] text-[#854F0B]',
-  'av-coral': 'bg-[#FAECE7] text-[#993C1D]',
-};
 
 
 
@@ -71,12 +66,44 @@ export const TRACK_RESOURCES: Record<string, string[]> = {
 };
 // ─── Accordion ───────────────────────────────────────────────
 
+// Koçun öğrenci detayında bölümler sekmelere ayrıldığı için açılır kapanır değil, her zaman açık renkli kart
+// olarak gösterilir. Öğrencinin kendi "Bilgilerim" sayfası (bağlam yok) açılır kapanır görünümü kullanmaya devam eder.
+export const AccordionCardMode = createContext(false);
+
+const CARD_THEMES = {
+  violet: 'border-violet-100 from-violet-50 bg-violet-500',
+  sky: 'border-sky-100 from-sky-50 bg-sky-500',
+  teal: 'border-teal-100 from-teal-50 bg-teal-500',
+  amber: 'border-amber-100 from-amber-50 bg-amber-500',
+  rose: 'border-rose-100 from-rose-50 bg-rose-500',
+  indigo: 'border-indigo-100 from-indigo-50 bg-indigo-500',
+  emerald: 'border-emerald-100 from-emerald-50 bg-emerald-500',
+  fuchsia: 'border-fuchsia-100 from-fuchsia-50 bg-fuchsia-500',
+} as const;
+export type CardTheme = keyof typeof CARD_THEMES;
+
 export function Accordion({
-  icon, title, defaultOpen = false, children,
+  icon, title, defaultOpen = false, theme = 'violet', right, children,
 }: {
-  icon: React.ReactNode; title: string; defaultOpen?: boolean; children: React.ReactNode;
+  icon: React.ReactNode; title: string; defaultOpen?: boolean; theme?: CardTheme; right?: React.ReactNode; children: React.ReactNode;
 }) {
+  const asCard = useContext(AccordionCardMode);
   const [open, setOpen] = useState(defaultOpen);
+
+  if (asCard) {
+    const [border, from, chip] = CARD_THEMES[theme].split(' ');
+    return (
+      <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white shadow-sm">
+        <div className={`flex items-center gap-2.5 border-b bg-gradient-to-r to-white px-4 py-3 ${border} ${from}`}>
+          <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-white ${chip}`}>{icon}</span>
+          <h2 className="mr-auto text-[15px] font-semibold text-gray-900">{title}</h2>
+          {right && <div className="text-[12.5px] font-medium">{right}</div>}
+        </div>
+        <div className="px-4 pb-4 pt-3">{children}</div>
+      </section>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white">
       <button type="button" onClick={() => setOpen((v) => !v)}
@@ -108,14 +135,59 @@ export function InfoRow({ label, value }: { label: string; value?: string | null
 
 // ─── Ana bileşen ─────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function OgrenciDetayClient({ student, meetings, exams, tasks }: {
-  student: any; meetings: any[]; exams: any[]; tasks: any[];
+export type DetayStats = {
+  week: { total: number; done: number } | null;
+  questions7: number;
+  lastExam: { name: string; type: string; net: number; delta: number | null } | null;
+  lastMeetingDays: number | null;
+  nextMeeting: string | null; // ileri tarihli ilk öğrenci görüşmesi (ISO)
+};
+
+const TABS = [
+  { id: 'genel', label: 'Genel bakış' },
+  { id: 'bilgiler', label: 'Bilgiler' },
+  { id: 'program', label: 'Program ve günlük' },
+  { id: 'denemeler', label: 'Denemeler' },
+  { id: 'gorusmeler', label: 'Görüşmeler' },
+  { id: 'ayarlar', label: 'Ayarlar' },
+] as const;
+type TabId = (typeof TABS)[number]['id'];
+
+function StatCard({ tone, emoji, label, value, sub }: {
+  tone: string; emoji: string; label: string; value: React.ReactNode; sub?: React.ReactNode;
 }) {
-  const initials = student.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-  const avatarClass = AVATAR_COLORS[student.avatar_color] ?? AVATAR_COLORS['av-blue'];
-  const status = STATUS_MAP[student.status] ?? STATUS_MAP['aktif'];
+  return (
+    <div className={`rounded-2xl p-3.5 ${tone}`}>
+      <div className="flex items-center gap-1.5 text-[12px] font-semibold opacity-80"><span>{emoji}</span>{label}</div>
+      <div className="mt-1 text-[22px] font-bold leading-tight">{value}</div>
+      {sub && <div className="mt-0.5 text-[12px] opacity-80">{sub}</div>}
+    </div>
+  );
+}
+
+const fmtNet = (n: number) => n.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+
+/**
+ * Koçun öğrenci detayı: renkli başlık + hızlı işlemler, 4 özet kartı ve sekmeler.
+ * Bölümler alt alta açılır kapanır değil; her sekmede yalnızca o konunun kartları açık görünür.
+ */
+export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, initialTab, hedefPanel, settingsPanels, headerExtra }: {
+  student: any; meetings: any[]; exams: any[]; tasks: any[]; stats: DetayStats; initialTab?: string;
+  hedefPanel: React.ReactNode; settingsPanels: React.ReactNode; headerExtra?: React.ReactNode;
+}) {
   const id = student.id;
+  const isArchived = student.status === 'pasif';
+  const status = STATUS_MAP[student.status] ?? STATUS_MAP['aktif'];
+  const pill = trackPill(student.track);
+  const [tab, setTab] = useState<TabId>(TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : 'genel');
+
+  function changeTab(next: TabId) {
+    setTab(next);
+    // Adres güncellenir (geri dönüşte aynı sekme açılsın); sunucuya yeniden istek atılmaz
+    const url = new URL(window.location.href);
+    if (next === 'genel') url.searchParams.delete('sekme'); else url.searchParams.set('sekme', next);
+    window.history.replaceState(window.history.state, '', url);
+  }
 
   const birthDateFormatted = student.birth_date
     ? new Date(student.birth_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -127,242 +199,289 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks }: {
     || student.tyt_rank || student.say_rank || student.ea_rank || student.soz_rank;
   const hasFamily = student.mother_name || student.father_name;
   const hasGuardian = student.guardian_name;
+  const hasTarget = student.target_university || student.target_department || student.target_rank;
+
+  const weekPct = stats.week ? Math.round((stats.week.done / Math.max(1, stats.week.total)) * 100) : null;
+  const meetingTone = stats.lastMeetingDays === null || stats.lastMeetingDays > 14
+    ? 'bg-rose-50 text-rose-900' : stats.lastMeetingDays > 7 ? 'bg-amber-50 text-amber-900' : 'bg-teal-50 text-teal-900';
+
+  const actionCls = 'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-gray-700 transition-colors hover:bg-violet-50 hover:text-violet-700';
+
+  const examList = exams.length === 0 ? (
+    <p className="text-[13px] text-gray-400">Henüz deneme eklenmemiş.</p>
+  ) : (
+    <div className="divide-y divide-gray-100">
+      {exams.map((e: any) => {
+        const pct = Math.round((e.net_score / e.max_score) * 100);
+        const color = pct >= 70 ? 'bg-emerald-500' : pct >= 45 ? 'bg-amber-400' : 'bg-red-400';
+        return (
+          <div key={e.id} className="flex items-center gap-3 py-2.5">
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-medium text-gray-900">{e.exam_name}</div>
+              <div className="text-[12px] text-gray-400">
+                {new Date(e.exam_date).toLocaleDateString('tr-TR')}
+                {e.analysis_done ? ' · Analiz ✓' : ' · Analiz bekliyor'}
+              </div>
+              <div className="mt-1 h-1 w-full rounded-full bg-gray-100">
+                <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+            <span className="flex-shrink-0 text-[14px] font-semibold text-gray-700">{e.net_score} net</span>
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
-    <div className="space-y-3">
-
-      {/* ── Profil kartı ── */}
-      <div className="rounded-xl border border-gray-200 bg-white px-5 py-5">
-        <div className="flex items-center gap-4">
-          <div className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full text-xl font-semibold ${avatarClass}`}>
-            {initials}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-medium text-gray-900">{student.full_name}</h2>
-            <p className="mt-0.5 text-sm text-gray-500">{TRACK_LABELS[student.track] ?? student.track}</p>
-          </div>
-          <span className={`flex-shrink-0 rounded-full px-3 py-1 text-[12px] font-medium ${status.className}`}>
-            {status.label}
+    <div>
+      {/* ── Başlık ── */}
+      <div className={`relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-br ${isArchived ? 'from-slate-500 via-slate-600 to-slate-700' : 'from-indigo-500 via-violet-500 to-fuchsia-500'} p-5 text-white shadow-sm`}>
+        <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10" />
+        <div className="pointer-events-none absolute -bottom-16 right-28 h-32 w-32 rounded-full bg-white/10" />
+        <div className="relative flex flex-wrap items-center gap-3">
+          <Link href={isArchived ? '/ogrenciler?arsiv=1' : '/ogrenciler'} aria-label="Öğrencilere dön"
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white/20 hover:bg-white/30">
+            <IconArrowLeft size={18} />
+          </Link>
+          <span className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl text-[20px] font-bold ring-4 ring-white/30 ${avatarColor(id)}`}>
+            {initials(student.full_name)}
           </span>
-        </div>
-
-        <div className="mt-4 border-t border-gray-100 pt-3">
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Temel Bilgiler</p>
-          <div className="space-y-0.5">
-            <InfoRow label="Ad Soyad" value={student.full_name} />
-            <InfoRow label="Telefon" value={student.phone} />
-            <InfoRow label="Doğum Tarihi" value={birthDateFormatted} />
-            <InfoRow label="Kurum" value={student.kurum} />
-            <InfoRow label="Sınav Türü" value={TRACK_LABELS[student.track] ?? student.track} />
-            <InfoRow label="Sınıf Düzeyi" value={student.grade_level} />
-            <InfoRow
-              label={student.grade_level === 'Mezun' ? 'Mezun Olduğu Okul' : 'Devam Ettiği Okul'}
-              value={student.okul}
-            />
-            <InfoRow label="Sınıf / Şube" value={student.sinif_sube} />
-            <InfoRow label="Dönem" value={student.donem} />
-            <InfoRow label="Notlar" value={student.notes} />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-[22px] font-semibold tracking-tight">{student.full_name}</h1>
+            <div className="mt-1.5 flex flex-wrap gap-1.5 text-[12px]">
+              {pill && <span className={`rounded-full px-2.5 py-0.5 font-semibold ${pill.cls}`}>{pill.label}</span>}
+              <span className={`rounded-full px-2.5 py-0.5 font-semibold ${status.className}`}>{status.label}</span>
+              {[student.kurum, student.grade_level, student.sinif_sube, student.donem].filter(Boolean).map((c: string) => (
+                <span key={c} className="rounded-full bg-white/20 px-2.5 py-0.5">{c}</span>
+              ))}
+            </div>
           </div>
+          {headerExtra}
+        </div>
+        <div className="relative mt-4 flex flex-wrap gap-1 rounded-xl bg-white/95 p-1.5 shadow-sm">
+          <Link href={`/gorusmeler/yeni?ogrenci=${id}`} className={actionCls}><IconCalendarPlus size={16} /> Görüşme ekle</Link>
+          <Link href={`/denemeler/yeni?ogrenci=${id}`} className={actionCls}><IconChartBar size={16} /> Deneme ekle</Link>
+          <Link href={`/haftalik-takip?ogrenci=${id}`} className={actionCls}><IconCalendar size={16} /> Haftalık program</Link>
+          <Link href={`/konu-ilerleyisi?ogrenci=${id}`} className={actionCls}><IconBooks size={16} /> Konu ilerleyişi</Link>
+          <Link href={`/ogrenciler/${id}/duzenle`} className={`${actionCls} sm:ml-auto`}><IconEdit size={16} /> Düzenle</Link>
         </div>
       </div>
 
-      {/* ── Aile Bilgileri ── */}
-      {hasFamily && (
-        <Accordion icon={<IconUsers size={16} />} title="Aile Bilgileri">
-          {student.mother_name && (
-            <div className="mb-3">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Anne</p>
-              <InfoRow label="Anne Adı" value={student.mother_name} />
-              <InfoRow label="Anne Meslek" value={student.mother_job} />
-              <InfoRow label="Anne Telefon" value={student.mother_phone} />
-            </div>
-          )}
-          {student.father_name && (
-            <div>
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Baba</p>
-              <InfoRow label="Baba Adı" value={student.father_name} />
-              <InfoRow label="Baba Meslek" value={student.father_job} />
-              <InfoRow label="Baba Telefon" value={student.father_phone} />
-            </div>
-          )}
-        </Accordion>
-      )}
+      {/* ── Özet ── */}
+      <div className="mb-4 grid grid-cols-2 gap-2.5 md:grid-cols-4">
+        <StatCard tone="bg-indigo-50 text-indigo-900" emoji="📋" label="Bu hafta program"
+          value={weekPct === null ? '—' : `%${weekPct}`}
+          sub={stats.week ? `${stats.week.done}/${stats.week.total} görev` : 'Program yazılmamış'} />
+        <StatCard tone="bg-violet-50 text-violet-900" emoji="✏️" label="Son 7 gün"
+          value={`${stats.questions7.toLocaleString('tr-TR')} soru`} />
+        <StatCard tone="bg-fuchsia-50 text-fuchsia-900" emoji="📊" label="Son deneme"
+          value={stats.lastExam ? `${fmtNet(stats.lastExam.net)} net` : '—'}
+          sub={stats.lastExam ? (
+            <>
+              {stats.lastExam.type}
+              {stats.lastExam.delta !== null && stats.lastExam.delta !== 0 && (
+                <span className={`ml-1 font-semibold ${stats.lastExam.delta > 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  {stats.lastExam.delta > 0 ? '▲' : '▼'}{fmtNet(Math.abs(stats.lastExam.delta))}
+                </span>
+              )}
+            </>
+          ) : 'Deneme yok'} />
+        <StatCard tone={meetingTone} emoji="💬" label="Son görüşme"
+          value={stats.lastMeetingDays === null ? '—' : stats.lastMeetingDays === 0 ? 'Bugün' : `${stats.lastMeetingDays} gün önce`}
+          sub={stats.nextMeeting
+            ? `Sıradaki: ${new Date(stats.nextMeeting).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', timeZone: 'Europe/Istanbul' })}`
+            : 'Planlanmış görüşme yok'} />
+      </div>
 
-      {/* ── Veli Bilgileri ── */}
-      {hasGuardian && (
-        <Accordion icon={<IconUsers size={16} />} title="Veli Bilgileri">
-          <InfoRow label="Veli Adı Soyadı" value={student.guardian_name} />
-          <InfoRow label="Veli Telefon" value={student.guardian_phone} />
-          <InfoRow label="Yakınlık Durumu" value={student.guardian_relation} />
-        </Accordion>
-      )}
-
-      {/* ── YKS Sonuçları ── */}
-      {hasYks && (
-        <Accordion icon={<IconTrophy size={16} />} title={`YKS Sonuçları ${student.yks_year ? `(${student.yks_year})` : ''}`}>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 md:grid-cols-4">
-            {[
-              { label: 'TYT Puan', value: student.tyt_score },
-              { label: 'Sayısal Puan', value: student.say_score },
-              { label: 'Eşit Ağırlık Puan', value: student.ea_score },
-              { label: 'Sözel Puan', value: student.soz_score },
-            ].filter(f => f.value).map((f) => (
-              <div key={f.label} className="rounded-lg bg-gray-50 px-3 py-2.5 text-center">
-                <div className="text-[11px] text-gray-400">{f.label}</div>
-                <div className="text-[18px] font-semibold text-gray-900">{formatTurkishNumber(f.value)}</div>
-              </div>
-            ))}
-          </div>
-          {(student.tyt_rank || student.say_rank || student.ea_rank || student.soz_rank) && (
-            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 md:grid-cols-4">
-              {[
-                { label: 'TYT Sıralama', value: student.tyt_rank },
-                { label: 'Sayısal Sıralama', value: student.say_rank },
-                { label: 'EA Sıralama', value: student.ea_rank },
-                { label: 'Sözel Sıralama', value: student.soz_rank },
-              ].filter(f => f.value).map((f) => (
-                <div key={f.label} className="rounded-lg border border-gray-100 px-3 py-2.5 text-center">
-                  <div className="text-[11px] text-gray-400">{f.label}</div>
-                  <div className="text-[15px] font-medium text-gray-700">{f.value.toLocaleString('tr-TR')}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Accordion>
-      )}
-
-
-      {/* ── Hedef ── */}
-            {(student.target_university || student.target_department || student.target_rank) && (
-              <Accordion icon={<IconTarget size={16} />} title="Hedef">
-                <div className="space-y-1">
-                  <InfoRow label="Hedef Üniversite" value={student.target_university} />
-                  <InfoRow label="Hedef Bölüm" value={student.target_department} />
-                  {student.target_rank && (
-                    <InfoRow
-                      label="Hedef Sıralama"
-                      value={`${Number(student.target_rank).toLocaleString('tr-TR')} (${RANK_TYPE_LABELS[student.target_rank_type] ?? student.target_rank_type})`}
-                    />
-                  )}
-                </div>
-              </Accordion>
-      )}
-
-      {/* ── Kaynaklar ── */}
-      {hasResources && (
-        <Accordion icon={<IconSchool size={16} />} title="Kullanılan Kaynaklar">
-          <div className="space-y-3">
-            {(TRACK_RESOURCES[student.track] ?? Object.keys(resources)).map((subject) => {
-              const books = resources[subject];
-              if (!books) return null;
-              const filled = books.filter(Boolean);
-              if (!filled.length) return null;
-              return (
-                <div key={subject}>
-                  <p className="mb-1 text-[12px] font-medium text-gray-700">{subject}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {filled.map((b, i) => (
-                      <span key={i} className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[12px] text-blue-700">{b}</span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Accordion>
-      )}
-
-      {/* ── Görüşmeler ── */}
-      <Accordion icon={<IconCalendar size={16} />} title="Son Görüşmeler" defaultOpen>
-        <div className="mb-2 flex justify-end">
-          <Link href={`/gorusmeler/yeni?ogrenci=${id}`} className="text-[12px] text-blue-600 hover:underline">
-            + Görüşme ekle
-          </Link>
-        </div>
-        <MeetingList meetings={meetings} studentId={id} />
-        <div className="mt-2">
-          <Link href={`/gorusmeler/${id}`} className="text-[12px] text-gray-400 hover:underline">
-            Tüm görüşmeleri gör →
-          </Link>
-        </div>
-      </Accordion>
-
-      {/* ── Denemeler ── */}
-      <Accordion icon={<IconChartBar size={16} />} title="Son Denemeler" defaultOpen>
-        <div className="mb-2 flex justify-end">
-          <Link href={`/denemeler/yeni?ogrenci=${id}`} className="text-[12px] text-blue-600 hover:underline">
-            + Deneme ekle
-          </Link>
-        </div>
-        {exams.length === 0 ? (
-          <p className="text-[13px] text-gray-400">Henüz deneme eklenmemiş.</p>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {exams.map((e: any) => {
-              const pct = Math.round((e.net_score / e.max_score) * 100);
-              const color = pct >= 70 ? 'bg-emerald-500' : pct >= 45 ? 'bg-amber-400' : 'bg-red-400';
-              return (
-                <div key={e.id} className="flex items-center gap-3 py-2.5">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium text-gray-900">{e.exam_name}</div>
-                    <div className="text-[12px] text-gray-400">
-                      {new Date(e.exam_date).toLocaleDateString('tr-TR')}
-                      {e.analysis_done ? ' · Analiz ✓' : ' · Analiz bekliyor'}
-                    </div>
-                    <div className="mt-1 h-1 w-full rounded-full bg-gray-100">
-                      <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                  <span className="flex-shrink-0 text-[14px] font-semibold text-gray-700">{e.net_score} net</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        <div className="mt-2">
-          <Link href={`/denemeler?ogrenci=${id}`} className="text-[12px] text-gray-400 hover:underline">
-            Tüm denemeleri gör →
-          </Link>
-        </div>
-      </Accordion>
-
-      {/* ── Haftalık Takip Programı ── */}
-      <Accordion icon={<IconCalendar size={16} />} title="Haftalık Takip Programı" defaultOpen>
-        <div className="mb-2 flex justify-end">
-          <Link href="/haftalik-takip" className="text-[12px] text-blue-600 hover:underline">
-            + Program hazırla
-          </Link>
-        </div>
-        <OgrenciProgramlari studentId={id} />
-      </Accordion>
-      
-      {/* ── Görevler & Takip ── */}
-      <Accordion icon={<IconCheckbox size={16} />} title="Bekleyen Görevler & Takip">
-        {tasks.length > 0 && (
-          <div className="mb-3 divide-y divide-gray-100">
-            {tasks.map((t: any) => (
-              <div key={t.id} className="py-2 text-[13px] text-gray-700">{t.title}</div>
-            ))}
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { href: `/soru-takibi?ogrenci=${id}`, label: '📊 Soru takibi', icon: IconCheckbox },
-            { href: `/konu-ilerleyisi?ogrenci=${id}`, label: '📚 Konu ilerleyişi', icon: IconBooks },
-            { href: `/gorusmeler?ogrenci=${id}`, label: '📅 Tüm görüşmeler', icon: IconCalendar },
-            { href: `/denemeler?ogrenci=${id}`, label: '📈 Tüm denemeler', icon: IconChartBar },
-          ].map((a) => (
-            <Link key={a.href} href={a.href}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-center text-[12px] text-gray-600 hover:bg-gray-50">
-              {a.label}
-            </Link>
+      {/* ── Sekmeler ── */}
+      <div className="sticky top-0 z-20 -mx-1 mb-4 overflow-x-auto bg-[var(--paper)]/95 px-1 py-1.5 backdrop-blur" role="tablist">
+        <div className="flex min-w-max gap-1 rounded-xl border border-[var(--border)] bg-white p-1 shadow-sm">
+          {TABS.map((t) => (
+            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => changeTab(t.id)}
+              className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-[13.5px] font-medium transition-colors ${tab === t.id
+                ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-600 hover:bg-violet-50 hover:text-violet-700'}`}>
+              {t.label}
+            </button>
           ))}
         </div>
-      </Accordion>
+      </div>
 
-      {/* ── Günlük ── */}
-      <GunlukAccordion studentId={id} />
+      <AccordionCardMode.Provider value={true}>
+        {tab === 'genel' && (
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Accordion icon={<IconCalendar size={16} />} title="Son görüşmeler" theme="teal"
+              right={<Link href={`/gorusmeler/yeni?ogrenci=${id}`} className="text-teal-700 hover:underline">+ Ekle</Link>}>
+              <MeetingList meetings={meetings.slice(0, 3)} studentId={id} />
+              {meetings.length > 0 && (
+                <button type="button" onClick={() => changeTab('gorusmeler')} className="mt-2 text-[12px] text-gray-400 hover:underline">
+                  Tümü →
+                </button>
+              )}
+            </Accordion>
+            <Accordion icon={<IconChartBar size={16} />} title="Son denemeler" theme="fuchsia"
+              right={<Link href={`/denemeler/yeni?ogrenci=${id}`} className="text-fuchsia-700 hover:underline">+ Ekle</Link>}>
+              {examList}
+            </Accordion>
+            <div className="lg:col-span-2">
+              <Accordion icon={<IconCheckbox size={16} />} title="Bekleyen görevler" theme="amber">
+                {tasks.length > 0 ? (
+                  <div className="divide-y divide-gray-100">
+                    {tasks.map((t: any) => (
+                      <div key={t.id} className="py-2 text-[13px] text-gray-700">{t.title}</div>
+                    ))}
+                  </div>
+                ) : <p className="text-[13px] text-gray-400">Bekleyen görev yok.</p>}
+              </Accordion>
+            </div>
+          </div>
+        )}
 
+        {tab === 'program' && (
+          <div className="space-y-3">
+            <Accordion icon={<IconCalendar size={16} />} title="Haftalık takip programı" theme="indigo"
+              right={<Link href={`/haftalik-takip?ogrenci=${id}`} className="text-indigo-700 hover:underline">Programı aç →</Link>}>
+              <OgrenciProgramlari studentId={id} />
+            </Accordion>
+            <GunlukAccordion studentId={id} />
+          </div>
+        )}
+
+        {tab === 'denemeler' && (
+          <div className="space-y-3">
+            {hedefPanel}
+            <Accordion icon={<IconChartBar size={16} />} title="Son denemeler" theme="fuchsia"
+              right={<Link href={`/denemeler?ogrenci=${id}`} className="text-fuchsia-700 hover:underline">Tümü →</Link>}>
+              {examList}
+            </Accordion>
+            {hasYks && (
+              <Accordion icon={<IconTrophy size={16} />} title={`YKS sonuçları ${student.yks_year ? `(${student.yks_year})` : ''}`} theme="amber">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1 md:grid-cols-4">
+                  {[
+                    { label: 'TYT Puan', value: student.tyt_score },
+                    { label: 'Sayısal Puan', value: student.say_score },
+                    { label: 'Eşit Ağırlık Puan', value: student.ea_score },
+                    { label: 'Sözel Puan', value: student.soz_score },
+                  ].filter(f => f.value).map((f) => (
+                    <div key={f.label} className="rounded-lg bg-gray-50 px-3 py-2.5 text-center">
+                      <div className="text-[11px] text-gray-400">{f.label}</div>
+                      <div className="text-[18px] font-semibold text-gray-900">{formatTurkishNumber(f.value)}</div>
+                    </div>
+                  ))}
+                </div>
+                {(student.tyt_rank || student.say_rank || student.ea_rank || student.soz_rank) && (
+                  <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 md:grid-cols-4">
+                    {[
+                      { label: 'TYT Sıralama', value: student.tyt_rank },
+                      { label: 'Sayısal Sıralama', value: student.say_rank },
+                      { label: 'EA Sıralama', value: student.ea_rank },
+                      { label: 'Sözel Sıralama', value: student.soz_rank },
+                    ].filter(f => f.value).map((f) => (
+                      <div key={f.label} className="rounded-lg border border-gray-100 px-3 py-2.5 text-center">
+                        <div className="text-[11px] text-gray-400">{f.label}</div>
+                        <div className="text-[15px] font-medium text-gray-700">{f.value.toLocaleString('tr-TR')}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Accordion>
+            )}
+          </div>
+        )}
+
+        {tab === 'gorusmeler' && (
+          <Accordion icon={<IconCalendar size={16} />} title="Görüşmeler" theme="teal"
+            right={<Link href={`/gorusmeler/yeni?ogrenci=${id}`} className="text-teal-700 hover:underline">+ Görüşme ekle</Link>}>
+            <MeetingList meetings={meetings} studentId={id} />
+            <div className="mt-2">
+              <Link href={`/gorusmeler/${id}`} className="text-[12px] text-gray-400 hover:underline">Tüm görüşmeleri gör →</Link>
+            </div>
+          </Accordion>
+        )}
+
+        {tab === 'bilgiler' && (
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Accordion icon={<IconUser size={16} />} title="Temel bilgiler" theme="sky"
+              right={<Link href={`/ogrenciler/${id}/duzenle`} className="text-sky-700 hover:underline">Düzenle</Link>}>
+              <InfoRow label="Ad Soyad" value={student.full_name} />
+              <InfoRow label="Telefon" value={student.phone} />
+              <InfoRow label="Doğum Tarihi" value={birthDateFormatted} />
+              <InfoRow label="Kurum" value={student.kurum} />
+              <InfoRow label="Sınav Türü" value={TRACK_LABELS[student.track] ?? student.track} />
+              <InfoRow label="Sınıf Düzeyi" value={student.grade_level} />
+              <InfoRow label={student.grade_level === 'Mezun' ? 'Mezun Olduğu Okul' : 'Devam Ettiği Okul'} value={student.okul} />
+              <InfoRow label="Sınıf / Şube" value={student.sinif_sube} />
+              <InfoRow label="Dönem" value={student.donem} />
+              <InfoRow label="Notlar" value={student.notes} />
+            </Accordion>
+            <Accordion icon={<IconUsers size={16} />} title="Aile ve veli" theme="emerald">
+              {!hasFamily && !hasGuardian && (
+                <p className="text-[13px] text-gray-400">
+                  Aile bilgisi girilmemiş. <Link href={`/ogrenciler/${id}/duzenle`} className="text-emerald-700 hover:underline">Ekle</Link>
+                </p>
+              )}
+              {hasGuardian && (
+                <div className="mb-3">
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Veli</p>
+                  <InfoRow label="Veli Adı Soyadı" value={student.guardian_name} />
+                  <InfoRow label="Veli Telefon" value={student.guardian_phone} />
+                  <InfoRow label="Yakınlık Durumu" value={student.guardian_relation} />
+                </div>
+              )}
+              {student.mother_name && (
+                <div className="mb-3">
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Anne</p>
+                  <InfoRow label="Anne Adı" value={student.mother_name} />
+                  <InfoRow label="Anne Meslek" value={student.mother_job} />
+                  <InfoRow label="Anne Telefon" value={student.mother_phone} />
+                </div>
+              )}
+              {student.father_name && (
+                <div>
+                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Baba</p>
+                  <InfoRow label="Baba Adı" value={student.father_name} />
+                  <InfoRow label="Baba Meslek" value={student.father_job} />
+                  <InfoRow label="Baba Telefon" value={student.father_phone} />
+                </div>
+              )}
+            </Accordion>
+            {hasTarget && (
+              <Accordion icon={<IconTarget size={16} />} title="Hedef" theme="rose">
+                <InfoRow label="Hedef Üniversite" value={student.target_university} />
+                <InfoRow label="Hedef Bölüm" value={student.target_department} />
+                {student.target_rank && (
+                  <InfoRow label="Hedef Sıralama"
+                    value={`${Number(student.target_rank).toLocaleString('tr-TR')} (${RANK_TYPE_LABELS[student.target_rank_type] ?? student.target_rank_type})`} />
+                )}
+              </Accordion>
+            )}
+            {hasResources && (
+              <Accordion icon={<IconSchool size={16} />} title="Kullanılan kaynaklar" theme="indigo">
+                <div className="space-y-3">
+                  {(TRACK_RESOURCES[student.track] ?? Object.keys(resources)).map((subject) => {
+                    const books = resources[subject];
+                    if (!books) return null;
+                    const filled = books.filter(Boolean);
+                    if (!filled.length) return null;
+                    return (
+                      <div key={subject}>
+                        <p className="mb-1 text-[12px] font-medium text-gray-700">{subject}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {filled.map((b, i) => (
+                            <span key={i} className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[12px] text-indigo-700">{b}</span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Accordion>
+            )}
+          </div>
+        )}
+
+        {tab === 'ayarlar' && <div className="space-y-3">{settingsPanels}</div>}
+      </AccordionCardMode.Provider>
     </div>
   );
 }
@@ -518,7 +637,7 @@ export function GunlukAccordion({ studentId }: { studentId: string }) {
   }
 
   return (
-    <Accordion icon={<IconNotebook size={16} />} title="Günlük">
+    <Accordion icon={<IconNotebook size={16} />} title="Günlük" theme="violet">
       <div className="mb-3 flex justify-end">
         <button
           onClick={openNew}
@@ -867,7 +986,6 @@ function MeetingList({ meetings, studentId }: { meetings: any[]; studentId: stri
   if (items.length === 0) return <p className="text-[13px] text-gray-400">Henüz görüşme yok.</p>;
 
   async function handleDelete(id: string) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('meetings') as any).delete().eq('id', id);
     setItems((prev) => prev.filter((m) => m.id !== id));
     setDeletingId(null);
@@ -876,7 +994,6 @@ function MeetingList({ meetings, studentId }: { meetings: any[]; studentId: stri
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
     if (!editing) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await (supabase.from('meetings') as any)
       .update({
         scheduled_at: new Date(editing.scheduled_at_local).toISOString(),

@@ -2,33 +2,15 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { createClient } from '@/lib/supabase/client';
-import { IconChevronRight, IconCalendar, IconNotes } from '@tabler/icons-react';
+import { IconCalendar, IconNotes, IconAlertCircle, IconCircleCheck, IconArchive, IconClock } from '@tabler/icons-react';
 import { MeetingDetailModal } from './MeetingDetailModal';
 import { PageHero } from '@/components/ui/PageHero';
-
-const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  aktif: { label: 'Aktif', className: 'bg-[var(--success-soft)] text-[var(--success)]' },
-  gorusme_bekliyor: { label: 'Görüşme yok', className: 'bg-[var(--accent-soft)] text-[var(--accent-dark)]' },
-  analiz_eksik: { label: 'Analiz yok', className: 'bg-[var(--danger-soft)] text-[var(--danger)]' },
-  dikkat: { label: 'Dikkat', className: 'bg-[var(--danger-soft)] text-[var(--danger)]' },
-  pasif: { label: 'Pasif', className: 'bg-[var(--paper)] text-[var(--ink-muted)]' },
-};
-
-const AVATAR_COLORS: Record<string, string> = {
-  'av-blue': 'bg-[#E6F1FB] text-[#185FA5]',
-  'av-teal': 'bg-[#E1F5EE] text-[#0F6E56]',
-  'av-purple': 'bg-[#EEEDFE] text-[#534AB7]',
-  'av-amber': 'bg-[#FAEEDA] text-[#854F0B]',
-  'av-coral': 'bg-[#FAECE7] text-[#993C1D]',
-};
-
-const TRACK_LABELS: Record<string, string> = {
-  YKS_SAY: 'YKS · SAY', YKS_SOZ: 'YKS · SÖZ', YKS_EA: 'YKS · EA',
-  YKS_DIL: 'YKS · DİL', LGS: 'LGS', DIGER: 'Diğer',
-};
+import {
+  StudentCard, StudentGrid, ListToolbar, SectionTitle, FilterChips, matchesQuery, lateBy, toolbarSelectCls,
+} from '@/components/StudentCard';
+import { avatarColor, initials } from '@/lib/ui-colors';
 
 type SortKey = 'gorusme_eski' | 'gorusme_yeni' | 'ad' | 'soyad' | 'sinif' | 'dogum';
 
@@ -40,12 +22,6 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'sinif', label: 'Sınıfa göre' },
   { value: 'dogum', label: 'Doğum tarihine göre' },
 ];
-
-function trackColor(track: string) {
-  if (track.startsWith('YKS')) return 'text-[var(--track-yks)]';
-  if (track === 'LGS') return 'text-[var(--track-lgs)]';
-  return 'text-[var(--ink-muted)]';
-}
 
 function getSoyad(fullName: string) {
   const parts = fullName.trim().split(/\s+/);
@@ -73,6 +49,8 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
   const [sinifFilter, setSinifFilter] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('gorusme_eski');
   const [viewMode, setViewMode] = useState<'ogrenciler' | 'tumu'>('ogrenciler');
+  const [query, setQuery] = useState('');
+  const [quick, setQuick] = useState<'tumu' | 'hafta' | 'iki_hafta'>('tumu');
 
   // ── "Tüm görüşmeler" görünümü için state ──
   const [allMeetings, setAllMeetings] = useState<any[] | null>(null);
@@ -135,6 +113,9 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
     if (sinifFilter) {
       list = list.filter((s) => s.sinif_sube === sinifFilter);
     }
+    if (query) list = list.filter((s) => matchesQuery(s.full_name, query));
+    if (quick === 'hafta') list = list.filter((s) => lateBy(s, 7));
+    if (quick === 'iki_hafta') list = list.filter((s) => lateBy(s, 14));
 
     const sorted = [...list].sort((a, b) => {
       switch (sortKey) {
@@ -165,7 +146,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
     });
 
     return sorted;
-  }, [examFiltered, sinifFilter, sortKey]);
+  }, [examFiltered, sinifFilter, sortKey, query, quick]);
 
   const active = filtered.filter((s) => s.status !== 'pasif');
   const passive = filtered.filter((s) => s.status === 'pasif');
@@ -190,6 +171,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
     if (meetingSinifFilter) {
       list = list.filter((m) => m.students?.sinif_sube === meetingSinifFilter);
     }
+    if (query) list = list.filter((m) => matchesQuery(m.students?.full_name ?? '', query));
 
     return [...list].sort((a, b) => {
       switch (meetingSortKey) {
@@ -203,7 +185,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
           return 0;
       }
     });
-  }, [allMeetings, matchesFilter, meetingSinifFilter, meetingSortKey]);
+  }, [allMeetings, matchesFilter, meetingSinifFilter, meetingSortKey, query]);
 
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
@@ -235,7 +217,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-5xl">
       <PageHero
         theme="teal"
         icon={<IconNotes size={22} />}
@@ -244,92 +226,93 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
         actions={<>
 <button
           onClick={() => setViewMode((v) => (v === 'ogrenciler' ? 'tumu' : 'ogrenciler'))}
-          className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3.5 py-2 text-[13px] font-medium text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
+          className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
         >
-          {viewMode === 'ogrenciler' ? 'Tüm görüşmeler' : 'Öğrenciler'}
+          {viewMode === 'ogrenciler' ? <><IconCalendar size={15} /> Tüm görüşmeler</> : <><IconNotes size={15} /> Öğrenciler</>}
         </button>
       </>}
       />
 
       {viewMode === 'ogrenciler' ? (
         <>
-          <div className="mb-4 flex flex-wrap gap-2">
+          <ListToolbar query={query} onQuery={setQuery}>
             {availableSiniflar.length > 0 && (
-              <select
-                value={sinifFilter}
-                onChange={(e) => setSinifFilter(e.target.value)}
-                className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[13px] text-[var(--ink)] focus:outline-none"
-              >
+              <select value={sinifFilter} onChange={(e) => setSinifFilter(e.target.value)} className={toolbarSelectCls}>
                 <option value="">Tüm sınıflar</option>
                 {availableSiniflar.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             )}
-            <select
-              value={sortKey}
-              onChange={(e) => setSortKey(e.target.value as SortKey)}
-              className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[13px] text-[var(--ink)] focus:outline-none"
-            >
+            <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} className={toolbarSelectCls}>
               {SORT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
-          </div>
+          </ListToolbar>
+
+          {(() => {
+            // Sayılar arama ve sınıf filtresine göre; pasif öğrenciler sayılmaz
+            const base = (examFiltered as any[]).filter((s) => s.status !== 'pasif'
+              && (!sinifFilter || s.sinif_sube === sinifFilter) && matchesQuery(s.full_name, query));
+            return (
+              <FilterChips
+                value={quick}
+                onChange={setQuick}
+                options={[
+                  { value: 'tumu', label: 'Tümü', count: base.length, tone: 'sky' },
+                  { value: 'hafta', label: '1 haftadır görüşülmeyen', count: base.filter((s) => lateBy(s, 7)).length, tone: 'amber' },
+                  { value: 'iki_hafta', label: '2 haftadır görüşülmeyen', count: base.filter((s) => lateBy(s, 14)).length, tone: 'rose' },
+                ]}
+              />
+            );
+          })()}
 
           {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20">
-          <IconCalendar size={32} className="text-[var(--ink-muted)]" />
-          <p className="text-[13px] text-[var(--ink-muted)]">Bu filtrede öğrenci yok.</p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-5">
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-[13px] font-semibold text-[var(--danger)]">Bu hafta görüşülmeyenler</span>
-              <span className="rounded-full bg-[var(--danger-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--danger)]">{notMetThisWeek.length}</span>
+            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] py-20">
+              <IconCalendar size={32} className="text-gray-300" />
+              <p className="text-[13px] text-[var(--ink-muted)]">Bu filtrede öğrenci yok.</p>
             </div>
-            {notMetThisWeek.length === 0 ? (
-              <p className="text-[13px] text-[var(--ink-muted)]">Bu hafta herkesle görüşülmüş 🎉</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {notMetThisWeek.map((s) => <StudentRow key={s.id} student={s} />)}
-              </div>
-            )}
-          </div>
+          ) : (
+            <div className="flex flex-col gap-7">
+              <section>
+                <SectionTitle tone="rose" icon={<IconAlertCircle size={18} />} title="Bu hafta görüşülmeyenler" count={notMetThisWeek.length} />
+                {notMetThisWeek.length === 0 ? (
+                  <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[13.5px] font-medium text-emerald-700">
+                    Bu hafta herkesle görüşülmüş 🎉
+                  </p>
+                ) : (
+                  <StudentGrid>
+                    {notMetThisWeek.map((s) => <StudentCard key={s.id} student={s} href={`/gorusmeler/${s.id}`} />)}
+                  </StudentGrid>
+                )}
+              </section>
 
-          {metThisWeek.length > 0 && (
-            <div>
-              <div className="mb-2 flex items-center gap-2">
-                <span className="text-[13px] font-semibold text-[var(--success)]">Bu hafta görüşülenler</span>
-                <span className="rounded-full bg-[var(--success-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--success)]">{metThisWeek.length}</span>
-              </div>
-              <div className="flex flex-col gap-2">
-                {metThisWeek.map((s) => <StudentRow key={s.id} student={s} />)}
-              </div>
+              {metThisWeek.length > 0 && (
+                <section>
+                  <SectionTitle tone="emerald" icon={<IconCircleCheck size={18} />} title="Bu hafta görüşülenler" count={metThisWeek.length} />
+                  <StudentGrid>
+                    {metThisWeek.map((s) => <StudentCard key={s.id} student={s} href={`/gorusmeler/${s.id}`} />)}
+                  </StudentGrid>
+                </section>
+              )}
+
+              {passive.length > 0 && (
+                <section>
+                  <SectionTitle tone="slate" icon={<IconArchive size={18} />} title="Pasif öğrenciler" count={passive.length} />
+                  <StudentGrid>
+                    {passive.map((s) => <StudentCard key={s.id} student={s} href={`/gorusmeler/${s.id}`} />)}
+                  </StudentGrid>
+                </section>
+              )}
             </div>
           )}
-
-          {passive.length > 0 && (
-            <div>
-              <div className="mb-2 text-[12px] font-medium text-[var(--ink-muted)]">Pasif öğrenciler</div>
-              <div className="flex flex-col gap-2">
-                {passive.map((s) => <StudentRow key={s.id} student={s} />)}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
         </>
       ) : (
         <>
-          <div className="mb-4 flex flex-wrap gap-2">
+          <ListToolbar query={query} onQuery={setQuery}>
             {availableMeetingSiniflar.length > 0 && (
-              <select
-                value={meetingSinifFilter}
-                onChange={(e) => setMeetingSinifFilter(e.target.value)}
-                className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[13px] text-[var(--ink)] focus:outline-none"
-              >
+              <select value={meetingSinifFilter} onChange={(e) => setMeetingSinifFilter(e.target.value)} className={toolbarSelectCls}>
                 <option value="">Tüm sınıflar</option>
                 {availableMeetingSiniflar.map((s) => (
                   <option key={s} value={s}>{s}</option>
@@ -339,13 +322,13 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
             <select
               value={meetingSortKey}
               onChange={(e) => setMeetingSortKey(e.target.value as 'tarih_yeni' | 'tarih_eski' | 'ogrenci_ad')}
-              className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[13px] text-[var(--ink)] focus:outline-none"
+              className={toolbarSelectCls}
             >
               <option value="tarih_yeni">Tarihe göre (yeniden eskiye)</option>
               <option value="tarih_eski">Tarihe göre (eskiden yeniye)</option>
               <option value="ogrenci_ad">Öğrenci adına göre (A-Z)</option>
             </select>
-          </div>
+          </ListToolbar>
 
           {loadingAll ? (
             <p className="py-10 text-center text-[13px] text-[var(--ink-muted)]">Yükleniyor...</p>
@@ -355,54 +338,53 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
               <p className="text-[13px] text-[var(--ink-muted)]">Henüz görüşme yok.</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="grid gap-3 lg:grid-cols-2">
               {allMeetingsFilteredSorted.map((m) => {
                 const dt = new Date(m.scheduled_at);
                 const monthShort = dt.toLocaleDateString('tr-TR', { month: 'short' });
                 const dayNum = dt.getDate();
-                const weekdayStr = dt.toLocaleDateString('tr-TR', { weekday: 'short' });
+                const weekdayStr = dt.toLocaleDateString('tr-TR', { weekday: 'long' });
                 const timeStr = dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
                 const isVeli = m.meeting_type === 'veli';
                 const studentInfo: any = studentsById.get(m.student_id) ?? m.students;
+                const name = studentInfo?.full_name ?? 'Bilinmeyen öğrenci';
 
                 return (
                   <button
                     key={m.id}
                     onClick={() => setViewing(m)}
-                    className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-left transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--paper)]"
+                    className="group flex items-stretch gap-3.5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
                   >
-                    <div className="flex w-12 flex-shrink-0 flex-col items-center justify-center rounded-lg bg-[var(--paper)] py-1.5 leading-none">
-                      <span className="text-[10px] font-medium text-[var(--ink-muted)]">{monthShort}</span>
-                      <span className="mt-0.5 text-[16px] font-semibold text-[var(--ink)]">{dayNum}</span>
+                    <div className={`flex w-14 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-b py-2 leading-none text-white ${isVeli ? 'from-violet-400 to-purple-500' : 'from-teal-400 to-emerald-500'}`}>
+                      <span className="text-[10.5px] font-semibold uppercase tracking-wide text-white/85">{monthShort}</span>
+                      <span className="mt-1 text-[20px] font-bold">{dayNum}</span>
                     </div>
 
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 py-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="truncate text-[13px] font-medium text-[var(--ink)]">{studentInfo?.full_name ?? 'Bilinmeyen öğrenci'}</span>
-                        <span
-                          className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                            isVeli ? 'bg-[var(--accent-soft)] text-[var(--accent-dark)]' : 'bg-[var(--track-yks-soft)] text-[var(--track-yks)]'
-                          }`}
-                        >
-                          {isVeli ? 'Veli' : 'Koç'}
+                        <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${avatarColor(m.student_id ?? name)}`}>
+                          {initials(name)}
+                        </span>
+                        <span className="truncate text-[14px] font-semibold text-[var(--ink)]">{name}</span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-1 text-[12px] text-[var(--ink-muted)]">
+                        <IconClock size={13} /> {weekdayStr} · {timeStr} · {m.duration_minutes} dk
+                      </div>
+                      {m.topic && <div className="mt-1 truncate text-[13px] text-[var(--ink)]">{m.topic}</div>}
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${isVeli ? 'bg-violet-50 text-violet-700' : 'bg-teal-50 text-teal-700'}`}>
+                          {isVeli ? 'Veli görüşmesi' : 'Öğrenci görüşmesi'}
+                        </span>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${m.completed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                          {m.completed ? 'Tamamlandı' : 'Bekliyor'}
                         </span>
                         {studentInfo?.is_intern_student && (
-                          <span className="hidden flex-shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 sm:inline-block">
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
                             Stajyer{studentInfo.responsible_coach_other_name ? `: ${studentInfo.responsible_coach_other_name}` : ''}
                           </span>
                         )}
                       </div>
-                      <div className="mt-0.5 text-[12px] text-[var(--ink-muted)]">{weekdayStr} · {timeStr} · {m.duration_minutes} dk</div>
-                      {m.topic && <div className="mt-0.5 truncate text-[13px] text-[var(--ink)]">{m.topic}</div>}
                     </div>
-
-                    <span
-                      className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                        m.completed ? 'bg-[var(--success-soft)] text-[var(--success)]' : 'bg-[var(--accent-soft)] text-[var(--accent-dark)]'
-                      }`}
-                    >
-                      {m.completed ? 'Tamamlandı' : 'Bekliyor'}
-                    </span>
                   </button>
                 );
               })}
@@ -523,58 +505,5 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
         </div>
       )}
     </div>
-  );
-}
-
-function StudentRow({ student: s }: { student: any }) {
-  const initials = s.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-  const avatarClass = AVATAR_COLORS[s.avatar_color] ?? AVATAR_COLORS['av-blue'];
-  const status = STATUS_MAP[s.status] ?? STATUS_MAP['aktif'];
-  const isPasif = s.status === 'pasif';
-  const lastMeetingText = s.last_meeting_at
-    ? new Date(s.last_meeting_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })
-    : 'Henüz görüşme yok';
-
-  return (
-    <Link
-      href={`/gorusmeler/${s.id}`}
-      className={`group flex items-center gap-3.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 transition-colors hover:border-[var(--accent)]/40 hover:bg-[var(--paper)] ${isPasif ? 'opacity-60' : ''}`}
-    >
-      <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-medium ${avatarClass}`}>
-        {initials}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[14px] font-medium text-[var(--ink)]">{s.full_name}</div>
-        <div className="mt-0.5 flex items-center gap-2 text-[12px]">
-          <span className={`font-medium ${trackColor(s.track)}`}>{TRACK_LABELS[s.track] ?? s.track}</span>
-          {s.sinif_sube && (
-            <>
-              <span className="text-[var(--border)]">•</span>
-              <span className="text-[var(--ink-muted)]">{s.sinif_sube}</span>
-            </>
-          )}
-          <span className="text-[var(--border)]">•</span>
-          <span className={s.last_meeting_at ? 'text-[var(--ink-muted)]' : 'text-[var(--danger)]'}>
-            Son görüşme: {lastMeetingText}
-          </span>
-        </div>
-      </div>
-
-      {s.is_intern_student && (
-        <span className="hidden flex-shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 sm:inline-block">
-          Stajyer{s.responsible_coach_other_name ? `: ${s.responsible_coach_other_name}` : ''}
-        </span>
-      )}
-
-      <span className={`hidden flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium sm:inline-block ${status.className}`}>
-        {status.label}
-      </span>
-
-      <IconChevronRight
-        size={16}
-        className="flex-shrink-0 text-[var(--ink-muted)] opacity-0 transition-opacity group-hover:opacity-100"
-      />
-    </Link>
   );
 }

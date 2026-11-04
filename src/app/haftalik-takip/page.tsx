@@ -4,10 +4,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { IconTrash, IconPlus, IconDownload, IconPrinter, IconCopy, IconX, IconEdit, IconDeviceFloppy, IconChecklist } from '@tabler/icons-react';
+import { IconTrash, IconPlus, IconDownload, IconPrinter, IconCopy, IconX, IconEdit, IconDeviceFloppy, IconChecklist, IconCalendarShare } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 import { PageHero } from '@/components/ui/PageHero';
+import { programDays, programLength, addDays, weekdayOf, shortDate, DAY_NAMES } from '@/lib/program-days';
 
 const DAYS_TR = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -82,10 +83,12 @@ function getWeekEndFromStart(dateStr: string) {
   return addDaysToDateStr(dateStr, 6);
 }
 
-function getNextBlankProgramStartFromOptions(options: ProgramOption[], weekStartDay: number) {
-  const taken = new Set(options.map((p) => p.weekStart));
+const rangesOverlap = (aStart: string, aEnd: string, bStart: string, bEnd: string) => aStart <= bEnd && bStart <= aEnd;
+
+/** Öğrencinin hafta başlangıç gününe göre, mevcut programlarla tarih çakışmayan ilk hafta */
+function getNextBlankProgramStartFromOptions(options: ProgramOption[], weekStartDay: number, length = 7) {
   let candidate = toDateStr(getWeekStartDate(weekStartDay));
-  while (taken.has(candidate)) {
+  while (options.some((p) => rangesOverlap(candidate, addDaysToDateStr(candidate, length - 1), p.weekStart, p.weekEnd))) {
     candidate = addDaysToDateStr(candidate, 7);
   }
   return candidate;
@@ -219,6 +222,11 @@ export default function HaftalikTakipPage() {
   const [activeProgramWeek, setActiveProgramWeek] = useState('');
   const [programPromptWeek, setProgramPromptWeek] = useState('');
   const [creatingProgram, setCreatingProgram] = useState(false);
+  const [rangeBusy, setRangeBusy] = useState(false);
+
+  // Programı sonraki haftalara aktarma (seçilen her haftaya bir kopya)
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferSel, setTransferSel] = useState<string[]>([]);
 
   // Programı başka öğrenciye kopyalama
   const [copyOpen, setCopyOpen] = useState(false);
@@ -406,21 +414,39 @@ export default function HaftalikTakipPage() {
     setProgramPromptWeek(value);
   }
 
-  async function rebuildProgramFromCurrent() {
-    if (!selectedStudentId || logs.length === 0) return;
+  /** Mevcut programın 1–6 hafta sonrası; aynı günlerde başlar, aynı uzunlukta olur */
+  function transferOptions() {
+    if (!weekStart) return [];
+    const len = programLength(weekStart, weekEnd);
+    return [1, 2, 3, 4, 5, 6].map((k) => {
+      const start = addDays(weekStart, 7 * k);
+      const end = addDays(start, len - 1);
+      const taken = programOptions.some((p) => rangesOverlap(start, end, p.weekStart, p.weekEnd));
+      return { k, start, end, taken };
+    });
+  }
+
+  function openTransfer() {
+    setFormError('');
+    const first = transferOptions().find((o) => !o.taken);
+    setTransferSel(first ? [first.start] : []);
+    setTransferOpen(true);
+  }
+
+  async function transferProgram() {
+    const opts = transferOptions().filter((o) => transferSel.includes(o.start) && !o.taken);
+    if (!selectedStudentId || logs.length === 0 || opts.length === 0) return;
     setCreatingProgram(true);
     setFormError('');
     const { data: { user } } = await supabase.auth.getUser();
-    const nextWeekStart = getNextBlankProgramStart();
-    const nextWeekEnd = getWeekEndFromStart(nextWeekStart);
-    const rows = logs.filter((log) => !log.appointment_id).map((log) => ({
+    const rows = opts.flatMap((o) => logs.filter((log) => !log.appointment_id).map((log) => ({
       student_id: selectedStudentId,
       coach_id: user?.id,
       subject: log.subject,
       resource_name: log.resource_name,
       topic: log.topic,
-      week_start: nextWeekStart,
-      week_end: nextWeekEnd,
+      week_start: o.start,
+      week_end: o.end,
       plan_day: log.plan_day,
       start_time: log.start_time,
       end_time: log.end_time,
@@ -428,19 +454,59 @@ export default function HaftalikTakipPage() {
       done_count: 0,
       topic_target_minutes: log.topic_target_minutes,
       topic_done_minutes: 0,
-    }));
-    const { data, error } = await (supabase as any).from('question_logs').insert(rows).select();
+    })));
+    const { error } = await (supabase as any).from('question_logs').insert(rows);
     setCreatingProgram(false);
     if (error) {
       setFormError(weeklyPlanErrorMessage(error));
+      setTransferOpen(false);
       return;
     }
-    setWeekStart(nextWeekStart);
-    rememberWeek(selectedStudentId, nextWeekStart);
-    setWeekEnd(nextWeekEnd);
-    setLogs(data ?? []);
-    setActiveProgramWeek(nextWeekStart);
+    // İlk aktarılan hafta açılır; diğerleri program listesinde
+    const first = opts[0];
+    setTransferOpen(false);
+    setLogs([]);
+    setWeekStart(first.start);
+    rememberWeek(selectedStudentId, first.start);
+    setWeekEnd(first.end);
+    setActiveProgramWeek(first.start);
     setProgramPromptWeek('');
+    await loadProgramOptions(selectedStudentId);
+  }
+
+  /** Programın başlangıç tarihini ve gün sayısını değiştirir; görevler varsa hepsi yeni tarihlere taşınır */
+  async function changeProgramRange(newStart: string, len: number) {
+    if (!selectedStudentId || !weekStart || !newStart || rangeBusy) return;
+    const newEnd = addDays(newStart, len - 1);
+    if (newStart === weekStart && newEnd === weekEnd) return;
+    setFormError('');
+    if (newStart !== weekStart && programOptions.some((p) => p.weekStart === newStart)) {
+      setFormError(`${fmtDate(newStart)} tarihinde başlayan başka bir program var. Yukarıdaki program listesinden açabilirsiniz.`);
+      return;
+    }
+    const allowed = new Set(Array.from({ length: len }, (_, k) => weekdayOf(addDays(newStart, k))));
+    const outside = logs.filter((l) => typeof l.plan_day === 'number' && !allowed.has(l.plan_day));
+    if (outside.length > 0) {
+      const names = Array.from(new Set(outside.map((l) => DAY_NAMES[l.plan_day]))).join(', ');
+      setFormError(`${names} günündeki ${outside.length} görev yeni tarihlerin dışında kalıyor. Önce bu görevleri programdaki başka bir güne taşıyın ya da silin.`);
+      return;
+    }
+    if (logs.length > 0) {
+      setRangeBusy(true);
+      const { error } = await (supabase as any).from('question_logs')
+        .update({ week_start: newStart, week_end: newEnd })
+        .eq('student_id', selectedStudentId).eq('week_start', weekStart);
+      setRangeBusy(false);
+      if (error) { setFormError(weeklyPlanErrorMessage(error)); return; }
+      setLogs((prev) => prev.map((l) => ({ ...l, week_start: newStart, week_end: newEnd })));
+      setActiveProgramWeek(newStart);
+    }
+    setWeekStart(newStart);
+    setWeekEnd(newEnd);
+    rememberWeek(selectedStudentId, newStart);
+    // Öğrencinin sonraki programları da bu günden başlasın (ör. Perşembe görüşmesi → Perşembe–Çarşamba)
+    const wd = weekdayOf(newStart);
+    if ((selectedStudent?.week_start_day ?? 0) !== wd) await updateWeekStartDay(wd);
     await loadProgramOptions(selectedStudentId);
   }
 
@@ -735,7 +801,7 @@ export default function HaftalikTakipPage() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: existing, error: existingError } = await (supabase as any)
       .from('question_logs')
-      .select('week_start')
+      .select('week_start, week_end')
       .eq('student_id', copyTargetId)
       .is('appointment_id', null);
     if (existingError) {
@@ -744,10 +810,12 @@ export default function HaftalikTakipPage() {
       return;
     }
 
-    const taken = Array.from(new Set<string>((existing ?? []).map((r: any) => r.week_start).filter(Boolean)));
-    const options: ProgramOption[] = taken.map((ws) => ({ weekStart: ws, weekEnd: getWeekEndFromStart(ws), count: 0 }));
-    const nextWeekStart = getNextBlankProgramStartFromOptions(options, target.week_start_day ?? 0);
-    const nextWeekEnd = getWeekEndFromStart(nextWeekStart);
+    const byStart = new Map<string, string>();
+    for (const r of existing ?? []) if (r.week_start) byStart.set(r.week_start, r.week_end || getWeekEndFromStart(r.week_start));
+    const options: ProgramOption[] = Array.from(byStart, ([ws, we]) => ({ weekStart: ws, weekEnd: we, count: 0 }));
+    const len = programLength(weekStart, weekEnd);
+    const nextWeekStart = getNextBlankProgramStartFromOptions(options, target.week_start_day ?? 0, len);
+    const nextWeekEnd = addDays(nextWeekStart, len - 1);
 
     const rows = logs.filter((log) => !log.appointment_id).map((log) => ({
       student_id: copyTargetId,
@@ -820,8 +888,16 @@ export default function HaftalikTakipPage() {
   });
   const plannedLogsByDay = DAYS_TR.map((_, i) => sortedLogs.filter((l) => l.plan_day === i));
   const unscheduledLogs = sortedLogs.filter((l) => typeof l.plan_day !== 'number');
+  // Programın günleri başlangıç gününden itibaren (ör. Perşembe → Çarşamba); 1–7 gün
+  const days = programDays(weekStart, weekEnd, logs);
+  const programLen = weekStart ? programLength(weekStart, weekEnd) : 7;
+  const shownMobileDay = days.some((d) => d.weekday === mobileDay) ? mobileDay : days[0]?.weekday ?? 0;
   // +1: her günün son görevinin altında "Görev ekle" kutusuna yer kalsın
-  const rowCount = Math.max(3, ...plannedLogsByDay.map((l) => l.length + 1));
+  const rowCount = Math.max(3, ...days.map((d) => plannedLogsByDay[d.weekday].length + 1));
+  // Aynı tarihlere denk gelen başka program (öğrenci çakışan günlerde en son başlayan programı görür)
+  const overlapping = weekStart && weekEnd
+    ? programOptions.filter((p) => p.weekStart !== weekStart && rangesOverlap(weekStart, weekEnd, p.weekStart, p.weekEnd))
+    : [];
 
   function renderLogCard(log: any) {
     const pct = log.target_count > 0 ? Math.round((log.done_count / log.target_count) * 100) : 0;
@@ -855,7 +931,7 @@ export default function HaftalikTakipPage() {
           <input value={editDraft.topic} onChange={(e) => setEditDraft((d) => ({ ...d, topic: e.target.value }))} placeholder="Konu" className={inputCls} />
           <div className="grid grid-cols-2 gap-1.5">
             <select value={editDraft.planDay} onChange={(e) => setEditDraft((d) => ({ ...d, planDay: e.target.value }))} className={inputCls}>
-              {DAYS_TR.map((day, i) => <option key={day} value={i}>{day}</option>)}
+              {days.map((d) => <option key={d.weekday} value={d.weekday}>{d.label}{d.date ? ` (${shortDate(d.date)})` : ''}</option>)}
             </select>
             <input type="number" value={editDraft.target} onChange={(e) => setEditDraft((d) => ({ ...d, target: e.target.value }))} placeholder="Soru" className={inputCls} />
           </div>
@@ -1030,10 +1106,10 @@ export default function HaftalikTakipPage() {
         <div>
           <p className="mb-1 text-[10px] text-[var(--ink-muted)]">Şu günlere ekle:</p>
           <div className="flex flex-wrap gap-1">
-            {DAYS_SHORT.map((d, i) => (
+            {days.map(({ weekday: i }) => (
               <button
                 type="button"
-                key={d}
+                key={i}
                 onClick={() => toggleDraftDay(i)}
                 className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                   draft.days.includes(i)
@@ -1041,7 +1117,7 @@ export default function HaftalikTakipPage() {
                     : 'border border-[var(--border)] bg-[var(--card)] text-[var(--ink-muted)]'
                 }`}
               >
-                {d}
+                {DAYS_SHORT[i]}
               </button>
             ))}
           </div>
@@ -1074,7 +1150,7 @@ export default function HaftalikTakipPage() {
           .no-print { display: none !important; }
           .print-only { display: flex !important; }
           .print-root { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-          .print-board { min-width: 0 !important; gap: 4px !important; grid-template-columns: repeat(7, minmax(0, 1fr)) !important; }
+          .print-board { min-width: 0 !important; gap: 4px !important; grid-template-columns: repeat(var(--cols, 7), minmax(0, 1fr)) !important; }
           .print-board > .day-cell { display: flex !important; }
           .day-cell { background: white !important; border-left: 1px solid #999; border-right: 1px solid #999; }
           .day-head { background: #eee !important; }
@@ -1125,6 +1201,14 @@ export default function HaftalikTakipPage() {
           )}
           {logs.length > 0 && (
             <button
+              onClick={openTransfer}
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
+            >
+              <IconCalendarShare size={13} /> Sonraki haftalara aktar
+            </button>
+          )}
+          {logs.length > 0 && (
+            <button
               onClick={openCopyModal}
               className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
             >
@@ -1140,6 +1224,54 @@ export default function HaftalikTakipPage() {
         </h1>
         {weekLabel && <p className="text-[13px] text-gray-600">{weekLabel}</p>}
       </div>
+
+      {transferOpen && (
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !creatingProgram && setTransferOpen(false)}>
+          <div className="w-full max-w-md space-y-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-[14px] font-semibold text-[var(--ink)]">Programı sonraki haftalara aktar</h2>
+              <button onClick={() => setTransferOpen(false)} className="text-[var(--ink-muted)] hover:text-[var(--ink)]">
+                <IconX size={16} />
+              </button>
+            </div>
+            <p className="text-[12px] text-[var(--ink-muted)]">
+              {weekLabel} programındaki görevler seçtiğiniz haftalara aynı gün ve saatlerle kopyalanır. Yapılan soru ve süre bilgileri sıfırlanır.
+            </p>
+            <div className="space-y-1.5">
+              {transferOptions().map((o) => {
+                const on = transferSel.includes(o.start);
+                return (
+                  <label key={o.start}
+                    className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-[13px] ${o.taken
+                      ? 'cursor-not-allowed border-[var(--border)] bg-[var(--paper)] text-[var(--ink-muted)]'
+                      : on ? 'cursor-pointer border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--ink)]' : 'cursor-pointer border-[var(--border)] text-[var(--ink)] hover:bg-[var(--paper)]'}`}>
+                    <input type="checkbox" disabled={o.taken} checked={on}
+                      onChange={() => setTransferSel((p) => (p.includes(o.start) ? p.filter((x) => x !== o.start) : [...p, o.start]))}
+                      className="h-4 w-4 accent-[var(--accent)]" />
+                    <span className="flex-1">
+                      <span className="font-semibold">{o.k === 1 ? 'Bir sonraki hafta' : `${o.k} hafta sonra`}</span>
+                      <span className="ml-1.5 text-[var(--ink-muted)]">{fmtDate(o.start)} – {fmtDate(o.end)}</span>
+                    </span>
+                    {o.taken && <span className="text-[11px] font-medium">Bu tarihlerde program var</span>}
+                  </label>
+                );
+              })}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setTransferOpen(false)} disabled={creatingProgram} className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink)] hover:bg-[var(--paper)]">
+                İptal
+              </button>
+              <button
+                onClick={transferProgram}
+                disabled={creatingProgram || transferSel.length === 0}
+                className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-60"
+              >
+                {creatingProgram ? 'Aktarılıyor...' : transferSel.length > 1 ? `${transferSel.length} haftaya aktar` : 'Aktar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {copyOpen && (
         <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !copying && setCopyOpen(false)}>
@@ -1168,7 +1300,7 @@ export default function HaftalikTakipPage() {
             ) : (
               <>
                 <p className="text-[12px] text-[var(--ink-muted)]">
-                  {selectedStudent?.full_name} öğrencisinin {weekLabel} haftasındaki {logs.length} görevi, seçtiğiniz öğrencinin ilk boş haftasına kopyalanır. Yapılan soru ve süre bilgileri sıfırlanır.
+                  {selectedStudent?.full_name} öğrencisinin {weekLabel} haftasındaki {logs.length} görevi, seçtiğiniz öğrencinin ilk boş haftasına aynı gün sayısıyla kopyalanır. Yapılan soru ve süre bilgileri sıfırlanır.
                 </p>
                 <select
                   value={copyTargetId}
@@ -1268,72 +1400,98 @@ export default function HaftalikTakipPage() {
                 <div className="no-print flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-2">
                   <div>
                     <p className="text-[12px] font-semibold text-[var(--ink)]">Seçilen program yüklendi.</p>
-                    <p className="text-[11px] text-[var(--ink-muted)]">Bu kaydı doğrudan düzenleyebilir veya aynı planı yeni bir programa kopyalayabilirsiniz.</p>
+                    <p className="text-[11px] text-[var(--ink-muted)]">Bu programı sonraki haftalara aktarabilir veya bu programı düzenlemeye devam edebilirsiniz.</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={openTransfer}
+                      disabled={creatingProgram || logs.length === 0}
+                      className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-60"
+                    >
+                      Programı Sonraki Haftalara Aktar
+                    </button>
                     <button
                       onClick={() => setProgramPromptWeek('')}
                       className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] font-semibold text-[var(--ink)] hover:bg-[var(--paper)]"
                     >
-                      Programı Düzenle
-                    </button>
-                    <button
-                      onClick={rebuildProgramFromCurrent}
-                      disabled={creatingProgram || logs.length === 0}
-                      className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-60"
-                    >
-                      {creatingProgram ? 'Hazırlanıyor...' : 'Yeniden Yap'}
+                      Bu Programı Düzenlemeye Devam Et
                     </button>
                   </div>
                 </div>
               )}
 
-              <div className="no-print flex items-center gap-3">
-                <span className="flex-shrink-0 text-[12px] text-[var(--ink-muted)]">
-                  Hafta başlangıcı <span className="text-[10px]">(değiştirmek için çift tıkla)</span>:
-                </span>
-                <div className="flex flex-wrap gap-1">
-                  {DAYS_SHORT.map((d, i) => (
-                    <button
-                      key={d}
-                      onDoubleClick={() => updateWeekStartDay(i)}
-                      title="Değiştirmek için çift tıklayın"
-                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
-                        (selectedStudent?.week_start_day ?? 0) === i
+              <div className="no-print flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg bg-[var(--paper)] px-3 py-2">
+                <label className="flex items-center gap-2 text-[12px] text-[var(--ink-muted)]">
+                  Program başlangıcı
+                  <input
+                    type="date"
+                    value={weekStart}
+                    disabled={rangeBusy}
+                    onChange={(e) => changeProgramRange(e.target.value, programLen)}
+                    className="rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[12.5px] font-semibold text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+                  />
+                </label>
+                <div className="flex items-center gap-2 text-[12px] text-[var(--ink-muted)]">
+                  Kaç gün
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        disabled={rangeBusy}
+                        onClick={() => changeProgramRange(weekStart, n)}
+                        className={`h-7 w-7 rounded-full text-[12px] font-semibold transition-colors ${programLen === n
                           ? 'bg-[var(--accent)] text-white'
-                          : 'bg-[var(--paper)] text-[var(--ink-muted)] hover:bg-[var(--border)]'
-                      }`}
-                    >
-                      {d}
-                    </button>
-                  ))}
+                          : 'bg-[var(--card)] text-[var(--ink-muted)] hover:bg-[var(--border)]'}`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+                {weekStart && weekEnd && (
+                  <span className="text-[12px] font-semibold text-[var(--ink)]">
+                    {DAY_NAMES[weekdayOf(weekStart)]} {fmtDate(weekStart)} → {DAY_NAMES[weekdayOf(weekEnd)]} {fmtDate(weekEnd)}
+                  </span>
+                )}
                 {subjects.length === 0 && (
                   <span className="text-[12px] text-[var(--danger)]">Bu öğrencinin türüne ait ders/kaynak bulunamadı.</span>
                 )}
               </div>
+              {overlapping.length > 0 && (
+                <p className="no-print rounded-md bg-amber-50 px-3 py-1.5 text-[12px] text-amber-800">
+                  Bu tarihler {overlapping.map((p) => `${fmtDate(p.weekStart)} – ${fmtDate(p.weekEnd)}`).join(', ')} programıyla çakışıyor.
+                  Çakışan günlerde öğrenci en son başlayan programı görür.
+                </p>
+              )}
 
               {/* 7 günlük tek ekran pano (satır bazlı ızgara: her günün n. görevi aynı satırda) */}
               {/* Telefonda gün seçici */}
               <div className="no-print flex gap-1 overflow-x-auto md:hidden">
-                {DAYS_SHORT.map((d, i) => {
+                {days.map(({ weekday: i, date }) => {
                   const n = plannedLogsByDay[i].length;
                   return (
-                    <button key={d} type="button" onClick={() => setMobileDay(i)}
-                      className={`flex min-w-[46px] flex-1 flex-col items-center rounded-xl px-1.5 py-1.5 text-[11.5px] font-medium ${mobileDay === i ? 'bg-indigo-500 text-white' : 'bg-[var(--paper)] text-[var(--ink-muted)]'}`}>
-                      {d}
-                      <span className={`text-[10.5px] ${mobileDay === i ? 'text-white/80' : ''}`}>{n} görev</span>
+                    <button key={i} type="button" onClick={() => setMobileDay(i)}
+                      className={`flex min-w-[46px] flex-1 flex-col items-center rounded-xl px-1.5 py-1.5 text-[11.5px] font-medium ${shownMobileDay === i ? 'bg-indigo-500 text-white' : 'bg-[var(--paper)] text-[var(--ink-muted)]'}`}>
+                      {DAYS_SHORT[i]}{date ? ` ${Number(date.slice(8))}` : ''}
+                      <span className={`text-[10.5px] ${shownMobileDay === i ? 'text-white/80' : ''}`}>{n} görev</span>
                     </button>
                   );
                 })}
               </div>
               <div className="overflow-x-auto pb-1 print:overflow-visible">
-                <div className="print-board grid grid-cols-1 gap-x-2 md:min-w-[1100px] md:grid-cols-7">
-                  {/* Gün başlıkları (ortalı, ayrışan renk) */}
-                  {DAYS_TR.map((day, i) => (
+                <div
+                  style={{ '--cols': days.length } as React.CSSProperties}
+                  className="print-board grid grid-cols-1 gap-x-2 md:min-w-[calc(var(--cols)*158px)] md:grid-cols-[repeat(var(--cols),minmax(0,1fr))]"
+                >
+                  {/* Gün başlıkları (ortalı, ayrışan renk): programın başlangıç gününden itibaren, tarihiyle */}
+                  {days.map(({ weekday: i, label: day, date }) => (
                     <div key={`h-${i}`} onMouseEnter={() => setHoverDay(i)}
-                      className={`day-cell day-head flex flex-col items-center justify-center gap-1 rounded-t-lg bg-[var(--accent-soft)] px-1.5 py-2 text-center ${i !== mobileDay ? 'max-md:hidden' : ''}`}>
-                      <span className="text-[13px] font-semibold text-[var(--accent-dark)]">{day}</span>
+                      className={`day-cell day-head flex flex-col items-center justify-center gap-1 rounded-t-lg bg-[var(--accent-soft)] px-1.5 py-2 text-center ${i !== shownMobileDay ? 'max-md:hidden' : ''}`}>
+                      <span className="text-[13px] font-semibold leading-tight text-[var(--accent-dark)]">
+                        {day}
+                        {date && <span className="block text-[11px] font-medium text-[var(--accent-dark)]/70">{shortDate(date)}</span>}
+                      </span>
                       {clipboardLog && (
                         <button onClick={() => pasteLog(i)} title={`${day} gününe yapıştır`}
                           className="no-print rounded-md bg-[var(--accent)] px-2 py-0.5 text-[11px] font-medium text-white">
@@ -1345,13 +1503,13 @@ export default function HaftalikTakipPage() {
 
                   {/* Görev satırları: her günün son görevinin altında "Görev ekle" kutusu / formu */}
                   {Array.from({ length: rowCount }).flatMap((_, r) =>
-                    DAYS_TR.map((_, i) => {
+                    days.map(({ weekday: i }) => {
                       const dayLogs = plannedLogsByDay[i];
                       const log = dayLogs[r];
                       const isAddSlot = r === dayLogs.length;
                       return (
                         <div key={`c-${i}-${r}`} onMouseEnter={() => setHoverDay(i)}
-                          className={`day-cell flex bg-[var(--paper)] px-1.5 pb-1.5 ${r === rowCount - 1 ? 'rounded-b-lg' : ''} ${i !== mobileDay || (!log && !isAddSlot) ? 'max-md:hidden' : ''}`}>
+                          className={`day-cell flex bg-[var(--paper)] px-1.5 pb-1.5 ${r === rowCount - 1 ? 'rounded-b-lg' : ''} ${i !== shownMobileDay || (!log && !isAddSlot) ? 'max-md:hidden' : ''}`}>
                           {log
                             ? renderLogCard(log)
                             : isAddSlot

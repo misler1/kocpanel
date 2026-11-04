@@ -4,8 +4,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-
-const DAYS_TR = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+import { programDays, shortDate, DAY_SHORT } from '@/lib/program-days';
 
 function fmt(d: string) {
   return new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
@@ -65,6 +64,8 @@ export function OgrenciProgramlari({ studentId }: { studentId: string }) {
           (a.start_time ?? '99').localeCompare(b.start_time ?? '99')
         );
         const unscheduled = sorted.filter((l) => typeof l.plan_day !== 'number');
+        // Programın başlangıç gününden itibaren, yalnızca programdaki günler
+        const days = programDays(w.weekStart, w.weekEnd, w.logs);
         return (
           <div key={w.weekStart} className="rounded-xl border border-gray-200 p-3">
             <div className="mb-3 flex items-center justify-between gap-2">
@@ -79,12 +80,17 @@ export function OgrenciProgramlari({ studentId }: { studentId: string }) {
               </Link>
             </div>
             <div className="overflow-x-auto">
-              <div className="grid grid-cols-1 gap-2 md:min-w-[760px] md:grid-cols-7">
-                {DAYS_TR.map((day, i) => {
+              <div
+                style={{ '--cols': days.length } as React.CSSProperties}
+                className="grid grid-cols-1 gap-2 md:min-w-[calc(var(--cols)*110px)] md:grid-cols-[repeat(var(--cols),minmax(0,1fr))]"
+              >
+                {days.map(({ weekday: i, date }) => {
                   const dayLogs = sorted.filter((l) => l.plan_day === i);
                   return (
-                    <div key={day} className={`rounded-lg bg-gray-50 p-2 ${dayLogs.length === 0 ? 'max-md:hidden' : ''}`}>
-                      <div className="mb-2 text-[11px] font-semibold text-gray-500">{day}</div>
+                    <div key={i} className={`rounded-lg bg-gray-50 p-2 ${dayLogs.length === 0 ? 'max-md:hidden' : ''}`}>
+                      <div className="mb-2 text-[11px] font-semibold text-gray-500">
+                        {DAY_SHORT[i]}{date && <span className="ml-1 font-normal text-gray-400">{shortDate(date)}</span>}
+                      </div>
                       <div className="flex flex-col gap-1.5">
                         {dayLogs.length === 0 ? (
                           <p className="py-3 text-center text-[11px] text-gray-300">Boş</p>

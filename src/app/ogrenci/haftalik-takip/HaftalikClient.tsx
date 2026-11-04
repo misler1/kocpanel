@@ -7,8 +7,8 @@ import { createClient } from '@/lib/supabase/client';
 import { subjectEmoji, DAY_STYLES, cheer } from '../studentUi';
 import { StudyLogSheet } from '../StudyLogSheet';
 import { logStudy, setTaskDone, todayTr, type StudyInput } from '../studyApi';
+import { programDays, shortDate } from '@/lib/program-days';
 
-const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 const STATUS_TEXT: Record<string, string> = { bekliyor: 'Koç onayı bekliyor', onaylandi: 'Onaylandı', reddedildi: 'Reddedildi' };
 const input = 'rounded-xl border-2 border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-[13px] font-semibold focus:border-[var(--accent)] focus:outline-none';
@@ -192,6 +192,8 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   const weekPct = weekLogs.length > 0 ? Math.round((doneCount / weekLogs.length) * 100) : 0;
   const isCurrentWeek = !!week && week <= today && (!currentWeekEnd || today <= currentWeekEnd);
   const todayIndex = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7;
+  // Program hangi gün başladıysa o günden itibaren (ör. Perşembe → Çarşamba); kısa programlarda yalnızca o günler
+  const weekDays = week ? programDays(week, currentWeekEnd, weekLogs) : [];
 
   return (
     <div className="space-y-4">
@@ -252,7 +254,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
           {editMode && <p className="rounded-2xl bg-[var(--sky-soft)] px-4 py-2.5 text-[13px] font-semibold text-[#1F78BD]">✏️ Düzenleme modundasın. Değişiklikler hemen uygulanmaz; koçun onaylarsa programına işlenir.</p>}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {DAYS.map((dayName, d) => {
+            {weekDays.map(({ weekday: d, label: dayName, date }) => {
               const dayLogs = weekLogs.filter((l) => l.plan_day === d);
               const dayAdded = added.filter((a) => a.plan_day === d);
               const style = DAY_STYLES[d];
@@ -267,6 +269,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                     <span className={`flex items-center gap-2 text-[15px] font-extrabold ${style.text}`}>
                       <span className="text-[18px]">{allDone ? '🏅' : style.emoji}</span>
                       {dayName}
+                      {date && <span className="text-[12px] font-bold opacity-70">{shortDate(date)}</span>}
                       {isToday && <span className={`rounded-full ${style.bar} px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white`}>Bugün</span>}
                     </span>
                     {dayLogs.length > 0 && <span className={`text-[12px] font-bold ${style.text}`}>{dayDone}/{dayLogs.length}</span>}
@@ -298,7 +301,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                             </div>
                             {!isRemoved && (
                               <div className="flex flex-wrap gap-1.5">
-                                <select value={e.plan_day ?? l.plan_day} onChange={(ev) => setEdit(l.id, { plan_day: Number(ev.target.value) })} className={input}>{DAYS_SHORT.map((n, i) => <option key={i} value={i}>{n}</option>)}</select>
+                                <select value={e.plan_day ?? l.plan_day} onChange={(ev) => setEdit(l.id, { plan_day: Number(ev.target.value) })} className={input}>{weekDays.map(({ weekday: i }) => <option key={i} value={i}>{DAYS_SHORT[i]}</option>)}</select>
                                 <input type="time" value={e.start_time !== undefined ? e.start_time ?? '' : hhmm(l.start_time)} onChange={(ev) => setEdit(l.id, { start_time: ev.target.value || null })} className={`${input} w-[6.5rem]`} />
                                 <input type="time" value={e.end_time !== undefined ? e.end_time ?? '' : hhmm(l.end_time)} onChange={(ev) => setEdit(l.id, { end_time: ev.target.value || null })} className={`${input} w-[6.5rem]`} />
                                 <input type="number" min={0} value={e.target_count ?? l.target_count ?? 0} onChange={(ev) => setEdit(l.id, { target_count: Math.max(0, Number(ev.target.value) || 0) })} className={`${input} w-20`} title="Hedef soru" />

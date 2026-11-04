@@ -43,7 +43,7 @@ export function HedefNetPanel({ studentId, rows: initialRows, targetNets }: {
   }
 
   return (
-    <Accordion icon={<IconTarget size={16} />} title="Hedef netler">
+    <Accordion theme="rose" icon={<IconTarget size={16} />} title="Hedef netler">
       <p className="mb-3 text-[12.5px] text-gray-500">
         Öğrenci hedefini kendi panelinden koyabilir; buradan siz de değiştirebilirsiniz. Hedefler öğrenci panelinde
         ve veli raporunda görünür.
