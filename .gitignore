@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Canli veritabani sema dokumu (yerel inceleme icin, commit edilmez)
+supabase/canli-sema.json
