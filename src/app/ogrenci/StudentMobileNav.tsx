@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { STUDENT_NAV } from './StudentNavItems';
+import { useUnreadConversations } from '@/lib/use-unread-conversations';
 
 export function StudentMobileNav() {
   const pathname = usePathname();
+  const unread = useUnreadConversations();
   const isActive = (href: string) => (href === '/ogrenci' ? pathname === href : pathname.startsWith(href));
 
   return (
@@ -21,8 +23,13 @@ export function StudentMobileNav() {
               active ? 'text-[var(--ink)]' : 'text-[var(--ink-muted)]'
             }`}
           >
-            <span className={`flex h-9 w-10 items-center justify-center rounded-2xl transition-all max-[360px]:w-9 ${active ? `${item.chip} -translate-y-0.5 text-white shadow-md` : ''}`}>
+            <span className={`relative flex h-9 w-10 items-center justify-center rounded-2xl transition-all max-[360px]:w-9 ${active ? `${item.chip} -translate-y-0.5 text-white shadow-md` : ''}`}>
               <Icon size={21} strokeWidth={2.2} />
+              {item.href === '/ogrenci/mesajlar' && unread > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 min-w-[18px] rounded-full bg-rose-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white ring-2 ring-white/95" aria-label={`${unread} okunmamış sohbet`}>
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
             </span>
             <span className="w-full truncate text-center">{item.label}</span>
           </Link>

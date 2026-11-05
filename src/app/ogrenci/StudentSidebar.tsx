@@ -4,10 +4,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { STUDENT_NAV } from './StudentNavItems';
+import { useUnreadConversations } from '@/lib/use-unread-conversations';
 import { dailyQuote } from './studentUi';
 
 export function StudentSidebar() {
   const pathname = usePathname();
+  const unread = useUnreadConversations();
   const isActive = (href: string) => (href === '/ogrenci' ? pathname === href : pathname.startsWith(href));
 
   return (
@@ -29,9 +31,14 @@ export function StudentSidebar() {
                 active ? 'bg-[var(--accent-soft)] text-[var(--ink)] shadow-sm' : 'text-[var(--ink-muted)] hover:translate-x-0.5 hover:bg-[var(--paper)] hover:text-[var(--ink)]'
               }`}
             >
-              <span className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
+              <span className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
                 active ? `${item.chip} text-white` : 'bg-[var(--paper)] text-[var(--ink-muted)]'}`}>
                 <Icon size={19} strokeWidth={2.2} />
+                {item.href === '/ogrenci/mesajlar' && unread > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 min-w-[18px] rounded-full bg-rose-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white ring-2 ring-white" aria-label={`${unread} okunmamış sohbet`}>
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
               </span>
               {item.label}
             </Link>

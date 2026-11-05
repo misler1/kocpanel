@@ -6,11 +6,13 @@ import { usePathname } from 'next/navigation';
 import { IconMenu2, IconX } from '@tabler/icons-react';
 import { MOBILE_NAV } from '@/lib/navigation';
 import { SidebarContent, SIDEBAR_BG } from './Sidebar';
+import { useUnreadConversations } from '@/lib/use-unread-conversations';
 
 /** Telefonda alt menü: sık kullanılan sayfalar + bütün menüyü (sayfalar, filtreler) açan "Menü" düğmesi. */
 export function MobileBottomNav({ studentCount }: { studentCount?: number }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const unread = useUnreadConversations();
 
   // Menü açıkken arkadaki sayfa kaymasın
   useEffect(() => {
@@ -42,7 +44,15 @@ export function MobileBottomNav({ studentCount }: { studentCount?: number }) {
           );
         })}
         <button type="button" onClick={() => setOpen(true)} className={itemCls(open || !inMainNav)} aria-label="Bütün menü">
-          <span className={chipCls(open || !inMainNav)}><IconMenu2 size={20} /></span>
+          <span className={`relative ${chipCls(open || !inMainNav)}`}>
+            <IconMenu2 size={20} />
+            {/* Mesajlar alt menüde yok: okunmamış sohbet sayısı Menü düğmesinde görünür */}
+            {unread > 0 && (
+              <span className="absolute -right-0.5 -top-1 min-w-[18px] rounded-full bg-rose-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white ring-2 ring-[var(--card)]">
+                {unread > 99 ? '99+' : unread}
+              </span>
+            )}
+          </span>
           <span className="w-full truncate text-center">Menü</span>
         </button>
       </nav>

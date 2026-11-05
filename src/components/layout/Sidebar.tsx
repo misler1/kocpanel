@@ -9,6 +9,7 @@ import { IconExternalLink } from '@tabler/icons-react';
 import { MAIN_NAV, TAKIP_NAV, BAGLANTI_NAV, YONETIM_NAV, HESAP_NAV } from '@/lib/navigation';
 import { ExamFilterBar } from './ExamFilterBar';
 import { useExamFilter } from '@/lib/exam-filter-context';
+import { useUnreadConversations } from '@/lib/use-unread-conversations';
 
 // Sol menünün renkli zemini; telefondaki açılır menü de aynı zemini kullanır
 export const SIDEBAR_BG = 'bg-gradient-to-b from-indigo-950 via-violet-950 to-fuchsia-950';
@@ -32,6 +33,7 @@ export function SidebarContent({ studentCount, onNavigate }: { studentCount?: nu
     });
   }, []);
   const { filteredStudentCount } = useExamFilter();
+  const unread = useUnreadConversations();
   const isActive = (href: string) => pathname === href;
 
   const groups = [
@@ -86,6 +88,11 @@ export function SidebarContent({ studentCount, onNavigate }: { studentCount?: nu
                     {item.href === '/ogrenciler' && studentCount !== undefined && (
                       <span className="ml-auto rounded-full bg-fuchsia-400/25 px-2 py-0.5 text-[11px] font-semibold text-fuchsia-100">
                         {filteredStudentCount}
+                      </span>
+                    )}
+                    {item.href === '/mesajlar' && unread > 0 && (
+                      <span className="ml-auto min-w-[20px] rounded-full bg-rose-500 px-1.5 py-0.5 text-center text-[11px] font-bold leading-none text-white" aria-label={`${unread} okunmamış sohbet`}>
+                        {unread > 99 ? '99+' : unread}
                       </span>
                     )}
                   </Link>

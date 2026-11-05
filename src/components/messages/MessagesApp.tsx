@@ -7,6 +7,7 @@ import {
   IconArrowLeft, IconSend, IconPlus, IconUsersGroup, IconSearch, IconDotsVertical, IconBan, IconX, IconCheck,
 } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
+import { markMessagesRead } from '@/lib/use-unread-conversations';
 
 type Conv = {
   id: string; kind: 'direct' | 'group'; title: string | null; other_id: string | null; other_role: string | null;
@@ -76,6 +77,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
     setMessages((msgs ?? []).reverse());
     setMembers(mem ?? []);
     await (supabase as any).rpc('mark_conversation_read', { p_conv: id });
+    markMessagesRead();
     setConvs((p) => p.map((c) => (c.id === id ? { ...c, unread: 0 } : c)));
   }, [supabase]);
 
@@ -104,7 +106,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
         const m = payload.new as Msg;
         if (m.conversation_id === activeRef.current) {
           setMessages((p) => (p.some((x) => x.id === m.id) ? p : [...p, m]));
-          if (m.sender_id !== meId) (supabase as any).rpc('mark_conversation_read', { p_conv: m.conversation_id });
+          if (m.sender_id !== meId) (supabase as any).rpc('mark_conversation_read', { p_conv: m.conversation_id }).then(markMessagesRead);
         }
         loadConvs();
       })
