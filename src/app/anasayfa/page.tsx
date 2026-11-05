@@ -31,7 +31,7 @@ export default async function AnasayfaPage() {
   const monday = mondayOf(today);
   const sunday = shiftDay(monday, 6);
 
-  const { data: profile } = await (supabase as any).from('profiles').select('full_name').eq('id', user.id).single();
+  const { data: profile } = await (supabase as any).from('profiles').select('full_name, is_admin').eq('id', user.id).single();
 
   const includeInterns = (await cookies()).get('show_interns')?.value === '1';
   const scope = await getRequestScope(user.id, includeInterns);
@@ -149,6 +149,7 @@ export default async function AnasayfaPage() {
       pendingExams={pendingExams}
       planRequests={planReqs.count ?? 0}
       registrations={regs.count ?? 0}
+      isAdmin={!!profile?.is_admin}
     />
   );
 }

@@ -23,7 +23,7 @@ export default async function OgrenciAnaSayfa() {
 
   const [
     { data: weekRows }, { data: topics }, { data: exams }, { data: rank }, { data: pendingReqs },
-    { data: dailyLogs }, { data: allTasks },
+    { data: dailyLogs }, { data: allTasks }, { data: feed },
   ] = await Promise.all([
     (supabase as any)
       .from('question_logs').select('*').eq('student_id', student.id)
@@ -40,6 +40,8 @@ export default async function OgrenciAnaSayfa() {
       .order('log_date', { ascending: false }).limit(800),
     (supabase as any)
       .from('question_logs').select('week_start, student_done, student_done_at').eq('student_id', student.id).limit(5000),
+    // Koçun paylaşımları ve pano (home_feed.sql çalıştırılmamışsa boş döner)
+    (supabase as any).rpc('student_feed'),
   ]);
 
   // Bugünü içeren en güncel hafta
@@ -82,6 +84,7 @@ export default async function OgrenciAnaSayfa() {
       targets={targetRows(student.track, student.target_nets ?? {}, examList)}
       badges={badges}
       subjects={subjects}
+      feed={feed ?? []}
     />
   );
 }

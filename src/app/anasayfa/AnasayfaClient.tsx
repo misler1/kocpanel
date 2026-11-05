@@ -5,11 +5,12 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  IconPlus, IconNotes, IconChartBar, IconCalendarOff, IconZzz, IconMessageOff, IconFileAlert,
+  IconPlus, IconNotes, IconChartBar, IconZzz, IconMessageOff, IconFileAlert,
   IconSearch, IconArrowUpRight, IconArrowDownRight, IconChevronRight, IconBell, IconCheck,
   IconCalendarWeek, IconClipboardText, IconSparkles,
 } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
+import { CoachFeedCard } from '@/components/feed/CoachFeedCard';
 import { avatarColor, initials, trackPill } from '@/lib/ui-colors';
 
 export type DashStudent = {
@@ -64,7 +65,7 @@ const THEMES = {
   violet: { card: 'from-violet-50 to-white border-violet-100', chip: 'bg-violet-500', text: 'text-violet-700', ring: 'ring-violet-400' },
 } as const;
 
-export function AnasayfaClient({ firstName, today, students, weekMeetings, pendingExams, planRequests, registrations }: {
+export function AnasayfaClient({ firstName, today, students, weekMeetings, pendingExams, planRequests, registrations, isAdmin }: {
   firstName: string;
   today: string;
   students: DashStudent[];
@@ -72,6 +73,7 @@ export function AnasayfaClient({ firstName, today, students, weekMeetings, pendi
   pendingExams: DashExam[];
   planRequests: number;
   registrations: number;
+  isAdmin: boolean;
 }) {
   const router = useRouter();
   const { matchesFilter } = useExamFilter();
@@ -159,10 +161,11 @@ export function AnasayfaClient({ firstName, today, students, weekMeetings, pendi
         </div>
       )}
 
+      {/* Öğrencilerin ana sayfasına içerik, pano duyurusu, öneriler */}
+      <CoachFeedCard isAdmin={isAdmin} inactive={counts.calismiyor} pendingExams={exams.length} total={visible.length} today={today} />
+
       {/* Dikkat kartları: tıklayınca aşağıdaki listeyi filtreler */}
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <AlertCard theme="indigo" active={filter === 'program'} onClick={() => toggle('program')}
-          icon={IconCalendarOff} count={counts.program} label="Bu hafta programı yok" hint="Programı yazılmamış öğrenciler" />
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <AlertCard theme="amber" active={filter === 'calismiyor'} onClick={() => toggle('calismiyor')}
           icon={IconZzz} count={counts.calismiyor} label={`${INACTIVE_LIMIT}+ gündür kayıt yok`} hint="Görev işaretlemeyen, çalışma girmeyen" />
         <AlertCard theme="rose" active={filter === 'gorusme'} onClick={() => toggle('gorusme')}

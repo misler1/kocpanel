@@ -12,6 +12,7 @@ import { StudyLogSheet } from './StudyLogSheet';
 import { PushToggle } from '@/components/PushToggle';
 import { logStudy, setTaskDone, type StudyInput } from './studyApi';
 import { BadgesSection, StreakCard, TargetNetCard } from './Motivation';
+import { StudentBoard, StudentContentCard, type FeedItem } from '@/components/feed/StudentFeed';
 
 function getGreeting(name: string) {
   const h = new Date().getHours();
@@ -44,12 +45,12 @@ const CONFETTI = ['🎉', '⭐', '🎊', '✨', '🌟', '💜'];
 
 export function OgrenciAnasayfaClient({
   fullName, todayLabel, todayLogs, weekTotal, weekDone, topicsDone, topicsTotal, lastExam, lastExamRank, pendingRequests,
-  streak, todayQuestions, targets, badges, subjects,
+  streak, todayQuestions, targets, badges, subjects, feed,
 }: {
   fullName: string; todayLabel: string; todayLogs: any[]; weekTotal: number; weekDone: number;
   topicsDone: number; topicsTotal: number; lastExam: any; lastExamRank: any; pendingRequests: number;
   streak: { current: number; best: number; studiedToday: boolean }; todayQuestions: number;
-  targets: TargetRow[]; badges: Badge[]; subjects: string[];
+  targets: TargetRow[]; badges: Badge[]; subjects: string[]; feed: FeedItem[];
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -153,6 +154,10 @@ export function OgrenciAnasayfaClient({
         <StreakCard current={streak.current} best={streak.best} studiedToday={streak.studiedToday} todayQuestions={todayQuestions} />
         <TargetNetCard rows={targets} />
       </div>
+
+      {/* Koçun paylaştığı içerikler ve pano duyuruları */}
+      <StudentContentCard items={feed} />
+      <StudentBoard items={feed} />
 
       {msg && <p className="rounded-2xl border-2 border-[var(--accent)]/20 bg-[var(--accent-soft)] px-4 py-2.5 text-[13px] font-bold text-[var(--accent-dark)]">💬 {msg}</p>}
 
