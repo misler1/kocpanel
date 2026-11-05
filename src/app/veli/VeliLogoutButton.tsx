@@ -3,10 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { IconLogout } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
+import { forgetPushOnThisDevice } from '@/lib/push-client';
 
 export function VeliLogoutButton() {
   const router = useRouter();
   async function logout() {
+    await forgetPushOnThisDevice();
     await createClient().auth.signOut();
     router.push('/');
     router.refresh();

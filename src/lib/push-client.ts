@@ -52,11 +52,30 @@ function base64ToBytes(base64: string) {
   return out;
 }
 
+const DEVICE_KEY = 'kd-push-device';
+
+/**
+ * Bu tarayıcının kalıcı kimliği: telefon zamanla yeni bildirim adresi alabildiği için sunucu aynı cihazın
+ * eski adreslerini bununla tanıyıp siler (yoksa eski adres önceki hesabın bildirimlerini getirmeye devam eder).
+ */
+function getDeviceId() {
+  try {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(DEVICE_KEY, id);
+    }
+    return id;
+  } catch {
+    return undefined; // depolama kapalıysa eski davranış (yalnızca adresle)
+  }
+}
+
 async function saveOnServer(sub: PushSubscription) {
   const res = await fetch('/api/push/subscription', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subscription: sub.toJSON() }),
+    body: JSON.stringify({ subscription: sub.toJSON(), deviceId: getDeviceId() }),
   });
   if (!res.ok) throw new Error('Abonelik kaydedilemedi');
 }
@@ -83,14 +102,12 @@ export async function enablePush(): Promise<PushState> {
 /** Bu cihazda bildirimleri kapatır */
 export async function disablePush(): Promise<PushState> {
   const sub = pushSupported() ? await currentSubscription() : null;
-  if (sub) {
-    await fetch('/api/push/subscription', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ endpoint: sub.endpoint }),
-    }).catch(() => undefined);
-    await sub.unsubscribe().catch(() => undefined);
-  }
+  await fetch('/api/push/subscription', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint: sub?.endpoint, deviceId: getDeviceId() }),
+  }).catch(() => undefined);
+  if (sub) await sub.unsubscribe().catch(() => undefined);
   return getPushState();
 }
 
@@ -108,11 +125,13 @@ export async function syncPush() {
 export async function forgetPushOnThisDevice() {
   try {
     const sub = pushSupported() ? await currentSubscription() : null;
-    if (!sub) return;
+    const deviceId = getDeviceId();
+    // Abonelik şu an görünmese de cihazın eski kayıtları silinsin
+    if (!sub && !deviceId) return;
     await fetch('/api/push/subscription', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ endpoint: sub.endpoint }),
+      body: JSON.stringify({ endpoint: sub?.endpoint, deviceId }),
     });
   } catch {
     // çıkış engellenmemeli

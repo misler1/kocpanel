@@ -6,6 +6,17 @@ import { getVapidKeys } from '@/lib/push-server';
 
 // Bu cihazın telefon bildirimi aboneliği. Giriş yapmış kullanıcıya bağlanır; aynı cihazda başka hesapla
 // giriş yapılırsa abonelik o hesaba geçer (endpoint tekil).
+// Tarayıcı ayrıca kalıcı bir cihaz kimliği (deviceId) gönderir: telefon yeni bildirim adresi alınca aynı cihazın
+// eski adresleri silinir; çıkışta cihazın bütün kayıtları silinir (eski adres önceki hesabın bildirimlerini getirmesin).
+// device_id sütunu supabase/push_device_id.sql ile eklenir; sütun yoksa eski davranışla devam edilir.
+
+function readDeviceId(v: unknown) {
+  return typeof v === 'string' && /^[A-Za-z0-9-]{16,64}$/.test(v) ? v : null;
+}
+
+function missingColumn(error: any) {
+  return error?.code === '42703' || error?.code === 'PGRST204';
+}
 
 async function currentUser() {
   const supabase = await createClient();
@@ -33,15 +44,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Geçersiz abonelik' }, { status: 400 });
   }
 
+  const deviceId = readDeviceId(body?.deviceId);
+
   const admin = createAdminClient() as any;
-  const { error } = await admin.from('push_subscriptions').upsert({
+  const row = {
     user_id: user.id,
     endpoint,
     p256dh: p256dh.slice(0, 200),
     auth: auth.slice(0, 100),
     user_agent: (request.headers.get('user-agent') ?? '').slice(0, 300),
     last_seen_at: new Date().toISOString(),
-  }, { onConflict: 'endpoint' });
+  };
+  let { error } = await admin.from('push_subscriptions').upsert(deviceId ? { ...row, device_id: deviceId } : row, { onConflict: 'endpoint' });
+  if (error && deviceId && missingColumn(error)) {
+    ({ error } = await admin.from('push_subscriptions').upsert(row, { onConflict: 'endpoint' }));
+  } else if (!error && deviceId) {
+    // Aynı cihazın eski bildirim adresleri (hangi hesaba bağlı olursa olsun) artık geçersiz
+    await admin.from('push_subscriptions').delete().eq('device_id', deviceId).neq('endpoint', endpoint);
+  }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
@@ -51,9 +71,12 @@ export async function DELETE(request: Request) {
   if (!user) return NextResponse.json({ error: 'Giriş gerekli' }, { status: 401 });
   const body = await request.json().catch(() => null);
   const endpoint = typeof body?.endpoint === 'string' ? body.endpoint : '';
-  if (!endpoint) return NextResponse.json({ error: 'Geçersiz istek' }, { status: 400 });
+  const deviceId = readDeviceId(body?.deviceId);
+  if (!endpoint && !deviceId) return NextResponse.json({ error: 'Geçersiz istek' }, { status: 400 });
 
   const admin = createAdminClient() as any;
-  await admin.from('push_subscriptions').delete().eq('endpoint', endpoint).eq('user_id', user.id);
+  if (endpoint) await admin.from('push_subscriptions').delete().eq('endpoint', endpoint).eq('user_id', user.id);
+  // Çıkış: bu cihazın bu hesaba bağlı bütün kayıtları (eski bildirim adresleri dahil)
+  if (deviceId) await admin.from('push_subscriptions').delete().eq('device_id', deviceId).eq('user_id', user.id);
   return NextResponse.json({ ok: true });
 }
