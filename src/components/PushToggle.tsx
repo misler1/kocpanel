@@ -2,17 +2,41 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { IconDeviceMobile, IconBellRinging, IconBellOff } from '@tabler/icons-react';
-import { disablePush, enablePush, getPushState, type PushState } from '@/lib/push-client';
+import { IconDeviceMobile, IconBellRinging, IconBellOff, IconX } from '@tabler/icons-react';
+import { disablePush, enablePush, getPushState, isAndroid, isIOS, type PushState } from '@/lib/push-client';
+
+// Zil/ana sayfa kartı "Şimdi değil" denince ya da izin penceresi kapatılınca bir süre gösterilmez
+// (Hesabım sayfasındaki ayar her zaman görünür).
+const DISMISS_KEY = 'kd-push-prompt-dismissed';
+const DISMISS_DAYS = 30;
+
+function promptDismissed() {
+  try {
+    const t = Number(localStorage.getItem(DISMISS_KEY) || 0);
+    return Date.now() - t < DISMISS_DAYS * 24 * 60 * 60 * 1000;
+  } catch {
+    return false;
+  }
+}
+
+function dismissPrompt() {
+  try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* depolama kapalı */ }
+}
 
 function usePushState() {
   const [state, setState] = useState<PushState>('loading');
+  const [dismissed, setDismissed] = useState(true);
+  const [mobile, setMobile] = useState(true);
   useEffect(() => {
     let alive = true;
+    // Tarayıcıya özgü bilgiler yalnızca istemcide okunur
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDismissed(promptDismissed());
+    setMobile(isIOS() || isAndroid());
     getPushState().then((s) => { if (alive) setState(s); });
     return () => { alive = false; };
   }, []);
-  return [state, setState] as const;
+  return { state, setState, dismissed, setDismissed, mobile };
 }
 
 /**
@@ -21,7 +45,7 @@ function usePushState() {
  * yalnızca bildirim açılabilecekken görünen, dikkat çeken kart.
  */
 export function PushToggle({ variant = 'card' }: { variant?: 'card' | 'bell' | 'banner' }) {
-  const [state, setState] = usePushState();
+  const { state, setState, dismissed, setDismissed, mobile } = usePushState();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -29,7 +53,10 @@ export function PushToggle({ variant = 'card' }: { variant?: 'card' | 'bell' | '
     setBusy(true);
     setError('');
     try {
-      setState(await enablePush());
+      const next = await enablePush();
+      setState(next);
+      // İzin penceresi kapatıldı ya da tarayıcı sessizce engelledi: kart bir süre tekrar sormasın
+      if (next !== 'on' && variant !== 'card') { dismissPrompt(); setDismissed(true); }
     } catch {
       setError('Bildirimler açılamadı, biraz sonra tekrar deneyin.');
     } finally {
@@ -45,11 +72,13 @@ export function PushToggle({ variant = 'card' }: { variant?: 'card' | 'bell' | '
 
   if (variant === 'bell' || variant === 'banner') {
     // Yalnızca açılabilecekken görünür; açılınca kaybolur
-    if (state !== 'off' && state !== 'ios-install') return null;
+    if ((state !== 'off' && state !== 'ios-install') || dismissed) return null;
     const banner = variant === 'banner';
+    const title = mobile ? 'Bildirimleri telefonuna aç' : 'Bildirimleri bu cihazda aç';
     const body = state === 'off'
-      ? 'Görevler, mesajlar ve çalışma hatırlatmaları telefonuna bildirim olarak gelsin.'
+      ? `Mesajlar ve yeni gelişmeler ${mobile ? 'telefonuna' : 'bu cihaza'} bildirim olarak gelsin.`
       : 'iPhone’da bildirim almak için önce uygulamayı ana ekrana ekle, sonra oradan aç.';
+    const later = () => { dismissPrompt(); setDismissed(true); };
     return (
       <div className={`bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white ${banner
         ? 'flex flex-col gap-3 rounded-[28px] p-4 shadow-[0_8px_24px_rgba(139,92,246,0.25)] sm:flex-row sm:items-center md:p-5'
@@ -58,10 +87,14 @@ export function PushToggle({ variant = 'card' }: { variant?: 'card' | 'bell' | '
           <span className={`flex flex-shrink-0 items-center justify-center rounded-2xl bg-white/20 ${banner ? 'h-11 w-11' : 'h-9 w-9'}`}>
             <IconBellRinging size={banner ? 22 : 19} />
           </span>
-          <span className="min-w-0">
-            <span className={`block font-extrabold leading-snug ${banner ? 'text-[16px]' : 'text-[14px]'}`}>Bildirimleri telefonuna aç</span>
+          <span className="min-w-0 flex-1">
+            <span className={`block font-extrabold leading-snug ${banner ? 'text-[16px]' : 'text-[14px]'}`}>{title}</span>
             <span className={`mt-0.5 block leading-snug text-white/90 ${banner ? 'text-[13.5px]' : 'text-[12.5px]'}`}>{body}</span>
           </span>
+          <button type="button" onClick={later} aria-label="Şimdi değil" title="Şimdi değil"
+            className="-mr-1 -mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-white/80 hover:bg-white/20 hover:text-white">
+            <IconX size={16} />
+          </button>
         </div>
         {state === 'off' ? (
           <button type="button" onClick={turnOn} disabled={busy}
