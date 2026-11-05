@@ -8,6 +8,7 @@ import {
 } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { markMessagesRead } from '@/lib/use-unread-conversations';
+import { NOTIFICATIONS_CHANGED } from '@/components/NotificationBell';
 
 type Conv = {
   id: string; kind: 'direct' | 'group'; title: string | null; other_id: string | null; other_role: string | null;
@@ -84,6 +85,17 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   // İlk yükleme: veriler sunucudan (RPC) geldiği için effect içinde çekilir
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadConvs(); }, [loadConvs]);
+
+  // Mesajlar bölümüne girmek mesaj bildirimlerini görmek sayılır: zildeki ışık söner (sohbeti açmak gerekmez)
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await (supabase as any).from('notifications').update({ read_at: new Date().toISOString() })
+        .eq('recipient_id', user.id).eq('kind', 'mesaj').is('read_at', null);
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+    })();
+  }, [supabase]);
 
   // Sayfa açıkken adres değişirse (ör. telefon bildirimine dokunuldu) o sohbete geç
   const paramConv = params.get('c');
