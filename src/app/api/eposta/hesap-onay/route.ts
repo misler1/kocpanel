@@ -8,7 +8,8 @@ import { SITE_URL } from '@/lib/site';
 // Koç/öğretmen hesabı onaylanınca veritabanı tetikleyicisi (supabase/staff_approval_welcome.sql → trg_staff_approved)
 // burayı çağırır ve "hesabınız onaylandı" e-postası Resend ile gönderilir. Oturum yoktur; istek app_settings'teki
 // ortak parolayla doğrulanır. Gövdede yalnızca profil kimliği gelir, ad/e-posta veritabanından okunur.
-// Gerekli ortam değişkeni: RESEND_API_KEY. İsteğe bağlı: EMAIL_FROM (ör. "KoçDefterim <bildirim@kocdefterim.com.tr>").
+// Gerekli ortam değişkeni: RESEND_API_KEY. İsteğe bağlı: EMAIL_FROM (ör. "KoçDefterim <bilgi@kocdefterim.com.tr>"),
+// EMAIL_REPLY_TO (varsayılan bilgi@kocdefterim.com.tr; gelen kutusu Zoho'da).
 
 function sameSecret(a: string, b: string) {
   const x = Buffer.from(a);
@@ -77,7 +78,9 @@ export async function POST(request: Request) {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: process.env.EMAIL_FROM || 'KoçDefterim <bildirim@kocdefterim.com.tr>',
+      from: process.env.EMAIL_FROM || 'KoçDefterim <bilgi@kocdefterim.com.tr>',
+      // Yanıtlar Zoho'daki bilgi@ kutusuna düşer
+      reply_to: process.env.EMAIL_REPLY_TO || 'bilgi@kocdefterim.com.tr',
       to: [email],
       subject: 'KoçDefterim hesabınız onaylandı',
       html,
