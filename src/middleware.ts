@@ -59,6 +59,8 @@ export async function middleware(request: NextRequest) {
     pathname === '/sw.js' ||
     pathname === '/offline.html' ||
     pathname === '/api/push/send' ||
+    // Hesap onay e-postası: veritabanı tetikleyicisi çağırır (aynı parolayla doğrulanır)
+    pathname === '/api/eposta/hesap-onay' ||
     /^\/google[0-9a-f]+\.html$/.test(pathname) ||
     isPublicMarketingPath(pathname);
 
