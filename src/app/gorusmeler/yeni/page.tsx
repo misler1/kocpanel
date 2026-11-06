@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -15,6 +15,45 @@ function toLocalDatetime(d: Date) {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+// ─── Taslak (kaydedilmemiş görüşme) ───────────────────────────
+// Form içeriği yazıldıkça tarayıcıya kaydedilir; sayfa kapanır ya da başka sayfaya geçilirse
+// tekrar açıldığında geri yüklenir. Yalnızca görüşme kaydedilince ya da "Taslağı sil" ile silinir.
+interface MeetingDraft {
+  v: 1;
+  savedAt: number;
+  openedAt: number;
+  studentId: string;
+  meetingType: 'ogrenci' | 'veli';
+  createdBy: string;
+  createdByOtherName: string;
+  scheduledAt: string;
+  duration: number;
+  durationEditedManually: boolean;
+  topic: string;
+  notes: string;
+  haftalikTakipGetirdi: 'evet' | 'hayir' | '';
+}
+const draftKey = (userId: string, lockedStudentId: string) => `gorusme-taslak:${userId}:${lockedStudentId || 'genel'}`;
+function readDraft(key: string): MeetingDraft | null {
+  try {
+    const raw = localStorage.getItem(key);
+    const d = raw ? (JSON.parse(raw) as MeetingDraft) : null;
+    return d && d.v === 1 ? d : null;
+  } catch {
+    return null;
+  }
+}
+function writeDraft(key: string, d: MeetingDraft) {
+  try { localStorage.setItem(key, JSON.stringify(d)); } catch { /* depolama kapalı */ }
+}
+function removeDraft(key: string) {
+  try { localStorage.removeItem(key); } catch { /* depolama kapalı */ }
+}
+// Notlar zengin metin (HTML) olabilir: boş paragraf / etiketler içerik sayılmaz
+const hasText = (s: string) => s.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length > 0;
+// Taslak bu süreden eskiyse süre sayacı kaldığı yerden devam etmez, kaydedilen süre korunur
+const DURATION_RESUME_MS = 3 * 60 * 60 * 1000;
 
 function YeniGorusmeForm() {
   const router = useRouter();
@@ -32,7 +71,7 @@ function YeniGorusmeForm() {
   const [meetingType, setMeetingType] = useState<'ogrenci' | 'veli'>('ogrenci');
   const [createdBy, setCreatedBy] = useState('');
   const [createdByOtherName, setCreatedByOtherName] = useState('');
-  const [formOpenedAt] = useState(() => new Date());
+  const [formOpenedAt, setFormOpenedAt] = useState(() => new Date());
   const [scheduledAt, setScheduledAt] = useState(() => toLocalDatetime(formOpenedAt));
   const [duration, setDuration] = useState(1);
   const [durationEditedManually, setDurationEditedManually] = useState(false);
@@ -41,6 +80,72 @@ function YeniGorusmeForm() {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Taslak: anahtar kullanıcı bilgisi gelince belirlenir; geri yükleme bitmeden kayıt yapılmaz
+  const [draftStorageKey, setDraftStorageKey] = useState<string | null>(null);
+  const [restoredDraftAt, setRestoredDraftAt] = useState<number | null>(null);
+  const submittedRef = useRef(false);
+
+  function applyDraft(d: MeetingDraft, studentOk: boolean) {
+    if (studentOk && d.studentId) setStudentId(d.studentId);
+    setMeetingType(d.meetingType);
+    if (d.createdBy) setCreatedBy(d.createdBy);
+    setCreatedByOtherName(d.createdByOtherName ?? '');
+    if (d.scheduledAt) setScheduledAt(d.scheduledAt);
+    setTopic(d.topic ?? '');
+    setNotes(d.notes ?? '');
+    setHaftalikTakipGetirdi(d.haftalikTakipGetirdi ?? '');
+    if (d.durationEditedManually || Date.now() - d.openedAt > DURATION_RESUME_MS) {
+      setDuration(d.duration);
+      setDurationEditedManually(true);
+    } else {
+      setFormOpenedAt(new Date(d.openedAt)); // süre sayacı ilk açılıştan devam eder
+    }
+    setRestoredDraftAt(d.savedAt);
+  }
+
+  const hasContent = hasText(notes) || topic.trim() !== '' || createdByOtherName.trim() !== '';
+
+  // Yazıldıkça taslağı kaydet (kısa gecikmeyle)
+  useEffect(() => {
+    if (!draftStorageKey || submittedRef.current) return;
+    const t = setTimeout(() => {
+      if (submittedRef.current) return;
+      if (!hasContent) { removeDraft(draftStorageKey); return; }
+      writeDraft(draftStorageKey, {
+        v: 1, savedAt: Date.now(), openedAt: formOpenedAt.getTime(), studentId, meetingType, createdBy,
+        createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi,
+      });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [draftStorageKey, hasContent, formOpenedAt, studentId, meetingType, createdBy, createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi]);
+
+  // Kaydedilmemiş not varken sekme/pencere kapatılırken tarayıcı uyarısı
+  useEffect(() => {
+    if (!hasContent) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (submittedRef.current) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [hasContent]);
+
+  function discardDraft() {
+    if (!confirm('Kaydedilmemiş görüşme taslağı silinsin mi?')) return;
+    if (draftStorageKey) removeDraft(draftStorageKey);
+    const now = new Date();
+    setTopic('');
+    setNotes('');
+    setCreatedByOtherName('');
+    setHaftalikTakipGetirdi('');
+    setMeetingType('ogrenci');
+    setFormOpenedAt(now);
+    setScheduledAt(toLocalDatetime(now));
+    setDuration(1);
+    setDurationEditedManually(false);
+    setRestoredDraftAt(null);
+  }
 
 // Form açıldığından beri geçen süreyi otomatik hesaplar (elle değiştirilirse durur)
 useEffect(() => {
@@ -116,6 +221,18 @@ useEffect(() => {
           setSelectedKurum(data.kurum ?? null);
           setStudentId(data.id);
         }
+        const key = draftKey(user.id, lockedStudentId);
+        let d = readDraft(key);
+        // Genel "Görüşme ekle" sayfasında bu öğrenci için başlanmış taslak varsa buraya taşınır
+        const generalKey = draftKey(user.id, '');
+        const g = d ? null : readDraft(generalKey);
+        if (g && g.studentId === lockedStudentId) {
+          d = g;
+          writeDraft(key, g);
+          removeDraft(generalKey);
+        }
+        if (d) applyDraft(d, false);
+        setDraftStorageKey(key);
         return;
       }
 
@@ -135,6 +252,14 @@ useEffect(() => {
         setStudentId(data[0].id);
         setSelectedKurum(data[0].kurum ?? null);
       }
+      const key = draftKey(user.id, '');
+      const d = readDraft(key);
+      if (d) {
+        const st = (data ?? []).find((x: { id: string }) => x.id === d.studentId);
+        applyDraft(d, !!st);
+        if (st) setSelectedKurum(st.kurum ?? null);
+      }
+      setDraftStorageKey(key);
     }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,6 +289,8 @@ useEffect(() => {
     });
 
     if (err) { setError(err.message); setLoading(false); return; }
+    submittedRef.current = true;
+    if (draftStorageKey) removeDraft(draftStorageKey);
     router.push(`/gorusmeler/${studentId}`);
     router.refresh();
   }
@@ -179,6 +306,18 @@ useEffect(() => {
         </Link>
         <h1 className="text-[18px] font-medium text-gray-900">Görüşme ekle</h1>
       </div>
+
+      {restoredDraftAt && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
+          <span>
+            Kaydedilmemiş görüşme taslağın geri yüklendi
+            {' '}({new Date(restoredDraftAt).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}).
+          </span>
+          <button type="button" onClick={discardDraft} className="font-medium text-amber-800 underline hover:text-amber-950">
+            Taslağı sil
+          </button>
+        </div>
+      )}
 
       <div className="rounded-xl border border-gray-200 bg-white px-5 py-6">
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -293,6 +432,9 @@ useEffect(() => {
               rows={4}
               placeholder="Görüşme notları..."
             />
+            {draftStorageKey && hasContent && (
+              <p className="mt-1 text-[11px] text-gray-400">Taslak otomatik kaydediliyor; sayfa kapansa da notların kaybolmaz.</p>
+            )}
           </div>
 
           {showHaftalikTakip && (
