@@ -9,6 +9,7 @@ import { VeliErisimPanel } from './VeliErisimPanel';
 import { HedefNetPanel } from './HedefNetPanel';
 import { HatirlatmaPanel } from './HatirlatmaPanel';
 import { shiftDay, targetRows, trDate } from '@/lib/student-motivation';
+import { getStaffAccess } from '@/lib/staff-access';
 
 const daysBetween = (from: string, to: string) =>
   Math.round((new Date(`${to}T12:00:00Z`).getTime() - new Date(`${from}T12:00:00Z`).getTime()) / 86_400_000);
@@ -23,8 +24,12 @@ export default async function OgrenciDetayPage({ params, searchParams }: {
   const user = await getRequestUser();
   if (!user) redirect('/giris');
 
-  const { data: rawStudent } = await supabase
-    .from('students').select('*').eq('id', id).eq('coach_id', user.id).single();
+  // Kurum personeli (yurt yöneticisi/belletmen) koçun öğrencisini görür; hangi öğrenciler olduğunu veritabanı izni belirler
+  const access = await getStaffAccess(supabase, user.id);
+  const isScopedStaff = access.kind === 'manager' || access.kind === 'belletmen';
+  let studentQuery = supabase.from('students').select('*').eq('id', id);
+  if (!isScopedStaff) studentQuery = studentQuery.eq('coach_id', user.id);
+  const { data: rawStudent } = await studentQuery.single();
 
   const student = rawStudent as any;
   if (!student) notFound();
@@ -93,16 +98,17 @@ export default async function OgrenciDetayPage({ params, searchParams }: {
         tasks={(rawTasks as any[]) ?? []}
         stats={stats}
         initialTab={sekme}
+        access={access.kind}
         headerExtra={student.status === 'pasif' ? <OgrenciArsivdenCikarButton studentId={id} /> : null}
         hedefPanel={<HedefNetPanel studentId={id} rows={targets} targetNets={student.target_nets ?? null} />}
-        settingsPanels={
+        settingsPanels={isScopedStaff ? null : (
           <>
             <HatirlatmaPanel studentId={id} coachId={user.id} times={student.reminder_times ?? []}
               days={student.reminder_days ?? [0, 1, 2, 3, 4, 5, 6]} hasAccount={!!student.profile_id}
               pushOn={((pushRes as any).count ?? 0) > 0} />
             <VeliErisimPanel student={student} />
           </>
-        }
+        )}
       />
     </div>
   );

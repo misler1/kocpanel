@@ -69,6 +69,7 @@ const profile = profileData as { is_admin: boolean } | null;
       items: [
         { label: 'Öğrenci listesi', desc: 'Tüm öğrencileri yönet', icon: IconUsers, href: '/ogrenciler' },
         { label: 'Dönem yönetimi', desc: 'Yeni dönem aç, öğrencileri taşı', icon: IconCalendar, href: '/ayarlar/donemler' },
+        ...(isAdmin ? [{ label: 'Kurum personeli', desc: 'Yurt yöneticisi ve belletmen hesabı aç', icon: IconShield, href: '/ayarlar/personel' }] : []),
       ],
     },
     {

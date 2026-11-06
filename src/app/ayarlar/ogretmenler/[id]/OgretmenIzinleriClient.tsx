@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { IconArrowLeft, IconChevronDown, IconChevronRight, IconDeviceFloppy } from '@tabler/icons-react';
 
-type TeacherStatus = 'coach' | 'intern' | 'dorm_supervisor';
-type PermissionPage = 'student_info' | 'exams' | 'topic_progress' | 'weekly_tracking' | 'meetings' | 'tasks';
+type TeacherStatus = 'coach' | 'intern' | 'dorm_supervisor' | 'dorm_manager';
+type PermissionPage = 'student_info' | 'student_list' | 'exams' | 'topic_progress' | 'weekly_tracking' | 'meetings' | 'tasks';
 
 type Teacher = {
   id: string;
@@ -50,11 +50,13 @@ type PagePermissionRow = {
 const STATUS_OPTIONS: { value: TeacherStatus; label: string; desc: string }[] = [
   { value: 'coach', label: 'Koç Öğretmen (Bağımsız)', desc: 'Kendi öğrencilerini ve kendi sürecini yönetir.' },
   { value: 'intern', label: 'Stajyer Öğretmen', desc: 'Bağlı olduğu rehber öğretmenin verdiği kurum, sınıf/şube ve öğrenci izinleriyle çalışır.' },
-  { value: 'dorm_supervisor', label: 'Belletmen', desc: 'Kurum içi belirli alanlarda sınırlı erişimle çalışır.' },
+  { value: 'dorm_manager', label: 'Yurt yöneticisi', desc: 'Kurumdaki öğrencilerin bilgilerini, denemelerini, haftalık takibini ve konu ilerleyişini görür ve düzenler.' },
+  { value: 'dorm_supervisor', label: 'Belletmen', desc: 'Kurum içi belirli alanlarda sınırlı erişimle çalışır; denemeleri yalnızca görür.' },
 ];
 
 const PAGE_OPTIONS: { key: PermissionPage; label: string; desc: string }[] = [
   { key: 'student_info', label: 'Öğrenci bilgileri', desc: 'Öğrenci kartları ve temel bilgiler' },
+  { key: 'student_list', label: 'Öğrenci listesi', desc: 'Yalnızca ad ve sınıf (bilgiler kapalıyken listeyi görmek için)' },
   { key: 'exams', label: 'Deneme sonuçları', desc: 'Deneme listeleri ve analiz ekranları' },
   { key: 'topic_progress', label: 'Konu ilerleyişi', desc: 'Konu tamamlama ve kaynak takibi' },
   { key: 'weekly_tracking', label: 'Haftalık takip', desc: 'Haftalık çalışma/soru takip ekranları' },

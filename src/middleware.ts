@@ -104,7 +104,7 @@ export async function middleware(request: NextRequest) {
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_approved, is_admin, role')
+      .select('is_approved, is_admin, role, must_change_password')
       .eq('id', user.id)
       .single();
 
@@ -161,6 +161,16 @@ export async function middleware(request: NextRequest) {
       if (!isStudent && !isParent && (pathname === '/ogrenci' || pathname.startsWith('/ogrenci/'))) {
         const url = request.nextUrl.clone();
         url.pathname = '/anasayfa';
+        return NextResponse.redirect(url);
+      }
+
+      // Telefonla açılan personel hesabı: ilk girişte şifre değiştirme ve e-posta adımı (/hesap-kurulumu)
+      const isSetupPage = pathname.startsWith('/hesap-kurulumu') || pathname.startsWith('/api/personel/kurulum');
+      if (!isStudent && !isParent && (profile as { must_change_password?: boolean } | null)?.must_change_password
+          && !isSetupPage && !isSharedApi && !pathname.startsWith('/_next')) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/hesap-kurulumu';
+        url.search = '';
         return NextResponse.redirect(url);
       }
 

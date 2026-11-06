@@ -29,3 +29,14 @@ export function parentEmailFromPhone(raw: string | null | undefined): string | n
   const key = phoneKey(raw);
   return key ? `veli${key}@veli.kocdefterim.com` : null;
 }
+
+/** Kurum personeli (yurt yöneticisi/belletmen) hesabı için telefondan sahte e-posta (gerçek posta gönderilmez). */
+export function staffEmailFromPhone(raw: string | null | undefined): string | null {
+  const key = phoneKey(raw);
+  return key ? `per${key}@personel.kocdefterim.com` : null;
+}
+
+/** Telefondan üretilen sahte giriş adreslerinden biri mi? (bunlara e-posta gönderilmez) */
+export function isPlaceholderEmail(email: string | null | undefined): boolean {
+  return !!email && /@(ogrenci|veli|personel)\.kocdefterim\.com$/i.test(email.trim());
+}

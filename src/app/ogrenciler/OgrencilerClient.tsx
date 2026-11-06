@@ -45,7 +45,8 @@ function getSoyad(fullName: string) {
   return parts[parts.length - 1] ?? '';
 }
 
-export function OgrencilerClient({ students, archiveMode }: { students: ListedStudent[]; archiveMode: boolean }) {
+// staffMode: kurum personeli (öğrenci ekleme, hesap açma ve arşiv düğmeleri kapalı)
+export function OgrencilerClient({ students, archiveMode, staffMode = false }: { students: ListedStudent[]; archiveMode: boolean; staffMode?: boolean }) {
   const [accBusy, setAccBusy] = useState(false);
   const [accMsg, setAccMsg] = useState<string | null>(null);
 
@@ -142,7 +143,7 @@ export function OgrencilerClient({ students, archiveMode }: { students: ListedSt
           >
             Öğrencilere dön
           </Link>
-        ) : (
+        ) : staffMode ? null : (
           <>
             <button
               type="button"

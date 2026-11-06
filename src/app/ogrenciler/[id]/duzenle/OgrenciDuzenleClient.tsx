@@ -105,7 +105,8 @@ const inputCls = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm foc
 // ─── Ana bileşen ─────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function OgrenciDuzenleClient({ student }: { student: any }) {
+// staffMode: yurt yöneticisi düzenliyor (sorumlu koç, arşiv ve silme kapalı)
+export function OgrenciDuzenleClient({ student, staffMode = false }: { student: any; staffMode?: boolean }) {
   const router = useRouter();
   const supabase = createClient();
     const { availableKurumlar, availableDonemler, refreshOptions, getSinifOnerileri } = useExamFilter();
@@ -177,6 +178,7 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
 
   useEffect(() => {
     async function loadTeacherOptions() {
+      if (staffMode) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -272,8 +274,10 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
         guardian_name: guardianName.trim() || null,
         guardian_phone: guardianPhone.trim() || null,
         guardian_relation: guardianRelation || null,
-        responsible_coach_id: responsibleCoachId === 'other' ? null : responsibleCoachId || null,
-        responsible_coach_other_name: responsibleCoachId === 'other' ? responsibleCoachOtherName.trim() || null : null,
+        ...(staffMode ? {} : {
+          responsible_coach_id: responsibleCoachId === 'other' ? null : responsibleCoachId || null,
+          responsible_coach_other_name: responsibleCoachId === 'other' ? responsibleCoachOtherName.trim() || null : null,
+        }),
         yks_year: isYks && showYks ? yksYear : null,
         tyt_score: isYks && showYks && tytScore ? parseTurkishNumber(tytScore) : null,
         say_score: isYks && showYks && sayScore ? parseTurkishNumber(sayScore) : null,
@@ -348,6 +352,7 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
           <IconArrowLeft size={18} />
         </Link>
         <h1 className="flex-1 text-[18px] font-medium text-gray-900">{student.full_name} — Düzenle</h1>
+        {!staffMode && <>
         <button
           type="button"
           onClick={handleArchiveToggle}
@@ -365,6 +370,7 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
           <IconTrash size={14} />
           Sil
         </button>
+        </>}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -421,7 +427,7 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
                 {GRADE_LEVELS.map((g) => <option key={g}>{g}</option>)}
               </select>
             </Field>
-            <Field label="Koç Öğretmen">
+            {!staffMode && <Field label="Koç Öğretmen">
               <select
                 value={responsibleCoachId}
                 onChange={(e) => {
@@ -437,8 +443,8 @@ export function OgrenciDuzenleClient({ student }: { student: any }) {
                 ))}
                 <option value="other">Diğer</option>
               </select>
-            </Field>
-            {responsibleCoachId === 'other' && (
+            </Field>}
+            {!staffMode && responsibleCoachId === 'other' && (
               <Field label="Diğer Koç Öğretmen">
                 <input
                   type="text"

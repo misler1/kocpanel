@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { getStaffAccess } from '@/lib/staff-access';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
@@ -45,6 +46,7 @@ export default async function DenemelerPage({
       initialExams={exams}
       students={students}
       initialFilter={ogrenciFilter}
+      readOnly={(await getStaffAccess(supabase, user.id)).kind === 'belletmen'}
     />
   );
 }

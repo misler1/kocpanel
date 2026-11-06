@@ -74,6 +74,16 @@ export default async function OgrencilerPage({
         is_intern_student: scope.isMentor && isInternStudent(s as never, user.id),
   }));
 
+  // Kurum personeli: belletmen yalnızca ad, sınıf ve kurum görür (öğrenci bilgileri tarayıcıya hiç gönderilmez)
+  const isScopedStaff = access?.status === 'dorm_manager' || access?.status === 'dorm_supervisor';
+  const visibleStudents = access?.status === 'dorm_supervisor'
+    ? studentsWithMeeting.map((s) => ({
+      id: s.id, full_name: s.full_name, sinif_sube: s.sinif_sube ?? null, kurum: (s as { kurum?: string | null }).kurum ?? null,
+      track: s.track, grade_level: (s as { grade_level?: string | null }).grade_level ?? null, status: s.status,
+      coach_id: s.coach_id, last_meeting_at: null, is_intern_student: false,
+    }) as unknown as OgrenciListStudent)
+    : studentsWithMeeting;
+
   // Bu koçun onayını bekleyen öğrenci başvuruları (RLS: yalnızca atanan koç görür)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: regs } = await (supabase as any)
@@ -93,7 +103,7 @@ export default async function OgrencilerPage({
           <BasvuruListesi basvurular={basvurular} mode="koc" />
         </div>
       )}
-      <OgrencilerClient students={studentsWithMeeting} archiveMode={archiveMode} />
+      <OgrencilerClient students={visibleStudents} archiveMode={archiveMode} staffMode={isScopedStaff} />
     </>
   );
 }

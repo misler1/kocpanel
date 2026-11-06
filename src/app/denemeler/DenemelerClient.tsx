@@ -126,7 +126,8 @@ interface ExamGroup {
   rows: any[];
 }
 
-export function DenemelerClient({ initialExams, students, initialFilter }: Props) {
+// readOnly: belletmen denemeleri yalnızca görür ve analiz eder (giriş/yükleme düğmeleri kapalı; veritabanı da yazmaya izin vermez)
+export function DenemelerClient({ initialExams, students, initialFilter, readOnly = false }: Props & { readOnly?: boolean }) {
   const supabase = createClient();
   const { matchesFilter } = useExamFilter();
 
@@ -389,6 +390,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
             <IconArrowsRightLeft size={15} />
             {compareMode ? 'İptal' : 'Analiz'}
           </button>
+          {!readOnly && <>
           <Link href="/denemeler/toplu-yukle" className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3.5 py-2 text-[13px] font-medium text-gray-600 hover:bg-gray-50">
             <IconUpload size={15} />
             Toplu Yükle
@@ -397,6 +399,7 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
             <IconPlus size={15} />
             Deneme gir
           </Link>
+          </>}
         </div>
       </>}
       />
@@ -480,9 +483,9 @@ export function DenemelerClient({ initialExams, students, initialFilter }: Props
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-200 bg-white py-20">
           <IconChartBar size={32} className="text-gray-300" />
           <p className="text-sm text-gray-400">Bu filtrelerle eşleşen deneme bulunamadı.</p>
-          <Link href="/denemeler/yeni" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+          {!readOnly && <Link href="/denemeler/yeni" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
             Deneme gir
-          </Link>
+          </Link>}
         </div>
       ) : (
         <div className="space-y-3">

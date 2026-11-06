@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { timingSafeEqual } from 'node:crypto';
+import { isPlaceholderEmail } from '@/lib/student-account';
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPushSecret } from '@/lib/push-server';
@@ -49,7 +50,8 @@ export async function POST(request: Request) {
     const { data } = await admin.auth.admin.getUserById(id);
     email = data?.user?.email ?? null;
   }
-  if (!email) return NextResponse.json({ sent: false, reason: 'E-posta adresi yok' });
+  // Telefonla açılan hesapların giriş adresi sahtedir; oraya posta gönderilmez
+  if (!email || isPlaceholderEmail(email)) return NextResponse.json({ sent: false, reason: 'E-posta adresi yok' });
 
   const name = (p.full_name ?? '').trim() || 'Hocam';
   const loginUrl = `${SITE_URL}/giris`;

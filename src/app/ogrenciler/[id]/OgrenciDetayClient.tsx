@@ -13,6 +13,7 @@ import {
 } from '@tabler/icons-react';
 import { avatarColor, initials, trackPill } from '@/lib/ui-colors';
 import { OgrenciProgramlari } from './OgrenciProgramlari';
+import { allowedStudentTabs, type StaffKind } from '@/lib/staff-access';
 
 // ─── Sabitler ────────────────────────────────────────────────
 
@@ -171,15 +172,19 @@ const fmtNet = (n: number) => n.toLocaleString('tr-TR', { maximumFractionDigits:
  * Koçun öğrenci detayı: renkli başlık + hızlı işlemler, 4 özet kartı ve sekmeler.
  * Bölümler alt alta açılır kapanır değil; her sekmede yalnızca o konunun kartları açık görünür.
  */
-export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, initialTab, hedefPanel, settingsPanels, headerExtra }: {
+export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, initialTab, hedefPanel, settingsPanels, headerExtra, access = 'coach' }: {
   student: any; meetings: any[]; exams: any[]; tasks: any[]; stats: DetayStats; initialTab?: string;
-  hedefPanel: React.ReactNode; settingsPanels: React.ReactNode; headerExtra?: React.ReactNode;
+  hedefPanel: React.ReactNode; settingsPanels: React.ReactNode; headerExtra?: React.ReactNode; access?: StaffKind;
 }) {
+  // Kurum personeli yalnızca izin verilen sekmeleri görür (belletmen: program ve denemeler)
+  const allowedTabs = allowedStudentTabs(access);
+  const tabs = allowedTabs ? TABS.filter((t) => allowedTabs.includes(t.id)) : TABS;
+  const isStaff = access === 'manager' || access === 'belletmen';
   const id = student.id;
   const isArchived = student.status === 'pasif';
   const status = STATUS_MAP[student.status] ?? STATUS_MAP['aktif'];
   const pill = trackPill(student.track);
-  const [tab, setTab] = useState<TabId>(TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : 'genel');
+  const [tab, setTab] = useState<TabId>(tabs.some((t) => t.id === initialTab) ? (initialTab as TabId) : tabs[0].id);
 
   function changeTab(next: TabId) {
     setTab(next);
@@ -260,11 +265,11 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
           {headerExtra}
         </div>
         <div className="relative mt-4 flex flex-wrap gap-1 rounded-xl bg-white/95 p-1.5 shadow-sm">
-          <Link href={`/gorusmeler/yeni?ogrenci=${id}`} className={actionCls}><IconCalendarPlus size={16} /> Görüşme ekle</Link>
-          <Link href={`/denemeler/yeni?ogrenci=${id}`} className={actionCls}><IconChartBar size={16} /> Deneme ekle</Link>
+          {!isStaff && <Link href={`/gorusmeler/yeni?ogrenci=${id}`} className={actionCls}><IconCalendarPlus size={16} /> Görüşme ekle</Link>}
+          {access !== 'belletmen' && <Link href={`/denemeler/yeni?ogrenci=${id}`} className={actionCls}><IconChartBar size={16} /> Deneme ekle</Link>}
           <Link href={`/haftalik-takip?ogrenci=${id}`} className={actionCls}><IconCalendar size={16} /> Haftalık program</Link>
           <Link href={`/konu-ilerleyisi?ogrenci=${id}`} className={actionCls}><IconBooks size={16} /> Konu ilerleyişi</Link>
-          <Link href={`/ogrenciler/${id}/duzenle`} className={`${actionCls} sm:ml-auto`}><IconEdit size={16} /> Düzenle</Link>
+          {access !== 'belletmen' && <Link href={`/ogrenciler/${id}/duzenle`} className={`${actionCls} sm:ml-auto`}><IconEdit size={16} /> Düzenle</Link>}
         </div>
       </div>
 
@@ -297,7 +302,7 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
       {/* ── Sekmeler ── */}
       <div className="sticky top-0 z-20 -mx-1 mb-4 overflow-x-auto bg-[var(--paper)]/95 px-1 py-1.5 backdrop-blur" role="tablist">
         <div className="flex min-w-max gap-1 rounded-xl border border-[var(--border)] bg-white p-1 shadow-sm">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => changeTab(t.id)}
               className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-[13.5px] font-medium transition-colors ${tab === t.id
                 ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-600 hover:bg-violet-50 hover:text-violet-700'}`}>

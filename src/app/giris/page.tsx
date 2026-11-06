@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { studentEmailFromPhone } from '@/lib/student-account';
+import { staffEmailFromPhone, studentEmailFromPhone } from '@/lib/student-account';
 
 export default function GirisPage() {
   const router = useRouter();
@@ -20,15 +20,22 @@ export default function GirisPage() {
     setError(null);
     setLoading(true);
 
-    // '@' yoksa telefon numarası kabul edilir (öğrenci hesabı); koç e-postası aynen çalışır.
-    const loginEmail = email.includes('@') ? email.trim() : studentEmailFromPhone(email);
-    if (!loginEmail) {
+    // '@' yoksa telefon numarası kabul edilir: önce kurum personeli (yurt yöneticisi/belletmen), sonra öğrenci hesabı
+    // denenir; koç e-postası aynen çalışır.
+    const candidates = email.includes('@')
+      ? [email.trim()]
+      : [staffEmailFromPhone(email), studentEmailFromPhone(email)].filter((x): x is string => !!x);
+    if (!candidates.length) {
       setError('E-posta adresinizi ya da telefon numaranızı yazın.');
       setLoading(false);
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password });
+    let error: unknown = null;
+    for (const loginEmail of candidates) {
+      ({ error } = await supabase.auth.signInWithPassword({ email: loginEmail, password }));
+      if (!error) break;
+    }
 
     if (error) {
       setError('E-posta/telefon veya şifre hatalı.');
