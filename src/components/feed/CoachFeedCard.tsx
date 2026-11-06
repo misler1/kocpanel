@@ -226,7 +226,7 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
           <IconSparkles size={17} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-semibold text-[var(--ink)]">Öğrencilerinin ana sayfası</span>
+          <span className="block text-[15px] font-semibold text-[var(--ink)]">Öğrencilerle paylaşım yap</span>
           <span className="block text-[12.5px] text-[var(--ink-muted)]">
             {lastShare ? `Video/içerik paylaş, panoya duyuru ekle · son paylaşım ${fmt(lastShare)}` : 'Video/içerik paylaş, panoya duyuru ekle'}
           </span>
