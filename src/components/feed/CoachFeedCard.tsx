@@ -16,7 +16,25 @@ import { EmbedView } from './EmbedView';
 
 type Tab = 'icerik' | 'pano' | 'koclar';
 type Post = { id: string; kind: 'icerik' | 'duyuru'; audience: 'ogrenciler' | 'koclar'; url: string | null; title: string | null; body: string | null; all_students: boolean; source_post_id: string | null; created_at: string; author_id: string; starts_at?: string; ends_at?: string | null };
-type FeedStudent = { id: string; full_name: string; sinif_sube: string | null; has_account: boolean };
+type FeedStudent = { id: string; full_name: string; sinif_sube: string | null; has_account: boolean; kurum?: string | null };
+type ClassGroup = { kurum: string; classes: { name: string; ids: string[] }[] };
+
+/** Öğrencileri kurum → sınıf/şube olarak gruplar (sınıfı girilmemiş öğrenciler gruba girmez) */
+function groupClasses(list: FeedStudent[]): ClassGroup[] {
+  const byKurum = new Map<string, Map<string, string[]>>();
+  for (const s of list) {
+    const cls = s.sinif_sube?.trim();
+    if (!cls) continue;
+    const k = s.kurum?.trim() || 'Kurum belirtilmemiş';
+    if (!byKurum.has(k)) byKurum.set(k, new Map());
+    const m = byKurum.get(k)!;
+    m.set(cls, [...(m.get(cls) ?? []), s.id]);
+  }
+  return Array.from(byKurum, ([kurum, m]) => ({
+    kurum,
+    classes: Array.from(m, ([name, ids]) => ({ name, ids })).sort((a, b) => a.name.localeCompare(b.name, 'tr', { numeric: true })),
+  })).sort((a, b) => a.kurum.localeCompare(b.kurum, 'tr'));
+}
 type Suggestion = { url: string; title: string | null; share_count: number };
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
@@ -113,7 +131,24 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
   async function loadStudents() {
     if (students) return;
     const { data } = await (supabase as any).rpc('my_feed_students');
-    setStudents(data ?? []);
+    const list: FeedStudent[] = data ?? [];
+    // Sınıf seçimi için kurum bilgisi (öğrenci tablosundan; görülemezse sınıflar kurumsuz gruplanır)
+    const ids = list.map((s) => s.id);
+    if (ids.length) {
+      const { data: rows } = await (supabase as any).from('students').select('id, kurum').in('id', ids);
+      const kurumOf = new Map<string, string | null>((rows ?? []).map((r: any) => [r.id, r.kurum]));
+      list.forEach((s) => { s.kurum = kurumOf.get(s.id) ?? null; });
+    }
+    setStudents(list);
+  }
+
+  function toggleClass(ids: string[]) {
+    setSelected((p) => {
+      const n = new Set(p);
+      const allIn = ids.every((id) => n.has(id));
+      ids.forEach((id) => (allIn ? n.delete(id) : n.add(id)));
+      return n;
+    });
   }
 
   function reset() {
@@ -167,6 +202,7 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
     : tab === 'koclar' ? p.audience === 'koclar' : p.kind === 'icerik' && p.audience === 'ogrenciler'));
   const shown = showAll ? listed : listed.slice(0, 3);
   const filteredStudents = (students ?? []).filter((s) => !q || s.full_name.toLocaleLowerCase('tr').includes(q.toLocaleLowerCase('tr')));
+  const classGroups = groupClasses(students ?? []);
 
   if (setupMissing) return null; // home_feed.sql henüz çalıştırılmamış
 
@@ -248,10 +284,34 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
             <div className="rounded-xl border border-[var(--border)] p-3">
               <div className="flex flex-wrap gap-4 text-[13px]">
                 <label className="flex items-center gap-1.5"><input type="radio" checked={target === 'all'} onChange={() => setTarget('all')} /> Tüm öğrencilerim</label>
-                <label className="flex items-center gap-1.5"><input type="radio" checked={target === 'selected'} onChange={() => { setTarget('selected'); loadStudents(); }} /> Seçili öğrenciler {selected.size > 0 && <b>({selected.size})</b>}</label>
+                <label className="flex items-center gap-1.5"><input type="radio" checked={target === 'selected'} onChange={() => { setTarget('selected'); loadStudents(); }} /> Sınıf / öğrenci seç {selected.size > 0 && <b>({selected.size} öğrenci)</b>}</label>
               </div>
               {target === 'selected' && (
                 <div className="mt-2.5">
+                  {classGroups.length > 0 && (
+                    <div className="mb-3 space-y-2">
+                      <div className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Sınıflar</div>
+                      {classGroups.map((g) => (
+                        <div key={g.kurum}>
+                          {classGroups.length > 1 && <div className="mb-1 text-[12px] font-semibold text-[var(--ink)]">{g.kurum}</div>}
+                          <div className="flex flex-wrap gap-1.5">
+                            {g.classes.map((c) => {
+                              const n = c.ids.filter((id) => selected.has(id)).length;
+                              const full = n === c.ids.length;
+                              return (
+                                <button key={c.name} type="button" onClick={() => toggleClass(c.ids)} aria-pressed={full}
+                                  className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12.5px] font-medium transition-colors ${full ? 'border-violet-500 bg-violet-600 text-white' : n > 0 ? 'border-violet-400 bg-violet-50 text-violet-700' : 'border-[var(--border)] text-[var(--ink)] hover:border-violet-300'}`}>
+                                  {full && <IconCheck size={13} />} {c.name}
+                                  <span className={full ? 'text-white/80' : 'text-[var(--ink-muted)]'}>({n > 0 && !full ? `${n}/` : ''}{c.ids.length})</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                      <p className="text-[11.5px] text-[var(--ink-muted)]">Sınıfa dokununca tüm öğrencileri seçilir; aşağıdan tek tek ekleyip çıkarabilirsin.</p>
+                    </div>
+                  )}
                   <div className="relative mb-2">
                     <IconSearch size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-muted)]" />
                     <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Öğrenci ara"
