@@ -13,6 +13,14 @@ export type Embed = {
 
 const ID = /^[A-Za-z0-9_-]+$/;
 
+/** YouTube başlangıç zamanı: "90", "90s", "1m30s", "1h2m3s" → saniye */
+function parseStart(v: string | null) {
+  if (!v) return 0;
+  if (/^\d+s?$/.test(v)) return Number.parseInt(v, 10);
+  const m = v.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/);
+  return m ? (Number(m[1] ?? 0) * 3600 + Number(m[2] ?? 0) * 60 + Number(m[3] ?? 0)) : 0;
+}
+
 export function parseEmbed(raw: string): Embed | null {
   let u: URL;
   try {
@@ -33,7 +41,7 @@ export function parseEmbed(raw: string): Embed | null {
     else if (parts[0] === 'watch') id = u.searchParams.get('v');
     else if (['shorts', 'embed', 'live', 'v'].includes(parts[0] ?? '')) { id = parts[1] ?? null; vertical = parts[0] === 'shorts'; }
     if (ok(id)) {
-      const t = Number.parseInt(u.searchParams.get('t') ?? u.searchParams.get('start') ?? '', 10);
+      const t = parseStart(u.searchParams.get('t') ?? u.searchParams.get('start'));
       return {
         provider: 'youtube', label: 'YouTube', host,
         src: `https://www.youtube-nocookie.com/embed/${id}?rel=0${t > 0 ? `&start=${t}` : ''}`,
