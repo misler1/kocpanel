@@ -351,7 +351,7 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
         </div>
 
         {/* Konular */}
-        <div style={{ flex: "3 1 420px", minWidth: 0 }}>
+        <div style={{ flex: "3 1 420px", minWidth: 0, paddingBottom: mergeSel.size ? 120 : 0 }}>
           {!subjectId ? (
             <div style={box}>Önce bir ders ekleyin veya seçin.</div>
           ) : (
@@ -382,25 +382,35 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
               {topics.length === 0 && <div style={box}>Bu derste henüz kayıt yok. Yukarıdan ekleyebilirsiniz.</div>}
 
               {topics.some((t) => t.is_active) && (
-                <div style={{ ...box, marginBottom: 12, background: mergeSel.size ? "#f3f0ff" : "var(--card, #fff)" }}>
+                <div style={{ ...box, marginBottom: 12 }}>
                   <h2 style={{ fontSize: 15, marginBottom: 4 }}>Başlıkları birleştir</h2>
-                  {mergeSel.size === 0 ? (
-                    <p style={{ fontSize: 13, opacity: 0.7 }}>
-                      Alt başlıkları tek başlıkta toplamak için aşağıdan kutucuklarını işaretleyin. Öğrencilerin ilerlemesi
-                      kaybolmaz: bir adım ancak tüm alt başlıklarda işaretliyse birleşik başlıkta işaretli olur, eski kayıtlar
-                      arşivlenir ve geri alınabilir.
-                    </p>
-                  ) : (
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>{mergeSel.size} başlık seçildi →</span>
-                      <input style={{ ...input, flex: 1, minWidth: 200 }} placeholder="Birleşik başlığın adı" value={mergeName}
-                        onChange={(e) => setMergeName(e.target.value)} />
-                      <button style={{ ...btn, opacity: mergeBusy || mergeSel.size < 2 ? 0.6 : 1 }} disabled={mergeBusy || mergeSel.size < 2} onClick={doMerge}>
-                        {mergeBusy ? "Birleştiriliyor..." : "Birleştir"}
-                      </button>
-                      <button style={ghost} onClick={() => { setMergeSel(new Set()); setMergeName(""); }}>Seçimi temizle</button>
-                    </div>
-                  )}
+                  <p style={{ fontSize: 13, opacity: 0.7 }}>
+                    Birleştirmek istediğiniz başlıkların kutucuklarını işaretleyin; ekranın altında birleştirme çubuğu açılır.
+                    Öğrencilerin ilerlemesi kaybolmaz: bir adım ancak tüm alt başlıklarda işaretliyse birleşik başlıkta işaretli
+                    olur, eski kayıtlar arşivlenir ve geri alınabilir.
+                  </p>
+                </div>
+              )}
+
+              {/* Seçim yapılınca ekranın altında sabit durur: uzun listede yukarı çıkmak gerekmez */}
+              {mergeSel.size > 0 && (
+                <div
+                  role="region"
+                  aria-label="Birleştirme"
+                  className="fixed left-1/2 z-40 w-[min(760px,calc(100%-24px))] -translate-x-1/2 bottom-[calc(76px+env(safe-area-inset-bottom))] md:bottom-5"
+                  style={{ ...box, background: "#f3f0ff", border: "1px solid #c4b5fd", boxShadow: "0 10px 30px rgba(0,0,0,.18)" }}
+                >
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>
+                      {mergeSel.size} başlık seçildi{mergeSel.size < 2 ? " (en az 2)" : ""} →
+                    </span>
+                    <input style={{ ...input, flex: 1, minWidth: 180 }} placeholder="Birleşik başlığın adı" value={mergeName}
+                      onChange={(e) => setMergeName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && doMerge()} />
+                    <button style={{ ...btn, opacity: mergeBusy || mergeSel.size < 2 ? 0.6 : 1 }} disabled={mergeBusy || mergeSel.size < 2} onClick={doMerge}>
+                      {mergeBusy ? "Birleştiriliyor..." : "Birleştir"}
+                    </button>
+                    <button style={ghost} onClick={() => { setMergeSel(new Set()); setMergeName(""); }}>Vazgeç</button>
+                  </div>
                 </div>
               )}
 
