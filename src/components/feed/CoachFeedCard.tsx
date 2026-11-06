@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  IconBrandYoutube, IconPin, IconBulb, IconSend, IconTrash, IconSearch, IconUsers, IconCheck, IconExternalLink, IconSparkles, IconChevronDown,
+  IconBrandYoutube, IconPin, IconBulb, IconSend, IconTrash, IconSearch, IconUsers, IconCheck, IconExternalLink, IconSparkles, IconChevronDown, IconPlayerStop, IconPlayerPlay, IconCalendar,
 } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { parseEmbed } from '@/lib/embed';
@@ -15,11 +15,54 @@ import { EmbedView } from './EmbedView';
 // Veritabanı: supabase/home_feed.sql
 
 type Tab = 'icerik' | 'pano' | 'koclar';
-type Post = { id: string; kind: 'icerik' | 'duyuru'; audience: 'ogrenciler' | 'koclar'; url: string | null; title: string | null; body: string | null; all_students: boolean; source_post_id: string | null; created_at: string; author_id: string };
+type Post = { id: string; kind: 'icerik' | 'duyuru'; audience: 'ogrenciler' | 'koclar'; url: string | null; title: string | null; body: string | null; all_students: boolean; source_post_id: string | null; created_at: string; author_id: string; starts_at?: string; ends_at?: string | null };
 type FeedStudent = { id: string; full_name: string; sinif_sube: string | null; has_account: boolean };
 type Suggestion = { url: string; title: string | null; share_count: number };
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+
+// Yayın süresi (supabase/feed_schedule.sql): başlangıç boşsa hemen, bitiş boşsa süresiz
+type Dur = 'suresiz' | 'bugun' | 'hafta' | 'ay' | 'ozel';
+const DURS: { key: Dur; label: string }[] = [
+  { key: 'suresiz', label: 'Süresiz' }, { key: 'bugun', label: 'Bugün' }, { key: 'hafta', label: '1 hafta' },
+  { key: 'ay', label: '1 ay' }, { key: 'ozel', label: 'Tarih seç' },
+];
+const pad = (n: number) => String(n).padStart(2, '0');
+const localDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const todayStr = () => localDate(new Date());
+
+function computeWindow(dur: Dur, start: string, end: string): { starts: string | null; ends: string | null; error?: string } {
+  const now = new Date();
+  if (dur === 'suresiz') return { starts: null, ends: null };
+  if (dur === 'bugun') return { starts: null, ends: new Date(`${todayStr()}T23:59:59`).toISOString() };
+  if (dur === 'hafta' || dur === 'ay') {
+    const e = new Date(now); e.setDate(e.getDate() + (dur === 'hafta' ? 7 : 30));
+    return { starts: null, ends: new Date(`${localDate(e)}T23:59:59`).toISOString() };
+  }
+  const s = start && start > todayStr() ? new Date(`${start}T00:00:00`) : null;
+  const e = end ? new Date(`${end}T23:59:59`) : null;
+  if (e && e <= (s ?? now)) return { starts: null, ends: null, error: 'Bitiş tarihi başlangıçtan sonra olmalı.' };
+  return { starts: s?.toISOString() ?? null, ends: e?.toISOString() ?? null };
+}
+
+const startOf = (p: Post) => Date.parse(p.starts_at ?? p.created_at);
+
+/** Paylaşımın şu anki durumu; live = öğrencide görünüyor ya da görünecek */
+function statusOf(p: Post, all: Post[]): { label: string; tone: 'green' | 'blue' | 'gray'; live: boolean } {
+  const now = Date.now();
+  const s = startOf(p);
+  if (p.ends_at && Date.parse(p.ends_at) <= now) return { label: 'Yayında değil', tone: 'gray', live: false };
+  if (s > now) return { label: `${fmt(new Date(s).toISOString())} tarihinde başlar`, tone: 'blue', live: true };
+  // İçerik: tüm öğrencilere giden daha yeni bir içerik yayına girdiyse bu onun yerini almıştır
+  if (p.kind === 'icerik' && p.audience === 'ogrenciler' && all.some((o) => o.id !== p.id && o.kind === 'icerik'
+    && o.audience === 'ogrenciler' && o.all_students && startOf(o) <= now && startOf(o) > s)) {
+    return { label: 'Yenisiyle değişti', tone: 'gray', live: false };
+  }
+  return { label: p.ends_at ? `Yayında · ${fmt(p.ends_at)} tarihine kadar` : 'Yayında · süresiz', tone: 'green', live: true };
+}
+
+/** Şu an yayında olan (yöneticinin önerileri için) */
+const isActive = (p: Post) => statusOf(p, []).live && startOf(p) <= Date.now();
 
 export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }: {
   isAdmin: boolean; inactive: number; pendingExams: number; total: number; today: string;
@@ -41,6 +84,9 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [dur, setDur] = useState<Dur>('suresiz');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   // Haftada bir kullanılır: kart kapalı başlar, başlığa dokununca açılır
   const [expanded, setExpanded] = useState(false);
 
@@ -71,7 +117,7 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
   }
 
   function reset() {
-    setUrl(''); setTitle(''); setBody(''); setTarget('all'); setSelected(new Set()); setQ('');
+    setUrl(''); setTitle(''); setBody(''); setTarget('all'); setSelected(new Set()); setQ(''); setDur('suresiz'); setStartDate(''); setEndDate('');
   }
 
   async function share(opts?: { url?: string; title?: string | null; source?: string; kind?: 'icerik' | 'duyuru'; audience?: 'ogrenciler' | 'koclar'; all?: boolean }) {
@@ -79,9 +125,14 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
     const audience = opts?.audience ?? (tab === 'koclar' ? 'koclar' : 'ogrenciler');
     const all = opts?.all ?? (audience === 'koclar' || target === 'all');
     if (!all && selected.size === 0) { setMsg({ ok: false, text: 'En az bir öğrenci seçin ya da "Tüm öğrencilerim"i işaretleyin.' }); return; }
+    // Öneriyi tek dokunuşla göndermek süresiz yayınlar; formdan gönderirken seçilen süre kullanılır
+    const win = opts ? { starts: null, ends: null, error: undefined } : computeWindow(dur, startDate, endDate);
+    if (win.error) { setMsg({ ok: false, text: win.error }); return; }
     setBusy(true);
     setMsg(null);
     const { error } = await (supabase as any).rpc('create_feed_post', {
+      ...(win.starts ? { p_starts: win.starts } : {}),
+      ...(win.ends ? { p_ends: win.ends } : {}),
       p_kind: kind, p_audience: audience,
       p_url: kind === 'icerik' ? (opts?.url ?? url).trim() : null,
       p_title: (opts?.title ?? title).trim() || null,
@@ -91,13 +142,21 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
     });
     setBusy(false);
     if (error) { setMsg({ ok: false, text: error.message }); return; }
-    setMsg({ ok: true, text: audience === 'koclar' ? 'Koçlara önerildi ✓' : kind === 'duyuru' ? 'Duyuru panoya eklendi ✓' : 'Öğrencilerinin ana sayfasına gönderildi ✓' });
+    setMsg({ ok: true, text: win.starts ? `${fmt(win.starts)} tarihinde yayına girecek ✓`
+      : audience === 'koclar' ? 'Koçlara önerildi ✓' : kind === 'duyuru' ? 'Duyuru panoya eklendi ✓' : 'Öğrencilerinin ana sayfasına gönderildi ✓' });
     if (!opts) reset();
     load();
   }
 
+  async function setLive(p: Post, live: boolean) {
+    const { error } = await (supabase as any).rpc('set_feed_post_live', { p_id: p.id, p_live: live });
+    if (error) { setMsg({ ok: false, text: error.message }); return; }
+    setMsg({ ok: true, text: live ? 'Tekrar yayında ✓' : 'Yayından kaldırıldı ✓' });
+    load();
+  }
+
   async function remove(id: string) {
-    if (!confirm('Bu paylaşım kaldırılsın mı? Öğrencilerin ana sayfasından da kalkar.')) return;
+    if (!confirm('Bu paylaşım tamamen silinsin mi? (Yalnızca yayından kaldırmak için "Kaldır" düğmesini kullanın.)')) return;
     const { error } = await (supabase as any).from('feed_posts').delete().eq('id', id);
     if (!error) setPosts((p) => p.filter((x) => x.id !== id));
   }
@@ -111,7 +170,8 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
 
   if (setupMissing) return null; // home_feed.sql henüz çalıştırılmamış
 
-  const pendingRecs = recs.filter((r) => !sentSources.has(r.id)).length;
+  const activeRecs = recs.filter(isActive);
+  const pendingRecs = activeRecs.filter((r) => !sentSources.has(r.id)).length;
   const lastShare = posts.find((p) => p.audience === 'ogrenciler')?.created_at ?? null;
 
   const tabs: { key: Tab; label: string; icon: typeof IconPin }[] = [
@@ -163,7 +223,7 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
         {/* Form */}
         <div className="min-w-0 space-y-3">
           <p className="text-[12.5px] text-[var(--ink-muted)]">
-            {tab === 'icerik' && 'YouTube, Instagram (gönderi/reels), X, TikTok, Vimeo, Spotify ya da herhangi bir sitenin bağlantısını yapıştır. Öğrencilerin ana sayfasında panonun altında görünür.'}
+            {tab === 'icerik' && 'YouTube, Instagram (gönderi/reels), X, TikTok, Vimeo, Spotify ya da herhangi bir sitenin bağlantısını yapıştır. Öğrencilerin ana sayfasında panonun altında görünür; yeni içerik gönderince öncekinin yerini alır.'}
             {tab === 'pano' && 'Genel duyurular öğrencilerin ana sayfasındaki panoda görünür ve öğrencilere bildirim gider.'}
             {tab === 'koclar' && 'Beğendiğin içeriği tüm koçlara öner; koçlar tek dokunuşla kendi öğrencilerine gönderebilir.'}
           </p>
@@ -214,6 +274,31 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
             </div>
           )}
 
+          <div className="rounded-xl border border-[var(--border)] p-3">
+            <div className="mb-2 flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--ink)]"><IconCalendar size={15} /> Yayın süresi</div>
+            <div className="flex flex-wrap gap-1.5">
+              {DURS.map((d) => (
+                <button key={d.key} type="button" onClick={() => setDur(d.key)}
+                  className={`rounded-full border px-3 py-1 text-[12.5px] font-medium transition-colors ${dur === d.key ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-[var(--border)] text-[var(--ink-muted)] hover:text-[var(--ink)]'}`}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+            {dur === 'ozel' && (
+              <div className="mt-2.5 flex flex-wrap items-end gap-3 text-[12.5px]">
+                <label className="flex flex-col gap-1 text-[var(--ink-muted)]">Başlangıç
+                  <input type="date" value={startDate} min={todayStr()} onChange={(e) => setStartDate(e.target.value)}
+                    className="rounded-lg border border-[var(--border)] bg-white px-2 py-1.5 text-[13px] text-[var(--ink)]" />
+                </label>
+                <label className="flex flex-col gap-1 text-[var(--ink-muted)]">Bitiş
+                  <input type="date" value={endDate} min={startDate || todayStr()} onChange={(e) => setEndDate(e.target.value)}
+                    className="rounded-lg border border-[var(--border)] bg-white px-2 py-1.5 text-[13px] text-[var(--ink)]" />
+                </label>
+                <span className="pb-2 text-[11.5px] text-[var(--ink-muted)]">Başlangıç boşsa hemen, bitiş boşsa süresiz.</span>
+              </div>
+            )}
+          </div>
+
           <div className="flex flex-wrap items-center gap-3">
             <button type="button" onClick={() => share()} disabled={busy || !canSubmit}
               className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-violet-700 disabled:opacity-50">
@@ -229,8 +314,10 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
                 {tab === 'pano' ? 'Panodaki duyurular' : tab === 'koclar' ? 'Koçlara önerdiklerim' : 'Paylaştıklarım'}
               </h3>
               <ul className="divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">
-                {shown.map((p) => (
-                  <li key={p.id} className="flex items-start gap-3 px-3 py-2">
+                {shown.map((p) => {
+                  const st = statusOf(p, posts);
+                  return (
+                  <li key={p.id} className={`flex items-start gap-3 px-3 py-2 ${st.live ? '' : 'opacity-60'}`}>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[13px] font-medium text-[var(--ink)]">
                         {p.title || (p.url ? parseEmbed(p.url)?.label : null) || p.body?.slice(0, 60)}
@@ -240,11 +327,20 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
                         {p.url && <> · <a href={p.url} target="_blank" rel="noopener noreferrer" className="hover:underline">bağlantı</a></>}
                       </div>
                       {p.kind === 'duyuru' && p.body && <p className="mt-0.5 line-clamp-2 text-[12.5px] text-[var(--ink-muted)]">{p.body}</p>}
+                      <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${st.tone === 'green' ? 'bg-emerald-50 text-emerald-700' : st.tone === 'blue' ? 'bg-sky-50 text-sky-700' : 'bg-[var(--paper)] text-[var(--ink-muted)]'}`}>{st.label}</span>
                     </div>
-                    <button type="button" onClick={() => remove(p.id)} title="Kaldır"
+                    {st.live ? (
+                      <button type="button" onClick={() => setLive(p, false)} title="Yayından kaldır"
+                        className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11.5px] font-semibold text-[var(--ink-muted)] hover:bg-amber-50 hover:text-amber-700"><IconPlayerStop size={15} /> Kaldır</button>
+                    ) : (
+                      <button type="button" onClick={() => setLive(p, true)} title="Tekrar yayınla (süresiz)"
+                        className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11.5px] font-semibold text-[var(--ink-muted)] hover:bg-emerald-50 hover:text-emerald-700"><IconPlayerPlay size={15} /> Yayınla</button>
+                    )}
+                    <button type="button" onClick={() => remove(p.id)} title="Tamamen sil"
                       className="rounded-md p-1 text-[var(--ink-muted)] hover:bg-rose-50 hover:text-rose-600"><IconTrash size={15} /></button>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
               {listed.length > 3 && (
                 <button type="button" onClick={() => setShowAll(!showAll)} className="mt-1.5 flex items-center gap-1 text-[12.5px] font-medium text-violet-700">
@@ -260,10 +356,10 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
           <aside className="min-w-0 space-y-3 rounded-xl bg-[var(--paper)] p-3">
             <h3 className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ink)]"><IconBulb size={16} className="text-amber-500" /> Öneriler</h3>
 
-            {tab === 'icerik' && recs.length > 0 && (
+            {tab === 'icerik' && activeRecs.length > 0 && (
               <div className="space-y-2">
                 <div className="text-[11.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Yöneticiden</div>
-                {recs.map((r) => {
+                {activeRecs.map((r) => {
                   const sent = sentSources.has(r.id);
                   return (
                     <div key={r.id} className="rounded-lg border border-amber-200 bg-white p-2.5">
