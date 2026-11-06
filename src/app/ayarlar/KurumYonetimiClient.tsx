@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { IconPencil, IconGitMerge } from '@tabler/icons-react';
+import { SuggestInput } from '@/components/SuggestInput';
 
 type Kurum = { name: string; count: number };
 
@@ -60,9 +61,11 @@ export function KurumYonetimiClient() {
             <li key={k.name} className="flex items-center gap-2 py-2">
               {editing === k.name ? (
                 <>
-                  <input value={value} onChange={(e) => setValue(e.target.value)} list="kurum-yonetim-listesi" autoFocus
-                    onKeyDown={(e) => { if (e.key === 'Enter') save(k.name); if (e.key === 'Escape') setEditing(null); }}
-                    className="min-w-0 flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-[13px] outline-none focus:border-blue-500" />
+                  <div className="min-w-0 flex-1">
+                    <SuggestInput options={(list ?? []).map((x) => x.name)} value={value} onChange={setValue} autoFocus
+                      onKeyDown={(e) => { if (e.key === 'Enter') save(k.name); if (e.key === 'Escape') setEditing(null); }}
+                      className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-[13px] outline-none focus:border-blue-500" />
+                  </div>
                   <button disabled={busy} onClick={() => save(k.name)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-[12.5px] font-medium text-white hover:bg-blue-700 disabled:opacity-50">Kaydet</button>
                   <button onClick={() => setEditing(null)} className="px-2 text-[12.5px] text-gray-500">Vazgeç</button>
                 </>
@@ -78,7 +81,6 @@ export function KurumYonetimiClient() {
           ))}
         </ul>
       )}
-      <datalist id="kurum-yonetim-listesi">{(list ?? []).map((k) => <option key={k.name} value={k.name} />)}</datalist>
       {empty > 0 && (
         <p className="mt-2 flex items-center gap-1.5 text-[12px] text-gray-500">
           <IconGitMerge size={14} /> {empty} öğrencinin kurumu boş. Öğrenci düzenleme ekranından ekleyebilirsiniz.

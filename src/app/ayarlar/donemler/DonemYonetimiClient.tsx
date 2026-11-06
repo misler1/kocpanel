@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { IconArrowLeft, IconPlus, IconArrowRight } from '@tabler/icons-react';
+import { SuggestInput } from '@/components/SuggestInput';
 
 const TRACK_LABELS: Record<string, string> = {
   YKS_SAY: 'YKS · SAY', YKS_SOZ: 'YKS · SÖZ', YKS_EA: 'YKS · EA',
@@ -254,17 +255,13 @@ export function DonemYonetimiClient({
           </div>
           <div>
             <label className="mb-1 block text-[11px] font-medium text-gray-500">Yeni kurum</label>
-            <input
-              type="text"
-              list="kurum-onerileri-toplu"
+            <SuggestInput
+              options={availableKurumlar}
               value={targetKurum}
-              onChange={(e) => setTargetKurum(e.target.value)}
+              onChange={setTargetKurum}
               placeholder="Değiştirme"
               className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-[13px] focus:border-blue-500 focus:outline-none"
             />
-            <datalist id="kurum-onerileri-toplu">
-              {availableKurumlar.map((k) => <option key={k} value={k} />)}
-            </datalist>
           </div>
           <div>
             <label className="mb-1 block text-[11px] font-medium text-gray-500">Yeni alan</label>

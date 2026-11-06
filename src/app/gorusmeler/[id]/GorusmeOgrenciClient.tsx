@@ -9,6 +9,7 @@ import { NotesEditor } from '@/components/NotesEditor';
 import {
   draftKey, readDraft, writeDraft, removeDraft, hasText, DURATION_RESUME_MS, type MeetingDraft,
 } from '@/lib/meetingDraft';
+import { SuggestInput } from '@/components/SuggestInput';
 
 const HAFTALIK_TAKIP_KURUMU = 'Hüdayi Vakfı Çekmeköy YKS Yurdu';
 const MEETING_SELECT = '*, created_by_profile:created_by(id, full_name)';
@@ -313,12 +314,9 @@ export function GorusmeOgrenciClient({
 
           <div>
             <label className={labelCls}>Konu</label>
-            <input type="text" list="konu-onerileri-yeni" value={topic}
-              onChange={(e) => setTopic(e.target.value)}
+            <SuggestInput options={topicOptions} value={topic}
+              onChange={setTopic}
               placeholder="Haftalık takip, TYT değerlendirme..." className={inputCls} />
-            <datalist id="konu-onerileri-yeni">
-              {topicOptions.map((t) => <option key={t} value={t} />)}
-            </datalist>
           </div>
 
           <div>
@@ -489,12 +487,9 @@ function MeetingCard({
 
           <div>
             <label className={labelCls}>Konu</label>
-            <input type="text" list={`konu-onerileri-${meeting.id}`} value={editing.topic ?? ''}
-              onChange={(e) => setEditing({ ...editing, topic: e.target.value })}
+            <SuggestInput options={topicOptions} value={editing.topic ?? ''}
+              onChange={(v) => setEditing({ ...editing, topic: v })}
               placeholder="Haftalık takip, TYT değerlendirme..." className={inputCls} />
-            <datalist id={`konu-onerileri-${meeting.id}`}>
-              {topicOptions.map((t) => <option key={t} value={t} />)}
-            </datalist>
           </div>
 
           <div>

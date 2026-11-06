@@ -11,6 +11,7 @@ import { NotesEditor } from '@/components/NotesEditor';
 import {
   draftKey, readDraft, writeDraft, removeDraft, hasText, DURATION_RESUME_MS, type MeetingDraft,
 } from '@/lib/meetingDraft';
+import { SuggestInput } from '@/components/SuggestInput';
 
 const HAFTALIK_TAKIP_KURUMU = 'Hüdayi Vakfı Çekmeköy YKS Yurdu';
 
@@ -381,17 +382,13 @@ useEffect(() => {
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Konu</label>
-            <input
-              type="text"
-              list="konu-onerileri"
+            <SuggestInput
+              options={topicOptions}
               value={topic}
-              onChange={(e) => setTopic(e.target.value)}
+              onChange={setTopic}
               placeholder="Haftalık takip, TYT değerlendirme..."
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             />
-            <datalist id="konu-onerileri">
-              {topicOptions.map((t) => <option key={t} value={t} />)}
-            </datalist>
           </div>
 
           <div>

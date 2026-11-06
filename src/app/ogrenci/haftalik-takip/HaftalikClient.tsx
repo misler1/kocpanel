@@ -8,6 +8,7 @@ import { subjectEmoji, DAY_STYLES, cheer } from '../studentUi';
 import { StudyLogSheet } from '../StudyLogSheet';
 import { logStudy, setTaskDone, todayTr, type StudyInput } from '../studyApi';
 import { programDays, shortDate } from '@/lib/program-days';
+import { SuggestInput } from '@/components/SuggestInput';
 
 const DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 const STATUS_TEXT: Record<string, string> = { bekliyor: 'Koç onayı bekliyor', onaylandi: 'Onaylandı', reddedildi: 'Reddedildi' };
@@ -349,7 +350,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                     ))}
                     {newForm && newForm.plan_day === d && (
                       <div className="space-y-2 rounded-2xl border-2 border-[var(--accent)]/40 bg-[var(--accent-soft)]/50 p-3">
-                        <input list="ders-listesi" value={newForm.subject} onChange={(e) => setNewForm({ ...newForm, subject: e.target.value })} placeholder="Ders" className={`${input} w-full`} />
+                        <SuggestInput options={subjectOptions} value={newForm.subject} onChange={(v) => setNewForm({ ...newForm, subject: v })} placeholder="Ders" className={`${input} w-full`} />
                         <input value={newForm.topic} onChange={(e) => setNewForm({ ...newForm, topic: e.target.value })} placeholder="Konu (isteğe bağlı)" className={`${input} w-full`} />
                         <div className="flex flex-wrap items-center gap-1.5">
                           <input type="number" min={0} value={newForm.target_count} onChange={(e) => setNewForm({ ...newForm, target_count: Math.max(0, Number(e.target.value) || 0) })} className={`${input} w-20`} title="Hedef soru" />
@@ -365,7 +366,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                     {extraForm && extraForm.plan_day === d && (
                       <div className="space-y-2 rounded-2xl border-2 border-[var(--pink)]/30 bg-[var(--pink-soft)]/60 p-3">
                         <p className="text-[12px] font-semibold text-[var(--ink-muted)]">⭐ Koçunun vermediği, kendi yaptığın bir görev. Hemen eklenir, onay gerekmez.</p>
-                        <input list="ders-listesi" value={extraForm.subject} onChange={(e) => setExtraForm({ ...extraForm, subject: e.target.value })} placeholder="Ders" className={`${input} w-full`} />
+                        <SuggestInput options={subjectOptions} value={extraForm.subject} onChange={(v) => setExtraForm({ ...extraForm, subject: v })} placeholder="Ders" className={`${input} w-full`} />
                         <input value={extraForm.topic} onChange={(e) => setExtraForm({ ...extraForm, topic: e.target.value })} placeholder="Konu (isteğe bağlı)" className={`${input} w-full`} />
                         <div className="flex flex-wrap items-center gap-1.5">
                           <input type="number" min={0} value={extraForm.target_count} onChange={(e) => setExtraForm({ ...extraForm, target_count: Math.max(0, Number(e.target.value) || 0) })} className={`${input} w-20`} title="Soru sayısı" />
@@ -388,7 +389,6 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
               );
             })}
           </div>
-          <datalist id="ders-listesi">{subjectOptions.map((s) => <option key={s} value={s} />)}</datalist>
 
           {editMode && (
             <div className="space-y-2.5 rounded-[24px] border-2 border-[var(--accent)]/30 bg-[var(--card)] p-4">

@@ -10,6 +10,7 @@ import { useExamFilter } from '@/lib/exam-filter-context';
 import { parseTurkishNumber } from '@/lib/format';
 import { TRACK_RESOURCES } from '@/lib/track-resources';
 import { assignCurriculumForStudent } from '@/lib/curriculum-assign';
+import { SuggestInput } from '@/components/SuggestInput';
 
 // ─── Sabitler ────────────────────────────────────────────────
 
@@ -329,17 +330,13 @@ export default function YeniOgrenciPage() {
               <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className={inputCls} />
             </Field>
             <Field label="Kurum">
-              <input
-                type="text"
-                list="kurum-onerileri"
+              <SuggestInput
+                options={availableKurumlar}
                 value={kurum}
-                onChange={(e) => { setKurum(e.target.value); setSinifSube(''); }}
+                onChange={(v) => { setKurum(v); setSinifSube(''); }}
                 placeholder="Bilgiçler Okulu, Özel Ders vb."
                 className={inputCls}
               />
-              <datalist id="kurum-onerileri">
-                {availableKurumlar.map((k) => <option key={k} value={k} />)}
-              </datalist>
             </Field>
             <Field label="Sınav Türü" required>
               <select value={track} onChange={(e) => setTrack(e.target.value as ExamTrack)} className={inputCls}>
@@ -392,17 +389,13 @@ export default function YeniOgrenciPage() {
               </Field>
             )}
             <Field label="Sınıf / Şube">
-              <input
-                type="text"
-                list="sinif-onerileri"
+              <SuggestInput
+                options={getSinifOnerileri(kurum)}
                 value={sinifSube}
-                onChange={(e) => setSinifSube(e.target.value)}
+                onChange={setSinifSube}
                 placeholder="11-A, 12-Fen vb."
                 className={inputCls}
               />
-              <datalist id="sinif-onerileri">
-                {getSinifOnerileri(kurum).map((s) => <option key={s} value={s} />)}
-              </datalist>
             </Field>
             <Field label="Dönem">
               <select value={donem} onChange={(e) => setDonem(e.target.value)} className={inputCls}>

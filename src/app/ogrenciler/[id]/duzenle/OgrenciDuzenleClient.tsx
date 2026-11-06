@@ -8,6 +8,7 @@ import type { ExamTrack, StudentStatus } from '@/types/database';
 import { IconArchive, IconArchiveOff, IconArrowLeft, IconChevronDown, IconChevronUp, IconTrash } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { parseTurkishNumber, formatTurkishNumber } from '@/lib/format';
+import { SuggestInput } from '@/components/SuggestInput';
 
 // ─── Sabitler ────────────────────────────────────────────────
 
@@ -404,17 +405,13 @@ export function OgrenciDuzenleClient({ student, staffMode = false }: { student: 
               <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className={inputCls} />
             </Field>
             <Field label="Kurum">
-              <input
-                type="text"
-                list="kurum-onerileri-duzenle"
+              <SuggestInput
+                options={availableKurumlar}
                 value={kurum}
-                onChange={(e) => setKurum(e.target.value)}
+                onChange={setKurum}
                 placeholder="Bilgiçler Okulu, Özel Ders vb."
                 className={inputCls}
               />
-              <datalist id="kurum-onerileri-duzenle">
-                {availableKurumlar.map((k) => <option key={k} value={k} />)}
-              </datalist>
             </Field>
             <Field label="Sınav Türü" required>
               <select value={track} onChange={(e) => setTrack(e.target.value as ExamTrack)} className={inputCls}>
@@ -467,17 +464,13 @@ export function OgrenciDuzenleClient({ student, staffMode = false }: { student: 
               </Field>
             )}
             <Field label="Sınıf / Şube">
-              <input
-                type="text"
-                list="sinif-onerileri-duzenle"
+              <SuggestInput
+                options={getSinifOnerileri(kurum)}
                 value={sinifSube}
-                onChange={(e) => setSinifSube(e.target.value)}
+                onChange={setSinifSube}
                 placeholder="11-A, 12-Fen vb."
                 className={inputCls}
               />
-              <datalist id="sinif-onerileri-duzenle">
-                {getSinifOnerileri(kurum).map((s) => <option key={s} value={s} />)}
-              </datalist>
             </Field>
             <Field label="Durum">
               <select value={status} onChange={(e) => setStatus(e.target.value as StudentStatus)} className={inputCls}>

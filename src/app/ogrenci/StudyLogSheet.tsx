@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { IconX } from '@tabler/icons-react';
 import { subjectEmoji } from './studentUi';
 import type { StudyInput } from './studyApi';
+import { SuggestInput } from '@/components/SuggestInput';
 
 const field = 'w-full rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] px-3 py-2.5 text-[15px] font-bold text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none';
 const num = (v: string) => Math.max(0, Math.floor(Number(v) || 0));
@@ -70,8 +71,7 @@ export function StudyLogSheet({ task, subjects, onSave, onSkip, onClose }: {
         <div className="space-y-3">
           {!task && (
             <>
-              <input list="calisma-dersleri" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Ders (örn. TYT Matematik)" className={field} autoFocus />
-              <datalist id="calisma-dersleri">{subjects.map((s) => <option key={s} value={s} />)}</datalist>
+              <SuggestInput options={subjects} value={subject} onChange={setSubject} placeholder="Ders (örn. TYT Matematik)" className={field} autoFocus />
               <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Konu (isteğe bağlı)" className={field} />
             </>
           )}

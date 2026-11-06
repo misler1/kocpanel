@@ -11,6 +11,7 @@ import {
   StudentCard, StudentGrid, ListToolbar, SectionTitle, FilterChips, matchesQuery, lateBy, toolbarSelectCls,
 } from '@/components/StudentCard';
 import { avatarColor, initials } from '@/lib/ui-colors';
+import { SuggestInput } from '@/components/SuggestInput';
 
 type SortKey = 'gorusme_eski' | 'gorusme_yeni' | 'ad' | 'soyad' | 'sinif' | 'dogum';
 
@@ -445,15 +446,12 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Konu</label>
-                <input type="text"
-                  list="konu-onerileri-tumu"
+                <SuggestInput
+                  options={topicOptions}
                   value={editing.topic ?? ''}
-                  onChange={(e) => setEditing({ ...editing, topic: e.target.value })}
+                  onChange={(v) => setEditing({ ...editing, topic: v })}
                   placeholder="Haftalık takip, TYT değerlendirme..."
                   className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
-                <datalist id="konu-onerileri-tumu">
-                  {topicOptions.map((t) => <option key={t} value={t} />)}
-                </datalist>
               </div>
 
               <div>
