@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { IconArrowLeft, IconCalendar, IconEdit, IconTrash } from '@tabler/icons-react';
 import { NotesEditor } from '@/components/NotesEditor';
+import {
+  draftKey, readDraft, writeDraft, removeDraft, hasText, DURATION_RESUME_MS, type MeetingDraft,
+} from '@/lib/meetingDraft';
 
 const HAFTALIK_TAKIP_KURUMU = 'Hüdayi Vakfı Çekmeköy YKS Yurdu';
 const MEETING_SELECT = '*, created_by_profile:created_by(id, full_name)';
@@ -43,6 +46,68 @@ export function GorusmeOgrenciClient({
   const [loading, setLoading] = useState(false);
 
   const showHaftalikTakip = student.kurum === HAFTALIK_TAKIP_KURUMU;
+
+  // ── Taslak: yazılanlar tarayıcıya kaydedilir, sayfa kapansa da geri yüklenir ──
+  const [draftStorageKey, setDraftStorageKey] = useState<string | null>(null);
+  const [restoredDraftAt, setRestoredDraftAt] = useState<number | null>(null);
+  const hasContent = hasText(notes) || topic.trim() !== '' || createdByOtherName.trim() !== '';
+
+  function applyDraft(d: MeetingDraft) {
+    setMeetingType(d.meetingType);
+    if (d.createdBy) setCreatedBy(d.createdBy);
+    setCreatedByOtherName(d.createdByOtherName ?? '');
+    if (d.scheduledAt) setScheduledAt(d.scheduledAt);
+    setTopic(d.topic ?? '');
+    setNotes(d.notes ?? '');
+    setHaftalikTakipGetirdi(d.haftalikTakipGetirdi ?? '');
+    if (d.durationEditedManually || Date.now() - d.openedAt > DURATION_RESUME_MS) {
+      setDuration(d.duration);
+      setDurationEditedManually(true);
+    } else {
+      setFormOpenedAt(new Date(d.openedAt)); // süre sayacı ilk açılıştan devam eder
+    }
+    setRestoredDraftAt(d.savedAt);
+  }
+
+  useEffect(() => {
+    if (!draftStorageKey) return;
+    const t = setTimeout(() => {
+      if (!hasContent) { removeDraft(draftStorageKey); return; }
+      writeDraft(draftStorageKey, {
+        v: 1, savedAt: Date.now(), openedAt: formOpenedAt.getTime(), studentId: student.id, meetingType, createdBy,
+        createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi,
+      });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [draftStorageKey, hasContent, formOpenedAt, student.id, meetingType, createdBy, createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi]);
+
+  // Kaydedilmemiş not varken sekme/pencere kapatılırken tarayıcı uyarısı
+  useEffect(() => {
+    if (!hasContent) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [hasContent]);
+
+  function resetForm() {
+    const now = new Date();
+    setTopic('');
+    setNotes('');
+    setCreatedByOtherName('');
+    setHaftalikTakipGetirdi('');
+    setMeetingType('ogrenci');
+    setFormOpenedAt(now);
+    setScheduledAt(toLocalDatetime(now));
+    setDuration(1);
+    setDurationEditedManually(false);
+    setRestoredDraftAt(null);
+  }
+
+  function discardDraft() {
+    if (!confirm('Kaydedilmemiş görüşme taslağı silinsin mi?')) return;
+    if (draftStorageKey) removeDraft(draftStorageKey);
+    resetForm();
+  }
 
   // Form açıldığından beri geçen süreyi otomatik hesapla (elle değiştirilirse durur)
   useEffect(() => {
@@ -96,9 +161,23 @@ export function GorusmeOgrenciClient({
         new Set((topicsData ?? []).map((t: any) => t.topic).filter(Boolean))
       ) as string[];
       setTopicOptions(unique);
+
+      // Bu öğrenci için kaydedilmemiş taslak varsa geri yükle
+      // (Görüşme ekle sayfasında bu öğrenci seçilerek başlanmış taslak da buraya taşınır)
+      const key = draftKey(user.id, student.id);
+      let d = readDraft(key);
+      const generalKey = draftKey(user.id, '');
+      const g = d ? null : readDraft(generalKey);
+      if (g && g.studentId === student.id) {
+        d = g;
+        writeDraft(key, g);
+        removeDraft(generalKey);
+      }
+      if (d) applyDraft(d);
+      setDraftStorageKey(key);
     }
     load();
-  }, [supabase]);
+  }, [supabase, student.id]);
 
   const sortedMeetings = useMemo(
     () => [...meetings].sort((a, b) => b.scheduled_at.localeCompare(a.scheduled_at)),
@@ -137,16 +216,9 @@ export function GorusmeOgrenciClient({
     setMeetings((prev) => [data, ...prev]);
     if (data.topic && !topicOptions.includes(data.topic)) setTopicOptions((p) => [...p, data.topic]);
 
-    // Formu sıfırla
-    const now = new Date();
-    setTopic('');
-    setNotes('');
-    setHaftalikTakipGetirdi('');
-    setMeetingType('ogrenci');
-    setFormOpenedAt(now);
-    setScheduledAt(toLocalDatetime(now));
-    setDuration(1);
-    setDurationEditedManually(false);
+    // Taslağı sil, formu sıfırla
+    if (draftStorageKey) removeDraft(draftStorageKey);
+    resetForm();
     setLoading(false);
   }
 
@@ -165,6 +237,17 @@ export function GorusmeOgrenciClient({
       {/* ── Yeni görüşme formu (her zaman açık) ── */}
       <section className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] px-5 py-5">
         <h2 className="mb-4 text-[14px] font-semibold text-[var(--ink)]">Yeni görüşme</h2>
+        {restoredDraftAt && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-900">
+            <span>
+              Kaydedilmemiş görüşme taslağın geri yüklendi
+              {' '}({new Date(restoredDraftAt).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}).
+            </span>
+            <button type="button" onClick={discardDraft} className="font-medium text-amber-800 underline hover:text-amber-950">
+              Taslağı sil
+            </button>
+          </div>
+        )}
         <form onSubmit={handleCreate} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -235,6 +318,9 @@ export function GorusmeOgrenciClient({
           <div>
             <label className={labelCls}>Notlar</label>
             <NotesEditor value={notes} onChange={setNotes} rows={4} placeholder="Görüşme notları..." />
+            {draftStorageKey && hasContent && (
+              <p className="mt-1 text-[11px] text-[var(--ink-muted)]">Taslak otomatik kaydediliyor; sayfa kapansa da notların kaybolmaz.</p>
+            )}
           </div>
 
           {showHaftalikTakip && (

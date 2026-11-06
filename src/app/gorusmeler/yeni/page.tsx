@@ -8,6 +8,9 @@ import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { Suspense } from 'react';
 import { NotesEditor } from '@/components/NotesEditor';
+import {
+  draftKey, readDraft, writeDraft, removeDraft, hasText, DURATION_RESUME_MS, type MeetingDraft,
+} from '@/lib/meetingDraft';
 
 const HAFTALIK_TAKIP_KURUMU = 'Hüdayi Vakfı Çekmeköy YKS Yurdu';
 
@@ -15,45 +18,6 @@ function toLocalDatetime(d: Date) {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
-
-// ─── Taslak (kaydedilmemiş görüşme) ───────────────────────────
-// Form içeriği yazıldıkça tarayıcıya kaydedilir; sayfa kapanır ya da başka sayfaya geçilirse
-// tekrar açıldığında geri yüklenir. Yalnızca görüşme kaydedilince ya da "Taslağı sil" ile silinir.
-interface MeetingDraft {
-  v: 1;
-  savedAt: number;
-  openedAt: number;
-  studentId: string;
-  meetingType: 'ogrenci' | 'veli';
-  createdBy: string;
-  createdByOtherName: string;
-  scheduledAt: string;
-  duration: number;
-  durationEditedManually: boolean;
-  topic: string;
-  notes: string;
-  haftalikTakipGetirdi: 'evet' | 'hayir' | '';
-}
-const draftKey = (userId: string, lockedStudentId: string) => `gorusme-taslak:${userId}:${lockedStudentId || 'genel'}`;
-function readDraft(key: string): MeetingDraft | null {
-  try {
-    const raw = localStorage.getItem(key);
-    const d = raw ? (JSON.parse(raw) as MeetingDraft) : null;
-    return d && d.v === 1 ? d : null;
-  } catch {
-    return null;
-  }
-}
-function writeDraft(key: string, d: MeetingDraft) {
-  try { localStorage.setItem(key, JSON.stringify(d)); } catch { /* depolama kapalı */ }
-}
-function removeDraft(key: string) {
-  try { localStorage.removeItem(key); } catch { /* depolama kapalı */ }
-}
-// Notlar zengin metin (HTML) olabilir: boş paragraf / etiketler içerik sayılmaz
-const hasText = (s: string) => s.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length > 0;
-// Taslak bu süreden eskiyse süre sayacı kaldığı yerden devam etmez, kaydedilen süre korunur
-const DURATION_RESUME_MS = 3 * 60 * 60 * 1000;
 
 function YeniGorusmeForm() {
   const router = useRouter();
