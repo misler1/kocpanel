@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconArrowLeft, IconX } from '@tabler/icons-react';
 import { Suspense } from 'react';
 import { NotesEditor } from '@/components/NotesEditor';
 import {
@@ -277,9 +277,15 @@ useEffect(() => {
             Kaydedilmemiş görüşme taslağın geri yüklendi
             {' '}({new Date(restoredDraftAt).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}).
           </span>
-          <button type="button" onClick={discardDraft} className="font-medium text-amber-800 underline hover:text-amber-950">
-            Taslağı sil
-          </button>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={discardDraft} className="font-medium text-amber-800 underline hover:text-amber-950">
+              Taslağı sil
+            </button>
+            <button type="button" onClick={() => setRestoredDraftAt(null)} aria-label="Bildirimi kapat" title="Bildirimi kapat (taslak silinmez)"
+              className="rounded p-0.5 text-amber-700 hover:bg-amber-100 hover:text-amber-950">
+              <IconX size={16} />
+            </button>
+          </div>
         </div>
       )}
 
