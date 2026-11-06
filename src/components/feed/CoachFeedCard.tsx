@@ -41,6 +41,8 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [showAll, setShowAll] = useState(false);
+  // Haftada bir kullanılır: kart kapalı başlar, başlığa dokununca açılır
+  const [expanded, setExpanded] = useState(false);
 
   const ideas = useMemo(() => feedIdeas({ inactive, pendingExams, total, today }), [inactive, pendingExams, total, today]);
 
@@ -109,6 +111,9 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
 
   if (setupMissing) return null; // home_feed.sql henüz çalıştırılmamış
 
+  const pendingRecs = recs.filter((r) => !sentSources.has(r.id)).length;
+  const lastShare = posts.find((p) => p.audience === 'ogrenciler')?.created_at ?? null;
+
   const tabs: { key: Tab; label: string; icon: typeof IconPin }[] = [
     { key: 'icerik', label: 'İçerik paylaş', icon: IconBrandYoutube },
     { key: 'pano', label: 'Pano', icon: IconPin },
@@ -119,10 +124,28 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
 
   return (
     <section className="mb-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-4 py-3">
-        <h2 className="mr-auto flex items-center gap-2 text-[15px] font-semibold text-[var(--ink)]">
-          <IconSparkles size={18} className="text-violet-500" /> Öğrencilerinin ana sayfası
-        </h2>
+      <button type="button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}
+        className="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 text-left transition-colors hover:bg-[var(--paper)]">
+        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+          <IconSparkles size={17} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold text-[var(--ink)]">Öğrencilerinin ana sayfası</span>
+          <span className="block text-[12.5px] text-[var(--ink-muted)]">
+            {lastShare ? `Video/içerik paylaş, panoya duyuru ekle · son paylaşım ${fmt(lastShare)}` : 'Video/içerik paylaş, panoya duyuru ekle'}
+          </span>
+        </span>
+        {pendingRecs > 0 && (
+          <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[12px] font-semibold text-amber-800">
+            <IconBulb size={14} /> {pendingRecs} yönetici önerisi
+          </span>
+        )}
+        {!expanded && msg?.ok && <span className="text-[12.5px] font-medium text-emerald-600">{msg.text}</span>}
+        <IconChevronDown size={18} className={`flex-shrink-0 text-[var(--ink-muted)] transition-transform ${expanded ? 'rotate-180' : ''}`} />
+      </button>
+
+      {expanded && <>
+      <div className="flex flex-wrap items-center gap-2 border-y border-[var(--border)] bg-[var(--paper)]/50 px-4 py-2">
         <div className="flex gap-1 rounded-xl bg-[var(--paper)] p-1">
           {tabs.map((t) => {
             const Icon = t.icon;
@@ -140,7 +163,7 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
         {/* Form */}
         <div className="min-w-0 space-y-3">
           <p className="text-[12.5px] text-[var(--ink-muted)]">
-            {tab === 'icerik' && 'YouTube, Instagram (gönderi/reels), X, TikTok, Vimeo, Spotify ya da herhangi bir sitenin bağlantısını yapıştır. Öğrencilerin ana sayfasında seri kartının altında görünür.'}
+            {tab === 'icerik' && 'YouTube, Instagram (gönderi/reels), X, TikTok, Vimeo, Spotify ya da herhangi bir sitenin bağlantısını yapıştır. Öğrencilerin ana sayfasında panonun altında görünür.'}
             {tab === 'pano' && 'Genel duyurular öğrencilerin ana sayfasındaki panoda görünür ve öğrencilere bildirim gider.'}
             {tab === 'koclar' && 'Beğendiğin içeriği tüm koçlara öner; koçlar tek dokunuşla kendi öğrencilerine gönderebilir.'}
           </p>
@@ -285,6 +308,12 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
           </aside>
         )}
       </div>
+      <div className="flex justify-end border-t border-[var(--border)] px-4 py-2">
+        <button type="button" onClick={() => setExpanded(false)} className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[12.5px] font-medium text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]">
+          Kapat <IconChevronDown size={14} className="rotate-180" />
+        </button>
+      </div>
+      </>}
     </section>
   );
 }
