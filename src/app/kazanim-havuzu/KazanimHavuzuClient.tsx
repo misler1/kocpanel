@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 // src/app/kazanim-havuzu/KazanimHavuzuClient.tsx
 import { useCallback, useEffect, useState } from "react";
@@ -7,6 +8,7 @@ import { assignCurriculumForStudent } from "@/lib/curriculum-assign";
 
 type Category = { id: string; code: string; name: string };
 type Subject = { id: string; name: string; sort_order: number };
+type Merge = { id: string; new_topic_id: string | null; old_topic_ids: string[]; created_at: string };
 type Topic = {
   id: string;
   kind: "konu" | "kazanim";
@@ -35,10 +37,16 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
   const [bulk, setBulk] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  // Birleştirme (supabase/curriculum_sync.sql)
+  const [mergeSel, setMergeSel] = useState<Set<string>>(new Set());
+  const [mergeName, setMergeName] = useState("");
+  const [merges, setMerges] = useState<Merge[]>([]);
+  const [mergeBusy, setMergeBusy] = useState(false);
 
-  const flash = (t: string) => {
+  // Uzun ya da hata içeren mesajlar kendiliğinden kaybolmaz (okunmadan gitmesin)
+  const flash = (t: string, sticky = false) => {
     setMsg(t);
-    setTimeout(() => setMsg(""), 3000);
+    if (!sticky) setTimeout(() => setMsg((cur) => (cur === t ? "" : cur)), 4000);
   };
 
   const loadSubjects = useCallback(async () => {
@@ -62,9 +70,20 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
       .order("sort_order")
       .order("created_at");
     setTopics((data as Topic[]) ?? []);
+    const { data: m } = await (supabase as any)
+      .from("curriculum_merges")
+      .select("id, new_topic_id, old_topic_ids, created_at")
+      .eq("subject_id", subjectId)
+      .is("undone_at", null);
+    setMerges((m as Merge[]) ?? []); // tablo yoksa (SQL çalıştırılmadıysa) boş kalır
+    setMergeSel(new Set());
+    setMergeName("");
   }, [subjectId, supabase]);
 
+  // Veriler istemcide yüklenir
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadSubjects(); }, [loadSubjects]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadTopics(); }, [loadTopics]);
 
   async function addCategory() {
@@ -129,6 +148,7 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
     if (!name) return;
     const { error } = await supabase.from("curriculum_topics").update({ name }).eq("id", id);
     if (error) return flash("Kaydedilemedi: " + error.message);
+    flash("Kaydedildi; öğrencilerin konu listesinde de güncellendi.");
     setEditingId(null);
     loadTopics();
   }
@@ -153,16 +173,57 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
       if (error) throw error;
 
       let total = 0;
+      let failed = 0;
+      let firstError = "";
       for (const s of allStudents ?? []) {
-        const { added } = await assignCurriculumForStudent(supabase, s.id, s.track);
+        const { added, error: e } = await assignCurriculumForStudent(supabase, s.id, s.track);
         total += added;
+        if (e) { failed++; firstError ||= e; }
       }
-      flash(`Tamamlandı: ${(allStudents ?? []).length} öğrenci tarandı, ${total} yeni konu atandı.`);
+      flash(
+        `Tamamlandı: ${(allStudents ?? []).length} öğrenci tarandı, ${total} yeni konu atandı.` +
+          (failed ? ` ${failed} öğrencide eklenemedi: ${firstError} (curriculum_sync.sql çalıştırıldı mı?)` : ""),
+        failed > 0
+      );
     } catch (e) {
       flash("Hata: " + (e instanceof Error ? e.message : String(e)));
     } finally {
       setBulkBusy(false);
     }
+  }
+
+  function toggleMergeSel(t: Topic) {
+    setMergeSel((p) => {
+      const n = new Set(p);
+      if (n.has(t.id)) n.delete(t.id); else n.add(t.id);
+      return n;
+    });
+    if (!mergeName) setMergeName(t.unit || t.name);
+  }
+
+  async function doMerge() {
+    const name = mergeName.trim();
+    if (mergeSel.size < 2) return flash("Birleştirmek için en az iki başlık seçin.");
+    if (!name) return flash("Birleşik başlığın adını yazın.");
+    if (!confirm(
+      `${mergeSel.size} başlık "${name}" adıyla tek başlıkta birleşecek.\n\n` +
+      "Öğrencilerin ilerlemesi: bir adım (konu tamamlandı, kaynak soruları, yanlış kontrolü) ancak TÜM alt başlıklarda işaretliyse birleşik başlıkta işaretli olur.\n\n" +
+      "Eski kayıtlar arşivlenir; \"Geri al\" ile birebir geri getirilebilir."
+    )) return;
+    setMergeBusy(true);
+    const { error } = await (supabase as any).rpc("merge_curriculum_topics", { p_ids: Array.from(mergeSel), p_name: name });
+    setMergeBusy(false);
+    if (error) return flash("Birleştirilemedi: " + error.message, true);
+    flash(`"${name}" oluşturuldu; öğrencilerin ilerlemesi aktarıldı.`);
+    loadTopics();
+  }
+
+  async function undoMerge(m: Merge) {
+    if (!confirm("Birleştirme geri alınsın mı? Alt başlıklar ve öğrencilerin eski ilerlemesi geri gelir; birleşik başlıkta sonradan yapılan işaretlemeler kaybolur.")) return;
+    const { error } = await (supabase as any).rpc("unmerge_curriculum_topics", { p_merge: m.id });
+    if (error) return flash("Geri alınamadı: " + error.message, true);
+    flash("Birleştirme geri alındı.");
+    loadTopics();
   }
 
   async function deleteTopic(t: Topic) {
@@ -171,6 +232,9 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
     if (error) return flash("Silinemedi: " + error.message);
     loadTopics();
   }
+
+  const mergeOf = new Map(merges.filter((m) => m.new_topic_id).map((m) => [m.new_topic_id as string, m]));
+  const mergedOld = new Set(merges.flatMap((m) => m.old_topic_ids));
 
   // Ünitelere göre grupla
   const groups = topics.reduce<Record<string, Topic[]>>((acc, t) => {
@@ -316,6 +380,29 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
 
               {topics.length === 0 && <div style={box}>Bu derste henüz kayıt yok. Yukarıdan ekleyebilirsiniz.</div>}
 
+              {topics.some((t) => t.is_active) && (
+                <div style={{ ...box, marginBottom: 12, background: mergeSel.size ? "#f3f0ff" : "var(--card, #fff)" }}>
+                  <h2 style={{ fontSize: 15, marginBottom: 4 }}>Başlıkları birleştir</h2>
+                  {mergeSel.size === 0 ? (
+                    <p style={{ fontSize: 13, opacity: 0.7 }}>
+                      Alt başlıkları tek başlıkta toplamak için aşağıdan kutucuklarını işaretleyin. Öğrencilerin ilerlemesi
+                      kaybolmaz: bir adım ancak tüm alt başlıklarda işaretliyse birleşik başlıkta işaretli olur, eski kayıtlar
+                      arşivlenir ve geri alınabilir.
+                    </p>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>{mergeSel.size} başlık seçildi →</span>
+                      <input style={{ ...input, flex: 1, minWidth: 200 }} placeholder="Birleşik başlığın adı" value={mergeName}
+                        onChange={(e) => setMergeName(e.target.value)} />
+                      <button style={{ ...btn, opacity: mergeBusy || mergeSel.size < 2 ? 0.6 : 1 }} disabled={mergeBusy || mergeSel.size < 2} onClick={doMerge}>
+                        {mergeBusy ? "Birleştiriliyor..." : "Birleştir"}
+                      </button>
+                      <button style={ghost} onClick={() => { setMergeSel(new Set()); setMergeName(""); }}>Seçimi temizle</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {Object.entries(groups).map(([g, list]) => (
                 <div key={g} style={{ ...box, marginBottom: 12 }}>
                   <h3 style={{ fontSize: 14, marginBottom: 6 }}>{g} ({list.length})</h3>
@@ -331,6 +418,9 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
                         opacity: t.is_active ? 1 : 0.45,
                       }}
                     >
+                      {t.is_active && editingId !== t.id && (
+                        <input type="checkbox" aria-label={`${t.name} birleştirmeye ekle`} checked={mergeSel.has(t.id)} onChange={() => toggleMergeSel(t)} />
+                      )}
                       {t.code && <span style={{ fontSize: 12, opacity: 0.6, whiteSpace: "nowrap" }}>{t.code}</span>}
                       {editingId === t.id ? (
                         <>
@@ -341,7 +431,10 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
                       ) : (
                         <>
                           <span style={{ flex: 1, fontSize: 14 }}>{t.name}</span>
-                          <span style={{ fontSize: 11, opacity: 0.55 }}>{t.kind === "kazanim" ? "kazanım" : "konu"}</span>
+                          <span style={{ fontSize: 11, opacity: 0.55 }}>
+                            {mergedOld.has(t.id) ? "birleştirildi" : mergeOf.has(t.id) ? `birleşik (${mergeOf.get(t.id)!.old_topic_ids.length})` : t.kind === "kazanim" ? "kazanım" : "konu"}
+                          </span>
+                          {mergeOf.has(t.id) && <button style={ghost} onClick={() => undoMerge(mergeOf.get(t.id)!)}>Geri al</button>}
                           <button style={ghost} onClick={() => { setEditingId(t.id); setEditName(t.name); }}>Düzenle</button>
                           <button style={ghost} onClick={() => toggleActive(t)}>{t.is_active ? "Pasife al" : "Aktif et"}</button>
                           <button style={ghost} onClick={() => deleteTopic(t)}>Sil</button>

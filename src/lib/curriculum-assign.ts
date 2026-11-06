@@ -37,7 +37,7 @@ export async function assignCurriculumForStudent(
   supabase: any,
   studentId: string,
   track: string
-): Promise<{ added: number; missingSubjects: Spec[] }> {
+): Promise<{ added: number; missingSubjects: Spec[]; error?: string }> {
   const specs = parseTrackResources(track);
   if (specs.length === 0) return { added: 0, missingSubjects: [] };
 
@@ -125,11 +125,13 @@ export async function assignCurriculumForStudent(
     }));
 
   let added = 0;
+  let firstError: string | undefined;
   for (let i = 0; i < rows.length; i += 500) {
     const chunk = rows.slice(i, i + 500);
     const { error } = await supabase.from("topic_progress").insert(chunk);
     if (!error) added += chunk.length;
+    else firstError ??= error.message; // sessizce yutulmasın: çağıran gösterebilsin
   }
 
-  return { added, missingSubjects };
+  return { added, missingSubjects, error: firstError };
 }
