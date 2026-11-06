@@ -50,22 +50,60 @@ export function StudentContentCard({ items }: { items: FeedItem[] }) {
   );
 }
 
+// Her duyuru farklı renkte bir not kâğıdı gibi görünür (sırayla döner)
+const NOTE_COLORS = [
+  { bg: 'bg-amber-50', bar: 'border-amber-400', dot: 'bg-amber-500' },
+  { bg: 'bg-sky-50', bar: 'border-sky-400', dot: 'bg-sky-500' },
+  { bg: 'bg-pink-50', bar: 'border-pink-400', dot: 'bg-pink-500' },
+  { bg: 'bg-emerald-50', bar: 'border-emerald-400', dot: 'bg-emerald-500' },
+];
+
+/** Son iki günde eklenen duyuru "Yeni" etiketi alır */
+const isRecent = (iso: string) => Date.now() - new Date(iso).getTime() < 2 * 86_400_000;
+
+const initialsOf = (name: string | null) =>
+  (name ?? '').split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toLocaleUpperCase('tr') || 'K';
+
 export function StudentBoard({ items }: { items: FeedItem[] }) {
-  const notes = items.filter((i) => i.kind === 'duyuru').slice(0, 6);
+  const notes = items.filter((i) => i.kind === 'duyuru').slice(0, 10);
+  const [all, setAll] = useState(false);
   if (!notes.length) return null;
+  const shown = all ? notes : notes.slice(0, 3);
 
   return (
-    <div className="rounded-[28px] border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4 md:p-5">
-      <h2 className="mb-3 text-[18px] font-extrabold text-[var(--ink)]">📌 Pano</h2>
-      <ul className="space-y-2.5">
-        {notes.map((n) => (
-          <li key={n.id} className="rounded-2xl bg-white/80 px-3.5 py-3 shadow-sm">
-            {n.title && <p className="text-[14.5px] font-extrabold text-[var(--ink)]">{n.title}</p>}
-            <p className="whitespace-pre-line text-[14px] font-medium leading-relaxed text-[var(--ink)]">{n.body}</p>
-            <p suppressHydrationWarning className="mt-1 text-[12px] font-semibold text-[var(--ink-muted)]">{n.author_name} · {when(n.created_at)}</p>
-          </li>
-        ))}
+    <section className="overflow-hidden rounded-[24px] border-2 border-[var(--border)] bg-[var(--card)] shadow-sm">
+      <div className="flex items-center gap-2 bg-gradient-to-r from-[#F59E0B] via-[#F97316] to-[#EC4899] px-4 py-2.5 text-white">
+        <span className="text-[18px]">📌</span>
+        <h2 className="text-[17px] font-extrabold">Pano</h2>
+        <span className="ml-auto rounded-full bg-white/25 px-2.5 py-0.5 text-[12px] font-bold">{notes.length} duyuru</span>
+      </div>
+      <ul className="space-y-2 p-2">
+        {shown.map((n, i) => {
+          const c = NOTE_COLORS[i % NOTE_COLORS.length];
+          const isNew = isRecent(n.created_at);
+          return (
+            <li key={n.id} className={`rounded-2xl border-l-[6px] ${c.bar} ${c.bg} px-4 py-3.5`}>
+              <div className="flex items-start gap-2">
+                {n.title && <p className="flex-1 text-[16px] font-extrabold leading-snug text-[var(--ink)]">{n.title}</p>}
+                {isNew && (
+                  <span suppressHydrationWarning className={`${n.title ? '' : 'ml-auto'} flex-shrink-0 rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-extrabold text-white`}>Yeni</span>
+                )}
+              </div>
+              <p className={`whitespace-pre-line text-[15.5px] font-semibold leading-relaxed text-[var(--ink)] ${n.title ? 'mt-1' : ''}`}>{n.body}</p>
+              <div className="mt-2.5 flex items-center gap-2">
+                <span className={`flex h-6 w-6 items-center justify-center rounded-full ${c.dot} text-[10.5px] font-extrabold text-white`}>{initialsOf(n.author_name)}</span>
+                <span suppressHydrationWarning className="text-[12.5px] font-bold text-[var(--ink-muted)]">{n.author_name} · {when(n.created_at)}</span>
+              </div>
+            </li>
+          );
+        })}
       </ul>
-    </div>
+      {notes.length > 3 && (
+        <button type="button" onClick={() => setAll(!all)}
+          className="mb-2 ml-3 rounded-full px-2 py-1 text-[13px] font-extrabold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]">
+          {all ? 'Daha az göster' : `Tüm duyurular (${notes.length})`}
+        </button>
+      )}
+    </section>
   );
 }

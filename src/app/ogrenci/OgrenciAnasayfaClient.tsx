@@ -149,15 +149,11 @@ export function OgrenciAnasayfaClient({
         )}
       </div>
 
-      {/* Seri + hedef net */}
-      <div className="grid gap-3 md:grid-cols-2">
-        <StreakCard current={streak.current} best={streak.best} studiedToday={streak.studiedToday} todayQuestions={todayQuestions} />
-        <TargetNetCard rows={targets} />
-      </div>
-
-      {/* Koçun paylaştığı içerikler ve pano duyuruları */}
-      <StudentContentCard items={feed} />
+      {/* Seri → pano → koçun paylaştığı içerik → hedef net */}
+      <StreakCard current={streak.current} best={streak.best} studiedToday={streak.studiedToday} todayQuestions={todayQuestions} />
       <StudentBoard items={feed} />
+      <StudentContentCard items={feed} />
+      <TargetNetCard rows={targets} />
 
       {msg && <p className="rounded-2xl border-2 border-[var(--accent)]/20 bg-[var(--accent-soft)] px-4 py-2.5 text-[13px] font-bold text-[var(--accent-dark)]">💬 {msg}</p>}
 
