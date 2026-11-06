@@ -37,6 +37,7 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
   const [bulk, setBulk] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editCode, setEditCode] = useState("");
   // Birleştirme (supabase/curriculum_sync.sql)
   const [mergeSel, setMergeSel] = useState<Set<string>>(new Set());
   const [mergeName, setMergeName] = useState("");
@@ -146,7 +147,7 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
   async function saveEdit(id: string) {
     const name = editName.trim();
     if (!name) return;
-    const { error } = await supabase.from("curriculum_topics").update({ name }).eq("id", id);
+    const { error } = await supabase.from("curriculum_topics").update({ name, code: editCode.trim() || null }).eq("id", id);
     if (error) return flash("Kaydedilemedi: " + error.message);
     flash("Kaydedildi; öğrencilerin konu listesinde de güncellendi.");
     setEditingId(null);
@@ -421,10 +422,12 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
                       {t.is_active && editingId !== t.id && (
                         <input type="checkbox" aria-label={`${t.name} birleştirmeye ekle`} checked={mergeSel.has(t.id)} onChange={() => toggleMergeSel(t)} />
                       )}
-                      {t.code && <span style={{ fontSize: 12, opacity: 0.6, whiteSpace: "nowrap" }}>{t.code}</span>}
+                      {t.code && editingId !== t.id && <span style={{ fontSize: 12, opacity: 0.6, whiteSpace: "nowrap" }}>{t.code}</span>}
                       {editingId === t.id ? (
                         <>
-                          <input style={input} value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEdit(t.id)} autoFocus />
+                          <input style={{ ...input, width: 140, flex: "0 0 auto" }} placeholder="Numara (ör. M.8.1.1.1)" aria-label="Kazanım numarası"
+                            value={editCode} onChange={(e) => setEditCode(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEdit(t.id)} />
+                          <input style={input} aria-label="Kazanım metni" value={editName} onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveEdit(t.id)} autoFocus />
                           <button style={btn} onClick={() => saveEdit(t.id)}>Kaydet</button>
                           <button style={ghost} onClick={() => setEditingId(null)}>Vazgeç</button>
                         </>
@@ -435,7 +438,7 @@ export default function KazanimHavuzuClient({ categories: initial }: { categorie
                             {mergedOld.has(t.id) ? "birleştirildi" : mergeOf.has(t.id) ? `birleşik (${mergeOf.get(t.id)!.old_topic_ids.length})` : t.kind === "kazanim" ? "kazanım" : "konu"}
                           </span>
                           {mergeOf.has(t.id) && <button style={ghost} onClick={() => undoMerge(mergeOf.get(t.id)!)}>Geri al</button>}
-                          <button style={ghost} onClick={() => { setEditingId(t.id); setEditName(t.name); }}>Düzenle</button>
+                          <button style={ghost} onClick={() => { setEditingId(t.id); setEditName(t.name); setEditCode(t.code ?? ""); }}>Düzenle</button>
                           <button style={ghost} onClick={() => toggleActive(t)}>{t.is_active ? "Pasife al" : "Aktif et"}</button>
                           <button style={ghost} onClick={() => deleteTopic(t)}>Sil</button>
                         </>
