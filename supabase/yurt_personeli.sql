@@ -43,6 +43,9 @@ language sql stable security definer set search_path = public as $$
   );
 $$;
 revoke all on function _staff_status(uuid), _scoped_staff_student(uuid, uuid) from public, anon;
+-- Satır kuralları (RLS) bu fonksiyonları giriş yapan kullanıcı adına çağırır: çalıştırma izni şart
+-- (yoksa denemeler/öğrenciler okunurken "permission denied for function _staff_status" hatası çıkar)
+grant execute on function _staff_status(uuid), _scoped_staff_student(uuid, uuid) to authenticated;
 
 -- 3) Öğrenciler: belletmen listeyi görür; yurt yöneticisi bilgileri düzenleyebilir (koçu değiştiremez: kontrol aynı izin)
 drop policy if exists "staff read listed students" on students;
@@ -96,6 +99,7 @@ language sql stable security definer set search_path = public as $$
   end from x;
 $$;
 revoke all on function _staff_pair_ok(uuid, uuid) from public, anon;
+grant execute on function _staff_pair_ok(uuid, uuid) to authenticated;
 
 create or replace function can_direct_message(a uuid, b uuid)
 returns boolean language sql stable security definer set search_path = public as $$
