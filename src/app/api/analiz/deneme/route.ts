@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@/lib/supabase/server';
-import { analyzeExams, type StudentExamGroup } from '@/lib/groq/examAnalysis';
+import { analyzeExams, MAX_ANALYSIS_EXAMS, type StudentExamGroup } from '@/lib/groq/examAnalysis';
+
+// Yapay zekâ yanıtı uzun sürebilir (çok deneme + kazanım tablosu)
+export const maxDuration = 60;
 
 type Body = {
   examIds?: string[];
@@ -14,8 +17,8 @@ export async function POST(req: Request) {
     if (!Array.isArray(examIds) || examIds.length === 0) {
       return Response.json({ error: 'Eksik veri' }, { status: 400 });
     }
-    if (examIds.length > 5) {
-      return Response.json({ error: 'En fazla 5 deneme analiz edilebilir.' }, { status: 400 });
+    if (examIds.length > MAX_ANALYSIS_EXAMS) {
+      return Response.json({ error: `En fazla ${MAX_ANALYSIS_EXAMS} deneme analiz edilebilir.` }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -24,9 +27,8 @@ export async function POST(req: Request) {
 
     const { data: exams, error: examsError } = await (supabase as any)
       .from('exams')
-      .select('id, student_id, exam_name, exam_type, exam_date, net_score, subject_results, tyt_puan, say_puan, ea_puan, soz_puan, lgs_puan, linked_exam_id, students!inner(id, full_name, coach_id)')
-      .in('id', examIds)
-      .eq('students.coach_id', user.id);
+      .select('id, student_id, exam_name, exam_type, exam_date, net_score, subject_results, question_results, subject_averages, tyt_puan, say_puan, ea_puan, soz_puan, lgs_puan, linked_exam_id, students!inner(id, full_name, coach_id)')
+      .in('id', examIds); // hangi denemelerin görülebileceğini veritabanı izni belirler (koç, yurt personeli)
 
     if (examsError) return Response.json({ error: examsError.message }, { status: 500 });
     if (!exams || exams.length === 0) {
@@ -96,6 +98,8 @@ export async function POST(req: Request) {
           exam_date: e.exam_date,
           net_score: String(e.net_score ?? ''),
           subject_results: e.subject_results ?? {},
+          question_results: Array.isArray(e.question_results) ? e.question_results : null,
+          subject_averages: e.subject_averages ?? null,
           tyt_puan: e.tyt_puan ? String(e.tyt_puan) : null,
           say_puan: e.say_puan ? String(e.say_puan) : null,
           ea_puan: e.ea_puan ? String(e.ea_puan) : null,
@@ -109,6 +113,21 @@ export async function POST(req: Request) {
     });
 
     const analysis = await analyzeExams(groups);
+
+    // Her öğrencinin analizi kaydedilir (öğrenciye göndermek için); tablo yoksa (SQL çalıştırılmadıysa) sessizce geçilir
+    for (const o of analysis.ogrenciler) {
+      const g = groups.find((x) => x.studentId === o.student_id);
+      if (!g) continue;
+      const { data: saved } = await (supabase as any).from('exam_analyses').insert({
+        coach_id: user.id,
+        student_id: g.studentId,
+        exam_ids: g.exams.map((e) => e.id),
+        exam_names: g.exams.map((e) => e.exam_name),
+        exam_dates: g.exams.map((e) => e.exam_date),
+        analysis: { ...o, karsilastirma: null, kaynak: analysis.kaynak },
+      }).select('id').single();
+      if (saved?.id) o.analiz_id = saved.id;
+    }
     return Response.json({ analysis });
   } catch (err) {
     console.error('Deneme analiz hatası:', err);

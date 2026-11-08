@@ -8,9 +8,10 @@ import { createClient } from '@/lib/supabase/client';
 import {
   IconPlus, IconChartBar, IconEdit, IconTrash, IconChevronDown, IconChevronUp,
   IconArrowsRightLeft, IconX, IconSparkles, IconLoader2, IconUpload, IconPrinter,
-  IconArrowUp, IconArrowDown, IconEqual, IconCheck,
+  IconArrowUp, IconArrowDown, IconEqual, IconCheck, IconSend,
 } from '@tabler/icons-react';
 import { PageHero } from '@/components/ui/PageHero';
+import { AnalysisView, type StudentAnalysisView } from '@/components/exam/AnalysisView';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS, type SubjectDef } from './examConstants';
 
@@ -162,7 +163,7 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
   const [compareMode, setCompareMode] = useState(false);
   const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
   const [showCompare, setShowCompare] = useState(false);
-  const MAX_COMPARE = 5;
+  const MAX_COMPARE = 10; // sunucudaki MAX_ANALYSIS_EXAMS ile aynı
 
   // ── Filtre zinciri: tür → sınıf → deneme adı → öğrenci ──
   const afterTopbar = useMemo(() => exams.filter((e) => matchesFilter(e.students)), [exams, matchesFilter]);
@@ -1691,18 +1692,12 @@ function ZigzagChart({ labels, series }: { labels: string[]; series: ChartSeries
 
 // ─── Yapay zeka analiz sonucu tipleri ──────────────────────────
 
-interface StudentAnalysis {
-  student_name: string;
-  guclu_dersler: string[];
-  zayif_dersler: string[];
-  trend: string;
-  capraz_degerlendirme: string | null;
-  oneriler: string[];
-}
+type StudentAnalysis = StudentAnalysisView & { student_id?: string; analiz_id?: string };
 
 interface ExamAnalysisResult {
   ogrenciler: StudentAnalysis[];
   karsilastirma: string | null;
+  kaynak?: string;
 }
 
 // ─── Karşılaştırma modalı — alt alta, ders renkli, trend oklu ──
@@ -1761,6 +1756,14 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ExamAnalysisResult | null>(null);
   const [saved, setSaved] = useState(false);
+  const [shared, setShared] = useState<Record<string, 'busy' | 'ok' | string>>({});
+
+  // Analizi öğrencinin paneline gönderir (öğrenciye bildirim gider)
+  async function shareToStudent(analizId: string) {
+    setShared((p) => ({ ...p, [analizId]: 'busy' }));
+    const { error } = await (createClient() as any).rpc('share_exam_analysis', { p_id: analizId });
+    setShared((p) => ({ ...p, [analizId]: error ? error.message : 'ok' }));
+  }
 
   async function handleAnalyze() {
     setAnalyzing(true);
@@ -1778,26 +1781,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Analiz başarısız oldu.');
       setAnalysisResult(data.analysis);
-
-      // Analizi öğrenci sayfasında görünmesi için kaydet (deneme adı + tarihle birlikte).
-      // Bu uç nokta henüz yoksa sessizce yok sayılır — kullanıcı analiz sonucunu
-      // yine de görür, sadece kalıcı kayıt oluşmaz.
-      try {
-        const saveRes = await fetch('/api/analiz/deneme/kaydet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            examIds: sortedExams.map((e) => e.id),
-            examNames: Array.from(new Set(sortedExams.map((e) => e.exam_name))),
-            examDates: Array.from(new Set(sortedExams.map((e) => e.exam_date))),
-            studentIds: Array.from(new Set(sortedExams.map((e) => e.student_id))),
-            analysis: data.analysis,
-          }),
-        });
-        if (saveRes.ok) setSaved(true);
-      } catch {
-        // sessizce geç
-      }
+      setSaved((data.analysis?.ogrenciler ?? []).some((o: StudentAnalysis) => !!o.analiz_id));
     } catch (err: any) {
       setAnalysisError(err.message ?? 'Bir hata oluştu.');
     } finally {
@@ -1914,7 +1898,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
               <p className="mt-2 text-[13px] text-gray-500">
                 {studentCount > 1
                   ? `${studentCount} farklı öğrencinin denemeleri ayrı ayrı analiz edilip aralarında kıyaslama yapılacak.`
-                  : 'Güçlü/zayıf dersler, trend ve öneriler oluşturulacak.'}
+                  : 'Genel yorum, ders ders değerlendirme, denemelerdeki ortak kazanımların analizi ve çalışma planı hazırlanacak.'}
               </p>
               <button
                 onClick={handleAnalyze}
@@ -1939,7 +1923,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
                   <span className="text-[15px] font-semibold text-gray-800">Yapay Zeka Analizi</span>
                   {saved && (
                     <span className="no-print flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                      <IconCheck size={12} /> Öğrenci sayfasına kaydedildi
+                      <IconCheck size={12} /> Kaydedildi
                     </span>
                   )}
                 </div>
@@ -1949,44 +1933,26 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
               </div>
 
               <div className="space-y-3">
-                <div className="grid gap-3 lg:grid-cols-2 print:grid-cols-2">
-                  {analysisResult.ogrenciler.map((o, i) => (
-                    <div key={i} className="print-avoid rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                      <div className="mb-2.5 text-[15px] font-bold text-gray-900">{o.student_name}</div>
-
-                      <div className="mb-3 flex flex-wrap gap-1.5">
-                        {o.guclu_dersler.map((d) => (
-                          <span key={d} className="rounded-full bg-emerald-50 px-2.5 py-1 text-[12px] font-medium text-emerald-700">+ {d}</span>
-                        ))}
-                        {o.zayif_dersler.map((d) => (
-                          <span key={d} className="rounded-full bg-red-50 px-2.5 py-1 text-[12px] font-medium text-red-600">− {d}</span>
-                        ))}
+                <div className={`grid gap-3 ${analysisResult.ogrenciler.length > 1 ? 'lg:grid-cols-2 print:grid-cols-2' : ''}`}>
+                  {analysisResult.ogrenciler.map((o, i) => {
+                    const st = o.analiz_id ? shared[o.analiz_id] : undefined;
+                    return (
+                      <div key={i} className="print-avoid rounded-xl border border-gray-100 bg-white/70 p-3 shadow-sm">
+                        <AnalysisView a={o} audience="coach" />
+                        {o.analiz_id && (
+                          <div className="no-print mt-3 flex flex-wrap items-center gap-2">
+                            <button type="button" disabled={st === 'busy' || st === 'ok'} onClick={() => shareToStudent(o.analiz_id!)}
+                              className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-violet-700 disabled:bg-emerald-600 disabled:opacity-100">
+                              {st === 'ok' ? <><IconCheck size={15} /> Öğrenciye gönderildi</> : st === 'busy' ? 'Gönderiliyor…' : <><IconSend size={15} /> Öğrenciye gönder</>}
+                            </button>
+                            {st && st !== 'ok' && st !== 'busy' && <span className="text-[12.5px] text-rose-600">{st}</span>}
+                          </div>
+                        )}
                       </div>
-
-                      <p className="text-[13px] leading-relaxed text-gray-600">
-                        <span className="font-semibold text-gray-700">Trend: </span>{o.trend}
-                      </p>
-
-                      {o.capraz_degerlendirme && (
-                        <p className="mt-2 text-[13px] leading-relaxed text-gray-600">
-                          <span className="font-semibold text-gray-700">Görüşme değerlendirmesi: </span>
-                          {o.capraz_degerlendirme}
-                        </p>
-                      )}
-
-                      {o.oneriler.length > 0 && (
-                        <div className="mt-3">
-                          <span className="text-[13px] font-semibold text-gray-700">Öneriler:</span>
-                          <ul className="mt-1.5 list-inside list-disc space-y-1">
-                            {o.oneriler.map((oneri, oi) => (
-                              <li key={oi} className="text-[13px] leading-relaxed text-gray-600">{oneri}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                {analysisResult.kaynak && <p className="text-right text-[11px] text-gray-400">Analiz: {analysisResult.kaynak}</p>}
 
                 {analysisResult.karsilastirma && (
                   <div className="print-avoid rounded-xl border border-purple-100 bg-purple-50/50 p-4">
