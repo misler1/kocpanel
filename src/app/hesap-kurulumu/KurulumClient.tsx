@@ -1,12 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 
 export function KurulumClient({ name, initialStep, currentEmail }: { name: string; initialStep: 'sifre' | 'eposta'; currentEmail: string }) {
-  const router = useRouter();
   const [step, setStep] = useState(initialStep);
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
@@ -27,28 +25,32 @@ export function KurulumClient({ name, initialStep, currentEmail }: { name: strin
     setBusy(true);
     const { error: err } = await createClient().auth.updateUser({ password: pw });
     if (err) { setBusy(false); return setError(/different|same/i.test(err.message) ? 'Yeni şifre eskisinden farklı olmalı.' : 'Şifre değiştirilemedi: ' + err.message); }
-    await call({ action: 'password' });
+    const res = await call({ action: 'password' }).catch(() => null);
     setBusy(false);
+    if (!res?.ok) return setError('Şifreniz değişti ama kaydı tamamlanamadı. Sayfayı yenileyip yeni şifrenizle tekrar deneyin.');
     setStep('eposta');
   }
+
+  // Panele tam sayfa geçiş: aynı sayfaya geri yönlenme olursa ekran eski hâlinde (Kaydediliyor…) takılı kalmaz
+  const goHome = () => window.location.assign('/anasayfa');
 
   async function saveEmail(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setBusy(true);
-    const res = await call({ action: 'email', email });
-    const json = await res.json().catch(() => ({}));
+    const res = await call({ action: 'email', email }).catch(() => null);
+    const json = res ? await res.json().catch(() => ({})) : {};
     setBusy(false);
-    if (!res.ok) return setError(json.error ?? 'Kaydedilemedi.');
+    if (!res?.ok) return setError(json.error ?? 'Kaydedilemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.');
     setDone(json.sent ? 'E-posta adresiniz kaydedildi, hoş geldiniz e-postası gönderildi.' : 'E-posta adresiniz kaydedildi.');
-    setTimeout(() => { router.push('/anasayfa'); router.refresh(); }, 1500);
+    setTimeout(goHome, 1200);
   }
 
   async function skip() {
     setBusy(true);
-    await call({ action: 'skip' });
-    router.push('/anasayfa');
-    router.refresh();
+    setError('');
+    await call({ action: 'skip' }).catch(() => null); // hatırlatma oluşmasa da panele geçilir
+    goHome();
   }
 
   const input = 'w-full rounded-lg border border-gray-300 px-3 py-2.5 text-[15px] focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500';
@@ -79,8 +81,8 @@ export function KurulumClient({ name, initialStep, currentEmail }: { name: strin
             <input type="email" autoComplete="email" className={input} placeholder="ornek@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
             {error && <p className="text-[13px] text-rose-600">{error}</p>}
             {done && <p className="text-[13px] font-medium text-emerald-600">{done}</p>}
-            <button type="submit" disabled={busy || !!done} className={btn}>{busy ? 'Kaydediliyor…' : 'Kaydet ve devam et'}</button>
-            <button type="button" onClick={skip} disabled={busy || !!done} className="w-full py-1.5 text-[13px] text-gray-500 hover:text-gray-700">Daha sonra eklerim</button>
+            <button type="submit" disabled={busy || !!done || !email.trim()} className={btn}>{busy ? 'Kaydediliyor…' : 'Kaydet ve devam et'}</button>
+            <button type="button" onClick={skip} disabled={busy || !!done} className="w-full py-1.5 text-[13px] text-gray-500 hover:text-gray-700">{busy && !email.trim() ? 'Panele geçiliyor…' : 'Daha sonra eklerim'}</button>
           </form>
         )}
       </div>

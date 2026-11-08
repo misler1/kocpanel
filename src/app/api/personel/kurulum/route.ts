@@ -23,7 +23,12 @@ export async function POST(request: Request) {
   if (!p || p.role === 'ogrenci' || p.role === 'veli') return NextResponse.json({ error: 'Yetkisiz' }, { status: 403 });
 
   if (body?.action === 'password') {
-    await admin.from('profiles').update({ must_change_password: false }).eq('id', user.id);
+    let { error } = await admin.from('profiles').update({ must_change_password: false }).eq('id', user.id);
+    if (error) ({ error } = await (supabase as any).from('profiles').update({ must_change_password: false }).eq('id', user.id));
+    if (error) {
+      console.error('ilk giriş işareti kaldırılamadı', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     return NextResponse.json({ ok: true });
   }
 
