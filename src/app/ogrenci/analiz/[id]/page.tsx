@@ -10,7 +10,7 @@ export default async function OgrenciAnalizPage({ params }: { params: Promise<{ 
   const { supabase, student } = await getStudentContext();
   if (!student) notFound();
   const { data: a } = await (supabase as any)
-    .from('exam_analyses').select('id, exam_names, exam_dates, analysis, shared_at')
+    .from('exam_analyses').select('id, exam_names, exam_dates, analysis, shared_at, created_at')
     .eq('id', id).eq('student_id', student.id).not('shared_at', 'is', null).maybeSingle();
   if (!a) notFound();
 
@@ -25,6 +25,9 @@ export default async function OgrenciAnalizPage({ params }: { params: Promise<{ 
         <p className="text-[13px] font-semibold text-[var(--ink-muted)]">
           {(a.exam_names as string[])?.length ?? 0} deneme
           {dates.length ? ` · ${fmt(dates[0])}${dates.length > 1 ? ` – ${fmt(dates[dates.length - 1])}` : ''}` : ''}
+        </p>
+        <p className="text-[12px] font-semibold text-[var(--ink-muted)]">
+          Analiz tarihi: {new Date(a.created_at).toLocaleString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' })}
         </p>
       </div>
       <AnalysisView a={a.analysis} audience="student" showName={false} />

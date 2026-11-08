@@ -10,6 +10,7 @@ import { HedefNetPanel } from './HedefNetPanel';
 import { HatirlatmaPanel } from './HatirlatmaPanel';
 import { shiftDay, targetRows, trDate } from '@/lib/student-motivation';
 import { getStaffAccess } from '@/lib/staff-access';
+import { AnalizListesi, type AnalizOzet } from './AnalizListesi';
 
 const daysBetween = (from: string, to: string) =>
   Math.round((new Date(`${to}T12:00:00Z`).getTime() - new Date(`${from}T12:00:00Z`).getTime()) / 86_400_000);
@@ -40,7 +41,7 @@ export default async function OgrenciDetayPage({ params, searchParams }: {
 
   const [
     { data: rawMeetings }, { data: nextMeetings }, { data: rawExams }, { data: rawTasks }, { data: rawExamNets },
-    { data: weekRows }, { data: dailyRows }, pushRes,
+    { data: weekRows }, { data: dailyRows }, pushRes, { data: analizler },
   ] = await Promise.all([
     db.from('meetings').select('*, created_by_profile:created_by(id, full_name)').eq('student_id', id)
       .order('scheduled_at', { ascending: false }).limit(5),
@@ -60,6 +61,9 @@ export default async function OgrenciDetayPage({ params, searchParams }: {
       ? (createAdminClient() as any).from('push_subscriptions')
         .select('id', { count: 'exact', head: true }).eq('user_id', student.profile_id)
       : Promise.resolve({ count: 0 }),
+    // Bu öğrenci için yapılan deneme analizleri (yalnızca analizi yapan görür; tablo yoksa boş)
+    db.from('exam_analyses').select('id, exam_names, created_at, shared_at').eq('student_id', id)
+      .order('created_at', { ascending: false }).limit(20),
   ]);
 
   const meetings: any[] = rawMeetings ?? [];
@@ -100,7 +104,10 @@ export default async function OgrenciDetayPage({ params, searchParams }: {
         initialTab={sekme}
         access={access.kind}
         headerExtra={student.status === 'pasif' ? <OgrenciArsivdenCikarButton studentId={id} /> : null}
-        hedefPanel={<HedefNetPanel studentId={id} rows={targets} targetNets={student.target_nets ?? null} />}
+        hedefPanel={<>
+          <HedefNetPanel studentId={id} rows={targets} targetNets={student.target_nets ?? null} />
+          <AnalizListesi studentId={id} items={((analizler as AnalizOzet[]) ?? [])} />
+        </>}
         settingsPanels={isScopedStaff ? null : (
           <>
             <HatirlatmaPanel studentId={id} coachId={user.id} times={student.reminder_times ?? []}

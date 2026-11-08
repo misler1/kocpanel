@@ -29,7 +29,7 @@ export default async function OgrenciDenemelerPage() {
                 className="flex items-center justify-between gap-2 rounded-2xl bg-white px-3 py-2.5 text-[14px] font-bold text-[var(--ink)] hover:ring-2 hover:ring-violet-300">
                 <span className="min-w-0 truncate">{(a.exam_names ?? []).length} deneme analizi · {(a.exam_names ?? []).slice(-2).join(', ')}</span>
                 <span suppressHydrationWarning className="flex-shrink-0 text-[12px] font-semibold text-[var(--ink-muted)]">
-                  {new Date(a.shared_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                  {new Date(a.shared_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' })}
                 </span>
               </Link>
             ))}
