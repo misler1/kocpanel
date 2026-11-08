@@ -40,6 +40,24 @@ export function PersonelClient({ kurumlar, staff }: { kurumlar: { name: string; 
   const [error, setError] = useState('');
   const [results, setResults] = useState<Result[] | null>(null);
   const [copied, setCopied] = useState(false);
+  // Şifre sıfırlama: yeni ilk şifre yalnızca bu ekranda bir kez gösterilir
+  const [newPw, setNewPw] = useState<Record<string, string>>({});
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
+
+  async function manage(s: StaffRow, action: 'reset' | 'delete') {
+    if (action === 'reset' && !confirm(`${s.full_name} için yeni bir ilk şifre oluşturulsun mu? Eski şifresi çalışmaz; ilk girişte yeniden şifre belirler.`)) return;
+    if (action === 'delete' && !confirm(`${s.full_name} hesabı tamamen silinsin mi? Bu geri alınamaz.`)) return;
+    setRowBusy(s.id);
+    setError('');
+    const res = await fetch('/api/personel/yonet', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: s.id, action }),
+    });
+    const json = await res.json().catch(() => ({}));
+    setRowBusy(null);
+    if (!res.ok) return setError(json.error ?? 'İşlem yapılamadı.');
+    if (action === 'reset') setNewPw((p) => ({ ...p, [s.id]: json.password }));
+    else router.refresh();
+  }
 
   const update = (i: number, patch: Partial<Row>) => setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
@@ -161,7 +179,17 @@ export function PersonelClient({ kurumlar, staff }: { kurumlar: { name: string; 
                 <span className="text-gray-500">{s.phone}</span>
                 <span className="text-gray-500">{s.email ?? 'e-posta yok'}</span>
                 {s.pending && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11.5px] font-semibold text-amber-800">henüz giriş yapmadı</span>}
-                <Link href={`/ayarlar/ogretmenler/${s.id}`} className="ml-auto text-[12.5px] text-[var(--accent-dark)] hover:underline">İzinler</Link>
+                <span className="ml-auto flex items-center gap-3 text-[12.5px]">
+                  <button type="button" disabled={rowBusy === s.id} onClick={() => manage(s, 'reset')} className="text-[var(--accent-dark)] hover:underline disabled:opacity-50">Şifreyi sıfırla</button>
+                  <Link href={`/ayarlar/ogretmenler/${s.id}`} className="text-[var(--accent-dark)] hover:underline">İzinler</Link>
+                  <button type="button" disabled={rowBusy === s.id} onClick={() => manage(s, 'delete')} className="text-rose-600 hover:underline disabled:opacity-50">Sil</button>
+                </span>
+                {newPw[s.id] && (
+                  <span className="w-full rounded-lg bg-emerald-50 px-2.5 py-1.5 text-[12.5px] text-emerald-900">
+                    Yeni ilk şifre: <code className="rounded bg-white px-1.5 py-0.5 font-bold tracking-wider">{newPw[s.id]}</code>
+                    <span className="text-emerald-700"> · Giriş: www.kocdefterim.com.tr/giris · Telefon: {s.phone} (yalnızca şimdi gösterilir)</span>
+                  </span>
+                )}
               </li>
             ))}
           </ul>
