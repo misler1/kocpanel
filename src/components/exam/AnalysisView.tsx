@@ -1,7 +1,11 @@
 // Deneme analizi görünümü: koçun analiz penceresinde ve öğrencinin "Deneme analizim" sayfasında kullanılır.
 // audience='student' iken görüşme notlarına dayanan değerlendirme gösterilmez.
 
-export type KazanimRow = { ders: string; kazanim: string; soru: number; dogru: number; yanlis: number; bos: number; denemeler: string[] };
+export type KazanimRow = {
+  ders: string; kazanim: string; soru: number; dogru: number; yanlis: number; bos: number; denemeler: string[];
+  net?: number; basari?: number; kayip?: number;
+};
+type DersOzet = { ders: string; soru: number; dogru: number; yanlis: number; bos: number; net: number; basari: number };
 
 export type StudentAnalysisView = {
   student_name: string;
@@ -16,7 +20,10 @@ export type StudentAnalysisView = {
   oneriler?: string[];
   ogrenciye_mesaj?: string;
   capraz_degerlendirme?: string | null;
-  kazanim_tablosu?: { zayif: KazanimRow[]; guclu: KazanimRow[]; soru_verisi_olan_deneme: number };
+  kazanim_tablosu?: {
+    zayif: KazanimRow[]; guclu: KazanimRow[]; soru_verisi_olan_deneme: number;
+    tum?: KazanimRow[]; dersler?: DersOzet[]; oncelik?: KazanimRow[][];
+  };
 };
 
 function Section({ title, tone, children }: { title: string; tone: string; children: React.ReactNode }) {
@@ -24,6 +31,49 @@ function Section({ title, tone, children }: { title: string; tone: string; child
     <div className={`print-avoid rounded-xl border p-3.5 ${tone}`}>
       <div className="mb-2 text-[13.5px] font-bold">{title}</div>
       {children}
+    </div>
+  );
+}
+
+/** Başarı yüzdesine göre renk (PDF'teki gibi: kırmızı < 50, sarı < 80, yeşil) */
+const badge = (b: number) =>
+  b >= 80 ? 'bg-emerald-100 text-emerald-800' : b >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-700';
+const bar = (b: number) => (b >= 80 ? 'bg-emerald-400' : b >= 50 ? 'bg-amber-400' : 'bg-rose-400');
+const fmtN = (n: number | undefined) => (n ?? 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+
+function KazanimTable({ rows, showDers = true }: { rows: KazanimRow[]; showDers?: boolean }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[520px] text-[12.5px]">
+        <thead>
+          <tr className="text-left text-[11px] uppercase tracking-wide text-gray-400">
+            {showDers && <th className="py-1 pr-2 font-semibold">Ders</th>}
+            <th className="py-1 pr-2 font-semibold">Konu / kazanım</th>
+            <th className="px-1 text-right font-semibold">Soru</th>
+            <th className="px-1 text-right font-semibold">D</th>
+            <th className="px-1 text-right font-semibold">Y</th>
+            <th className="px-1 text-right font-semibold">B</th>
+            <th className="px-1 text-right font-semibold">Net</th>
+            <th className="pl-1 text-right font-semibold">Başarı</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {rows.map((r, i) => (
+            <tr key={i}>
+              {showDers && <td className="whitespace-nowrap py-1 pr-2 text-gray-500">{r.ders}</td>}
+              <td className="py-1 pr-2 text-gray-800">{r.kazanim}</td>
+              <td className="px-1 text-right text-gray-600">{r.soru}</td>
+              <td className="px-1 text-right text-gray-600">{r.dogru || '-'}</td>
+              <td className="px-1 text-right text-gray-600">{r.yanlis || '-'}</td>
+              <td className="px-1 text-right text-gray-600">{r.bos || '-'}</td>
+              <td className="px-1 text-right text-gray-700">{fmtN(r.net)}</td>
+              <td className="pl-1 text-right">
+                {r.basari !== undefined && <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${badge(r.basari)}`}>%{r.basari}</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -59,7 +109,7 @@ export function AnalysisView({ a, audience = 'coach', showName = true }: { a: St
       )}
 
       {!!a.kazanim_oncelikleri?.length && (
-        <Section title="Öncelikli kazanımlar" tone="border-rose-100 bg-rose-50/40 text-rose-900">
+        <Section title="Yorumlu öncelikler" tone="border-rose-100 bg-rose-50/40 text-rose-900">
           <ol className="space-y-2">
             {a.kazanim_oncelikleri.map((k, i) => (
               <li key={i} className="rounded-lg bg-white p-2.5 text-[13px] shadow-sm">
@@ -75,7 +125,41 @@ export function AnalysisView({ a, audience = 'coach', showName = true }: { a: St
         </Section>
       )}
 
-      {weak.length > 0 && (
+      {!!table?.dersler?.length && (
+        <Section title={`Ders başarıları (${table.soru_verisi_olan_deneme} denemenin soru verisinden)`} tone="border-gray-100 bg-white text-gray-800">
+          <div className="space-y-1.5">
+            {table.dersler.map((d) => (
+              <div key={d.ders} className="text-[12.5px]">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-semibold text-gray-800">{d.ders}</span>
+                  <span className="text-[11.5px] text-gray-500">{d.soru} soru · {d.dogru}D {d.yanlis}Y {d.bos}B · <b className="text-gray-700">%{d.basari}</b></span>
+                </div>
+                <div className="mt-0.5 h-1.5 rounded-full bg-gray-100">
+                  <div className={`h-full rounded-full ${bar(d.basari)}`} style={{ width: `${Math.max(0, Math.min(100, d.basari))}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {table?.oncelik?.length ? (
+        <Section title="Öncelikli konu listesi (en çok net kaybettirenler)" tone="border-rose-100 bg-white text-gray-800">
+          <div className="space-y-3">
+            {table.oncelik.map((tier, i) => (
+              <div key={i}>
+                <div className="mb-1 flex items-center justify-between rounded-lg bg-rose-50 px-2.5 py-1 text-[12.5px] font-bold text-rose-800">
+                  <span>{i + 1}. öncelik · {tier.length} konu</span>
+                  <span className="font-semibold">kayıp {fmtN(tier.reduce((t, r) => t + (r.kayip ?? 0), 0))} net</span>
+                </div>
+                <KazanimTable rows={tier} />
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      {weak.length > 0 && !table?.oncelik?.length && (
         <Section title={`Ortak kazanım tablosu (${table?.soru_verisi_olan_deneme ?? 0} denemenin soru verisinden)`} tone="border-gray-100 bg-white text-gray-800">
           <div className="space-y-1.5">
             {weak.slice(0, 15).map((r, i) => (
@@ -111,6 +195,20 @@ export function AnalysisView({ a, audience = 'coach', showName = true }: { a: St
             ))}
           </ul>
         </Section>
+      )}
+
+      {!!table?.tum?.length && (
+        <details className="print-avoid rounded-xl border border-gray-100 bg-white p-3.5">
+          <summary className="cursor-pointer text-[13.5px] font-bold text-gray-800">Konu başarı analizi (tüm kazanımlar · {table.tum.length})</summary>
+          <div className="mt-2 space-y-3">
+            {Array.from(new Set(table.tum.map((r) => r.ders))).map((ders) => (
+              <div key={ders}>
+                <div className="mb-1 rounded-lg bg-violet-50 px-2.5 py-1 text-[12.5px] font-bold text-violet-800">{ders}</div>
+                <KazanimTable rows={table.tum!.filter((r) => r.ders === ders)} showDers={false} />
+              </div>
+            ))}
+          </div>
+        </details>
       )}
 
       {plan.length > 0 && (

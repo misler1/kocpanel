@@ -59,8 +59,14 @@ export interface KazanimRow {
   dogru: number;
   yanlis: number;
   bos: number;
+  net: number;     // doğru − yanlış/4 (LGS: /3)
+  basari: number;  // net / soru × 100
+  kayip: number;   // soru − net: bu kazanımda kaybedilen net (öncelik sırası buna göre)
   denemeler: string[]; // yanlış/boş olduğu denemeler
 }
+
+/** Ders özeti (kazanım verisinden) */
+export interface DersOzet { ders: string; soru: number; dogru: number; yanlis: number; bos: number; net: number; basari: number }
 
 export interface StudentAnalysis {
   student_id?: string;
@@ -77,7 +83,12 @@ export interface StudentAnalysis {
   capraz_degerlendirme: string | null; // görüşme notlarına dayanır: öğrenciye gösterilmez
   oneriler: string[]; // eski kayıtlarla uyum (çalışma planıyla aynı)
   /** Kodda hesaplanan tablo: en çok kaçırılan ve sağlam kazanımlar */
-  kazanim_tablosu?: { zayif: KazanimRow[]; guclu: KazanimRow[]; soru_verisi_olan_deneme: number };
+  kazanim_tablosu?: {
+    zayif: KazanimRow[]; guclu: KazanimRow[]; soru_verisi_olan_deneme: number;
+    tum?: KazanimRow[];      // bütün kazanımlar (konu başarı analizi)
+    dersler?: DersOzet[];    // ders başarı özeti
+    oncelik?: KazanimRow[][]; // 1., 2., 3. öncelikli konu listeleri (kaybedilen nete göre)
+  };
   analiz_id?: string; // kaydedildiyse
 }
 
@@ -107,6 +118,8 @@ function subjectNets(results: Record<string, SubjectResultRaw>, examType: string
 
 const normK = (s: string) => s.toLocaleLowerCase("tr").replace(/[.…]+$/g, "").replace(/\s+/g, " ").trim();
 
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
 /** Seçilen denemelerdeki soruları kazanım bazında toplar (aynı kazanım farklı denemelerde birleşir) */
 export function aggregateKazanim(exams: ExamRow[]) {
   const map = new Map<string, KazanimRow>();
@@ -114,25 +127,46 @@ export function aggregateKazanim(exams: ExamRow[]) {
   for (const e of exams) {
     const qs = Array.isArray(e.question_results) ? e.question_results : [];
     if (qs.length) withData++;
+    const penalty = e.exam_type === "LGS" ? 1 / 3 : 1 / 4;
     for (const q of qs) {
       if (!q?.k || !q.s) continue;
       const ders = `${e.exam_type === "AYT" || e.exam_type === "TYT" ? `${e.exam_type} ` : ""}${subjectLabel(q.s)}`;
       const key = `${ders}|${normK(q.k)}`;
-      const row = map.get(key) ?? { ders, kazanim: q.k.trim(), soru: 0, dogru: 0, yanlis: 0, bos: 0, denemeler: [] };
+      const row = map.get(key) ?? { ders, kazanim: q.k.trim(), soru: 0, dogru: 0, yanlis: 0, bos: 0, net: 0, basari: 0, kayip: 0, denemeler: [] };
       row.soru++;
-      if (q.r === "D") row.dogru++;
+      if (q.r === "D") { row.dogru++; row.net += 1; }
       else {
-        if (q.r === "Y") row.yanlis++; else row.bos++;
+        if (q.r === "Y") { row.yanlis++; row.net -= penalty; } else row.bos++;
         if (!row.denemeler.includes(e.exam_name)) row.denemeler.push(e.exam_name);
       }
       map.set(key, row);
     }
   }
-  const rows = Array.from(map.values());
-  const zayif = rows.filter((r) => r.yanlis + r.bos > 0)
-    .sort((a, b) => (b.yanlis + b.bos) - (a.yanlis + a.bos) || (b.yanlis + b.bos) / b.soru - (a.yanlis + a.bos) / a.soru);
+  const rows = Array.from(map.values()).map((r) => ({
+    ...r, net: r2(r.net), basari: Math.round((r.net / r.soru) * 100), kayip: r2(r.soru - r.net),
+  }));
+
+  // En çok net kaybettiren kazanımlar önce (çok soru çıkan konudaki birkaç yanlış da üst sıraya çıkar)
+  const zayif = rows.filter((r) => r.yanlis + r.bos > 0).sort((a, b) => b.kayip - a.kayip || a.basari - b.basari);
   const guclu = rows.filter((r) => r.soru >= 2 && r.dogru === r.soru).sort((a, b) => b.soru - a.soru);
-  return { zayif, guclu, withData };
+
+  // Öncelikli konu listeleri: en çok net kaybettiren en fazla 33 kazanım üç kademeye bölünür
+  const top = zayif.filter((r) => r.kayip >= 0.5).slice(0, 33);
+  const size = Math.ceil(top.length / 3) || 0;
+  const oncelik = size ? [top.slice(0, size), top.slice(size, size * 2), top.slice(size * 2)].filter((t) => t.length) : [];
+
+  // Ders özeti
+  const dmap = new Map<string, DersOzet>();
+  for (const r of rows) {
+    const d = dmap.get(r.ders) ?? { ders: r.ders, soru: 0, dogru: 0, yanlis: 0, bos: 0, net: 0, basari: 0 };
+    d.soru += r.soru; d.dogru += r.dogru; d.yanlis += r.yanlis; d.bos += r.bos; d.net += r.net;
+    dmap.set(r.ders, d);
+  }
+  const dersler = Array.from(dmap.values()).map((d) => ({ ...d, net: r2(d.net), basari: Math.round((d.net / d.soru) * 100) }))
+    .sort((a, b) => a.basari - b.basari);
+
+  const tum = [...rows].sort((a, b) => a.ders.localeCompare(b.ders, "tr") || a.basari - b.basari);
+  return { zayif, guclu, withData, tum, dersler, oncelik };
 }
 
 function formatExam(exam: ExamRow): string {
@@ -150,16 +184,17 @@ function formatExam(exam: ExamRow): string {
 }
 
 const kRow = (r: KazanimRow) =>
-  `    - [${r.ders}] ${r.kazanim}: ${r.soru} soru → ${r.dogru}D ${r.yanlis}Y ${r.bos}B${r.denemeler.length ? ` (kaçırdığı: ${r.denemeler.slice(0, 4).join(", ")})` : ""}`;
+  `    - [${r.ders}] ${r.kazanim}: ${r.soru} soru → ${r.dogru}D ${r.yanlis}Y ${r.bos}B, net ${r.net}, başarı %${r.basari}, kayıp ${r.kayip} net${r.denemeler.length ? ` (kaçırdığı: ${r.denemeler.slice(0, 4).join(", ")})` : ""}`;
 
 function formatGroup(g: StudentExamGroup, compact: boolean) {
-  const { zayif, guclu, withData } = aggregateKazanim(g.exams);
+  const { zayif, guclu, withData, dersler } = aggregateKazanim(g.exams);
   const weakLimit = compact ? 25 : 70;
   const strongLimit = compact ? 8 : 25;
   const kazanim = withData === 0
     ? "\n\n  KAZANIM VERİSİ: Bu denemelerde soru/kazanım verisi yok (yalnızca ders netleri var). Kazanım alanlarını boş dizi bırak."
     : `\n\n  KAZANIM TABLOSU (${withData}/${g.exams.length} denemede soru verisi var; aynı kazanım farklı denemelerde toplandı):\n` +
-      `  En çok kaçırılanlar (yanlış+boş sayısına göre):\n${zayif.slice(0, weakLimit).map(kRow).join("\n")}` +
+      `  Ders başarıları (kazanım verisinden): ${dersler.map((d) => `${d.ders} %${d.basari}`).join(", ")}\n` +
+      `  En çok net kaybettiren kazanımlar (öncelik sırası):\n${zayif.slice(0, weakLimit).map(kRow).join("\n")}` +
       (guclu.length ? `\n  Hep doğru yapılanlar (en az 2 soru):\n${guclu.slice(0, strongLimit).map(kRow).join("\n")}` : "");
   const meetings = g.meetings.length
     ? `\n\n  GÖRÜŞME NOTLARI:\n${g.meetings.slice(0, 3).map((m) => `    - ${m.date.slice(0, 10)}: ${m.notes.slice(0, 220)}`).join("\n")}`
@@ -193,7 +228,7 @@ Yalnızca geçerli JSON döndür (açıklama, markdown yok). Biçim:
   "guclu_dersler":["ders"],
   "zayif_dersler":["ders"],
   "ders_yorumlari":[{"ders":"string","yorum":"1-3 cümle"}],
-  "kazanim_oncelikleri":[{"ders":"string","kazanim":"tablodaki adıyla","durum":"ör. 5 denemede 6 soru, 4 yanlış 1 boş","oneri":"somut çalışma önerisi"}],
+  "kazanim_oncelikleri":[{"ders":"string","kazanim":"tablodaki adıyla","durum":"ör. 6 soruda 4 yanlış 1 boş, başarı %8","oneri":"somut çalışma önerisi"}],
   "guclu_kazanimlar":[{"ders":"string","kazanim":"string"}],
   "calisma_plani":["öncelik sırasıyla 4-7 madde"],
   "ogrenciye_mesaj":"string",
@@ -223,7 +258,7 @@ export async function analyzeExams(groups: StudentExamGroup[]): Promise<ExamAnal
   // Her öğrenciye kodda hesaplanan kazanım tablosu eklenir (yapay zekânın yazdığından bağımsız, kesin)
   const ogrenciler: StudentAnalysis[] = groups.map((g, i) => {
     const o = (list.find((x) => x?.student_name === g.studentName) ?? list[i] ?? {}) as Partial<StudentAnalysis>;
-    const { zayif, guclu, withData } = aggregateKazanim(g.exams);
+    const { zayif, guclu, withData, tum, dersler, oncelik } = aggregateKazanim(g.exams);
     const plan = arr<string>(o.calisma_plani).length ? arr<string>(o.calisma_plani) : arr<string>(o.oneriler);
     return {
       student_id: g.studentId,
@@ -239,7 +274,10 @@ export async function analyzeExams(groups: StudentExamGroup[]): Promise<ExamAnal
       oneriler: plan,
       ogrenciye_mesaj: String(o.ogrenciye_mesaj ?? ""),
       capraz_degerlendirme: g.meetings.length && o.capraz_degerlendirme ? String(o.capraz_degerlendirme) : null,
-      kazanim_tablosu: { zayif: zayif.slice(0, 20), guclu: guclu.slice(0, 10), soru_verisi_olan_deneme: withData },
+      kazanim_tablosu: {
+        zayif: zayif.slice(0, 20), guclu: guclu.slice(0, 10), soru_verisi_olan_deneme: withData,
+        tum: tum.slice(0, 400), dersler, oncelik,
+      },
     };
   });
 
