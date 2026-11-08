@@ -54,14 +54,18 @@ create policy "staff read listed students" on students for select to authenticat
 
 drop policy if exists "managers update permitted students" on students;
 create policy "managers update permitted students" on students for update to authenticated
-  using (_staff_status(auth.uid()) = 'dorm_manager' and intern_can_access_student(id, 'student_info'))
-  with check (_staff_status(auth.uid()) = 'dorm_manager' and intern_can_access_student(id, 'student_info'));
+  using (exists (select 1 from teacher_access_profiles ap where ap.teacher_id = auth.uid() and ap.status = 'dorm_manager')
+         and intern_can_access_student(id, 'student_info'))
+  with check (exists (select 1 from teacher_access_profiles ap where ap.teacher_id = auth.uid() and ap.status = 'dorm_manager')
+              and intern_can_access_student(id, 'student_info'));
 
 -- 4) Denemeler: belletmen yalnızca görür (yazma izni belletmen dışındakilere)
 drop policy if exists "interns write permitted exams" on exams;
 create policy "interns write permitted exams" on exams for all to authenticated
-  using (intern_can_access_student(student_id, 'exams') and coalesce(_staff_status(auth.uid()), '') <> 'dorm_supervisor')
-  with check (intern_can_access_student(student_id, 'exams') and coalesce(_staff_status(auth.uid()), '') <> 'dorm_supervisor');
+  using (intern_can_access_student(student_id, 'exams')
+         and not exists (select 1 from teacher_access_profiles ap where ap.teacher_id = auth.uid() and ap.status = 'dorm_supervisor'))
+  with check (intern_can_access_student(student_id, 'exams')
+              and not exists (select 1 from teacher_access_profiles ap where ap.teacher_id = auth.uid() and ap.status = 'dorm_supervisor'));
 
 -- 5) Program ve günlük: haftalık takip izni olan personel görür
 drop policy if exists "staff read permitted daily_logs" on daily_logs;
