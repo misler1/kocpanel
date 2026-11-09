@@ -4,13 +4,14 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { IconCheck, IconClock, IconArrowRight, IconPlus } from '@tabler/icons-react';
+import { IconCheck, IconClock, IconArrowRight, IconPlus, IconX } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import type { Badge, TargetRow } from '@/lib/student-motivation';
 import { subjectEmoji, dailyQuote, cheer } from './studentUi';
 import { StudyLogSheet } from './StudyLogSheet';
 import { PushToggle } from '@/components/PushToggle';
-import { logStudy, setTaskDone, type StudyInput } from './studyApi';
+import { logExtraStudy, logStudy, setTaskDone, setTaskMissed, type ProgramDay, type StudyInput } from './studyApi';
+import { MissedSheet } from './MissedSheet';
 import { BadgesSection, StreakCard, TargetNetCard } from './Motivation';
 import { StudentBoard, StudentContentCard, type FeedItem } from '@/components/feed/StudentFeed';
 
@@ -44,10 +45,10 @@ function StatCard({ emoji, bg, tone, bar, label, value, sub, pct, href }: {
 const CONFETTI = ['🎉', '⭐', '🎊', '✨', '🌟', '💜'];
 
 export function OgrenciAnasayfaClient({
-  fullName, todayLabel, todayLogs, weekTotal, weekDone, topicsDone, topicsTotal, lastExam, lastExamRank, pendingRequests,
+  studentId, programDay, fullName, todayLabel, todayLogs, weekTotal, weekDone, topicsDone, topicsTotal, lastExam, lastExamRank, pendingRequests,
   streak, todayQuestions, targets, badges, subjects, feed,
 }: {
-  fullName: string; todayLabel: string; todayLogs: any[]; weekTotal: number; weekDone: number;
+  studentId: string; programDay: ProgramDay | null; fullName: string; todayLabel: string; todayLogs: any[]; weekTotal: number; weekDone: number;
   topicsDone: number; topicsTotal: number; lastExam: any; lastExamRank: any; pendingRequests: number;
   streak: { current: number; best: number; studiedToday: boolean }; todayQuestions: number;
   targets: TargetRow[]; badges: Badge[]; subjects: string[]; feed: FeedItem[];
@@ -61,6 +62,7 @@ export function OgrenciAnasayfaClient({
   const [celebrate, setCelebrate] = useState(0);
   // undefined: kapalı, null: plan dışı çalışma, nesne: tiklenen görev
   const [sheet, setSheet] = useState<any | null | undefined>(undefined);
+  const [missedTask, setMissedTask] = useState<any | null>(null);
 
   // Çalışma hatırlatması bildirimi /ogrenci?gunluk=1 açar: bugünün görevlerine kaydır ve vurgula;
   // bugün görev yoksa doğrudan "plan dışı çalışma" penceresini aç.
@@ -79,7 +81,7 @@ export function OgrenciAnasayfaClient({
   const [msg, setMsg] = useState<string | null>(null);
 
   function markDone(id: string, done: boolean) {
-    const updated = logs.map((x) => (x.id === id ? { ...x, student_done: done } : x));
+    const updated = logs.map((x) => (x.id === id ? { ...x, student_done: done, ...(done ? { student_missed: false, student_missed_note: null } : {}) } : x));
     setLogs(updated);
     if (done && updated.every((x) => x.student_done)) setCelebrate((c) => c + 1);
   }
@@ -98,12 +100,41 @@ export function OgrenciAnasayfaClient({
     if (err) { markDone(l.id, true); setMsg(err); } else { setMsg(null); router.refresh(); }
   }
 
+  const markMissed = (id: string, missed: boolean, note: string | null = null) =>
+    setLogs((prev) => prev.map((x) => (x.id === id ? { ...x, student_missed: missed, student_missed_note: missed ? note : null } : x)));
+
+  async function saveMissed(note: string) {
+    const task = missedTask;
+    if (!task) return null;
+    const err = await setTaskMissed(supabase, task.id, true, note);
+    if (err) return err;
+    markMissed(task.id, true, note.trim() || null);
+    setMissedTask(null); setMsg(null);
+    return null;
+  }
+
+  async function clearMissed(l: any) {
+    markMissed(l.id, false);
+    const err = await setTaskMissed(supabase, l.id, false);
+    if (err) { markMissed(l.id, true, l.student_missed_note ?? null); setMsg(err); } else setMsg(null);
+  }
+
   async function saveStudy(input: StudyInput) {
+    if (!input.taskId) {
+      // Plan dışı çalışma: programa ⭐ Ekstra (yapıldı) görev olarak eklenir, böylece listede ve koçun programında görünür
+      const { error, task } = await logExtraStudy(supabase, studentId, programDay, input);
+      if (error) return error;
+      if (task) setLogs((prev) => [...prev, task]);
+      setSheet(undefined);
+      setMsg(task ? 'Plan dışı çalışman bugünün görevlerine eklendi! 🌟' : 'Çalışman günlüğüne eklendi! 🌟');
+      router.refresh();
+      return null;
+    }
     const err = await logStudy(supabase, input);
     if (err) return err;
-    if (input.taskId) markDone(input.taskId, true);
+    markDone(input.taskId, true);
     setSheet(undefined);
-    setMsg(input.taskId ? null : 'Çalışman günlüğüne eklendi! 🌟');
+    setMsg(null);
     router.refresh(); // seri, rozet ve bugünkü soru sayısı yenilensin
     return null;
   }
@@ -121,7 +152,8 @@ export function OgrenciAnasayfaClient({
   const todayPct = logs.length > 0 ? Math.round((todayDone / logs.length) * 100) : 0;
   // Bugünkü işaretlemeleri haftalık sayıya da yansıt
   const weekDoneLive = weekDone - todayLogs.filter((l) => l.student_done).length + todayDone;
-  const weekPct = weekTotal > 0 ? Math.round((weekDoneLive / weekTotal) * 100) : 0;
+  const weekTotalLive = weekTotal - todayLogs.length + logs.length;
+  const weekPct = weekTotalLive > 0 ? Math.round((weekDoneLive / weekTotalLive) * 100) : 0;
   const topicPct = topicsTotal > 0 ? Math.round((topicsDone / topicsTotal) * 100) : 0;
 
   return (
@@ -195,26 +227,38 @@ export function OgrenciAnasayfaClient({
           <div className="space-y-2.5">
             {logs.map((l) => {
               const done = !!l.student_done;
+              const missed = !done && !!l.student_missed;
               return (
-                <button key={l.id} type="button" onClick={() => toggleDone(l)}
-                  className={`flex w-full items-center gap-3 rounded-2xl border-2 p-3 text-left transition-all active:scale-[0.98] ${
-                    done ? 'border-[var(--success)]/30 bg-[var(--success-soft)]' : 'border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)]/40 hover:bg-[var(--accent-soft)]'}`}>
+                <div key={l.id} className={`flex w-full items-center gap-2 rounded-2xl border-2 p-3 transition-all ${
+                  done ? 'border-[var(--success)]/30 bg-[var(--success-soft)]' : missed ? 'border-[var(--danger)]/30 bg-[var(--danger-soft)]' : 'border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)]/40 hover:bg-[var(--accent-soft)]'}`}>
+                <button type="button" onClick={() => toggleDone(l)}
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.98]">
                   <span className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl text-[22px] ${done ? 'bg-white' : 'bg-white shadow-sm'}`}>
                     {subjectEmoji(l.subject)}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className={`block text-[15px] font-bold ${done ? 'text-[var(--success)] line-through decoration-2' : 'text-[var(--ink)]'}`}>
-                      {l.subject}
+                    <span className="block text-[15px] font-bold">
+                      <span className={done ? 'text-[var(--success)] line-through decoration-2' : missed ? 'text-[var(--danger)]' : 'text-[var(--ink)]'}>{l.subject}</span>
+                      {l.student_added && <span className="ml-1.5 inline-block rounded-full bg-[var(--pink-soft)] px-2 py-0.5 align-middle text-[10px] font-extrabold text-[var(--pink)]">⭐ Ekstra</span>}
                     </span>
                     <span className="block text-[12.5px] font-medium text-[var(--ink-muted)]">
                       {[l.topic, l.target_count > 0 ? `${l.target_count} soru` : null].filter(Boolean).join(' · ') || 'Görev'}
                     </span>
+                    {missed && <span className="block text-[12px] font-bold text-[var(--danger)]">✕ Yapmadım{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</span>}
                   </span>
                   <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                     done ? 'student-pop border-[var(--success)] bg-[var(--success)] text-white' : 'border-[var(--ink-muted)]/30 bg-white text-transparent'}`}>
                     <IconCheck size={18} strokeWidth={3} />
                   </span>
                 </button>
+                {!l.appointment_id && !done && (
+                  <button type="button" onClick={() => (missed ? clearMissed(l) : setMissedTask(l))}
+                    title={missed ? '"Yapmadım" işaretini kaldır' : 'Yapmadım'} aria-label={missed ? '"Yapmadım" işaretini kaldır' : 'Yapmadım'}
+                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${missed ? 'border-[var(--danger)] bg-[var(--danger)] text-white' : 'border-[var(--ink-muted)]/30 bg-white text-[var(--ink-muted)]/60 hover:border-[var(--danger)]/50 hover:text-[var(--danger)]'}`}>
+                    <IconX size={16} strokeWidth={3} />
+                  </button>
+                )}
+                </div>
               );
             })}
           </div>
@@ -233,7 +277,7 @@ export function OgrenciAnasayfaClient({
       {/* Özet kartları */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <StatCard emoji="🗓️" href="/ogrenci/haftalik-takip" bg="bg-[var(--sky-soft)]" tone="text-[#1F78BD]" bar="bg-[var(--sky)]"
-          label="Bu hafta" value={`%${weekPct}`} sub={`${weekDoneLive}/${weekTotal} görev bitti`} pct={weekPct} />
+          label="Bu hafta" value={`%${weekPct}`} sub={`${weekDoneLive}/${weekTotalLive} görev bitti`} pct={weekPct} />
         <StatCard emoji="📚" href="/ogrenci/konu-ilerleyisi" bg="bg-[var(--success-soft)]" tone="text-[#11815A]" bar="bg-[var(--success)]"
           label="Konular" value={`%${topicPct}`} sub={`${topicsDone}/${topicsTotal} konu tamam`} pct={topicPct} />
         <div className="col-span-2 md:col-span-1">
@@ -244,6 +288,10 @@ export function OgrenciAnasayfaClient({
       </div>
 
       <BadgesSection badges={badges} />
+
+      {missedTask && (
+        <MissedSheet task={missedTask} onSave={saveMissed} onClose={() => setMissedTask(null)} />
+      )}
 
       {sheet !== undefined && (
         <StudyLogSheet task={sheet} subjects={subjects} onSave={saveStudy}

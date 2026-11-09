@@ -48,6 +48,7 @@ export default async function OgrenciAnaSayfa() {
   const currentWeekStart = (weekRows ?? []).find((l: any) => !l.week_end || today <= l.week_end)?.week_start ?? null;
   const weekLogs = currentWeekStart ? (weekRows ?? []).filter((l: any) => l.week_start === currentWeekStart) : [];
   const todayLogs = weekLogs.filter((l: any) => l.plan_day === todayIndex);
+  const currentWeekEnd = weekLogs[0]?.week_end ?? null;
 
   const topicList = topics ?? [];
   const topicsDone = topicList.filter((t: any) => t.konu_tamamlandi && t.kaynak1_sorular && t.yanlislar_kontrol).length;
@@ -69,6 +70,8 @@ export default async function OgrenciAnaSayfa() {
 
   return (
     <OgrenciAnasayfaClient
+      studentId={student.id}
+      programDay={currentWeekStart ? { weekStart: currentWeekStart, weekEnd: currentWeekEnd, planDay: todayIndex } : null}
       fullName={student.full_name}
       todayLabel={DAYS[todayIndex]}
       todayLogs={todayLogs}

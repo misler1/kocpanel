@@ -6,7 +6,8 @@ import { IconCheck, IconPlus, IconTrash, IconPencil, IconX } from '@tabler/icons
 import { createClient } from '@/lib/supabase/client';
 import { subjectEmoji, DAY_STYLES, cheer } from '../studentUi';
 import { StudyLogSheet } from '../StudyLogSheet';
-import { logStudy, setTaskDone, todayTr, type StudyInput } from '../studyApi';
+import { logStudy, setTaskDone, setTaskMissed, todayTr, type StudyInput } from '../studyApi';
+import { MissedSheet } from '../MissedSheet';
 import { programDays, shortDate } from '@/lib/program-days';
 import { SuggestInput } from '@/components/SuggestInput';
 
@@ -66,6 +67,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   const [extraForm, setExtraForm] = useState<Added | null>(null);
   const [extraBusy, setExtraBusy] = useState(false);
   const [sheetTask, setSheetTask] = useState<any | null>(null);
+  const [missedTask, setMissedTask] = useState<any | null>(null);
 
   const weekLogs = logs.filter((l) => l.week_start === week);
   const currentWeekEnd = weeks.find((w) => w.ws === week)?.we ?? null;
@@ -74,7 +76,25 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   const subjectOptions = Object.keys(resources);
 
   const markDone = (id: string, done: boolean) =>
-    setLogs((prev) => prev.map((x) => (x.id === id ? { ...x, student_done: done } : x)));
+    setLogs((prev) => prev.map((x) => (x.id === id ? { ...x, student_done: done, ...(done ? { student_missed: false, student_missed_note: null } : {}) } : x)));
+  const markMissed = (id: string, missed: boolean, note: string | null = null) =>
+    setLogs((prev) => prev.map((x) => (x.id === id ? { ...x, student_missed: missed, student_missed_note: missed ? note : null } : x)));
+
+  async function saveMissed(note: string) {
+    const task = missedTask;
+    if (!task) return null;
+    const err = await setTaskMissed(supabase, task.id, true, note);
+    if (err) return err;
+    markMissed(task.id, true, note.trim() || null);
+    setMissedTask(null); setMsg(null);
+    return null;
+  }
+
+  async function clearMissed(l: any) {
+    markMissed(l.id, false);
+    const err = await setTaskMissed(supabase, l.id, false);
+    if (err) { markMissed(l.id, true, l.student_missed_note ?? null); setMsg(err); } else setMsg(null);
+  }
 
   async function toggleDone(l: any) {
     if (editMode) return;
@@ -201,7 +221,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-[24px] font-extrabold tracking-tight text-[var(--ink)]">🗓️ Haftalık Takip</h1>
-          <p className="text-[13px] font-medium text-[var(--ink-muted)]">Bitirdiğin göreve dokun, kaç soru çözdüğünü yaz!</p>
+          <p className="text-[13px] font-medium text-[var(--ink-muted)]">Bitirdiğin göreve dokun, kaç soru çözdüğünü yaz! Yapamadıysan ✕&apos;e bas.</p>
         </div>
         {weeks.length > 0 && (
           <select value={week} onChange={(e) => { setWeek(e.target.value); resetEdit(); }} className="rounded-full border-2 border-[var(--border)] bg-[var(--card)] px-3.5 py-2 text-[13px] font-bold text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none">
@@ -281,6 +301,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                     )}
                     {dayLogs.map((l) => {
                       const done = !!l.student_done;
+                      const missed = !done && !!l.student_missed;
                       const isRemoved = removed.has(l.id);
                       const e = edits[l.id] ?? {};
                       const time = [hhmm(l.start_time), hhmm(l.end_time)].filter(Boolean).join(' - ');
@@ -312,20 +333,28 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                         );
                       }
                       return (
-                        <div key={l.id} className={`relative flex w-full items-center gap-2 rounded-2xl border-2 p-2.5 text-left transition-all ${done ? 'border-[var(--success)]/30 bg-[var(--success-soft)]' : 'border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)]/40'}`}>
+                        <div key={l.id} className={`relative flex w-full items-center gap-2 rounded-2xl border-2 p-2.5 text-left transition-all ${done ? 'border-[var(--success)]/30 bg-[var(--success-soft)]' : missed ? 'border-[var(--danger)]/30 bg-[var(--danger-soft)]' : 'border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)]/40'}`}>
                           <button type="button" onClick={() => toggleDone(l)} className="flex flex-1 items-center gap-2.5 text-left active:scale-[0.98]">
                             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white text-[20px] shadow-sm">{subjectEmoji(l.subject)}</span>
                             <span className="min-w-0 flex-1">
                               <span className="block text-[14px] font-bold">
-                                <span className={done ? 'text-[var(--success)] line-through decoration-2' : 'text-[var(--ink)]'}>{l.subject}</span>
+                                <span className={done ? 'text-[var(--success)] line-through decoration-2' : missed ? 'text-[var(--danger)]' : 'text-[var(--ink)]'}>{l.subject}</span>
                                 {l.student_added && <span className="ml-1.5 inline-block rounded-full bg-[var(--pink-soft)] px-2 py-0.5 align-middle text-[10px] font-extrabold text-[var(--pink)]">⭐ Ekstra</span>}
                               </span>
                               {detail && <span className="block text-[12px] font-medium text-[var(--ink-muted)]">{detail}</span>}
                               {l.resource_name && <span className="block text-[11.5px] text-[var(--ink-muted)]">📘 {l.resource_name}</span>}
                               {time && <span className="block text-[11.5px] text-[var(--ink-muted)]">⏰ {time}</span>}
+                              {missed && <span className="block text-[11.5px] font-bold text-[var(--danger)]">✕ Yapmadım{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</span>}
                             </span>
                             <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${done ? 'student-pop border-[var(--success)] bg-[var(--success)] text-white' : 'border-[var(--ink-muted)]/30 bg-white text-transparent'}`}><IconCheck size={18} strokeWidth={3} /></span>
                           </button>
+                          {!l.appointment_id && !done && (
+                            <button type="button" onClick={() => (missed ? clearMissed(l) : setMissedTask(l))}
+                              title={missed ? '"Yapmadım" işaretini kaldır' : 'Yapmadım'} aria-label={missed ? '"Yapmadım" işaretini kaldır' : 'Yapmadım'}
+                              className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${missed ? 'border-[var(--danger)] bg-[var(--danger)] text-white' : 'border-[var(--ink-muted)]/30 bg-white text-[var(--ink-muted)]/60 hover:border-[var(--danger)]/50 hover:text-[var(--danger)]'}`}>
+                              <IconX size={16} strokeWidth={3} />
+                            </button>
+                          )}
                           {l.appointment_id && !done && (
                             apptInfo[l.appointment_id]?.change_requested_at ? (
                               <span className="flex-shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10.5px] font-bold text-amber-800">Talep iletildi ⏳</span>
@@ -409,6 +438,10 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
             setMsg('Talebin koçuna iletildi. Koçun saati değiştirince programın da güncellenir. 📨');
           }}
         />
+      )}
+
+      {missedTask && (
+        <MissedSheet task={missedTask} onSave={saveMissed} onClose={() => setMissedTask(null)} />
       )}
 
       {sheetTask && (

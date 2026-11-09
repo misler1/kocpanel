@@ -42,7 +42,7 @@ export function GunlukGirisClient({ students, initialStudentId }: { students: St
     if (!studentId) return;
     const [{ data: t }, { data: logs }] = await Promise.all([
       (supabase as any).from('question_logs')
-        .select('id, student_id, subject, topic, resource_name, week_start, week_end, plan_day, target_count, topic_target_minutes, done_count, topic_done_minutes, student_done, start_time, end_time, appointment_id')
+        .select('*') // student_missed alanı student_task_missed.sql çalıştırılınca gelir
         .eq('student_id', studentId).lte('week_start', date).gte('week_start', shiftDate(date, -21)),
       (supabase as any).from('daily_logs').select('question_solved, topic_studies, archived')
         .eq('student_id', studentId).eq('log_date', date),
@@ -165,6 +165,9 @@ export function GunlukGirisClient({ students, initialStudentId }: { students: St
                   </div>
                 </div>
                 {done && <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-[12px] font-bold text-white"><IconCheck size={14} /> Yapıldı</span>}
+                {!done && t.student_missed && (
+                  <span title={t.student_missed_note ?? undefined} className="rounded-full bg-red-600 px-2.5 py-1 text-[12px] font-bold text-white">✕ Yapmadı</span>
+                )}
               </div>
 
               <div className="mt-2.5 grid grid-cols-4 gap-2">

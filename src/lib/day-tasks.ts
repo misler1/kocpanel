@@ -5,7 +5,7 @@ export type TaskRow = {
   id: string; student_id: string; subject: string; topic: string | null; resource_name: string | null;
   week_start: string; week_end: string | null; plan_day: number | null; target_count: number | null;
   topic_target_minutes: number | null; done_count: number | null; topic_done_minutes: number | null;
-  student_done: boolean | null; start_time: string | null; end_time: string | null; appointment_id: string | null;
+  student_done: boolean | null; student_missed?: boolean | null; student_missed_note?: string | null; student_added?: boolean | null; start_time: string | null; end_time: string | null; appointment_id: string | null;
 };
 
 export const weekdayIndex = (date: string) => (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7;

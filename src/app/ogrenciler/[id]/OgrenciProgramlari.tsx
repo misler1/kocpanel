@@ -33,6 +33,9 @@ function LogMini({ l }: { l: any }) {
       {l.topic && <div className="truncate text-[10px] text-gray-500">{l.topic}</div>}
       {l.resource_name && <div className="truncate text-[10px] text-gray-400">{l.resource_name}</div>}
       {l.student_done && <div className="text-[10px] font-medium text-emerald-600">✓ Öğrenci yaptı</div>}
+      {!l.student_done && l.student_missed && (
+        <div className="text-[10px] font-medium text-red-600">✕ Öğrenci yapmadı{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</div>
+      )}
       {l.student_added && <div className="text-[10px] font-medium text-blue-600">Öğrenci ekledi</div>}
       <div className="mt-1 flex justify-between text-[11px] text-gray-500">
         <span>{timeLabel}</span>
