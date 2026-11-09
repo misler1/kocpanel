@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { IconMenu2, IconX } from '@tabler/icons-react';
-import { MOBILE_NAV } from '@/lib/navigation';
+import { MOBILE_NAV, BELLETMEN_MOBILE_NAV } from '@/lib/navigation';
+import { useStaffKind } from '@/lib/use-staff-kind';
 import { SidebarContent, SIDEBAR_BG } from './Sidebar';
 import { useUnreadConversations } from '@/lib/use-unread-conversations';
 
@@ -13,6 +14,7 @@ export function MobileBottomNav({ studentCount }: { studentCount?: number }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const unread = useUnreadConversations();
+  const nav = useStaffKind() === 'belletmen' ? BELLETMEN_MOBILE_NAV : MOBILE_NAV;
 
   // Menü açıkken arkadaki sayfa kaymasın
   useEffect(() => {
@@ -28,12 +30,12 @@ export function MobileBottomNav({ studentCount }: { studentCount?: number }) {
     }`;
   const chipCls = (active: boolean) =>
     `flex h-7 w-10 items-center justify-center rounded-full transition-colors ${active ? 'bg-[var(--accent-soft)]' : ''}`;
-  const inMainNav = MOBILE_NAV.some((i) => i.href === pathname);
+  const inMainNav = nav.some((i) => i.href === pathname);
 
   return (
     <>
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-[var(--border)] bg-[var(--card)] pb-[env(safe-area-inset-bottom)] md:hidden">
-        {MOBILE_NAV.map((item) => {
+        {nav.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href;
           return (

@@ -7,6 +7,9 @@ import { applyStudentScope } from '@/lib/effective-coach';
 import { fetchChunkedByIds } from '@/lib/chunked-in';
 import { activeDays, shiftDay, trDate } from '@/lib/student-motivation';
 import { AnasayfaClient, type DashStudent, type DashMeeting, type DashExam } from './AnasayfaClient';
+import { BelletmenAnasayfa, type BelletmenStudent } from './BelletmenAnasayfa';
+import { getStaffAccess } from '@/lib/staff-access';
+import { tasksForDay, type TaskRow } from '@/lib/day-tasks';
 
 // Koç ana sayfası: "Bugün kimle ilgilenmeliyim?" sorusunun cevabı. Her aktif öğrenci için bu haftanın
 // programı, son çalışma günü, son deneme ve son öğrenci görüşmesi tek satırda özetlenir.
@@ -35,6 +38,29 @@ export default async function AnasayfaPage() {
 
   const includeInterns = (await cookies()).get('show_interns')?.value === '1';
   const scope = await getRequestScope(user.id, includeInterns);
+  // Belletmen: sade ana sayfa (hızlı giriş kartları + öğrenci kartları)
+  const access = await getStaffAccess(supabase, user.id);
+  if (access.kind === 'belletmen') {
+    const { data: bs } = await applyStudentScope(
+      (supabase as any).from('students').select('id, full_name, sinif_sube').neq('status', 'pasif').order('full_name'),
+      scope
+    );
+    const list = (bs as any[]) ?? [];
+    const tasks = list.length
+      ? await fetchChunkedByIds<TaskRow>(list.map((s) => s.id), (chunk) =>
+          (supabase as any).from('question_logs')
+            .select('id, student_id, subject, topic, resource_name, week_start, week_end, plan_day, target_count, topic_target_minutes, done_count, topic_done_minutes, student_done, start_time, end_time, appointment_id')
+            .in('student_id', chunk).lte('week_start', today).gte('week_start', shiftDay(today, -21)))
+      : [];
+    const byStudent = new Map<string, TaskRow[]>();
+    for (const t of tasks) byStudent.set(t.student_id, [...(byStudent.get(t.student_id) ?? []), t]);
+    const students: BelletmenStudent[] = list.map((s) => {
+      const day = tasksForDay(byStudent.get(s.id) ?? [], today);
+      return { id: s.id, full_name: s.full_name, sinif_sube: s.sinif_sube ?? null, today_total: day.length, today_done: day.filter((t) => t.student_done).length };
+    });
+    return <BelletmenAnasayfa name={profile?.full_name ?? ''} students={students} />;
+  }
+
   const { data: rawStudents } = await applyStudentScope(
     (supabase as any)
       .from('students')

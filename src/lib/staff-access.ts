@@ -30,8 +30,15 @@ export async function getStaffAccess(supabase: any, userId: string): Promise<Sta
 /** Kurum personeline gösterilmeyen menüler (yönetim, anket, görüşme kayıtları, veli görüşmeleri, ayarlar) */
 const HIDDEN_FOR_STAFF = ['/gorusmeler', '/anketler', '/veli-gorusmeleri', '/ayarlar', '/kazanim-havuzu'];
 
+/** Belletmen: yalnızca giriş yaptığı sayfalar (sade menü) */
+const BELLETMEN_NAV = ['/anasayfa', '/gunluk-giris', '/konu-ilerleyisi', '/denemeler', '/ajanda', '/mesajlar', '/hesabim'];
+/** Yalnızca kurum personeline görünen menüler */
+const STAFF_ONLY = ['/gunluk-giris'];
+
 export function navAllowed(kind: StaffKind, href: string): boolean {
-  if (kind === 'manager' || kind === 'belletmen') {
+  if (kind === 'belletmen') return BELLETMEN_NAV.includes(href);
+  if (STAFF_ONLY.includes(href) && kind !== 'manager') return false;
+  if (kind === 'manager') {
     return !HIDDEN_FOR_STAFF.some((h) => href === h || href.startsWith(`${h}/`));
   }
   return true;

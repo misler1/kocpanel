@@ -10,7 +10,8 @@ import { MAIN_NAV, TAKIP_NAV, BAGLANTI_NAV, YONETIM_NAV, HESAP_NAV } from '@/lib
 import { ExamFilterBar } from './ExamFilterBar';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { useUnreadConversations } from '@/lib/use-unread-conversations';
-import { kindFromStatus, navAllowed, type StaffKind } from '@/lib/staff-access';
+import { navAllowed } from '@/lib/staff-access';
+import { useStaffKind } from '@/lib/use-staff-kind';
 
 // Sol menünün renkli zemini; telefondaki açılır menü de aynı zemini kullanır
 export const SIDEBAR_BG = 'bg-gradient-to-b from-indigo-950 via-violet-950 to-fuchsia-950';
@@ -20,7 +21,7 @@ export const SIDEBAR_BG = 'bg-gradient-to-b from-indigo-950 via-violet-950 to-fu
 export function SidebarContent({ studentCount, onNavigate }: { studentCount?: number; onNavigate?: () => void }) {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
-  const [staffKind, setStaffKind] = useState<StaffKind>('coach');
+  const staffKind = useStaffKind();
 
   useEffect(() => {
     const supabase = createClient();
@@ -32,10 +33,6 @@ export function SidebarContent({ studentCount, onNavigate }: { studentCount?: nu
         .eq('id', user.id)
         .single();
       setIsAdmin(!!profile?.is_admin);
-      // Kurum personeli (yurt yöneticisi/belletmen) yalnızca kendi işine yarayan menüleri görür
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: ap } = await (supabase as any).from('teacher_access_profiles').select('status').eq('teacher_id', user.id).maybeSingle();
-      setStaffKind(kindFromStatus(ap?.status));
     });
   }, []);
   const { filteredStudentCount } = useExamFilter();

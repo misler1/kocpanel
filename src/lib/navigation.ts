@@ -25,6 +25,7 @@ export interface NavItem {
 export const MAIN_NAV: NavItem[] = [
   { href: '/anasayfa', label: 'Ana sayfa', icon: IconHome },
   { href: '/ogrenciler', label: 'Öğrenciler', icon: IconUsers },
+  { href: '/gunluk-giris', label: 'Günlük takip', icon: IconChecklist }, // yalnızca kurum personeli (staff-access.ts)
   { href: '/ajanda', label: 'Ajanda', icon: IconCalendarWeek },
 ];
 
@@ -53,6 +54,14 @@ export const HESAP_NAV: NavItem[] = [
 export const ALL_NAV = [...MAIN_NAV, ...TAKIP_NAV, ...BAGLANTI_NAV, ...YONETIM_NAV, ...HESAP_NAV];
 
 // Telefonda alt menüdeki sık kullanılanlar; geri kalan her şey "Menü" düğmesiyle açılan pencerede
+/** Belletmenin telefondaki alt menüsü: yalnızca giriş yaptığı sayfalar */
+export const BELLETMEN_MOBILE_NAV: NavItem[] = [
+  { href: '/anasayfa', label: 'Ana Sayfa', icon: IconHome },
+  { href: '/gunluk-giris', label: 'Günlük', icon: IconChecklist },
+  { href: '/konu-ilerleyisi', label: 'Konu', icon: IconBooks },
+  { href: '/denemeler', label: 'Deneme', icon: IconChartBar },
+];
+
 export const MOBILE_NAV: NavItem[] = [
   { href: '/anasayfa', label: 'Ana Sayfa', icon: IconHome },
   { href: '/ogrenciler', label: 'Öğrenciler', icon: IconUsers },
