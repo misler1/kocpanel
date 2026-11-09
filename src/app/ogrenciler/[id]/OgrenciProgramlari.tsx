@@ -4,7 +4,21 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { programDays, shortDate, DAY_SHORT } from '@/lib/program-days';
+import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { programDays, shortDate, addDays, DAY_SHORT } from '@/lib/program-days';
+import { todayTr } from '@/lib/day-tasks';
+
+type Week = { weekStart: string; weekEnd: string; logs: any[] };
+const endOf = (w: Week) => w.weekEnd || addDays(w.weekStart, 6);
+
+/** Bugünü kapsayan program; yoksa bugünden önceki en son program; o da yoksa ilk program */
+function defaultIndex(weeks: Week[], today: string) {
+  const cur = weeks.findIndex((w) => w.weekStart <= today && today <= endOf(w));
+  if (cur >= 0) return cur;
+  let last = -1;
+  weeks.forEach((w, i) => { if (w.weekStart <= today) last = i; });
+  return last >= 0 ? last : 0;
+}
 
 function fmt(d: string) {
   return new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
@@ -30,8 +44,10 @@ function LogMini({ l }: { l: any }) {
 
 export function OgrenciProgramlari({ studentId }: { studentId: string }) {
   const supabase = createClient();
-  const [weeks, setWeeks] = useState<{ weekStart: string; weekEnd: string; logs: any[] }[]>([]);
+  const [weeks, setWeeks] = useState<Week[]>([]);
+  const [idx, setIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [jumpMsg, setJumpMsg] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -47,7 +63,9 @@ export function OgrenciProgramlari({ studentId }: { studentId: string }) {
         }
         map.get(l.week_start).logs.push(l);
       }
-      setWeeks(Array.from(map.values()));
+      const list = Array.from(map.values()) as Week[];
+      setWeeks(list);
+      setIdx(defaultIndex(list, todayTr()));
       setLoading(false);
     }
     load();
@@ -57,9 +75,23 @@ export function OgrenciProgramlari({ studentId }: { studentId: string }) {
   if (loading) return <p className="text-[13px] text-gray-400">Yükleniyor...</p>;
   if (weeks.length === 0) return <p className="text-[13px] text-gray-400">Henüz haftalık program yok.</p>;
 
+  const w = weeks[Math.min(idx, weeks.length - 1)];
+  const go = (i: number) => { setJumpMsg(''); setIdx(Math.max(0, Math.min(weeks.length - 1, i))); };
+  // Seçilen tarihi kapsayan program; yoksa o tarihten önceki en yakın program
+  function jumpToDate(d: string) {
+    if (!d) return;
+    const hit = weeks.findIndex((x) => x.weekStart <= d && d <= endOf(x));
+    if (hit >= 0) { go(hit); return; }
+    let before = -1;
+    weeks.forEach((x, i) => { if (x.weekStart <= d) before = i; });
+    go(before >= 0 ? before : 0);
+    setJumpMsg('Bu tarihte program yok; en yakın program gösteriliyor.');
+  }
+  const navBtn = 'flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30';
+
   return (
-    <div className="space-y-4">
-      {weeks.map((w) => {
+    <div className="space-y-2">
+      {[w].map((w) => {
         const sorted = [...w.logs].sort((a, b) =>
           (a.start_time ?? '99').localeCompare(b.start_time ?? '99')
         );
@@ -68,10 +100,27 @@ export function OgrenciProgramlari({ studentId }: { studentId: string }) {
         const days = programDays(w.weekStart, w.weekEnd, w.logs);
         return (
           <div key={w.weekStart} className="rounded-xl border border-gray-200 p-3">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-[13px] font-semibold text-gray-900">
-                {fmt(w.weekStart)} - {fmt(w.weekEnd)}
-              </h3>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => go(idx - 1)} disabled={idx <= 0} className={navBtn}
+                aria-label="Önceki program" title="Önceki program">
+                <IconChevronLeft size={16} />
+              </button>
+              <select value={idx} onChange={(e) => go(Number(e.target.value))}
+                className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[13px] font-semibold text-gray-900 outline-none focus:border-violet-400">
+                {weeks.map((x, i) => (
+                  <option key={x.weekStart} value={i}>{fmt(x.weekStart)} – {fmt(endOf(x))}</option>
+                ))}
+              </select>
+              <button type="button" onClick={() => go(idx + 1)} disabled={idx >= weeks.length - 1} className={navBtn}
+                aria-label="Sonraki program" title="Sonraki program">
+                <IconChevronRight size={16} />
+              </button>
+              <span className="text-[11px] text-gray-400">{idx + 1}/{weeks.length}</span>
+              <label className="ml-auto flex items-center gap-1.5 text-[11px] text-gray-500">
+                Tarihe git
+                <input type="date" onChange={(e) => jumpToDate(e.target.value)}
+                  className="rounded-lg border border-gray-200 px-2 py-1 text-[12px] text-gray-700 outline-none focus:border-violet-400" />
+              </label>
               <Link
                 href={`/haftalik-takip?ogrenci=${studentId}&program=${w.weekStart}`}
                 className="rounded-md border border-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-50"
@@ -114,6 +163,7 @@ export function OgrenciProgramlari({ studentId }: { studentId: string }) {
           </div>
         );
       })}
+      {jumpMsg && <p className="text-[11px] text-amber-700">{jumpMsg}</p>}
     </div>
   );
 }
