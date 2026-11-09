@@ -9,6 +9,7 @@ import { useExamFilter } from '@/lib/exam-filter-context';
 import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 import { PageHero } from '@/components/ui/PageHero';
 import { programDays, programLength, addDays, weekdayOf, shortDate, DAY_NAMES } from '@/lib/program-days';
+import { TopluProgramModal, type BulkMode } from './TopluProgram';
 
 const DAYS_TR = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -227,6 +228,9 @@ export default function HaftalikTakipPage() {
   // Programı sonraki haftalara aktarma (seçilen her haftaya bir kopya)
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferSel, setTransferSel] = useState<string[]>([]);
+
+  // Toplu işlemler (programı birden çok öğrenciye kopyalama / herkesin son haftasını aktarma)
+  const [bulkMode, setBulkMode] = useState<BulkMode | null>(null);
 
   // Programı başka öğrenciye kopyalama
   const [copyOpen, setCopyOpen] = useState(false);
@@ -1166,6 +1170,12 @@ export default function HaftalikTakipPage() {
         subtitle={weekLabel || 'Öğrenci seçip haftalık programı hazırlayın'}
         actions={<>
           <button
+            onClick={() => setBulkMode(logs.length > 0 ? 'grup' : 'aktar')}
+            className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--accent-dark)]"
+          >
+            <IconCopy size={13} /> Toplu işlemler
+          </button>
+          <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
           >
@@ -1271,6 +1281,16 @@ export default function HaftalikTakipPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {bulkMode && (
+        <TopluProgramModal
+          initialMode={bulkMode}
+          students={filteredStudents}
+          source={selectedStudentId && weekStart ? { studentId: selectedStudentId, name: selectedStudent?.full_name ?? '', weekStart, weekEnd: weekEnd || addDays(weekStart, 6), logs } : null}
+          onClose={() => setBulkMode(null)}
+          onDone={() => { if (selectedStudentId) loadProgramOptions(selectedStudentId); }}
+        />
       )}
 
       {copyOpen && (
