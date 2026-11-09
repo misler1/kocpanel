@@ -17,10 +17,10 @@ const daysBetween = (from: string, to: string) =>
 
 export default async function OgrenciDetayPage({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ sekme?: string }>;
+  searchParams: Promise<{ sekme?: string; gorusme?: string }>;
 }) {
   const { id } = await params;
-  const { sekme } = await searchParams;
+  const { sekme, gorusme } = await searchParams;
   const supabase = await createClient();
   const user = await getRequestUser();
   if (!user) redirect('/giris');
@@ -94,8 +94,9 @@ export default async function OgrenciDetayPage({ params, searchParams }: {
   };
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-[1500px]">
       <OgrenciDetayClient
+        initialPanel={gorusme === '1'}
         student={student}
         meetings={meetings}
         exams={exams}

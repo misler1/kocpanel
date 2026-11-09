@@ -4,7 +4,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { IconArrowLeft, IconCalendar, IconEdit, IconTrash, IconX } from '@tabler/icons-react';
+import { IconCalendar, IconEdit, IconTrash, IconX, IconMessages, IconUser } from '@tabler/icons-react';
+import { PageHero } from '@/components/ui/PageHero';
 import { NotesEditor } from '@/components/NotesEditor';
 import {
   draftKey, readDraft, writeDraft, removeDraft, hasText, DURATION_RESUME_MS, type MeetingDraft,
@@ -24,9 +25,20 @@ function toLocalDatetime(input: string | Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/**
+ * Öğrencinin görüşme kayıtları: üstte yeni görüşme formu, altında önceki görüşmeler.
+ * variant="panel": öğrenci detayındaki yan panelde (başlık yok, tek sütun) kullanılır.
+ */
 export function GorusmeOgrenciClient({
-  student, initialMeetings,
-}: { student: { id: string; full_name: string; kurum?: string | null }; initialMeetings: any[] }) {
+  student, initialMeetings, variant = 'page', onCreated,
+}: {
+  student: { id: string; full_name: string; kurum?: string | null };
+  initialMeetings: any[];
+  variant?: 'page' | 'panel';
+  onCreated?: () => void;
+}) {
+  const isPanel = variant === 'panel';
+  const grid2 = isPanel ? 'grid gap-3' : 'grid gap-4 sm:grid-cols-2';
   const supabase = useMemo(() => createClient(), []);
   const [meetings, setMeetings] = useState<any[]>(initialMeetings);
   const [meetingOwners, setMeetingOwners] = useState<{ id: string; full_name: string }[]>([]);
@@ -221,23 +233,34 @@ export function GorusmeOgrenciClient({
     if (draftStorageKey) removeDraft(draftStorageKey);
     resetForm();
     setLoading(false);
+    onCreated?.();
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-5 flex items-center gap-3">
-        <Link href="/gorusmeler" className="rounded-lg p-2 text-[var(--ink-muted)] hover:bg-[var(--paper)]">
-          <IconArrowLeft size={18} />
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-[18px] font-semibold text-[var(--ink)]">{student.full_name}</h1>
-          <p className="mt-0.5 text-[13px] text-[var(--ink-muted)]">{meetings.length} görüşme</p>
-        </div>
-      </div>
+    <div className={isPanel ? '' : 'mx-auto max-w-3xl'}>
+      {!isPanel && (
+        <PageHero
+          theme="teal"
+          backHref="/gorusmeler"
+          icon={<IconMessages size={22} />}
+          title={student.full_name}
+          subtitle="Görüşme kayıtları"
+          chips={[`${meetings.length} görüşme`, latest ? `Son: ${new Date(latest.scheduled_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}` : null]}
+          actions={
+            <Link href={`/ogrenciler/${student.id}`} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-gray-700 hover:bg-teal-50 hover:text-teal-700">
+              <IconUser size={15} /> Öğrenci detayı
+            </Link>
+          }
+        />
+      )}
 
       {/* ── Yeni görüşme formu (her zaman açık) ── */}
-      <section className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] px-5 py-5">
-        <h2 className="mb-4 text-[14px] font-semibold text-[var(--ink)]">Yeni görüşme</h2>
+      <section className={`overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm ${isPanel ? 'mb-4' : 'mb-6'}`}>
+        <div className="flex items-center gap-2 border-b border-teal-100 bg-gradient-to-r from-teal-50 to-white px-4 py-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500 text-white"><IconMessages size={16} /></span>
+          <h2 className="text-[15px] font-semibold text-[var(--ink)]">Yeni görüşme</h2>
+        </div>
+        <div className={isPanel ? 'px-4 py-4' : 'px-5 py-5'}>
         {restoredDraftAt && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-900">
             <span>
@@ -256,7 +279,7 @@ export function GorusmeOgrenciClient({
           </div>
         )}
         <form onSubmit={handleCreate} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className={grid2}>
             <div>
               <label className={labelCls}>Görüşmeyi yapan</label>
               <select
@@ -295,7 +318,7 @@ export function GorusmeOgrenciClient({
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className={grid2}>
             <div>
               <label className={labelCls}>Tarih & Saat</label>
               <input type="datetime-local" required value={scheduledAt}
@@ -357,11 +380,12 @@ export function GorusmeOgrenciClient({
             {loading ? 'Ekleniyor...' : 'Görüşmeyi kaydet'}
           </button>
         </form>
+        </div>
       </section>
 
       {/* ── Görüşme listesi ── */}
       {meetings.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] py-16">
+        <div className={`flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--card)] ${isPanel ? 'py-8' : 'py-16'}`}>
           <IconCalendar size={32} className="text-[var(--ink-muted)]" />
           <p className="text-[13px] text-[var(--ink-muted)]">Henüz görüşme eklenmemiş.</p>
         </div>

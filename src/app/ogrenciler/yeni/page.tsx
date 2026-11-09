@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { ExamTrack } from '@/types/database';
-import { IconArrowLeft, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { IconUserPlus } from '@tabler/icons-react';
+import { PageHero } from '@/components/ui/PageHero';
+import { FORM_CARD_CLS, FormSectionTitle, FormActions, formInputCls, formCancelCls, formSubmitCls } from '@/components/ui/FormSection';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { parseTurkishNumber } from '@/lib/format';
 import { TRACK_RESOURCES } from '@/lib/track-resources';
@@ -48,13 +50,6 @@ type TeacherOption = { id: string; full_name: string; kind: 'self' | 'intern' };
 
 // ─── Bölüm başlığı bileşeni ─────────────────────────────────
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="border-b border-gray-100 pb-2 pt-1">
-      <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gray-400">{children}</h2>
-    </div>
-  );
-}
 
 // ─── Input bileşeni ─────────────────────────────────────────
 
@@ -63,7 +58,7 @@ function Field({
 }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-gray-700">
+      <label className="mb-1.5 block text-[13px] font-medium text-gray-700">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       {children}
@@ -71,7 +66,7 @@ function Field({
   );
 }
 
-const inputCls = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
+const inputCls = formInputCls;
 
 // ─── Ana sayfa ───────────────────────────────────────────────
 
@@ -290,19 +285,20 @@ export default function YeniOgrenciPage() {
   const isYks = track.startsWith('YKS');
 
   return (
-    <div className="mx-auto max-w-2xl pb-12">
-      <div className="mb-5 flex items-center gap-3">
-        <Link href="/ogrenciler" className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
-          <IconArrowLeft size={18} />
-        </Link>
-        <h1 className="text-[18px] font-medium text-gray-900">Yeni öğrenci ekle</h1>
-      </div>
+    <div className="mx-auto max-w-3xl pb-12">
+      <PageHero
+        theme="violet"
+        backHref="/ogrenciler"
+        icon={<IconUserPlus size={22} />}
+        title="Yeni öğrenci ekle"
+        subtitle="Yıldızlı alanlar zorunlu; diğer bilgileri sonra da ekleyebilirsiniz."
+      />
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
 
         {/* ── Temel Bilgiler ── */}
-        <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-          <SectionTitle>Temel Bilgiler</SectionTitle>
+        <div className={FORM_CARD_CLS}>
+          <FormSectionTitle>Temel Bilgiler</FormSectionTitle>
 
           {/* Avatar */}
           <div className="flex items-center gap-4">
@@ -412,8 +408,8 @@ export default function YeniOgrenciPage() {
         </div>
 
         {/* ── Aile Bilgileri ── */}
-        <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-          <SectionTitle>Aile Bilgileri</SectionTitle>
+        <div className={FORM_CARD_CLS}>
+          <FormSectionTitle>Aile Bilgileri</FormSectionTitle>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <Field label="Anne Adı">
@@ -444,8 +440,8 @@ export default function YeniOgrenciPage() {
         </div>
 
         {/* ── Veli Bilgileri ── */}
-        <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-          <SectionTitle>Veli Bilgileri</SectionTitle>
+        <div className={FORM_CARD_CLS}>
+          <FormSectionTitle>Veli Bilgileri</FormSectionTitle>
 
           <div>
             <p className="mb-2 text-sm text-gray-500">Veli bilgilerini nereden alalım?</p>
@@ -486,12 +482,8 @@ export default function YeniOgrenciPage() {
 
         {/* ── YKS Sonuçları (toggle) ── */}
         {isYks && (
-          <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-            <button type="button" onClick={() => setShowYks((v) => !v)}
-              className="flex w-full items-center justify-between">
-              <SectionTitle>Önceki YKS Sonuçları</SectionTitle>
-              {showYks ? <IconChevronUp size={18} className="text-gray-400" /> : <IconChevronDown size={18} className="text-gray-400" />}
-            </button>
+          <div className={FORM_CARD_CLS}>
+            <FormSectionTitle open={showYks} onToggle={() => setShowYks((v) => !v)}>Önceki YKS Sonuçları</FormSectionTitle>
 
             {showYks && (
               <>
@@ -552,8 +544,8 @@ export default function YeniOgrenciPage() {
 
                 {/* ── Hedef ── */}
         {isYks && (
-          <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-            <SectionTitle>Hedef</SectionTitle>
+          <div className={FORM_CARD_CLS}>
+            <FormSectionTitle>Hedef</FormSectionTitle>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Hedef Üniversite">
                 <input type="text" value={targetUniversity} onChange={(e) => setTargetUniversity(e.target.value)}
@@ -581,12 +573,8 @@ export default function YeniOgrenciPage() {
 
         {/* ── Kullanılan Kaynaklar (toggle) ── */}
         {subjects.length > 0 && (
-          <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-            <button type="button" onClick={() => setShowResources((v) => !v)}
-              className="flex w-full items-center justify-between">
-              <SectionTitle>Kullanılan Kaynaklar</SectionTitle>
-              {showResources ? <IconChevronUp size={18} className="text-gray-400" /> : <IconChevronDown size={18} className="text-gray-400" />}
-            </button>
+          <div className={FORM_CARD_CLS}>
+            <FormSectionTitle open={showResources} onToggle={() => setShowResources((v) => !v)}>Kullanılan Kaynaklar</FormSectionTitle>
 
             {showResources && (
               <div className="space-y-3">
@@ -612,16 +600,12 @@ export default function YeniOgrenciPage() {
         {/* ── Hata & Butonlar ── */}
         {error && <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
 
-        <div className="flex gap-3">
-          <Link href="/ogrenciler"
-            className="flex-1 rounded-lg border border-gray-300 py-2.5 text-center text-sm text-gray-600 hover:bg-gray-50">
-            İptal
-          </Link>
-          <button type="submit" disabled={loading}
-            className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
+        <FormActions>
+          <Link href="/ogrenciler" className={formCancelCls}>İptal</Link>
+          <button type="submit" disabled={loading} className={formSubmitCls}>
             {loading ? 'Ekleniyor...' : 'Öğrenci ekle'}
           </button>
-        </div>
+        </FormActions>
       </form>
     </div>
   );

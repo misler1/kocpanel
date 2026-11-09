@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import type { ExamTrack, StudentStatus } from '@/types/database';
-import { IconArchive, IconArchiveOff, IconArrowLeft, IconChevronDown, IconChevronUp, IconTrash } from '@tabler/icons-react';
+import { IconArchive, IconArchiveOff, IconTrash, IconUserEdit } from '@tabler/icons-react';
+import { PageHero } from '@/components/ui/PageHero';
+import { FORM_CARD_CLS, FormSectionTitle, FormActions, formInputCls, formCancelCls, formSubmitCls } from '@/components/ui/FormSection';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { parseTurkishNumber, formatTurkishNumber } from '@/lib/format';
 import { SuggestInput } from '@/components/SuggestInput';
@@ -82,18 +84,11 @@ function getYksYear() {
 
 // ─── Yardımcı bileşenler ─────────────────────────────────────
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="border-b border-gray-100 pb-2 pt-1">
-      <h2 className="text-[13px] font-semibold uppercase tracking-wide text-gray-400">{children}</h2>
-    </div>
-  );
-}
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-gray-700">
+      <label className="mb-1.5 block text-[13px] font-medium text-gray-700">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       {children}
@@ -101,7 +96,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
   );
 }
 
-const inputCls = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
+const inputCls = formInputCls;
 
 // ─── Ana bileşen ─────────────────────────────────────────────
 
@@ -347,13 +342,14 @@ export function OgrenciDuzenleClient({ student, staffMode = false }: { student: 
   const isArchived = status === 'pasif';
 
   return (
-    <div className="mx-auto max-w-2xl pb-12">
-      <div className="mb-5 flex flex-wrap items-center gap-3">
-        <Link href={`/ogrenciler/${student.id}`} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
-          <IconArrowLeft size={18} />
-        </Link>
-        <h1 className="flex-1 text-[18px] font-medium text-gray-900">{student.full_name} — Düzenle</h1>
-        {!staffMode && <>
+    <div className="mx-auto max-w-3xl pb-12">
+      <PageHero
+        theme={isArchived ? 'slate' : 'violet'}
+        backHref={`/ogrenciler/${student.id}`}
+        icon={<IconUserEdit size={22} />}
+        title={student.full_name}
+        subtitle={isArchived ? 'Bilgileri düzenle · arşivde' : 'Bilgileri düzenle'}
+        actions={staffMode ? undefined : <>
         <button
           type="button"
           onClick={handleArchiveToggle}
@@ -372,13 +368,13 @@ export function OgrenciDuzenleClient({ student, staffMode = false }: { student: 
           Sil
         </button>
         </>}
-      </div>
+      />
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
 
         {/* ── Temel Bilgiler ── */}
-        <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-          <SectionTitle>Temel Bilgiler</SectionTitle>
+        <div className={FORM_CARD_CLS}>
+          <FormSectionTitle>Temel Bilgiler</FormSectionTitle>
 
           <div className="flex items-center gap-4">
             <div className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full text-lg font-semibold ${selectedColor.bg} ${selectedColor.text}`}>
@@ -492,8 +488,8 @@ export function OgrenciDuzenleClient({ student, staffMode = false }: { student: 
         </div>
 
         {/* ── Aile Bilgileri ── */}
-        <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-          <SectionTitle>Aile Bilgileri</SectionTitle>
+        <div className={FORM_CARD_CLS}>
+          <FormSectionTitle>Aile Bilgileri</FormSectionTitle>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <Field label="Anne Adı">
               <input type="text" value={motherName} onChange={(e) => setMotherName(e.target.value)}
@@ -523,8 +519,8 @@ export function OgrenciDuzenleClient({ student, staffMode = false }: { student: 
         </div>
 
         {/* ── Veli Bilgileri ── */}
-        <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-          <SectionTitle>Veli Bilgileri</SectionTitle>
+        <div className={FORM_CARD_CLS}>
+          <FormSectionTitle>Veli Bilgileri</FormSectionTitle>
           <div className="flex gap-3">
             <button type="button" onClick={() => handleGuardianQuickFill('anne')}
               className="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] text-gray-600 hover:bg-gray-50">
@@ -555,12 +551,8 @@ export function OgrenciDuzenleClient({ student, staffMode = false }: { student: 
 
         {/* ── YKS Sonuçları ── */}
         {isYks && (
-          <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-            <button type="button" onClick={() => setShowYks((v) => !v)}
-              className="flex w-full items-center justify-between">
-              <SectionTitle>Önceki YKS Sonuçları</SectionTitle>
-              {showYks ? <IconChevronUp size={18} className="text-gray-400" /> : <IconChevronDown size={18} className="text-gray-400" />}
-            </button>
+          <div className={FORM_CARD_CLS}>
+            <FormSectionTitle open={showYks} onToggle={() => setShowYks((v) => !v)}>Önceki YKS Sonuçları</FormSectionTitle>
 
             {showYks && (
               <>
@@ -618,8 +610,8 @@ export function OgrenciDuzenleClient({ student, staffMode = false }: { student: 
 
                 {/* ── Hedef ── */}
         {isYks && (
-          <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-            <SectionTitle>Hedef</SectionTitle>
+          <div className={FORM_CARD_CLS}>
+            <FormSectionTitle>Hedef</FormSectionTitle>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Hedef Üniversite">
                 <input type="text" value={targetUniversity} onChange={(e) => setTargetUniversity(e.target.value)}
@@ -647,12 +639,8 @@ export function OgrenciDuzenleClient({ student, staffMode = false }: { student: 
 
         {/* ── Kullanılan Kaynaklar ── */}
         {subjects.length > 0 && (
-          <div className="rounded-xl border border-gray-200 bg-white px-5 py-5 space-y-4">
-            <button type="button" onClick={() => setShowResources((v) => !v)}
-              className="flex w-full items-center justify-between">
-              <SectionTitle>Kullanılan Kaynaklar</SectionTitle>
-              {showResources ? <IconChevronUp size={18} className="text-gray-400" /> : <IconChevronDown size={18} className="text-gray-400" />}
-            </button>
+          <div className={FORM_CARD_CLS}>
+            <FormSectionTitle open={showResources} onToggle={() => setShowResources((v) => !v)}>Kullanılan Kaynaklar</FormSectionTitle>
             {showResources && (
               <div className="space-y-3">
                 {subjects.map((subject) => (
@@ -676,16 +664,12 @@ export function OgrenciDuzenleClient({ student, staffMode = false }: { student: 
 
         {error && <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
 
-        <div className="flex gap-3">
-          <Link href={`/ogrenciler/${student.id}`}
-            className="flex-1 rounded-lg border border-gray-300 py-2.5 text-center text-sm text-gray-600 hover:bg-gray-50">
-            İptal
-          </Link>
-          <button type="submit" disabled={loading}
-            className="flex-1 rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
+        <FormActions>
+          <Link href={`/ogrenciler/${student.id}`} className={formCancelCls}>İptal</Link>
+          <button type="submit" disabled={loading} className={formSubmitCls}>
             {loading ? 'Kaydediliyor...' : 'Değişiklikleri kaydet'}
           </button>
-        </div>
+        </FormActions>
       </form>
 
       {/* ── Silme onayı ── */}

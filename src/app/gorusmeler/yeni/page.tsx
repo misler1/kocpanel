@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
-import { IconArrowLeft, IconX } from '@tabler/icons-react';
+import { IconX, IconCalendarPlus } from '@tabler/icons-react';
+import { PageHero } from '@/components/ui/PageHero';
+import { FORM_CARD_CLS, FormSectionTitle, FormActions, formInputCls, formCancelCls, formSubmitCls } from '@/components/ui/FormSection';
 import { Suspense } from 'react';
 import { NotesEditor } from '@/components/NotesEditor';
 import {
@@ -264,13 +266,14 @@ useEffect(() => {
   const showHaftalikTakip = (lockedStudentId ? lockedStudentKurum : selectedKurum) === HAFTALIK_TAKIP_KURUMU;
 
   return (
-    <div className="mx-auto max-w-lg">
-      <div className="mb-5 flex items-center gap-3">
-        <Link href={backHref} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100">
-          <IconArrowLeft size={18} />
-        </Link>
-        <h1 className="text-[18px] font-medium text-gray-900">Görüşme ekle</h1>
-      </div>
+    <div className="mx-auto max-w-2xl pb-12">
+      <PageHero
+        theme="teal"
+        backHref={backHref}
+        icon={<IconCalendarPlus size={22} />}
+        title="Görüşme ekle"
+        subtitle={lockedStudentName ?? 'Görüşme notlarınız yazdıkça otomatik saklanır'}
+      />
 
       {restoredDraftAt && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
@@ -290,12 +293,13 @@ useEffect(() => {
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white px-5 py-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className={FORM_CARD_CLS}>
+          <FormSectionTitle hint="Öğrenci, görüşmeyi yapan, tarih ve süre">Görüşme bilgileri</FormSectionTitle>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Öğrenci</label>
+            <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Öğrenci</label>
             {lockedStudentId ? (
-              <div className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-800">
+              <div className="w-full rounded-xl border border-teal-100 bg-teal-50 px-3 py-2.5 text-sm font-semibold text-teal-900">
                 {lockedStudentName ?? 'Yükleniyor...'}
               </div>
             ) : (
@@ -307,7 +311,7 @@ useEffect(() => {
                   const s = students.find((st) => st.id === e.target.value);
                   setSelectedKurum(s?.kurum ?? null);
                 }}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className={formInputCls}
               >
                 {students.map((s) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
               </select>
@@ -315,14 +319,14 @@ useEffect(() => {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Görüşmeyi yapan</label>
+            <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Görüşmeyi yapan</label>
             <select
               value={createdBy}
               onChange={(e) => {
                 setCreatedBy(e.target.value);
                 if (e.target.value !== 'other') setCreatedByOtherName('');
               }}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className={formInputCls}
             >
               {meetingOwners.map((owner) => <option key={owner.id} value={owner.id}>{owner.full_name}</option>)}
               <option value="other">Diğer</option>
@@ -331,23 +335,23 @@ useEffect(() => {
 
           {createdBy === 'other' && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Görüşmeyi yapan kişi</label>
+              <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Görüşmeyi yapan kişi</label>
               <input
                 type="text"
                 value={createdByOtherName}
                 onChange={(e) => setCreatedByOtherName(e.target.value)}
                 placeholder="Ad soyad veya açıklama"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className={formInputCls}
               />
             </div>
           )}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Görüşme türü</label>
+            <label className="mb-2 block text-[13px] font-medium text-gray-700">Görüşme türü</label>
             <div className="flex gap-3">
               {(['ogrenci', 'veli'] as const).map((t) => (
                 <label key={t} className="flex cursor-pointer items-center gap-2">
-                  <input type="radio" value={t} checked={meetingType === t} onChange={() => setMeetingType(t)} className="accent-blue-600" />
+                  <input type="radio" value={t} checked={meetingType === t} onChange={() => setMeetingType(t)} className="accent-teal-600" />
                   <span className="text-sm text-gray-700">{t === 'ogrenci' ? 'Öğrenci' : 'Veli'}</span>
                 </label>
               ))}
@@ -355,44 +359,48 @@ useEffect(() => {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Tarih & Saat <span className="text-red-500">*</span></label>
+            <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Tarih & Saat <span className="text-red-500">*</span></label>
             <input
               type="datetime-local"
               required
               value={scheduledAt}
               onChange={(e) => setScheduledAt(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className={formInputCls}
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Süre (dakika)</label>
+            <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Süre (dakika)</label>
             <input
               type="number"
               min={1}
               max={180}
               value={duration}
               onChange={(e) => { setDuration(Number(e.target.value)); setDurationEditedManually(true); }}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className={formInputCls}
             />
             {!durationEditedManually && (
               <p className="mt-1 text-[11px] text-gray-400">Form açıldığından beri otomatik sayılıyor — istersen elle değiştirebilirsin.</p>
             )}
           </div>
 
+        </div>
+
+        <div className={FORM_CARD_CLS}>
+          <FormSectionTitle hint="Konu ve görüşme notları">Görüşme notları</FormSectionTitle>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Konu</label>
+            <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Konu</label>
             <SuggestInput
               options={topicOptions}
               value={topic}
               onChange={setTopic}
               placeholder="Haftalık takip, TYT değerlendirme..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className={formInputCls}
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Notlar</label>
+            <label className="mb-1.5 block text-[13px] font-medium text-gray-700">Notlar</label>
             <NotesEditor
               value={notes}
               onChange={setNotes}
@@ -405,8 +413,8 @@ useEffect(() => {
           </div>
 
           {showHaftalikTakip && (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3">
+              <label className="mb-2 block text-[13px] font-medium text-gray-700">
                 Haftalık takip çizelgesini getirdi mi? <span className="font-normal text-gray-400">(opsiyonel)</span>
               </label>
               <div className="flex flex-wrap items-center gap-3">
@@ -417,7 +425,7 @@ useEffect(() => {
                       value={v}
                       checked={haftalikTakipGetirdi === v}
                       onChange={() => setHaftalikTakipGetirdi(v)}
-                      className="accent-blue-600"
+                      className="accent-teal-600"
                     />
                     <span className="text-sm text-gray-700">{v === 'evet' ? 'Evet' : 'Hayır'}</span>
                   </label>
@@ -435,16 +443,17 @@ useEffect(() => {
             </div>
           )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+        </div>
 
-          <div className="flex gap-3">
-            <Link href={backHref} className="flex-1 rounded-lg border border-gray-300 py-2 text-center text-sm text-gray-600 hover:bg-gray-50">İptal</Link>
-            <button type="submit" disabled={loading} className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
-              {loading ? 'Ekleniyor...' : 'Görüşme ekle'}
-            </button>
-          </div>
-        </form>
-      </div>
+        {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</p>}
+
+        <FormActions>
+          <Link href={backHref} className={formCancelCls}>İptal</Link>
+          <button type="submit" disabled={loading} className={formSubmitCls.replace('from-violet-600 to-indigo-600', 'from-teal-600 to-emerald-600')}>
+            {loading ? 'Ekleniyor...' : 'Görüşmeyi kaydet'}
+          </button>
+        </FormActions>
+      </form>
     </div>
   );
 }

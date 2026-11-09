@@ -14,6 +14,7 @@ import {
 import { avatarColor, initials, trackPill } from '@/lib/ui-colors';
 import { OgrenciProgramlari } from './OgrenciProgramlari';
 import { allowedStudentTabs, type StaffKind } from '@/lib/staff-access';
+import { GorusmePaneli } from './GorusmePaneli';
 
 // ─── Sabitler ────────────────────────────────────────────────
 
@@ -172,9 +173,11 @@ const fmtNet = (n: number) => n.toLocaleString('tr-TR', { maximumFractionDigits:
  * Koçun öğrenci detayı: renkli başlık + hızlı işlemler, 4 özet kartı ve sekmeler.
  * Bölümler alt alta açılır kapanır değil; her sekmede yalnızca o konunun kartları açık görünür.
  */
-export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, initialTab, hedefPanel, settingsPanels, headerExtra, access = 'coach' }: {
+export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, initialTab, hedefPanel, settingsPanels, headerExtra, access = 'coach', initialPanel = false }: {
   student: any; meetings: any[]; exams: any[]; tasks: any[]; stats: DetayStats; initialTab?: string;
   hedefPanel: React.ReactNode; settingsPanels: React.ReactNode; headerExtra?: React.ReactNode; access?: StaffKind;
+  /** Görüşme paneli açık başlasın (?gorusme=1) */
+  initialPanel?: boolean;
 }) {
   // Kurum personeli yalnızca izin verilen sekmeleri görür (belletmen: program ve denemeler)
   const allowedTabs = allowedStudentTabs(access);
@@ -185,6 +188,10 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
   const status = STATUS_MAP[student.status] ?? STATUS_MAP['aktif'];
   const pill = trackPill(student.track);
   const [tab, setTab] = useState<TabId>(tabs.some((t) => t.id === initialTab) ? (initialTab as TabId) : tabs[0].id);
+  // Görüşme paneli: açıkken koç sekmelerde gezebilir; küçültülünce yazılanlar korunur
+  const canMeet = !isStaff;
+  const [panel, setPanel] = useState<'closed' | 'open' | 'min'>(initialPanel && canMeet ? 'open' : 'closed');
+  const openPanel = () => setPanel('open');
 
   function changeTab(next: TabId) {
     setTab(next);
@@ -239,7 +246,8 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
   );
 
   return (
-    <div>
+    <div className={panel !== 'closed' ? 'lg:flex lg:items-start lg:gap-4' : ''}>
+    <div className="mx-auto min-w-0 max-w-5xl flex-1">
       {/* ── Başlık ── */}
       <div className={`relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-br ${isArchived ? 'from-slate-500 via-slate-600 to-slate-700' : 'from-indigo-500 via-violet-500 to-fuchsia-500'} p-5 text-white shadow-sm`}>
         <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10" />
@@ -265,7 +273,12 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
           {headerExtra}
         </div>
         <div className="relative mt-4 flex flex-wrap gap-1 rounded-xl bg-white/95 p-1.5 shadow-sm">
-          {!isStaff && <Link href={`/gorusmeler/yeni?ogrenci=${id}`} className={actionCls}><IconCalendarPlus size={16} /> Görüşme ekle</Link>}
+          {canMeet && (
+            <button type="button" onClick={openPanel}
+              className={`${actionCls} ${panel !== 'closed' ? 'bg-teal-50 text-teal-700' : ''}`}>
+              <IconCalendarPlus size={16} /> {panel === 'closed' ? 'Görüşme ekle' : 'Görüşme açık'}
+            </button>
+          )}
           {access !== 'belletmen' && <Link href={`/denemeler/yeni?ogrenci=${id}`} className={actionCls}><IconChartBar size={16} /> Deneme ekle</Link>}
           <Link href={`/haftalik-takip?ogrenci=${id}`} className={actionCls}><IconCalendar size={16} /> Haftalık program</Link>
           <Link href={`/konu-ilerleyisi?ogrenci=${id}`} className={actionCls}><IconBooks size={16} /> Konu ilerleyişi</Link>
@@ -316,7 +329,7 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
         {tab === 'genel' && (
           <div className="grid gap-3 lg:grid-cols-2">
             <Accordion icon={<IconCalendar size={16} />} title="Son görüşmeler" theme="teal"
-              right={<Link href={`/gorusmeler/yeni?ogrenci=${id}`} className="text-teal-700 hover:underline">+ Ekle</Link>}>
+              right={canMeet ? <button type="button" onClick={openPanel} className="text-teal-700 hover:underline">+ Ekle</button> : null}>
               <MeetingList meetings={meetings.slice(0, 3)} studentId={id} />
               {meetings.length > 0 && (
                 <button type="button" onClick={() => changeTab('gorusmeler')} className="mt-2 text-[12px] text-gray-400 hover:underline">
@@ -396,7 +409,7 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
 
         {tab === 'gorusmeler' && (
           <Accordion icon={<IconCalendar size={16} />} title="Görüşmeler" theme="teal"
-            right={<Link href={`/gorusmeler/yeni?ogrenci=${id}`} className="text-teal-700 hover:underline">+ Görüşme ekle</Link>}>
+            right={canMeet ? <button type="button" onClick={openPanel} className="text-teal-700 hover:underline">+ Görüşme ekle</button> : null}>
             <MeetingList meetings={meetings} studentId={id} />
             <div className="mt-2">
               <Link href={`/gorusmeler/${id}`} className="text-[12px] text-gray-400 hover:underline">Tüm görüşmeleri gör →</Link>
@@ -487,6 +500,22 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
 
         {tab === 'ayarlar' && <div className="space-y-3">{settingsPanels}</div>}
       </AccordionCardMode.Provider>
+    </div>
+
+      {panel !== 'closed' && (
+        <GorusmePaneli
+          student={{ id, full_name: student.full_name, kurum: student.kurum ?? null }}
+          minimized={panel === 'min'}
+          onMinimize={() => setPanel('min')}
+          onClose={() => setPanel('closed')}
+        />
+      )}
+      {panel === 'min' && (
+        <button type="button" onClick={openPanel}
+          className="fixed bottom-20 right-4 z-40 flex items-center gap-2 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 px-4 py-3 text-[13px] font-semibold text-white shadow-lg hover:brightness-110 lg:bottom-6">
+          <IconCalendarPlus size={18} /> Görüşmeye dön
+        </button>
+      )}
     </div>
   );
 }
