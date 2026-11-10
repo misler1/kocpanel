@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { IconX } from '@tabler/icons-react';
 import { subjectEmoji } from './studentUi';
+import { useKeyboardInset } from './useKeyboardInset';
 
 const REASONS = ['Vaktim yetmedi', 'Hastaydım', 'Okulda yoğundu', 'Konuyu anlamadım', 'Unuttum'];
 
@@ -16,6 +17,7 @@ export function MissedSheet({ task, onSave, onClose }: {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const kb = useKeyboardInset();
 
   async function submit() {
     setBusy(true); setError(null);
@@ -25,8 +27,10 @@ export function MissedSheet({ task, onSave, onClose }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={() => !busy && onClose()}>
-      <div onClick={(e) => e.stopPropagation()} className="student-pop w-full max-w-md space-y-3 rounded-t-[28px] bg-[var(--card)] p-5 shadow-2xl sm:rounded-[28px]">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={() => !busy && onClose()}
+      style={{ paddingBottom: kb.inset || undefined }}>
+      <div onClick={(e) => e.stopPropagation()} style={kb.height ? { maxHeight: Math.round(kb.height * 0.92) } : undefined}
+        className="student-pop max-h-[92dvh] w-full overflow-y-auto overscroll-contain max-w-md space-y-3 rounded-t-[28px] bg-[var(--card)] p-5 shadow-2xl sm:rounded-[28px]">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--danger-soft)] text-[26px]">{subjectEmoji(task.subject)}</span>

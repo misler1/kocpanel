@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { IconX } from '@tabler/icons-react';
 import { subjectEmoji } from './studentUi';
 import type { StudyInput } from './studyApi';
+import { useKeyboardInset } from './useKeyboardInset';
 import { SuggestInput } from '@/components/SuggestInput';
 
 const field = 'w-full rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] px-3 py-2.5 text-[15px] font-bold text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none';
@@ -29,6 +30,7 @@ export function StudyLogSheet({ task, subjects, onSave, onSkip, onClose }: {
   const [minutes, setMinutes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const kb = useKeyboardInset();
 
   const c = num(correct);
   const w = num(wrong);
@@ -50,9 +52,11 @@ export function StudyLogSheet({ task, subjects, onSave, onSkip, onClose }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}
+      style={{ paddingBottom: kb.inset || undefined }}>
       <form onSubmit={submit} onClick={(e) => e.stopPropagation()}
-        className="student-pop max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-[28px] bg-[var(--card)] p-5 shadow-2xl sm:rounded-[28px]">
+        style={kb.height ? { maxHeight: Math.round(kb.height * 0.92) } : undefined}
+        className="student-pop max-h-[92dvh] w-full overscroll-contain max-w-md overflow-y-auto rounded-t-[28px] bg-[var(--card)] p-5 shadow-2xl sm:rounded-[28px]">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[26px]">

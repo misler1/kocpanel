@@ -8,6 +8,7 @@ import { subjectEmoji, DAY_STYLES, cheer } from '../studentUi';
 import { StudyLogSheet } from '../StudyLogSheet';
 import { logStudy, setTaskDone, setTaskMissed, todayTr, type StudyInput } from '../studyApi';
 import { MissedSheet } from '../MissedSheet';
+import { useKeyboardInset } from '../useKeyboardInset';
 import { programDays, shortDate } from '@/lib/program-days';
 import { SuggestInput } from '@/components/SuggestInput';
 
@@ -346,7 +347,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                               {time && <span className="block text-[11.5px] text-[var(--ink-muted)]">⏰ {time}</span>}
                               {missed && <span className="block text-[11.5px] font-bold text-[var(--danger)]">✕ Yapmadım{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</span>}
                             </span>
-                            <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${done ? 'student-pop border-[var(--success)] bg-[var(--success)] text-white' : 'border-[var(--ink-muted)]/30 bg-white text-transparent'}`}><IconCheck size={18} strokeWidth={3} /></span>
+                            <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${done ? 'student-pop border-[var(--success)] bg-[var(--success)] text-white' : 'border-[var(--success)]/40 bg-[var(--success-soft)] text-[var(--success)]/70 hover:border-[var(--success)]/70 hover:text-[var(--success)]'}`}><IconCheck size={18} strokeWidth={3} /></span>
                           </button>
                           {!l.appointment_id && !done && (
                             <button type="button" onClick={() => (missed ? clearMissed(l) : setMissedTask(l))}
@@ -478,6 +479,7 @@ function AppointmentChangeSheet({ task, onClose, onSent }: { task: any; onClose:
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const kb = useKeyboardInset();
 
   async function send() {
     if (!note.trim() && !(date && time)) { setError('Önerdiğin günü ve saati seç ya da koçuna bir not yaz.'); return; }
@@ -491,8 +493,10 @@ function AppointmentChangeSheet({ task, onClose, onSent }: { task: any; onClose:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={() => !busy && onClose()}>
-      <div className="w-full max-w-md space-y-3 rounded-t-[28px] bg-[var(--card)] p-5 shadow-xl sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={() => !busy && onClose()}
+      style={{ paddingBottom: kb.inset || undefined }}>
+      <div className="max-h-[92dvh] w-full max-w-md space-y-3 overflow-y-auto overscroll-contain rounded-t-[28px] bg-[var(--card)] p-5 shadow-xl sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}
+        style={kb.height ? { maxHeight: Math.round(kb.height * 0.92) } : undefined}>
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-[17px] font-extrabold text-[var(--ink)]">🕒 Görüşme saatini değiştirelim mi?</p>
