@@ -244,10 +244,11 @@ export function OgrenciAnasayfaClient({
                     <span className="block text-[12.5px] font-medium text-[var(--ink-muted)]">
                       {[l.topic, l.target_count > 0 ? `${l.target_count} soru` : null].filter(Boolean).join(' · ') || 'Görev'}
                     </span>
+                    {done && <span className="block text-[12px] font-bold text-[var(--success)]">✓ Tamamlandı</span>}
                     {missed && <span className="block text-[12px] font-bold text-[var(--danger)]">✕ Yapmadım{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</span>}
                   </span>
                   <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                    done ? 'student-pop border-[var(--success)] bg-[var(--success)] text-white' : 'border-[var(--success)]/40 bg-[var(--success-soft)] text-[var(--success)]/70 hover:border-[var(--success)]/70 hover:text-[var(--success)]'}`}>
+                    done ? 'student-pop border-[var(--success)] bg-[var(--success)] text-white' : 'border-dashed border-[var(--success)]/50 bg-white text-[var(--success)]/35 hover:border-solid hover:border-[var(--success)] hover:text-[var(--success)]'}`}>
                     <IconCheck size={18} strokeWidth={3} />
                   </span>
                 </button>
