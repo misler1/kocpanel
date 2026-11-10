@@ -351,7 +351,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                           {!l.appointment_id && !done && (
                             <button type="button" onClick={() => (missed ? clearMissed(l) : setMissedTask(l))}
                               title={missed ? '"Yapmadım" işaretini kaldır' : 'Yapmadım'} aria-label={missed ? '"Yapmadım" işaretini kaldır' : 'Yapmadım'}
-                              className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${missed ? 'border-[var(--danger)] bg-[var(--danger)] text-white' : 'border-[var(--ink-muted)]/30 bg-white text-[var(--ink-muted)]/60 hover:border-[var(--danger)]/50 hover:text-[var(--danger)]'}`}>
+                              className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${missed ? 'border-[var(--danger)] bg-[var(--danger)] text-white' : 'border-[var(--danger)]/35 bg-[var(--danger-soft)] text-[var(--danger)]/75 hover:border-[var(--danger)]/70 hover:text-[var(--danger)]'}`}>
                               <IconX size={16} strokeWidth={3} />
                             </button>
                           )}
