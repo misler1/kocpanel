@@ -15,9 +15,10 @@ export default async function OnayBekleniyorPage() {
   let message = 'Hesabınız yönetici tarafından henüz onaylanmamış. Onaylandıktan sonra sisteme erişebilirsiniz.';
   if (isStudent) {
     const { data: reg } = await (supabase as any)
-      .from('student_registrations').select('status, assigned_coach_id').eq('profile_id', user.id).maybeSingle();
+      .from('student_registrations').select('*').eq('profile_id', user.id).maybeSingle();
     if (reg?.status === 'koc_bekliyor') message = 'Yönetici onayı tamamlandı. Şimdi seçtiğin koçun onayı bekleniyor.';
     else if (reg?.status === 'reddedildi') message = 'Kayıt başvurun onaylanmadı. Sorular için koçunla ya da yönetimle iletişime geç.';
+    else if (reg?.wants_coach) message = 'Kaydın alındı! 📞 Koç öğretmenimiz en kısa sürede seni telefonla arayacak. Koçun atandığında panelin açılır.';
     else message = 'Kayıt başvurun yönetici onayı bekliyor. Onaylandığında giriş yapıp panelini kullanabilirsin.';
   }
 

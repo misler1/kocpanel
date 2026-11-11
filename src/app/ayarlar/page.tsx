@@ -34,6 +34,7 @@ const profile = profileData as { is_admin: boolean } | null;
       .from('profiles')
       .select('id, full_name, is_approved, is_admin, created_at, email, role, student_selectable')
       .in('role', ['koc', 'ogretmen'])
+      .eq('is_system' as never, false as never)
       .order('created_at', { ascending: false });
     teachers = data ?? [];
   }
@@ -45,14 +46,14 @@ const profile = profileData as { is_admin: boolean } | null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: regs } = await (supabase as any)
       .from('student_registrations')
-      .select('id, full_name, phone, birth_date, status, requested_coach_id, assigned_coach_id, created_at')
+      .select('id, full_name, phone, birth_date, status, requested_coach_id, assigned_coach_id, wants_coach, created_at')
       .in('status', ['admin_bekliyor', 'koc_bekliyor', 'onaylandi'])
       .order('created_at', { ascending: false });
     // Onaylı olanlardan yalnızca koçsuz kalanlar listede görünsün
     basvurular = ((regs ?? []) as Basvuru[]).filter((r) => r.status !== 'onaylandi' || !r.assigned_coach_id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: kocData } = await (supabase as any)
-      .from('profiles').select('id, full_name').eq('role', 'koc').eq('is_approved', true).order('full_name');
+      .from('profiles').select('id, full_name').eq('role', 'koc').eq('is_approved', true).eq('is_system', false).order('full_name');
     koclar = kocData ?? [];
   }
 
@@ -160,7 +161,7 @@ const profile = profileData as { is_admin: boolean } | null;
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] font-medium text-gray-900">Öğrenci Başvuruları</div>
-                  <div className="text-[12px] text-gray-500">Kendi kendine kayıt olan öğrencileri onayla, koç ata</div>
+                  <div className="text-[12px] text-gray-500">Koç isteyen öğrencileri onayla, koç ata; koçsuz (sadece platform) öğrencilere istediğinde koç ata</div>
                 </div>
               </div>
               <BasvuruListesi basvurular={basvurular} koclar={koclar} mode="admin" />

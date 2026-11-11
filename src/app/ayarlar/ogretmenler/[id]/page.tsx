@@ -30,6 +30,7 @@ export default async function OgretmenIzinleriPage({ params }: { params: Promise
     .select('id, full_name, email')
     .eq('role', 'koc')
     .eq('is_approved', true)
+    .eq('is_system' as never, false as never)
     .neq('id', id)
     .order('full_name');
 

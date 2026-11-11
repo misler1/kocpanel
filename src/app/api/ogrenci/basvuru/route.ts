@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPlatformCoachId } from '@/lib/platform-coach';
 
 // Başvuru kararları. Body: { id, action: 'onayla' | 'reddet' | 'koc_ata', coachId? }
 // Yetki kullanıcı oturumundan okunur: admin (aşama 1 + koç atama) veya başvuruda atanmış koç (aşama 2).
@@ -30,21 +31,28 @@ export async function POST(request: Request) {
   async function validCoach(cid: string | null) {
     if (!cid) return false;
     const { data } = await (admin as any).from('profiles').select('id')
-      .eq('id', cid).eq('role', 'koc').eq('is_approved', true).maybeSingle();
+      .eq('id', cid).eq('role', 'koc').eq('is_approved', true).eq('is_system', false).maybeSingle();
     return !!data;
   }
 
-  // Öğrenci kaydını (students) oluşturur ve hesabı onaylar.
+  // Öğrenci kaydını (students) oluşturur ve hesabı onaylar. Koç verilmezse öğrenci "sadece platform" olarak
+  // görünmez sistem hesabına bağlanır (paneli kullanabilir); sonradan "Koç ata" ile koçuna geçer.
   async function finalize(coach: string | null, patch: Record<string, any>) {
-    if (coach) {
-      const { data: has } = await (admin as any).from('students').select('id').eq('profile_id', reg.profile_id).maybeSingle();
-      if (!has) {
-        const { error } = await (admin as any).from('students').insert({
-          coach_id: coach, responsible_coach_id: coach, profile_id: reg.profile_id,
-          full_name: reg.full_name, phone: reg.phone, birth_date: reg.birth_date,
-        });
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const { data: has } = await (admin as any).from('students').select('id, platform_only').eq('profile_id', reg.profile_id).maybeSingle();
+    if (has && coach && has.platform_only) {
+      const { error } = await (admin as any).from('students')
+        .update({ coach_id: coach, responsible_coach_id: coach, platform_only: false }).eq('id', has.id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    } else if (!has) {
+      let owner = coach;
+      if (!owner) {
+        try { owner = await getPlatformCoachId(admin); } catch (e) { return NextResponse.json({ error: (e as Error).message }, { status: 500 }); }
       }
+      const { error } = await (admin as any).from('students').insert({
+        coach_id: owner, responsible_coach_id: coach, profile_id: reg.profile_id, platform_only: !coach,
+        full_name: reg.full_name, phone: reg.phone, birth_date: reg.birth_date,
+      });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
     const { error: pErr } = await (admin as any).from('profiles').update({ is_approved: true }).eq('id', reg.profile_id);
     if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });

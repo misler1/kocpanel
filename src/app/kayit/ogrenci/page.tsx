@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -11,30 +11,26 @@ import { HONEYPOT_FIELD } from '@/lib/spam-guard';
 export default function OgrenciKayitPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [coaches, setCoaches] = useState<{ id: string; full_name: string }[]>([]);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [password, setPassword] = useState('');
-  const [coachId, setCoachId] = useState('');
+  const [coachMode, setCoachMode] = useState<'' | 'iletisim' | 'platform'>('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [honeypot, setHoneypot] = useState('');
   const [formStartedAt] = useState(() => Date.now());
 
-  useEffect(() => {
-    fetch('/api/ogrenci/kocler').then((r) => r.json()).then((j) => setCoaches(j.coaches ?? [])).catch(() => {});
-  }, []);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!coachMode) { setError('Koç öğretmen tercihini seç.'); return; }
     setLoading(true);
 
     const res = await fetch('/api/ogrenci/kayit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName, phone, birthDate, password, coachId: coachId || null, [HONEYPOT_FIELD]: honeypot, formStartedAt }),
+      body: JSON.stringify({ fullName, phone, birthDate, password, coachMode, [HONEYPOT_FIELD]: honeypot, formStartedAt }),
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -58,7 +54,7 @@ export default function OgrenciKayitPage() {
           <Image src="/brand/kocdefterim-logo.png" alt="KoçDefterim" width={260} height={75} className="h-14 w-auto max-w-full object-contain" priority />
         </div>
         <h2 className="mb-1 text-xl font-semibold text-[var(--ink)]">Öğrenci kaydı</h2>
-        <p className="mb-6 text-sm text-[var(--ink-muted)]">Kaydın yönetici onayından sonra aktif olur.</p>
+        <p className="mb-6 text-sm text-[var(--ink-muted)]">Programını yap, çalışmalarını ve denemelerini takip et.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Bot tuzağı: ekranda ve klavye gezintisinde görünmez, yalnızca botlar doldurur */}
@@ -80,14 +76,24 @@ export default function OgrenciKayitPage() {
             <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Şifre</label>
             <input type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={input} placeholder="En az 8 karakter" />
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-[var(--ink)]">Koç öğretmen (isteğe bağlı)</label>
-            <select value={coachId} onChange={(e) => setCoachId(e.target.value)} className={input}>
-              <option value="">Seçmek istemiyorum</option>
-              {coaches.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-            </select>
-            <p className="mt-1 text-xs text-[var(--ink-muted)]">Seçersen önce yönetici, sonra seçtiğin koç onaylar. Seçmezsen yönetici koç atar.</p>
-          </div>
+          <fieldset>
+            <legend className="mb-1.5 block text-sm font-medium text-[var(--ink)]">Koç öğretmen</legend>
+            <div className="space-y-2">
+              {([
+                ['iletisim', '📞 Koç öğretmen benimle iletişime geçsin', 'Seni arayıp tanışalım; sana uygun koç öğretmeni birlikte belirleyelim. Kaydın, koçun atanınca aktif olur.'],
+                ['platform', '🚀 Koç istemiyorum, sadece platformu kullanacağım', 'Hemen başla: kendi programını yap, çalışmalarını ve deneme sonuçlarını kendin takip et.'],
+              ] as const).map(([v, title, desc]) => (
+                <label key={v} className={`flex cursor-pointer gap-2.5 rounded-xl border-2 p-3 transition-colors ${coachMode === v ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] hover:bg-[var(--paper)]'}`}>
+                  <input type="radio" name="coachMode" value={v} checked={coachMode === v} onChange={() => setCoachMode(v)}
+                    className="mt-0.5 h-4 w-4 flex-shrink-0 accent-[var(--accent)]" />
+                  <span>
+                    <span className="block text-sm font-semibold text-[var(--ink)]">{title}</span>
+                    <span className="mt-0.5 block text-xs text-[var(--ink-muted)]">{desc}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           {error && <p className="text-sm font-medium text-[var(--danger)]">{error}</p>}
 

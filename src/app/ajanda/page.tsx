@@ -30,7 +30,7 @@ export default async function AjandaPage() {
   const admin = createAdminClient() as any;
   const { data: staff } = await admin.from('profiles')
     .select('id, full_name, role')
-    .in('role', ['koc', 'ogretmen']).eq('is_approved', true).neq('id', user.id)
+    .in('role', ['koc', 'ogretmen']).eq('is_approved', true).eq('is_system', false).neq('id', user.id)
     .order('full_name');
 
   return (

@@ -38,5 +38,5 @@ export function staffEmailFromPhone(raw: string | null | undefined): string | nu
 
 /** Telefondan üretilen sahte giriş adreslerinden biri mi? (bunlara e-posta gönderilmez) */
 export function isPlaceholderEmail(email: string | null | undefined): boolean {
-  return !!email && /@(ogrenci|veli|personel)\.kocdefterim\.com$/i.test(email.trim());
+  return !!email && /@(ogrenci|veli|personel|sistem)\.kocdefterim\.com$/i.test(email.trim());
 }
