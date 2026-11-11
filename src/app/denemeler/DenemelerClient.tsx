@@ -13,6 +13,7 @@ import {
 import { PageHero } from '@/components/ui/PageHero';
 import { AnalysisView, type StudentAnalysisView } from '@/components/exam/AnalysisView';
 import { useExamFilter } from '@/lib/exam-filter-context';
+import { ERROR_TYPES, ERROR_LABEL, ERROR_EMOJI } from '@/lib/exam-error-types';
 import { TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS, type SubjectDef } from './examConstants';
 
 
@@ -1063,6 +1064,44 @@ function ReportSectionTitle({ children, right }: { children: React.ReactNode; ri
   );
 }
 
+/** Öğrencinin kendi deneme analizi (yanlış/boş sorulara hata türü + not) */
+function StudentSelfAnalysisSection({ exam, card }: { exam: any; card: string }) {
+  const items: { key: string; type: string; note: string }[] = exam.student_analysis?.items ?? [];
+  if (items.length === 0) return null;
+  const qs: any[] = exam.question_results ?? [];
+  const qMap = new Map(qs.map((q) => [`${q.s}|${q.n}`, q]));
+  const counts = ERROR_TYPES.map((t) => ({ ...t, n: items.filter((i) => i.type === t.key).length })).filter((t) => t.n > 0);
+  const subjects = subjectsFor(exam.exam_type);
+  const labelOf = (key: string) =>
+    subjects.find((x) => x.key === key)?.label ?? key.charAt(0).toLocaleUpperCase('tr') + key.slice(1);
+  const describe = (key: string) => {
+    if (key.startsWith('ders:')) return labelOf(key.slice(5));
+    const q = qMap.get(key);
+    return q ? `${labelOf(q.s)} ${q.n}. soru · ${q.k}` : key;
+  };
+  return (
+    <section className={card}>
+      <ReportSectionTitle right={exam.student_analysis?.done_at
+        ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">✓ Öğrenci analizi bitirdi</span>
+        : <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">Yarım</span>}>
+        📝 Öğrencinin analizi
+      </ReportSectionTitle>
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {counts.map((c) => <span key={c.key} className="rounded-full bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-700">{c.emoji} {c.label}: {c.n}</span>)}
+      </div>
+      <div className="divide-y divide-slate-100 rounded-xl ring-1 ring-slate-200/70">
+        {items.map((i) => (
+          <div key={i.key} className="flex flex-wrap items-baseline gap-x-2 px-3 py-2 text-[12.5px]">
+            <span className="min-w-0 flex-1 text-slate-700">{describe(i.key)}</span>
+            {i.type && <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">{ERROR_EMOJI[i.type]} {ERROR_LABEL[i.type] ?? i.type}</span>}
+            {i.note && <span className="basis-full text-[12px] italic text-slate-500">“{i.note}”</span>}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) {
   const questions: { s: string; n: number; k: string; dc: string; oc: string | null; r: 'D' | 'Y' | 'B' }[] =
     exam.question_results ?? [];
@@ -1228,6 +1267,8 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
               </div>
             )}
           </div>
+
+          <StudentSelfAnalysisSection exam={exam} card={card} />
 
           {/* Sıralamalar */}
           {rankItems.length > 0 && (

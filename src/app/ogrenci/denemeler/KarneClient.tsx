@@ -42,6 +42,7 @@ function Karne({ exam, rank, prev }: { exam: any; rank?: Rank; prev?: any }) {
           {exam.entered_by_student && (
             <Link href={`/ogrenci/denemeler/${exam.id}`} className="rounded-full bg-white/80 px-2.5 py-0.5 text-[11px] font-bold text-[var(--ink-muted)] hover:bg-white hover:text-[var(--accent-dark)]">✏️ Düzelt</Link>
           )}
+          <AnalizButton exam={exam} />
         </div>
       </div>
 
@@ -125,9 +126,65 @@ function Karne({ exam, rank, prev }: { exam: any; rank?: Rank; prev?: any }) {
   );
 }
 
+const MAX_NET: Record<string, number> = { TYT: 120, AYT: 160, LGS: 90 };
+
+/** Denemenin yanında "Analiz yap" / "Analiz edildi" (öğrencinin kendi analizi; koçun "analiz yapıldı" işaretine bağlı) */
+function AnalizButton({ exam }: { exam: any }) {
+  const done = !!exam.analysis_done || !!exam.student_analysis?.done_at;
+  return (
+    <Link href={`/ogrenci/denemeler/${exam.id}/analiz`}
+      className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold shadow-sm ${done ? 'bg-[var(--success-soft)] text-[var(--success)]' : 'bg-[var(--accent)] text-white hover:bg-[var(--accent-dark)]'}`}>
+      {done ? '✓ Analiz edildi' : '🔍 Analiz yap'}
+    </Link>
+  );
+}
+
+/** Liste görünümü: denemeler alt alta, her birinde net, önceki aynı tür denemeye göre değişim ve net çubuğu */
+function ExamList({ exams, list, rankMap }: { exams: any[]; list: any[]; rankMap: Map<string, Rank> }) {
+  return (
+    <div className="overflow-hidden rounded-[24px] border-2 border-[var(--border)] bg-[var(--card)]">
+      {list.map((e, i) => {
+        const prev = exams.find((o) => o.exam_type === e.exam_type && o.exam_date < e.exam_date);
+        const net = Number(e.net_score);
+        const diff = prev ? net - Number(prev.net_score) : null;
+        const max = Number(e.max_score) || MAX_NET[e.exam_type] || 120;
+        const pct = Math.max(0, Math.min(100, (net / max) * 100));
+        const rank = rankMap.get(e.id);
+        return (
+          <div key={e.id} className={`px-4 py-3 ${i ? 'border-t border-[var(--border)]' : ''}`}>
+            <div className="flex items-center gap-2">
+              <span className="w-12 flex-shrink-0 rounded-full bg-[var(--accent-soft)] py-0.5 text-center text-[11px] font-extrabold text-[var(--accent-dark)]">{e.exam_type}</span>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[14px] font-bold text-[var(--ink)]">{e.exam_name}</div>
+                <div className="text-[11.5px] font-semibold text-[var(--ink-muted)]">
+                  {new Date(e.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {rank && rank.total > 1 ? ` · ${rank.rank}/${rank.total}. sıra` : ''}
+                </div>
+              </div>
+              <AnalizButton exam={e} />
+              <div className="flex-shrink-0 text-right">
+                <div className="text-[17px] font-extrabold text-[var(--ink)]">{fmt(net)}</div>
+                {diff !== null && (
+                  <div className={`text-[11.5px] font-extrabold ${diff >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
+                    {diff >= 0 ? '▲' : '▼'} {fmt(Math.abs(diff))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--paper)]">
+              <div className="h-full rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899]" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function KarneClient({ exams, ranks }: { exams: any[]; ranks: Rank[] }) {
   const types = Array.from(new Set(exams.map((e) => e.exam_type).filter(Boolean))) as string[];
   const [type, setType] = useState<string>('hepsi');
+  const [view, setView] = useState<'karne' | 'liste'>('karne');
   const list = type === 'hepsi' ? exams : exams.filter((e) => e.exam_type === type);
   const rankMap = new Map(ranks.map((r) => [r.exam_id, r]));
 
@@ -162,7 +219,15 @@ export function KarneClient({ exams, ranks }: { exams: any[]; ranks: Rank[] }) {
           ))}
         </div>
       )}
-      {list.map((e) => {
+      <div className="inline-flex rounded-full border-2 border-[var(--border)] bg-[var(--card)] p-1">
+        {([['karne', '🗂️ Karne'], ['liste', '📈 Liste']] as const).map(([v, l]) => (
+          <button key={v} type="button" onClick={() => setView(v)}
+            className={`rounded-full px-4 py-1.5 text-[13px] font-bold transition-colors ${view === v ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--ink-muted)] hover:bg-[var(--accent-soft)]'}`}>
+            {l}
+          </button>
+        ))}
+      </div>
+      {view === 'liste' ? <ExamList exams={exams} list={list} rankMap={rankMap} /> : list.map((e) => {
         // aynı türdeki bir önceki deneme (liste tarihe göre azalan)
         const prev = exams.find((o) => o.exam_type === e.exam_type && o.exam_date < e.exam_date);
         return <Karne key={e.id} exam={e} rank={rankMap.get(e.id)} prev={prev} />;
