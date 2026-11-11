@@ -239,7 +239,7 @@ export function OgrenciAnasayfaClient({
                   <span className="min-w-0 flex-1">
                     <span className="block text-[15px] font-bold">
                       <span className={done ? 'text-[var(--success)] line-through decoration-2' : missed ? 'text-[var(--danger)]' : 'text-[var(--ink)]'}>{l.subject}</span>
-                      {l.student_added && <span className="ml-1.5 inline-block rounded-full bg-[var(--pink-soft)] px-2 py-0.5 align-middle text-[10px] font-extrabold text-[var(--pink)]">⭐ Ekstra</span>}
+                      {l.student_added && !l.student_plan && <span className="ml-1.5 inline-block rounded-full bg-[var(--pink-soft)] px-2 py-0.5 align-middle text-[10px] font-extrabold text-[var(--pink)]">⭐ Ekstra</span>}
                     </span>
                     <span className="block text-[12.5px] font-medium text-[var(--ink-muted)]">
                       {[l.topic, l.target_count > 0 ? `${l.target_count} soru` : null].filter(Boolean).join(' · ') || 'Görev'}

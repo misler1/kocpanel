@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getStudentContext } from '@/lib/student-context';
 import { HaftalikClient } from './HaftalikClient';
+import { addDays } from '@/lib/program-days';
+import { todayTr } from '@/lib/day-tasks';
 
-export default async function OgrenciHaftalikPage() {
+export default async function OgrenciHaftalikPage({ searchParams }: { searchParams: Promise<{ program?: string }> }) {
+  const { program } = await searchParams;
   const { supabase, student } = await getStudentContext();
   if (!student) return <p className="text-sm text-[var(--ink-muted)]">Öğrenci kaydı bulunamadı.</p>;
 
@@ -12,6 +15,13 @@ export default async function OgrenciHaftalikPage() {
   const { data: requests } = await (supabase as any)
     .from('weekly_plan_requests').select('id, kind, week_start, status, note, created_at, decided_at')
     .eq('student_id', student.id).order('created_at', { ascending: false }).limit(10);
+  // Öğrencinin kendi yaptığı, onay bekleyen ya da son 7 günde reddedilen programlar (tablo yoksa boş)
+  const weekAgo = addDays(todayTr(), -7);
+  const { data: sp } = await (supabase as any)
+    .from('student_programs').select('id, week_start, week_end, tasks, note, status, created_at, decided_at')
+    .eq('student_id', student.id)
+    .or(`status.eq.bekliyor,and(status.eq.reddedildi,decided_at.gte.${weekAgo})`)
+    .order('created_at', { ascending: false });
 
   return (
     <HaftalikClient
@@ -20,6 +30,9 @@ export default async function OgrenciHaftalikPage() {
       resources={student.resources ?? {}}
       initialLogs={logs ?? []}
       initialRequests={requests ?? []}
+      platformOnly={!!student.platform_only}
+      studentPrograms={sp ?? []}
+      programMsg={program === 'aktif' || program === 'bekliyor' ? program : null}
     />
   );
 }

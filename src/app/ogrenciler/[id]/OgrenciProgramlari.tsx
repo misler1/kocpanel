@@ -36,7 +36,7 @@ function LogMini({ l }: { l: any }) {
       {!l.student_done && l.student_missed && (
         <div className="text-[10px] font-medium text-red-600">✕ Öğrenci yapmadı{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</div>
       )}
-      {l.student_added && <div className="text-[10px] font-medium text-blue-600">Öğrenci ekledi</div>}
+      {l.student_added && !l.student_plan && <div className="text-[10px] font-medium text-blue-600">Öğrenci ekledi</div>}
       <div className="mt-1 flex justify-between text-[11px] text-gray-500">
         <span>{timeLabel}</span>
         {l.target_count > 0 && <span>{l.done_count}/{l.target_count} · %{pct}</span>}
@@ -119,6 +119,9 @@ export function OgrenciProgramlari({ studentId }: { studentId: string }) {
                 <IconChevronRight size={16} />
               </button>
               <span className="text-[11px] text-gray-400">{idx + 1}/{weeks.length}</span>
+              {w.logs.some((l: any) => l.student_plan) && (
+                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">🧑‍🎓 Öğrencinin kendi programı</span>
+              )}
               <label className="ml-auto flex items-center gap-1.5 text-[11px] text-gray-500">
                 Tarihe git
                 <input type="date" onChange={(e) => jumpToDate(e.target.value)}

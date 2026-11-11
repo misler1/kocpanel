@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { PendingPrograms } from './PendingPrograms';
 import { IconCheck, IconPlus, IconTrash, IconPencil, IconX } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { subjectEmoji, DAY_STYLES, cheer } from '../studentUi';
@@ -28,8 +30,9 @@ const weekLabel = (ws: string, we?: string | null) => {
   return we ? `${f(ws)} – ${f(we)}` : f(ws);
 };
 
-export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs = [], initialRequests = [] }: {
+export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs = [], initialRequests = [], platformOnly = false, studentPrograms = [], programMsg = null }: {
   studentId: string; coachId: string; resources?: Record<string, string[]>; initialLogs?: any[]; initialRequests?: any[];
+  platformOnly?: boolean; studentPrograms?: any[]; programMsg?: 'aktif' | 'bekliyor' | null;
 }) {
   const supabase = createClient();
   const [logs, setLogs] = useState<any[]>(initialLogs);
@@ -52,7 +55,10 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   const [note, setNote] = useState('');
   const [newForm, setNewForm] = useState<Added | null>(null);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(
+    programMsg === 'bekliyor' ? 'Programın koçunun onayına gönderildi. Onaylarsa koçunun programının yerine geçer; o zamana kadar koçunun programında işaretlemeye devam et.'
+      : programMsg === 'aktif' ? (platformOnly ? 'Programın kaydedildi, hadi başlayalım! 🚀' : 'Programın kaydedildi ve koçuna bilgi gitti. Hadi başlayalım! 🚀') : null,
+  );
   // Ajanda'dan gelen görüşmeler: talep durumu ve "saat değişikliği iste" penceresi
   const [apptInfo, setApptInfo] = useState<Record<string, { starts_at: string; change_requested_at: string | null }>>({});
   const [changeFor, setChangeFor] = useState<any | null>(null);
@@ -211,6 +217,8 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   }
 
   const doneCount = weekLogs.filter((l) => l.student_done).length;
+  // Hafta tamamen öğrencinin kendi programıysa koça "değişiklik talebi" gönderilmez; görevlerini kendisi siler/ekler
+  const ownWeek = weekLogs.length > 0 && weekLogs.every((l) => l.student_added);
   const weekPct = weekLogs.length > 0 ? Math.round((doneCount / weekLogs.length) * 100) : 0;
   const isCurrentWeek = !!week && week <= today && (!currentWeekEnd || today <= currentWeekEnd);
   const todayIndex = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7;
@@ -224,6 +232,9 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
           <h1 className="text-[24px] font-extrabold tracking-tight text-[var(--ink)]">🗓️ Haftalık Takip</h1>
           <p className="text-[13px] font-medium text-[var(--ink-muted)]">Bitirdiğin göreve dokun, kaç soru çözdüğünü yaz! Yapamadıysan ✕&apos;e bas.</p>
         </div>
+        <Link href="/ogrenci/haftalik-takip/program-yap" className="rounded-full bg-[var(--accent)] px-4 py-2 text-[13px] font-bold text-white shadow-sm transition-colors hover:bg-[var(--accent-dark)]">
+          🗓️ Kendi programını yap
+        </Link>
         {weeks.length > 0 && (
           <select value={week} onChange={(e) => { setWeek(e.target.value); resetEdit(); }} className="rounded-full border-2 border-[var(--border)] bg-[var(--card)] px-3.5 py-2 text-[13px] font-bold text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none">
             {weeks.map((w) => <option key={w.ws} value={w.ws}>{weekLabel(w.ws, w.we)}</option>)}
@@ -235,10 +246,14 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
       {openEdit && <p className="rounded-2xl border-2 border-[var(--sun)]/30 bg-[var(--sun-soft)] px-4 py-2.5 text-[13px] font-bold text-[#B76E00]">⏳ Bu hafta için değişiklik talebin koç onayını bekliyor.</p>}
       {openNew && <p className="rounded-2xl border-2 border-[var(--sun)]/30 bg-[var(--sun-soft)] px-4 py-2.5 text-[13px] font-bold text-[#B76E00]">⏳ Yeni program talebin koçuna iletildi, hazırlanmasını bekliyor.</p>}
 
+      <PendingPrograms programs={studentPrograms} />
+
       {weeks.length === 0 ? (
         <div className="rounded-[28px] border-2 border-[var(--border)] bg-[var(--card)] p-8 text-center">
           <div className="mb-2 text-[48px]">📭</div>
-          <p className="text-[15px] font-bold text-[var(--ink)]">Koçun henüz bir haftalık program hazırlamamış.</p>
+          <p className="text-[15px] font-bold text-[var(--ink)]">{platformOnly ? 'Henüz bir programın yok.' : 'Henüz bir haftalık programın yok.'}</p>
+          <p className="mt-1 text-[13px] text-[var(--ink-muted)]">Kendi programını yap, her gün neler çalışacağını planla.</p>
+          <Link href="/ogrenci/haftalik-takip/program-yap" className="mt-4 inline-flex rounded-full bg-[var(--accent)] px-5 py-2.5 text-[14px] font-extrabold text-white shadow-sm hover:bg-[var(--accent-dark)]">🗓️ Kendi programını yap</Link>
         </div>
       ) : (
         <>
@@ -251,7 +266,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
               <div className="h-full rounded-full bg-gradient-to-r from-[#2F9BEA] via-[#8B5CF6] to-[#EC4899] transition-all duration-500" style={{ width: `${weekPct}%` }} />
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {!editMode && !openEdit && (
+              {!platformOnly && !ownWeek && !editMode && !openEdit && (
                 <button onClick={() => { setEditMode(true); setMsg(null); }} className={btnGhost}>
                   <IconPencil size={15} /> Programı düzenle
                 </button>
@@ -259,7 +274,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
               {editMode && (
                 <button onClick={resetEdit} className={btnGhost}><IconX size={15} /> Vazgeç</button>
               )}
-              {!openNew && !editMode && (
+              {!platformOnly && !openNew && !editMode && (
                 <button onClick={() => setShowNew((v) => !v)} className={btnGhost}>✨ Yeni program iste</button>
               )}
             </div>
@@ -340,7 +355,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                             <span className="min-w-0 flex-1">
                               <span className="block text-[14px] font-bold">
                                 <span className={done ? 'text-[var(--success)] line-through decoration-2' : missed ? 'text-[var(--danger)]' : 'text-[var(--ink)]'}>{l.subject}</span>
-                                {l.student_added && <span className="ml-1.5 inline-block rounded-full bg-[var(--pink-soft)] px-2 py-0.5 align-middle text-[10px] font-extrabold text-[var(--pink)]">⭐ Ekstra</span>}
+                                {l.student_added && !l.student_plan && <span className="ml-1.5 inline-block rounded-full bg-[var(--pink-soft)] px-2 py-0.5 align-middle text-[10px] font-extrabold text-[var(--pink)]">⭐ Ekstra</span>}
                               </span>
                               {detail && <span className="block text-[12px] font-medium text-[var(--ink-muted)]">{detail}</span>}
                               {l.resource_name && <span className="block text-[11.5px] text-[var(--ink-muted)]">📘 {l.resource_name}</span>}
