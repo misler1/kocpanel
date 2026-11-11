@@ -873,6 +873,7 @@ function ExamGroupCard({
                             </button>
                             <div className="text-[10px] font-normal text-gray-400">
                               {new Date(e.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                              {e.entered_by_student && <span className="ml-1 rounded bg-violet-100 px-1 py-px font-semibold text-violet-700">öğrenci girdi</span>}
                             </div>
                           </>
                         ) : (
@@ -1442,7 +1443,7 @@ export function ExamSubjectBreakdown({ exam, previous }: { exam: any; previous?:
       <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
         <div className="min-w-0">
           <div className="truncate text-[13px] font-semibold text-gray-900">{exam.exam_name}</div>
-          <div className="text-[11px] text-gray-400">{dateLabel} · {exam.students?.full_name}</div>
+          <div className="text-[11px] text-gray-400">{dateLabel} · {exam.students?.full_name}{exam.entered_by_student && <span className="ml-1 rounded bg-violet-100 px-1 py-px font-semibold text-violet-700">öğrenci girdi</span>}</div>
         </div>
         <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${typeBadge}`}>{exam.exam_type}</span>
       </div>

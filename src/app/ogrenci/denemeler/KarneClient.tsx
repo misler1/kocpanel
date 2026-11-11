@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS, type SubjectDef,
 } from '../../denemeler/examConstants';
@@ -36,7 +37,12 @@ function Karne({ exam, rank, prev }: { exam: any; rank?: Rank; prev?: any }) {
             <div className="text-[12px] font-semibold text-[var(--ink-muted)]">{date}</div>
           </div>
         </div>
-        <span className="flex-shrink-0 rounded-full bg-white px-3 py-1 text-[12px] font-extrabold text-[var(--accent-dark)] shadow-sm">{exam.exam_type}</span>
+        <div className="flex flex-shrink-0 flex-col items-end gap-1">
+          <span className="rounded-full bg-white px-3 py-1 text-[12px] font-extrabold text-[var(--accent-dark)] shadow-sm">{exam.exam_type}</span>
+          {exam.entered_by_student && (
+            <Link href={`/ogrenci/denemeler/${exam.id}`} className="rounded-full bg-white/80 px-2.5 py-0.5 text-[11px] font-bold text-[var(--ink-muted)] hover:bg-white hover:text-[var(--accent-dark)]">✏️ Düzelt</Link>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2 p-3.5">
@@ -130,16 +136,20 @@ export function KarneClient({ exams, ranks }: { exams: any[]; ranks: Rank[] }) {
       <div className="rounded-[28px] border-2 border-[var(--border)] bg-[var(--card)] p-8 text-center">
         <div className="mb-2 text-[48px]">🎯</div>
         <p className="text-[15px] font-bold text-[var(--ink)]">Henüz deneme sonucun yok.</p>
-        <p className="text-[13px] text-[var(--ink-muted)]">İlk denemeni çözdüğünde karnen burada görünecek.</p>
+        <p className="text-[13px] text-[var(--ink-muted)]">İlk denemeni çözdüğünde sonucunu buraya ekle, karnen oluşsun.</p>
+        <Link href="/ogrenci/denemeler/yeni" className="mt-4 inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-5 py-2.5 text-[14px] font-extrabold text-white shadow-sm hover:bg-[var(--accent-dark)]">+ Deneme sonucu ekle</Link>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-[24px] font-extrabold tracking-tight text-[var(--ink)]">🏆 Deneme Karnelerim</h1>
-        <p className="text-[13px] font-medium text-[var(--ink-muted)]">Toplam {exams.length} deneme çözdün. Her deneme bir adım ileri!</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[24px] font-extrabold tracking-tight text-[var(--ink)]">🏆 Deneme Karnelerim</h1>
+          <p className="text-[13px] font-medium text-[var(--ink-muted)]">Toplam {exams.length} deneme çözdün. Her deneme bir adım ileri!</p>
+        </div>
+        <Link href="/ogrenci/denemeler/yeni" className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)] px-4 py-2 text-[13px] font-extrabold text-white shadow-sm hover:bg-[var(--accent-dark)]">+ Deneme ekle</Link>
       </div>
       {types.length > 1 && (
         <div className="flex flex-wrap gap-2">
