@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@/lib/supabase/server';
-import { analyzeExams, MAX_ANALYSIS_EXAMS, type StudentExamGroup } from '@/lib/groq/examAnalysis';
+import { analyzeExams, MAX_ANALYSIS_EXAMS, type StudentExamGroup, type StudyInput } from '@/lib/groq/examAnalysis';
 
 // Yapay zekâ yanıtı uzun sürebilir (çok deneme + kazanım tablosu)
 export const maxDuration = 60;
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     const { data: exams, error: examsError } = await (supabase as any)
       .from('exams')
-      .select('id, student_id, exam_name, exam_type, exam_date, net_score, subject_results, question_results, subject_averages, tyt_puan, say_puan, ea_puan, soz_puan, lgs_puan, linked_exam_id, students!inner(id, full_name, coach_id)')
+      .select('id, student_id, exam_name, exam_type, exam_date, net_score, subject_results, question_results, subject_averages, tyt_puan, say_puan, ea_puan, soz_puan, lgs_puan, linked_exam_id, student_analysis, students!inner(id, full_name, coach_id)')
       .in('id', examIds); // hangi denemelerin görülebileceğini veritabanı izni belirler (koç, yurt personeli)
 
     if (examsError) return Response.json({ error: examsError.message }, { status: 500 });
@@ -48,14 +48,14 @@ export async function POST(req: Request) {
         .select('student_id, scheduled_at, notes, topic')
         .in('student_id', studentIds)
         .order('scheduled_at', { ascending: false })
-        .limit(Math.max(studentIds.length * 3, 3));
+        .limit(Math.max(studentIds.length * 6, 6));
 
       meetingsByStudent = new Map();
       for (const meeting of meetings ?? []) {
         const arr = meetingsByStudent.get(meeting.student_id) ?? [];
         const notes = [meeting.topic, meeting.notes].filter(Boolean).join(' - ');
-        if (notes.trim()) arr.push({ date: meeting.scheduled_at, notes: notes.slice(0, 220) });
-        meetingsByStudent.set(meeting.student_id, arr.slice(0, 3));
+        if (notes.trim()) arr.push({ date: meeting.scheduled_at, notes: notes.slice(0, 700) });
+        meetingsByStudent.set(meeting.student_id, arr.slice(0, 5));
       }
     }
 
@@ -77,6 +77,33 @@ export async function POST(req: Request) {
         updatedAt: topic.updated_at,
       });
       topicsByStudent.set(topic.student_id, arr);
+    }
+
+    // Denemelerden sonraki çalışmalar (günlükler): ders/konu bazında toplanır
+    const firstDate = orderedExams.map((e: any) => e.exam_date).sort()[0];
+    const { data: logs } = await (supabase as any)
+      .from('daily_logs')
+      .select('student_id, log_date, question_solved, topic_studies, archived')
+      .in('student_id', studentIds)
+      .gte('log_date', firstDate)
+      .limit(3000);
+    const studiesByStudent = new Map<string, Map<string, StudyInput>>();
+    for (const l of logs ?? []) {
+      if (l.archived) continue;
+      const m = studiesByStudent.get(l.student_id) ?? new Map<string, StudyInput>();
+      const add = (x: any, q: number, min: number) => {
+        const subject = String(x?.subject ?? '').trim();
+        if (!subject) return;
+        const topic = String(x?.topic ?? '').trim();
+        const key = `${subject}|${topic.toLocaleLowerCase('tr')}`;
+        const cur = m.get(key) ?? { subject, topic, questions: 0, minutes: 0, lastDate: l.log_date };
+        cur.questions += q; cur.minutes += min;
+        if (l.log_date > cur.lastDate) cur.lastDate = l.log_date;
+        m.set(key, cur);
+      };
+      for (const q of Array.isArray(l.question_solved) ? l.question_solved : []) add(q, Number(q?.count) || 0, 0);
+      for (const t of Array.isArray(l.topic_studies) ? l.topic_studies : []) add(t, 0, Number(t?.duration_minutes) || 0);
+      studiesByStudent.set(l.student_id, m);
     }
 
     const byStudent = new Map<string, any[]>();
@@ -106,9 +133,12 @@ export async function POST(req: Request) {
           soz_puan: e.soz_puan ? String(e.soz_puan) : null,
           lgs_puan: e.lgs_puan ? String(e.lgs_puan) : null,
           linked_exam_id: e.linked_exam_id ?? null,
+          student_analysis: e.student_analysis ?? null,
         })),
         meetings: meetingsByStudent.get(studentId) ?? [],
         topics: topicsByStudent.get(studentId) ?? [],
+        studies: Array.from(studiesByStudent.get(studentId)?.values() ?? [])
+          .sort((a, b) => b.questions + b.minutes - (a.questions + a.minutes)).slice(0, 60),
       };
     });
 
