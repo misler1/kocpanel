@@ -12,9 +12,9 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 |---|---|---|
 | `platform_students.sql` | Kayıtta "koç iletişime geçsin / sadece platform" seçimi | ✅ Çalıştırıldı |
 | `student_exam_entry.sql` | Öğrencinin deneme girmesi | ✅ Çalıştırıldı |
-| `student_programs.sql` | Öğrencinin kendi programı + koç onayı | ⏳ Çalıştırıldığı teyit edilmedi |
-| `exam_self_analysis.sql` | Öğrencinin deneme analizi (yanlış/boş sorulara not) | ⏳ Çalıştırıldığı teyit edilmedi |
-| `student_task_missed.sql` | Görevlere "Yapmadım" işareti | ⏳ Çalıştırıldığı teyit edilmedi |
+| `student_programs.sql` | Öğrencinin kendi programı + koç onayı | ✅ Çalıştırıldı |
+| `exam_self_analysis.sql` | Öğrencinin deneme analizi (yanlış/boş sorulara not) | ✅ Çalıştırıldı |
+| `student_task_missed.sql` | Görevlere "Yapmadım" işareti | ✅ Çalıştırıldı |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 
