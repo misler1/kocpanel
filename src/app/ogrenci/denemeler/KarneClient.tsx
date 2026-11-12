@@ -7,6 +7,7 @@ import {
   TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS, type SubjectDef,
 } from '../../denemeler/examConstants';
 import { subjectEmoji } from '../studentUi';
+import { StudentExamTables } from '../../denemeler/DenemelerClient';
 
 type Rank = { exam_id: string; rank: number; total: number; avg_net: number; max_net: number };
 
@@ -139,7 +140,7 @@ function AnalizButton({ exam }: { exam: any }) {
   );
 }
 
-/** Liste görünümü: denemeler alt alta, her birinde net, önceki aynı tür denemeye göre değişim ve net çubuğu */
+/** Net akışı görünümü: denemeler alt alta, her birinde net, önceki aynı tür denemeye göre değişim ve net çubuğu */
 function ExamList({ exams, list, rankMap }: { exams: any[]; list: any[]; rankMap: Map<string, Rank> }) {
   return (
     <div className="overflow-hidden rounded-[24px] border-2 border-[var(--border)] bg-[var(--card)]">
@@ -184,7 +185,7 @@ function ExamList({ exams, list, rankMap }: { exams: any[]; list: any[]; rankMap
 export function KarneClient({ exams, ranks }: { exams: any[]; ranks: Rank[] }) {
   const types = Array.from(new Set(exams.map((e) => e.exam_type).filter(Boolean))) as string[];
   const [type, setType] = useState<string>('hepsi');
-  const [view, setView] = useState<'karne' | 'liste'>('karne');
+  const [view, setView] = useState<'karne' | 'ozet' | 'liste'>('karne');
   const list = type === 'hepsi' ? exams : exams.filter((e) => e.exam_type === type);
   const rankMap = new Map(ranks.map((r) => [r.exam_id, r]));
 
@@ -220,14 +221,14 @@ export function KarneClient({ exams, ranks }: { exams: any[]; ranks: Rank[] }) {
         </div>
       )}
       <div className="inline-flex rounded-full border-2 border-[var(--border)] bg-[var(--card)] p-1">
-        {([['karne', '🗂️ Karne'], ['liste', '📈 Liste']] as const).map(([v, l]) => (
+        {([['karne', '🗂️ Karne'], ['ozet', '📈 Net akışı'], ['liste', '📋 Liste']] as const).map(([v, l]) => (
           <button key={v} type="button" onClick={() => setView(v)}
             className={`rounded-full px-4 py-1.5 text-[13px] font-bold transition-colors ${view === v ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--ink-muted)] hover:bg-[var(--accent-soft)]'}`}>
             {l}
           </button>
         ))}
       </div>
-      {view === 'liste' ? <ExamList exams={exams} list={list} rankMap={rankMap} /> : list.map((e) => {
+      {view === 'liste' ? <StudentExamTables exams={list} /> : view === 'ozet' ? <ExamList exams={exams} list={list} rankMap={rankMap} /> : list.map((e) => {
         // aynı türdeki bir önceki deneme (liste tarihe göre azalan)
         const prev = exams.find((o) => o.exam_type === e.exam_type && o.exam_date < e.exam_date);
         return <Karne key={e.id} exam={e} rank={rankMap.get(e.id)} prev={prev} />;

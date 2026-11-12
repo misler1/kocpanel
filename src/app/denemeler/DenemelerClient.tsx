@@ -637,8 +637,10 @@ function ExamGroupCard({
   group, isOpen, onToggle, sort, onSortChange, onDirToggle,
   compareMode, selectedCompareIds, onToggleCompare, compareDisabled,
   onToggleAnalysis, togglingId, onDeleteRequest, variant = 'exam',
-  onRenameRequest, onDeleteGroupRequest, onShowQuestions,
+  onRenameRequest, onDeleteGroupRequest, onShowQuestions, studentSelf = false,
 }: {
+  /** Öğrenci kendi denemelerine bakıyor: analiz öğrencinin analiz sayfasına gider, yalnızca kendi girdiğini düzeltir, silme yok */
+  studentSelf?: boolean;
   onShowQuestions?: (exam: any) => void;
   variant?: 'exam' | 'student';
   onRenameRequest?: (group: ExamGroup) => void;
@@ -932,6 +934,12 @@ function ExamGroupCard({
                         );
                       })}
                       <td className="border-l border-gray-100 px-2 py-2 text-center">
+                        {studentSelf ? (
+                          <Link href={`/ogrenci/denemeler/${e.id}/analiz`}
+                            className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold ${e.analysis_done || e.student_analysis?.done_at ? 'bg-emerald-50 text-emerald-700' : 'bg-violet-100 text-violet-700 hover:bg-violet-200'}`}>
+                            {e.analysis_done || e.student_analysis?.done_at ? '✓ Edildi' : 'Analiz yap'}
+                          </Link>
+                        ) : (
                         <button
                           onClick={() => onToggleAnalysis(e)}
                           disabled={isToggling}
@@ -941,8 +949,18 @@ function ExamGroupCard({
                         >
                           {isToggling ? '...' : e.analysis_done ? '✓' : '—'}
                         </button>
+                        )}
                       </td>
                       <td className="px-2 py-2">
+                        {studentSelf ? (
+                          <div className="flex justify-center">
+                            {e.entered_by_student ? (
+                              <Link href={`/ogrenci/denemeler/${e.id}`} title="Düzelt" className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600">
+                                <IconEdit size={14} />
+                              </Link>
+                            ) : <span className="text-gray-300">—</span>}
+                          </div>
+                        ) : (
                         <div className="flex items-center justify-center gap-1">
                           <Link href={`/denemeler/${e.id}/duzenle`} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600">
                             <IconEdit size={14} />
@@ -951,6 +969,7 @@ function ExamGroupCard({
                             <IconTrash size={14} />
                           </button>
                         </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1036,6 +1055,53 @@ function ExamGroupCard({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Öğrencinin kendi deneme listesi: koçun tek öğrenci görünümündeki tablonun aynısı ──
+// (öğrenci paneli /ogrenci/denemeler → "Liste"; düzenleme yalnızca öğrencinin kendi girdiği denemelerde, silme yok)
+export function StudentExamTables({ exams }: { exams: any[] }) {
+  const [sorts, setSorts] = useState<Record<string, { key: SortKey; dir: 'asc' | 'desc' }>>({});
+  const [reportExam, setReportExam] = useState<any | null>(null);
+  const groups: ExamGroup[] = useMemo(() => {
+    const map = new Map<string, ExamGroup>();
+    exams.forEach((e) => {
+      const key = `student|${e.exam_type}`;
+      if (!map.has(key)) map.set(key, { key, examType: e.exam_type, examName: `${e.exam_type} denemelerin`, date: e.exam_date, rows: [] });
+      const g = map.get(key)!;
+      g.rows.push(e);
+      if (e.exam_date > g.date) g.date = e.exam_date;
+    });
+    return Array.from(map.values()).sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [exams]);
+  const sortOf = (k: string) => sorts[k] ?? { key: 'date', dir: 'desc' as const };
+  const noop = () => {};
+
+  return (
+    <div className="space-y-3">
+      {groups.map((g) => (
+        <ExamGroupCard
+          key={g.key}
+          variant="student"
+          studentSelf
+          group={g}
+          isOpen
+          onToggle={noop}
+          sort={sortOf(g.key)}
+          onSortChange={(k) => setSorts((p) => ({ ...p, [g.key]: { key: k, dir: p[g.key]?.dir ?? 'desc' } }))}
+          onDirToggle={() => setSorts((p) => { const c = sortOf(g.key); return { ...p, [g.key]: { ...c, dir: c.dir === 'asc' ? 'desc' : 'asc' } }; })}
+          compareMode={false}
+          selectedCompareIds={[]}
+          onToggleCompare={noop}
+          compareDisabled
+          onToggleAnalysis={noop}
+          togglingId={null}
+          onDeleteRequest={noop}
+          onShowQuestions={setReportExam}
+        />
+      ))}
+      {reportExam && <ExamReportModal exam={reportExam} onClose={() => setReportExam(null)} />}
     </div>
   );
 }
