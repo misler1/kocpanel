@@ -16,10 +16,10 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `exam_self_analysis.sql` | Öğrencinin deneme analizi (yanlış/boş sorulara not) | ✅ Çalıştırıldı |
 | `student_task_missed.sql` | Görevlere "Yapmadım" işareti | ✅ Çalıştırıldı |
 | `feed_views.sql` | Video izlenme takibi | ⏳ Çalıştırılacak |
-| `staff_programs.sql` | Belletmenin program hazırlaması + "yapmadı" işaretlemesi | ⏳ Çalıştırılacak |
-| `topic_progress_changes.sql` | Konu ilerleyişinde son değiştiren + koça bildirim | ⏳ Çalıştırılacak |
-| `daily_entry_pages.sql` | Günlük girişe sayfa aralığı; koçun girişlerinde "koç girdi" | ⏳ Çalıştırılacak |
-| `student_reports.sql` | Haftalık otomatik rapor (pazartesi 08:00) + koçun tarih aralığı raporu | ⏳ Çalıştırılacak |
+| `staff_programs.sql` | Belletmenin program hazırlaması + "yapmadı" işaretlemesi | ✅ Çalıştırıldı |
+| `topic_progress_changes.sql` | Konu ilerleyişinde son değiştiren + koça bildirim | ✅ Çalıştırıldı |
+| `daily_entry_pages.sql` | Günlük girişe sayfa aralığı; koçun girişlerinde "koç girdi" | ✅ Çalıştırıldı |
+| `student_reports.sql` | Haftalık otomatik rapor (pazartesi 08:00) + koçun tarih aralığı raporu | ✅ Çalıştırıldı |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
@@ -137,7 +137,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 3. Yarım kalanlar / bilinen eksikler
 
-- **Beş SQL dosyası çalıştırılmadı:** `feed_views.sql`, `staff_programs.sql`, `topic_progress_changes.sql`, `daily_entry_pages.sql`, `student_reports.sql`. Çalıştırılana kadar bu özellikler görünmez ya da "henüz etkin değil" der; mevcut ekranlar bozulmaz.
+- **`feed_views.sql` çalıştırılmadı** (video izlenme takibi). Çalıştırılana kadar bu özellikler görünmez ya da "henüz etkin değil" der; mevcut ekranlar bozulmaz.
 - **Ekranda denenmedi:**
   - Bu ve önceki turdaki değişiklikler tip, lint ve derleme kontrolünden geçti; tarayıcıda denenmedi.
   - Video süresi YouTube/Vimeo oynatıcısının mesajlarıyla ölçülüyor; gerçek bir videoda telefonda ve bilgisayarda denenmeli.
@@ -151,7 +151,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 4. Sıradaki adımlar
 
-1. Bekleyen beş SQL dosyasını çalıştırmak (yukarıdaki sıra notlarına dikkat).
+1. `feed_views.sql` dosyasını çalıştırmak.
 2. Telefonda ve bilgisayarda deneme turu:
    - video izleme
    - belletmen programı → koç onayı
