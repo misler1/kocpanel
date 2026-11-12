@@ -22,7 +22,9 @@ function dayLabel(date: string, today: string) {
   return `${DAY_NAMES[wd].slice(0, 3)} ${Number(date.slice(8))}`;
 }
 
-export function GunlukGirisClient({ students, initialStudentId }: { students: Student[]; initialStudentId: string }) {
+type StaffProgram = { id: string; week_start: string; week_end: string; tasks: unknown[]; status: string; created_at: string };
+
+export function GunlukGirisClient({ students, initialStudentId, programMsg = null }: { students: Student[]; initialStudentId: string; programMsg?: 'aktif' | 'bekliyor' | null }) {
   const supabase = useMemo(() => createClient(), []);
   const today = useMemo(() => todayTr(), []);
   const [studentId, setStudentId] = useState(initialStudentId);
@@ -34,6 +36,11 @@ export function GunlukGirisClient({ students, initialStudentId }: { students: St
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [extra, setExtra] = useState<{ subject: string; topic: string } & Draft>({ subject: '', topic: '', ...emptyDraft });
   const [showExtra, setShowExtra] = useState(false);
+  // "Yapmadı" nedeni yazılan görev
+  const [missFor, setMissFor] = useState<string | null>(null);
+  const [missNote, setMissNote] = useState('');
+  const [programs, setPrograms] = useState<StaffProgram[]>([]);
+  const [programNote, setProgramNote] = useState(programMsg);
 
   const idx = students.findIndex((s) => s.id === studentId);
   const days = Array.from({ length: 7 }, (_, i) => shiftDate(today, -i));
@@ -54,7 +61,20 @@ export function GunlukGirisClient({ students, initialStudentId }: { students: St
       all.push(...((l.question_solved ?? []) as Entry[]), ...((l.topic_studies ?? []) as Entry[]));
     }
     setEntries(all);
+    // Personelin bu öğrenci için hazırladığı, koç onayı bekleyen / yakında reddedilen programlar (staff_programs.sql yoksa boş)
+    const { data: progs } = await (supabase as any).from('student_programs')
+      .select('id, week_start, week_end, tasks, status, created_at, decided_at, prepared_by')
+      .eq('student_id', studentId).not('prepared_by', 'is', null)
+      .or(`status.eq.bekliyor,and(status.eq.reddedildi,decided_at.gte.${shiftDate(todayTr(), -7)})`)
+      .order('created_at', { ascending: false }).limit(5);
+    setPrograms((progs as StaffProgram[]) ?? []);
   }, [supabase, studentId, date]);
+
+  async function withdrawProgram(id: string) {
+    if (!window.confirm('Onay bekleyen program geri çekilsin mi?')) return;
+    await (supabase as any).rpc('staff_withdraw_program', { p_id: id });
+    await load();
+  }
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setRows(null); setDrafts({}); setMsg(null); load(); }, [load]);
@@ -97,6 +117,20 @@ export function GunlukGirisClient({ students, initialStudentId }: { students: St
     await load();
   }
 
+  async function setMissed(taskId: string, missed: boolean, note?: string) {
+    setBusy(taskId);
+    setMsg(null);
+    const { error } = await (supabase as any).rpc('staff_mark_missed', { p_student: studentId, p_task_id: taskId, p_missed: missed, p_note: note ?? null });
+    setBusy(null);
+    if (error) {
+      const missing = error.code === 'PGRST202' || /could not find the function/i.test(error.message ?? '');
+      setMsg({ ok: false, text: missing ? '"Yapmadı" işareti henüz etkin değil (staff_programs.sql çalıştırılmalı).' : error.message });
+      return;
+    }
+    setMissFor(null); setMissNote('');
+    await load();
+  }
+
   const goStudent = (delta: number) => {
     const next = students[(idx + delta + students.length) % students.length];
     if (next) setStudentId(next.id);
@@ -115,6 +149,13 @@ export function GunlukGirisClient({ students, initialStudentId }: { students: St
         <h1 className="text-[20px] font-bold text-gray-900">Günlük takip</h1>
       </div>
 
+      {programNote && (
+        <p className="flex items-start gap-2 rounded-xl bg-violet-50 px-3 py-2 text-[13px] font-medium text-violet-800">
+          <span className="flex-1">{programNote === 'aktif' ? 'Program kaydedildi ve geçerli oldu ✓' : 'Program koçun onayına gönderildi. Onaylanınca öğrencinin programı olur; size bildirim gelir.'}</span>
+          <button type="button" onClick={() => setProgramNote(null)} className="text-violet-500" aria-label="Kapat">✕</button>
+        </p>
+      )}
+
       {/* Öğrenci seçimi + sıradaki öğrenci */}
       <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white p-2 shadow-sm">
         <button type="button" onClick={() => goStudent(-1)} aria-label="Önceki öğrenci" className="rounded-xl p-2.5 text-gray-500 hover:bg-gray-100"><IconArrowLeft size={20} /></button>
@@ -125,6 +166,20 @@ export function GunlukGirisClient({ students, initialStudentId }: { students: St
         <button type="button" onClick={() => goStudent(1)} aria-label="Sonraki öğrenci" className="rounded-xl p-2.5 text-gray-500 hover:bg-gray-100"><IconArrowRight size={20} /></button>
       </div>
       <p className="-mt-2 text-center text-[12px] text-gray-400">{idx + 1} / {students.length} öğrenci</p>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Link href={`/gunluk-giris/program?ogrenci=${studentId}`}
+          className="flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-[13.5px] font-semibold text-violet-800 hover:bg-violet-100">
+          🗓️ Haftalık program hazırla
+        </Link>
+        {programs.map((p) => (
+          <span key={p.id} className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[12.5px] font-medium ${p.status === 'bekliyor' ? 'bg-amber-50 text-amber-800' : 'bg-rose-50 text-rose-700'}`}>
+            {p.status === 'bekliyor' ? '⏳' : '✕'} {p.week_start.slice(8, 10)}.{p.week_start.slice(5, 7)} – {p.week_end.slice(8, 10)}.{p.week_end.slice(5, 7)} · {p.tasks?.length ?? 0} görev
+            {p.status === 'bekliyor' ? ' · koç onayı bekliyor' : ' · koç onaylamadı'}
+            {p.status === 'bekliyor' && <button type="button" onClick={() => withdrawProgram(p.id)} className="ml-1 font-semibold underline">Geri çek</button>}
+          </span>
+        ))}
+      </div>
 
       {/* Gün seçimi */}
       <div className="flex gap-1.5 overflow-x-auto pb-1">
@@ -166,9 +221,16 @@ export function GunlukGirisClient({ students, initialStudentId }: { students: St
                 </div>
                 {done && <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-[12px] font-bold text-white"><IconCheck size={14} /> Yapıldı</span>}
                 {!done && t.student_missed && (
-                  <span title={t.student_missed_note ?? undefined} className="rounded-full bg-red-600 px-2.5 py-1 text-[12px] font-bold text-white">✕ Yapmadı</span>
+                  <span className="rounded-full bg-red-600 px-2.5 py-1 text-[12px] font-bold text-white">✕ Yapmadı</span>
                 )}
               </div>
+              {!done && t.student_missed && (
+                <p className="mt-1.5 rounded-lg bg-red-50 px-2.5 py-1.5 text-[12.5px] text-red-700">
+                  {t.student_missed_note ? <>Neden: {t.student_missed_note} · </> : null}
+                  {t.student_missed_by ? `${t.student_missed_by} işaretledi` : 'Öğrenci işaretledi'}
+                  <button type="button" disabled={busy === t.id} onClick={() => setMissed(t.id, false)} className="ml-2 font-semibold underline">Kaldır</button>
+                </p>
+              )}
 
               <div className="mt-2.5 grid grid-cols-4 gap-2">
                 {([['count', 'Soru'], ['correct', 'Doğru'], ['wrong', 'Yanlış'], ['minutes', 'Dakika']] as const).map(([k, label]) => (
@@ -183,6 +245,12 @@ export function GunlukGirisClient({ students, initialStudentId }: { students: St
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2.5 text-[14px] font-bold text-white hover:bg-emerald-700 disabled:opacity-60">
                   <IconCheck size={17} /> {busy === t.id ? 'Kaydediliyor…' : done ? 'Güncelle' : 'Yaptı, kaydet'}
                 </button>
+                {!done && !t.student_missed && (
+                  <button type="button" disabled={busy === t.id} onClick={() => { setMissFor(missFor === t.id ? null : t.id); setMissNote(''); }}
+                    className="flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 text-[13px] font-bold text-red-600 hover:bg-red-100">
+                    ✕ Yapmadı
+                  </button>
+                )}
                 {done && (
                   <button type="button" disabled={busy === t.id} onClick={() => undo(t.id)}
                     className="flex items-center gap-1 rounded-xl border border-gray-200 px-3 text-[13px] font-semibold text-gray-600 hover:bg-gray-50">
@@ -190,6 +258,14 @@ export function GunlukGirisClient({ students, initialStudentId }: { students: St
                   </button>
                 )}
               </div>
+              {missFor === t.id && (
+                <div className="mt-2 flex gap-2">
+                  <input value={missNote} onChange={(e) => setMissNote(e.target.value)} maxLength={300} placeholder="Neden? (isteğe bağlı: hastaydı, izinliydi…)"
+                    className="min-w-0 flex-1 rounded-lg border border-red-200 bg-white px-2.5 py-2 text-[14px] focus:border-red-400 focus:outline-none" />
+                  <button type="button" disabled={busy === t.id} onClick={() => setMissed(t.id, true, missNote)}
+                    className="rounded-lg bg-red-600 px-3 text-[13px] font-bold text-white hover:bg-red-700 disabled:opacity-60">Kaydet</button>
+                </div>
+              )}
             </div>
           );
         })}

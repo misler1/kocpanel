@@ -29,6 +29,10 @@ interface Topic {
   kaynak2_sorular: boolean;
   kaynak3_sorular: boolean;
   yanlislar_kontrol: boolean;
+  // Son değiştiren (topic_progress_changes.sql çalıştırılınca gelir)
+  updated_by_name?: string | null;
+  updated_by_role?: string | null;
+  steps_updated_at?: string | null;
 }
 
 // Havuz (kazanım/konu) tipleri
@@ -51,7 +55,7 @@ interface PoolTopic {
 
 type TopicStepKey = keyof Omit<
   Topic,
-  'id' | 'student_id' | 'subject' | 'topic' | 'topic_id'
+  'id' | 'student_id' | 'subject' | 'topic' | 'topic_id' | 'updated_by_name' | 'updated_by_role' | 'steps_updated_at'
 >;
 
 interface Step {
@@ -70,8 +74,8 @@ const STEPS: Step[] = [
 
 // İlerleme: konu + herhangi bir kaynaktan (1., 2. veya 3.) soru + yanlış kontrolü (src/lib/topic-done.ts)
 
-const TOPIC_SELECT =
-  'id, student_id, subject, topic, topic_id, konu_tamamlandi, kaynak1_sorular, kaynak2_sorular, kaynak3_sorular, yanlislar_kontrol';
+// '*': son değiştiren alanları (topic_progress_changes.sql) varsa onlar da gelir
+const TOPIC_SELECT = '*';
 
 const norm = (s: string) => s.toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
 
@@ -431,7 +435,7 @@ export default function KonuIlerleyisiPage() {
 
     setTopics((prev) =>
       prev.map((topic) =>
-        topic.id === id ? { ...topic, [key]: nextValue } : topic
+        topic.id === id ? { ...topic, [key]: nextValue, updated_by_role: 'koc' } : topic
       )
     );
 
@@ -846,6 +850,14 @@ export default function KonuIlerleyisiPage() {
                                   }`}
                                 >
                                   {topic.topic}
+                                  {(topic.updated_by_role === 'ogrenci' || topic.updated_by_role === 'personel') && (
+                                    <span
+                                      title={`Son işaretleyen: ${topic.updated_by_name ?? ''}${topic.steps_updated_at ? ` · ${new Date(topic.steps_updated_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}`}
+                                      className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold ${topic.updated_by_role === 'ogrenci' ? 'bg-violet-50 text-violet-700' : 'bg-emerald-50 text-emerald-700'}`}
+                                    >
+                                      {topic.updated_by_role === 'ogrenci' ? '🧑‍🎓 öğrenci işaretledi' : `🧑‍🏫 ${topic.updated_by_name?.split(' ')[0] ?? 'belletmen'}`}
+                                    </span>
+                                  )}
                                 </span>
                               )}
 

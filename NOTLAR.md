@@ -1,6 +1,6 @@
 # KoçDefterim — Çalışma notları
 
-Son güncelleme: 11 Kasım 2026
+Son güncelleme: 12 Kasım 2026
 
 Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yapılır; her biri Supabase SQL Editor'da **bir kez** çalıştırılır.
 
@@ -15,8 +15,12 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `student_programs.sql` | Öğrencinin kendi programı + koç onayı | ✅ Çalıştırıldı |
 | `exam_self_analysis.sql` | Öğrencinin deneme analizi (yanlış/boş sorulara not) | ✅ Çalıştırıldı |
 | `student_task_missed.sql` | Görevlere "Yapmadım" işareti | ✅ Çalıştırıldı |
+| `feed_views.sql` | Video izlenme takibi | ⏳ Çalıştırılacak |
+| `staff_programs.sql` | Belletmenin program hazırlaması + "yapmadı" işaretlemesi | ⏳ Çalıştırılacak |
+| `topic_progress_changes.sql` | Konu ilerleyişinde son değiştiren + koça bildirim | ⏳ Çalıştırılacak |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
+`staff_programs.sql`, `student_programs.sql`, `student_task_missed.sql` ve `belletmen_gunluk.sql`'den **sonra** çalıştırılmalı.
 
 ---
 
@@ -65,6 +69,39 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 - **Öğrencinin dikkat, okuma, işlem ya da süre hatası dediği kazanımlar** konu listesine girmez. Bunlar için "Hata alışkanlıkları" önerileri verilir.
 - Analiz sayfası sadeleşti. Eski kayıtlı analizler de yeni düzende görünür.
 
+### Personel e-postası, konu tamamlama, görüşme taslağı (`277feca`)
+- Hesabım sayfasında personel e-posta adresini sonradan ekleyip güncelleyebilir.
+- Konu tamamlama: 1., 2. ya da 3. kaynaktan herhangi birinden soru çözmek yeterli. Öğrenci tarafında kaynakların birbirini otomatik işaretlemesi kaldırıldı.
+- Görüşme taslağı:
+  - Panel açılır açılmaz kaydedilir; sayfadan çıkarken son yazılanlar da kaydedilir.
+  - Taslak varsa öğrenci detayında panel küçültülmüş açılır ("Görüşmeye dön").
+
+### Video izlenme takibi
+- Öğrenci koçun paylaştığı içeriği açınca kayıt düşer.
+- YouTube ve Vimeo'da izlenen süre ve yüzde tutulur; ileri sarılan kısım sayılmaz. Diğer sitelerde yalnızca "açtı" tutulur.
+- Koç, ana sayfadaki İçerik paylaş sekmesinde her paylaşımın altında "12 öğrenciden 8'i açtı · ort. %64 izlendi" özetini görür. Tıklayınca öğrenci öğrenci liste açılır: açtı / açmadı / hesabı yok, yüzde, süre, son açma zamanı.
+
+### Belletmenin program hazırlaması
+- Günlük takip ekranında ve belletmen ana sayfasındaki öğrenci kartında **"Haftalık program hazırla"** var. Öğrencinin program editörünün aynısı kullanılıyor.
+- Program koçun onayına gider. Koçun onay listesi Haftalık Takip'in üstünde; kartta "Hazırlayan: …" ya da "Öğrencinin kendi programı" yazar.
+  - **Onay:** Koçun o tarihlerdeki programı silinir, belletmenin programı koçun programı gibi geçerli olur. Belletmene ve öğrenciye bildirim gider.
+  - **Ret:** Hiçbir şey değişmez, belletmene bildirim gider.
+- Belletmen onay bekleyen programı günlük takip ekranında görür ve geri çekebilir. Öğrenci, onaylanana kadar bu programı görmez.
+- Koç ya da yönetici bu ekrandan program hazırlarsa onay beklemeden geçerli olur.
+
+### Belletmenin "yapmadı" işaretlemesi
+- Günlük takip ekranında yapılmamış görevde **"✕ Yapmadı"** düğmesi var; neden yazmak isteğe bağlı.
+- Kimin işaretlediği görünür: belletmen ekranında "… işaretledi", koçun haftalık takibinde "(… girdi)".
+
+### Platform öğrencisinin konuları
+- Konu İlerleyişim sayfası boşsa öğrenci alanını seçer, "Konularımı ekle" der; Kazanım Havuzu'ndaki o alanın konuları eklenir.
+- Daha sonra "Konu listeni güncelle" ile alan değiştirebilir ya da eksik konuları ekleyebilir; işaretledikleri silinmez.
+
+### Konu ilerleyişinde kim değiştirdi
+- Her konuya son değiştirenin adı ve rolü yazılır.
+- Koçun Konu İlerleyişi sayfasında konunun yanında "🧑‍🎓 öğrenci işaretledi" ya da "🧑‍🏫 belletmenin adı" etiketi çıkar; üzerine gelince tarih görünür.
+- Öğrenci ya da belletmen işaretleyince koça bildirim gider. Okunmamış bildirim varsa 12 saat içindeki değişiklikler tek bildirimde toplanır.
+
 ### Küçük düzeltmeler
 - Öğrenci görevlerinde:
   - "Yapmadım" çarpısı açık kırmızı.
@@ -76,10 +113,11 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 3. Yarım kalanlar / bilinen eksikler
 
-- **Platform öğrencisinin konu ilerleyişi boş.** Konuları normalde koç havuzdan ekliyor. Öğrencinin alanına göre konuları kendisinin ekleyebilmesi lazım.
-- **Belletmen "yapmadı" işaretleyemiyor.** Belletmen ekranında yalnızca öğrencinin işaretlediği görünüyor. Telefonu olmayan öğrenci için bu işi belletmenin yapabilmesi gerekiyor.
-- **Konu ilerleyişinde kim değiştirdi bilinmiyor.** Değişikliğin koçtan mı, öğrenciden mi, belletmenden mi geldiği kaydedilmiyor. Koça "öğrenci konu işaretledi" bildirimi de gitmiyor.
-- **Ekranda denenmedi:** Bu turdaki değişiklikler tip ve lint kontrolünden geçti, ama tarayıcıda ve gerçek bir yapay zekâ analiziyle denenmedi.
+- **Üç SQL dosyası çalıştırılmadı:** `feed_views.sql`, `staff_programs.sql`, `topic_progress_changes.sql`. Çalıştırılana kadar bu özellikler görünmez ya da "henüz etkin değil" der; mevcut ekranlar bozulmaz.
+- **Ekranda denenmedi:**
+  - Bu ve önceki turdaki değişiklikler tip, lint ve derleme kontrolünden geçti; tarayıcıda denenmedi.
+  - Video süresi YouTube/Vimeo oynatıcısının mesajlarıyla ölçülüyor; gerçek bir videoda telefonda ve bilgisayarda denenmeli.
+- **Görüşme taslağı yalnızca o tarayıcıda:** Başka cihazdan girilince taslak görünmez.
 - **Önceki oturumlardan kalanlar:**
   - Mac'te görülen 404 sorunu
   - Bir öğrencinin denemelerini artık görebildiğinin teyidi
@@ -89,14 +127,11 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 4. Sıradaki adımlar
 
-1. **Belletmenin program yapması:**
-   - Belletmen öğrenciye haftalık program hazırlar ve koçun onayına gönderir.
-   - Koç onaylayınca program öğrenciye geçer.
-   - Öğrencinin kendi programı için kurulan onay sistemi (`student_programs`) kullanılacak; koç tek bir onay listesinde "kim hazırladı" bilgisiyle görecek.
-2. **Belletmenin öğrenci adına "yapmadı" işaretlemesi** (günlük giriş ekranında).
-3. **Video izlenme takibi:**
-   - Koçun ana sayfadan paylaştığı videoları kimin açtığı ve ne kadar izlediği kaydedilecek.
-   - YouTube'da izlenen süre ve yüzde tutulabilir; Instagram, TikTok ve X'te yalnızca "açtı / açmadı" tutulabilir.
-   - Koç her paylaşımın altında "12 öğrenciden 8'i izledi" özetini ve izlemeyenleri görecek.
-4. **Platform öğrencisinin konu ilerleyişi:** Öğrenci, alanına göre konuları havuzdan kendisi ekleyebilecek.
-5. *(İsteğe bağlı)* Konu ilerleyişinde değişikliği kimin yaptığının kaydı ve koça bildirim.
+1. Üç SQL dosyasını çalıştırmak (sıra önemli değil; `staff_programs.sql` için yukarıdaki not geçerli).
+2. Telefonda ve bilgisayarda deneme turu:
+   - video izleme
+   - belletmen programı → koç onayı
+   - belletmenin "yapmadı" işaretlemesi
+   - platform öğrencisinin konu eklemesi
+   - deneme analizi
+3. *(İsteğe bağlı)* Video izlenme bilgisini öğrenci detay sayfasında da göstermek (öğrenci bazında "son 30 günde 5 içerikten 3'ünü izledi").

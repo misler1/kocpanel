@@ -970,7 +970,7 @@ export default function HaftalikTakipPage() {
                 {log.student_added && <span className="text-blue-600">⭐ Öğrenci ekledi</span>}
                 {log.student_done && <span className="text-emerald-600">✓ Yaptı</span>}
                 {!log.student_done && log.student_missed && (
-                  <span className="text-red-600">✕ Yapmadı{log.student_missed_note ? ` · ${log.student_missed_note}` : ''}</span>
+                  <span className="text-red-600">✕ Yapmadı{log.student_missed_note ? ` · ${log.student_missed_note}` : ''}{log.student_missed_by ? ` (${log.student_missed_by} girdi)` : ''}</span>
                 )}
               </span>
             )}

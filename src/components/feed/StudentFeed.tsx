@@ -30,7 +30,7 @@ export function StudentContentCard({ items }: { items: FeedItem[] }) {
             {open === c.id ? (
               <div>
                 {c.title && <p className="mb-2 text-[14.5px] font-bold text-[var(--ink)]">{c.title}</p>}
-                <EmbedView url={c.url!} title={c.title} />
+                <EmbedView url={c.url!} title={c.title} trackPostId={c.id} />
                 <p suppressHydrationWarning className="mt-1 text-[12px] font-semibold text-[var(--ink-muted)]">{c.author_name} · {when(c.created_at)}</p>
               </div>
             ) : (

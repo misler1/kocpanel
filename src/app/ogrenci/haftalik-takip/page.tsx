@@ -18,7 +18,7 @@ export default async function OgrenciHaftalikPage({ searchParams }: { searchPara
   // Öğrencinin kendi yaptığı, onay bekleyen ya da son 7 günde reddedilen programlar (tablo yoksa boş)
   const weekAgo = addDays(todayTr(), -7);
   const { data: sp } = await (supabase as any)
-    .from('student_programs').select('id, week_start, week_end, tasks, note, status, created_at, decided_at')
+    .from('student_programs').select('*')
     .eq('student_id', student.id)
     .or(`status.eq.bekliyor,and(status.eq.reddedildi,decided_at.gte.${weekAgo})`)
     .order('created_at', { ascending: false });
@@ -31,7 +31,7 @@ export default async function OgrenciHaftalikPage({ searchParams }: { searchPara
       initialLogs={logs ?? []}
       initialRequests={requests ?? []}
       platformOnly={!!student.platform_only}
-      studentPrograms={sp ?? []}
+      studentPrograms={((sp as any[]) ?? []).filter((p) => !p.prepared_by)} // belletmenin hazırladığı (koç onayı bekleyen) programlar öğrenciye gösterilmez
       programMsg={program === 'aktif' || program === 'bekliyor' ? program : null}
     />
   );

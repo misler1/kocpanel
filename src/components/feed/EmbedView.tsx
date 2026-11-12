@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { IconBrandYoutube, IconBrandInstagram, IconBrandX, IconBrandTiktok, IconBrandVimeo, IconBrandSpotify, IconExternalLink, IconPlayerPlayFilled, IconLink } from '@tabler/icons-react';
 import { parseEmbed, type Embed } from '@/lib/embed';
+import { useFeedViewTracking } from './useFeedViewTracking';
 
 const ICONS: Record<Embed['provider'], typeof IconLink> = {
   youtube: IconBrandYoutube, instagram: IconBrandInstagram, x: IconBrandX, tiktok: IconBrandTiktok,
@@ -17,16 +18,18 @@ const TINT: Record<Embed['provider'], string> = {
 /**
  * Paylaşılan bağlantının görünümü. Oynatıcı ilk dokunuşta yüklenir (ana sayfa hızlı açılsın, mobil veri harcanmasın).
  * Bilinmeyen siteler yeni sekmede açılan bağlantı kartı olur.
+ * trackPostId verilirse (öğrenci ana sayfası) açma ve izleme süresi kaydedilir (feed_views.sql).
  */
-export function EmbedView({ url, title, compact = false }: { url: string; title?: string | null; compact?: boolean }) {
+export function EmbedView({ url, title, compact = false, trackPostId }: { url: string; title?: string | null; compact?: boolean; trackPostId?: string }) {
   const [play, setPlay] = useState(false);
   const e = parseEmbed(url);
+  const track = useFeedViewTracking(trackPostId, e?.provider ?? 'link');
   if (!e) return null;
   const Icon = ICONS[e.provider];
 
   if (!e.src) {
     return (
-      <a href={url} target="_blank" rel="noopener noreferrer nofollow"
+      <a href={url} target="_blank" rel="noopener noreferrer nofollow" onClick={track.markOpen}
         className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--paper)] p-3 transition-colors hover:bg-[var(--accent-soft)]">
         <span className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${TINT.link} text-white`}><Icon size={20} /></span>
         <span className="min-w-0 flex-1">
@@ -41,6 +44,9 @@ export function EmbedView({ url, title, compact = false }: { url: string; title?
   const ytId = e.provider === 'youtube' ? e.src.match(/embed\/([A-Za-z0-9_-]+)/)?.[1] : null;
   const vertical = e.aspect === '9 / 16';
   const boxStyle = e.aspect ? { aspectRatio: e.aspect } : { height: compact ? Math.min(e.height ?? 400, 420) : e.height };
+  // Oynatıcı olaylarını dinleyebilmek için YouTube'a JS API izni (yalnızca izleme açıkken)
+  const apiParams = track.tracking && e.provider === 'youtube' && typeof window !== 'undefined'
+    ? `&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}` : '';
   const boxCls = `relative w-full overflow-hidden rounded-2xl bg-black/5 ${vertical || e.height && e.height > 300 ? 'mx-auto max-w-[400px]' : ''}`;
 
   return (
@@ -48,7 +54,9 @@ export function EmbedView({ url, title, compact = false }: { url: string; title?
       <div className={boxCls} style={boxStyle}>
         {play ? (
           <iframe
-            src={`${e.src}${e.provider === 'youtube' ? '&autoplay=1' : ''}`}
+            ref={track.tracking ? track.onFrameLoad : undefined}
+            onLoad={track.tracking ? (ev) => track.onFrameLoad(ev.currentTarget) : undefined}
+            src={`${e.src}${e.provider === 'youtube' ? `&autoplay=1${apiParams}` : ''}`}
             title={title || e.label}
             className="absolute inset-0 h-full w-full border-0"
             allow="autoplay; encrypted-media; picture-in-picture; fullscreen; clipboard-write"
@@ -57,7 +65,7 @@ export function EmbedView({ url, title, compact = false }: { url: string; title?
             sandbox="allow-scripts allow-same-origin allow-popups allow-presentation allow-popups-to-escape-sandbox"
           />
         ) : (
-          <button type="button" onClick={() => setPlay(true)} aria-label={`${e.label} içeriğini aç`}
+          <button type="button" onClick={() => { setPlay(true); track.markOpen(); }} aria-label={`${e.label} içeriğini aç`}
             className={`group absolute inset-0 flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br ${TINT[e.provider]} text-white`}>
             {ytId && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -70,7 +78,7 @@ export function EmbedView({ url, title, compact = false }: { url: string; title?
           </button>
         )}
       </div>
-      <a href={url} target="_blank" rel="noopener noreferrer nofollow"
+      <a href={url} target="_blank" rel="noopener noreferrer nofollow" onClick={track.markOpen}
         className="mt-1.5 inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--ink-muted)] hover:text-[var(--ink)]">
         <Icon size={14} /> {e.label} · yeni sekmede aç <IconExternalLink size={12} />
       </a>

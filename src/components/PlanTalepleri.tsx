@@ -16,10 +16,10 @@ export async function PlanTalepleri() {
     .eq('status', 'bekliyor')
     .order('created_at', { ascending: true });
 
-  // Öğrencinin kendi yaptığı, koçun programının yerine geçmesi için onay bekleyen programlar (tablo yoksa boş)
+  // Öğrencinin kendi yaptığı ya da belletmenin hazırladığı, onay bekleyen programlar (tablo yoksa boş)
   const { data: programs } = await (supabase as any)
     .from('student_programs')
-    .select('id, week_start, week_end, tasks, note, created_at, students(id, full_name)')
+    .select('*, students(id, full_name)') // prepared_by_name: staff_programs.sql
     .eq('coach_id', user.id)
     .eq('status', 'bekliyor')
     .order('created_at', { ascending: true });

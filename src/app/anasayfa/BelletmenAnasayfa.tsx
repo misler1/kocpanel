@@ -87,6 +87,9 @@ export function BelletmenAnasayfa({ name, students }: { name: string; students: 
                       <Link href={`/gunluk-giris?ogrenci=${s.id}`} className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-[14px] font-semibold text-emerald-800 hover:bg-emerald-100">
                         <IconChecklist size={18} /> Günlük takip gir
                       </Link>
+                      <Link href={`/gunluk-giris/program?ogrenci=${s.id}`} className="flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-[14px] font-semibold text-amber-800 hover:bg-amber-100">
+                        <span className="text-[16px]">🗓️</span> Haftalık program hazırla
+                      </Link>
                       <Link href={`/denemeler?ogrenci=${s.id}`} className="flex items-center gap-2 rounded-xl bg-violet-50 px-3 py-2.5 text-[14px] font-semibold text-violet-800 hover:bg-violet-100">
                         <IconChartBar size={18} /> Deneme sonuçlarına bak
                       </Link>

@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { IconCheck, IconChevronDown } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { subjectEmoji } from '../studentUi';
@@ -29,7 +30,53 @@ function doneCount(t: Topic) {
   return topicStepsDone(t);
 }
 
-export function KonuKartlariClient({ initial, resources }: { initial: Topic[]; resources: Record<string, string[]> }) {
+const TRACKS: [string, string][] = [['YKS_SAY', 'Sayısal'], ['YKS_EA', 'Eşit Ağırlık'], ['YKS_SOZ', 'Sözel'], ['YKS_DIL', 'Dil'], ['LGS', 'LGS']];
+
+/** Sadece platform öğrencisi: alanını seçip Kazanım Havuzu'ndan konularını ekler (/api/ogrenci/konular) */
+function AddTopicsPanel({ track: initialTrack, empty }: { track: string; empty: boolean }) {
+  const router = useRouter();
+  const [track, setTrack] = useState(TRACKS.some(([k]) => k === initialTrack) ? initialTrack : '');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function add() {
+    if (!track) { setMsg({ ok: false, text: 'Önce alanını seç.' }); return; }
+    setBusy(true); setMsg(null);
+    const res = await fetch('/api/ogrenci/konular', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track }) });
+    const j = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) { setMsg({ ok: false, text: j.error ?? 'Konular eklenemedi.' }); return; }
+    setMsg({ ok: true, text: j.added ? `${j.added} konu eklendi 🎉` : 'Eksik konu yok, hepsi zaten ekli.' });
+    router.refresh();
+  }
+
+  return (
+    <div className={`rounded-[24px] border-2 border-[var(--border)] bg-[var(--card)] p-4 ${empty ? 'text-center' : ''}`}>
+      {empty && <div className="mb-1 text-[44px]">📚</div>}
+      <p className="text-[15px] font-extrabold text-[var(--ink)]">{empty ? 'Konularını ekleyelim' : 'Konu listeni güncelle'}</p>
+      <p className="mb-3 text-[12.5px] font-medium text-[var(--ink-muted)]">
+        {empty ? 'Alanını seç; o alanın tüm dersleri ve konuları listene eklensin.' : 'Alanını değiştirdiysen ya da yeni konular eklendiyse eksikleri ekler. İşaretlediklerin silinmez.'}
+      </p>
+      <div className={`mb-3 flex flex-wrap gap-1.5 ${empty ? 'justify-center' : ''}`}>
+        {TRACKS.map(([k, l]) => (
+          <button key={k} type="button" onClick={() => setTrack(k)}
+            className={`rounded-full px-3.5 py-1.5 text-[13px] font-bold transition-colors ${track === k ? 'bg-[var(--accent)] text-white shadow-sm' : 'border-2 border-[var(--border)] text-[var(--ink-muted)] hover:bg-[var(--accent-soft)]'}`}>
+            {l}
+          </button>
+        ))}
+      </div>
+      <button type="button" disabled={busy} onClick={add}
+        className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-[14px] font-extrabold text-white shadow-sm hover:bg-[var(--accent-dark)] disabled:opacity-50">
+        {busy ? 'Ekleniyor…' : empty ? 'Konularımı ekle' : 'Eksik konuları ekle'}
+      </button>
+      {msg && <p className={`mt-2 text-[13px] font-bold ${msg.ok ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>{msg.text}</p>}
+    </div>
+  );
+}
+
+export function KonuKartlariClient({ initial, resources, platformOnly = false, track = 'DIGER' }: {
+  initial: Topic[]; resources: Record<string, string[]>; platformOnly?: boolean; track?: string;
+}) {
   const supabase = createClient();
   const [topics, setTopics] = useState<Topic[]>(initial);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -47,6 +94,7 @@ export function KonuKartlariClient({ initial, resources }: { initial: Topic[]; r
     } else setError(null);
   }
 
+  if (topics.length === 0 && platformOnly) return <AddTopicsPanel track={track} empty />;
   if (topics.length === 0) {
     return (
       <div className="rounded-[28px] border-2 border-[var(--border)] bg-[var(--card)] p-8 text-center">
@@ -79,6 +127,13 @@ export function KonuKartlariClient({ initial, resources }: { initial: Topic[]; r
       </div>
 
       {error && <p className="rounded-2xl bg-[var(--danger-soft)] px-4 py-2.5 text-[13px] font-bold text-[var(--danger)]">😕 {error}</p>}
+
+      {platformOnly && (
+        <details className="rounded-[24px] border-2 border-dashed border-[var(--border)] px-4 py-2.5">
+          <summary className="cursor-pointer text-[13px] font-bold text-[var(--ink-muted)]">➕ Konu listeni güncelle (alan değiştir / eksikleri ekle)</summary>
+          <div className="mt-2"><AddTopicsPanel track={track} empty={false} /></div>
+        </details>
+      )}
 
       {subjects.map((subject) => {
         const list = topics.filter((t) => t.subject === subject).sort((a, b) => collator.compare(a.topic, b.topic));

@@ -17,9 +17,14 @@ export function OgrenciProgramOnaylari({ programs }: { programs: any[] }) {
 
   async function decide(p: any, approve: boolean) {
     const name = p.students?.full_name ?? 'Öğrenci';
+    const byStaff = p.prepared_by_name || p.prepared_by;
     const q = approve
-      ? `${name} öğrencisinin programı onaylansın mı?\n\nSizin ${shortDate(p.week_start)} – ${shortDate(p.week_end)} tarihleriyle çakışan programınız silinecek ve öğrencinin programı geçerli olacak.`
-      : `${name} öğrencisinin programı reddedilsin mi? Sizin programınız geçerli kalır.`;
+      ? byStaff
+        ? `${p.prepared_by_name ?? 'Personelin'} hazırladığı ${name} programı onaylansın mı?
+
+Sizin ${shortDate(p.week_start)} – ${shortDate(p.week_end)} tarihleriyle çakışan programınız (varsa) silinecek ve bu program geçerli olacak.`
+        : `${name} öğrencisinin programı onaylansın mı?\n\nSizin ${shortDate(p.week_start)} – ${shortDate(p.week_end)} tarihleriyle çakışan programınız silinecek ve öğrencinin programı geçerli olacak.`
+      : `${name} için hazırlanan program reddedilsin mi? Sizin programınız geçerli kalır.`;
     if (!window.confirm(q)) return;
     setBusy(p.id); setError(null);
     const { error: err } = await (createClient() as any).rpc('decide_student_program', { p_id: p.id, p_approve: approve });
@@ -31,9 +36,9 @@ export function OgrenciProgramOnaylari({ programs }: { programs: any[] }) {
   return (
     <div className="mb-4 rounded-xl border border-violet-200 bg-violet-50">
       <p className="px-4 pt-3 text-[13px] font-medium text-violet-900">
-        {programs.length} öğrenci kendine program yaptı; sizin programınızın yerine geçmesi için onayınızı bekliyor
+        {programs.length} program onayınızı bekliyor (öğrencinin kendi yaptığı ya da belletmenin hazırladığı)
       </p>
-      <p className="px-4 text-[11px] text-violet-700">Cevap vermezseniz öğrenci iki programı da görür, işaretlemeyi sizin programınızda yapar.</p>
+      <p className="px-4 text-[11px] text-violet-700">Onaylarsanız sizin o tarihlerdeki programınızın yerine geçer. Öğrencinin programına cevap vermezseniz öğrenci iki programı da görür, işaretlemeyi sizin programınızda yapar.</p>
       {error && <p className="px-4 pt-1 text-[12px] text-red-600">{error}</p>}
       <div className="divide-y divide-violet-100">
         {programs.map((p) => {
@@ -48,6 +53,9 @@ export function OgrenciProgramOnaylari({ programs }: { programs: any[] }) {
                       : p.students?.full_name}
                     {' · '}{shortDate(p.week_start)} – {shortDate(p.week_end)} · {tasks.length} görev
                   </div>
+                  <span className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${p.prepared_by ? 'bg-emerald-50 text-emerald-700' : 'bg-violet-100 text-violet-700'}`}>
+                    {p.prepared_by ? `🧑‍🏫 Hazırlayan: ${p.prepared_by_name ?? 'personel'}` : '🧑‍🎓 Öğrencinin kendi programı'}
+                  </span>
                   {p.note && <p className="mt-0.5 text-[12px] italic text-gray-600">“{p.note}”</p>}
                   <button type="button" onClick={() => setOpen(open === p.id ? null : p.id)} className="mt-1 text-[12px] font-medium text-violet-700 hover:underline">
                     {open === p.id ? 'Programı gizle' : 'Programı gör'}

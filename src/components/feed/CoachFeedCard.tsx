@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { parseEmbed } from '@/lib/embed';
 import { feedIdeas } from '@/lib/feed-ideas';
 import { EmbedView } from './EmbedView';
+import { FeedViewers, type ViewSummary } from './FeedViewers';
 
 // Koç ana sayfası: öğrencilerin ana sayfasına içerik (video/gönderi bağlantısı) ve pano duyurusu gönderme,
 // öneriler (yönetici önerileri, diğer koçların paylaştıkları, duruma göre konu fikirleri) ve yönetici için "Koçlara öner".
@@ -91,6 +92,7 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
   const [recs, setRecs] = useState<Post[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [setupMissing, setSetupMissing] = useState(false);
+  const [views, setViews] = useState<Record<string, ViewSummary>>({});
 
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
@@ -120,6 +122,12 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
     ]);
     if (mine.error) { setSetupMissing(true); return; }
     setPosts(mine.data ?? []);
+    // İzlenme özeti (feed_views.sql çalıştırılmamışsa boş kalır)
+    const ids = (mine.data ?? []).filter((p: Post) => p.kind === 'icerik' && p.audience === 'ogrenciler').map((p: Post) => p.id);
+    if (ids.length) {
+      const { data: vs } = await (supabase as any).rpc('feed_view_summary', { p_ids: ids });
+      setViews(Object.fromEntries(((vs ?? []) as ViewSummary[]).map((v) => [v.post_id, v])));
+    }
     setRecs(rec.data ?? []);
     setSuggestions(sug.data ?? []);
   }, [supabase]);
@@ -387,6 +395,9 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
                         {p.url && <> · <a href={p.url} target="_blank" rel="noopener noreferrer" className="hover:underline">bağlantı</a></>}
                       </div>
                       {p.kind === 'duyuru' && p.body && <p className="mt-0.5 line-clamp-2 text-[12.5px] text-[var(--ink-muted)]">{p.body}</p>}
+                      {p.kind === 'icerik' && p.audience === 'ogrenciler' && p.url && (
+                        <FeedViewers postId={p.id} summary={views[p.id]} timed={['youtube', 'vimeo'].includes(parseEmbed(p.url)?.provider ?? '')} />
+                      )}
                       <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${st.tone === 'green' ? 'bg-emerald-50 text-emerald-700' : st.tone === 'blue' ? 'bg-sky-50 text-sky-700' : 'bg-[var(--paper)] text-[var(--ink-muted)]'}`}>{st.label}</span>
                     </div>
                     {st.live ? (

@@ -17,7 +17,7 @@ type Notification = {
 export const NOTIFICATIONS_CHANGED = 'kd:notifications-changed';
 
 const KIND_EMOJI: Record<string, string> = {
-  basvuru: '🧑‍🎓', koc: '🧑‍🏫', plan_talebi: '📬', gorev: '📋', deneme: '📊', mesaj: '💬', randevu: '📅', hatirlatma: '⏰', hesap: '✅',
+  basvuru: '🧑‍🎓', koc: '🧑‍🏫', plan_talebi: '📬', gorev: '📋', deneme: '📊', mesaj: '💬', randevu: '📅', hatirlatma: '⏰', hesap: '✅', konu: '📚',
 };
 
 function timeAgo(iso: string) {

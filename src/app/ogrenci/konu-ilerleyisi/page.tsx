@@ -12,5 +12,8 @@ export default async function OgrenciKonuPage() {
     .eq('student_id', student.id)
     .order('subject');
 
-  return <KonuKartlariClient initial={topics ?? []} resources={student.resources ?? {}} />;
+  return (
+    <KonuKartlariClient key={(topics ?? []).length} initial={topics ?? []} resources={student.resources ?? {}}
+      platformOnly={!!student.platform_only} track={student.track ?? 'DIGER'} />
+  );
 }

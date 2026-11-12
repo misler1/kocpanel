@@ -7,10 +7,10 @@ import { applyStudentScope } from '@/lib/effective-coach';
 import { GunlukGirisClient } from './GunlukGirisClient';
 
 // Öğrenci adına günlük takip girişi (yurtta öğrencilerin telefonu yok; belletmen girer). Veritabanı: belletmen_gunluk.sql
-export default async function GunlukGirisPage({ searchParams }: { searchParams: Promise<{ ogrenci?: string }> }) {
+export default async function GunlukGirisPage({ searchParams }: { searchParams: Promise<{ ogrenci?: string; program?: string }> }) {
   const user = await getRequestUser();
   if (!user) redirect('/giris');
-  const { ogrenci } = await searchParams;
+  const { ogrenci, program } = await searchParams;
   const supabase = await createClient();
   const includeInterns = (await cookies()).get('show_interns')?.value === '1';
   const scope = await getRequestScope(user.id, includeInterns);
@@ -19,5 +19,6 @@ export default async function GunlukGirisPage({ searchParams }: { searchParams: 
     scope
   );
   const students = ((data as any[]) ?? []).map((s) => ({ id: s.id as string, full_name: s.full_name as string, sinif_sube: (s.sinif_sube ?? null) as string | null }));
-  return <GunlukGirisClient students={students} initialStudentId={students.some((s) => s.id === ogrenci) ? ogrenci! : students[0]?.id ?? ''} />;
+  return <GunlukGirisClient students={students} initialStudentId={students.some((s) => s.id === ogrenci) ? ogrenci! : students[0]?.id ?? ''}
+    programMsg={program === 'aktif' || program === 'bekliyor' ? program : null} />;
 }
