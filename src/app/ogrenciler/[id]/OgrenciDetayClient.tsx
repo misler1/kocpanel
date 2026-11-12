@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { formatTurkishNumber } from '@/lib/format';
@@ -192,6 +192,22 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
   const canMeet = !isStaff;
   const [panel, setPanel] = useState<'closed' | 'open' | 'min'>(initialPanel && canMeet ? 'open' : 'closed');
   const openPanel = () => setPanel('open');
+  // Bu öğrenci için kaydedilmemiş görüşme taslağı varsa panel küçültülmüş açılır ("Görüşmeye dön" görünür):
+  // sayfadan çıkıp geri gelen koç yazdıklarının durduğunu görür.
+  useEffect(() => {
+    if (!canMeet || panel !== 'closed') return;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i) ?? '';
+        if (k.startsWith('gorusme-taslak:') && k.endsWith(`:${id}`) && localStorage.getItem(k)) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setPanel('min');
+          return;
+        }
+      }
+    } catch { /* depolama kapalı */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   function changeTab(next: TabId) {
     setTab(next);

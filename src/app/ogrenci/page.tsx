@@ -3,6 +3,7 @@ import { getStudentContext } from '@/lib/student-context';
 import { TRACK_RESOURCES } from '@/lib/track-resources';
 import { activeDays, computeBadges, questionTotals, streakInfo, targetRows, trDate } from '@/lib/student-motivation';
 import { OgrenciAnasayfaClient } from './OgrenciAnasayfaClient';
+import { isTopicDone, TOPIC_FLAG_COLUMNS } from '@/lib/topic-done';
 
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
@@ -29,7 +30,7 @@ export default async function OgrenciAnaSayfa() {
       .from('question_logs').select('*').eq('student_id', student.id)
       .lte('week_start', today).order('week_start', { ascending: false }).limit(60),
     (supabase as any)
-      .from('topic_progress').select('konu_tamamlandi, kaynak1_sorular, yanlislar_kontrol').eq('student_id', student.id),
+      .from('topic_progress').select(TOPIC_FLAG_COLUMNS).eq('student_id', student.id),
     (supabase as any)
       .from('exams').select('id, exam_name, exam_type, exam_date, net_score').eq('student_id', student.id).order('exam_date', { ascending: false }),
     (supabase as any).rpc('student_exam_ranks'),
@@ -51,7 +52,7 @@ export default async function OgrenciAnaSayfa() {
   const currentWeekEnd = weekLogs[0]?.week_end ?? null;
 
   const topicList = topics ?? [];
-  const topicsDone = topicList.filter((t: any) => t.konu_tamamlandi && t.kaynak1_sorular && t.yanlislar_kontrol).length;
+  const topicsDone = topicList.filter((t: any) => isTopicDone(t)).length;
 
   const examList = exams ?? [];
   const lastExam = examList[0] ?? null;

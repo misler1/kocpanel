@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 import { subjectSortIndex } from '@/lib/subject-order';
+import { isTopicDone, topicStepsDone } from '@/lib/topic-done';
 
 interface Topic {
   id: string;
@@ -67,12 +68,7 @@ const STEPS: Step[] = [
   { key: 'yanlislar_kontrol', label: 'Yanlışlar Kontrol Edildi', short: 'Yanlışlar' },
 ];
 
-// İlerleme çubuğunda dikkate alınan 3 zorunlu adım.
-const REQUIRED_STEPS: TopicStepKey[] = [
-  'konu_tamamlandi',
-  'kaynak1_sorular',
-  'yanlislar_kontrol',
-];
+// İlerleme: konu + herhangi bir kaynaktan (1., 2. veya 3.) soru + yanlış kontrolü (src/lib/topic-done.ts)
 
 const TOPIC_SELECT =
   'id, student_id, subject, topic, topic_id, konu_tamamlandi, kaynak1_sorular, kaynak2_sorular, kaynak3_sorular, yanlislar_kontrol';
@@ -105,7 +101,7 @@ function subjectLabel(cat: PoolCategory | undefined, subjectName: string) {
 }
 
 function getTopicProgress(t: Topic): { pct: number; color: string } {
-  const done = REQUIRED_STEPS.filter((key) => t[key]).length;
+  const done = topicStepsDone(t);
 
   if (done === 0) return { pct: 0, color: 'bg-[var(--border)]' };
   if (done === 1) return { pct: 33, color: 'bg-[var(--accent)]' };
@@ -492,7 +488,7 @@ export default function KonuIlerleyisiPage() {
     if (items.length === 0) return 0;
 
     const fullyDone = items.filter((item) =>
-      REQUIRED_STEPS.every((key) => item[key])
+      isTopicDone(item)
     ).length;
 
     return Math.round((fullyDone / items.length) * 100);
@@ -768,7 +764,7 @@ export default function KonuIlerleyisiPage() {
                 const pct = subjectProgress(items);
 
                 const fullyDone = items.filter((item) =>
-                  REQUIRED_STEPS.every((key) => item[key])
+                  isTopicDone(item)
                 ).length;
 
                 const barColor =

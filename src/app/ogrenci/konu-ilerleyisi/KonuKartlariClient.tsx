@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { IconCheck, IconChevronDown } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { subjectEmoji } from '../studentUi';
+import { topicStepsDone } from '@/lib/topic-done';
 
 type Key = 'konu_tamamlandi' | 'kaynak1_sorular' | 'kaynak2_sorular' | 'kaynak3_sorular' | 'yanlislar_kontrol';
 type Topic = { id: string; subject: string; topic: string } & Record<Key, boolean | null>;
@@ -18,23 +19,14 @@ const STEPS: { key: Key; label: string; emoji: string; kaynakIdx?: number }[] = 
 ];
 const collator = new Intl.Collator('tr', { numeric: true, sensitivity: 'base' });
 
-// Kaynak zinciri: 3 işaretlenirse 1-2, 2 işaretlenirse 1 de işaretlenir.
-// İşareti kaldırma: 1 kalkarsa 2-3, 2 kalkarsa 3 de kalkar.
+// Kaynaklar birbirinden bağımsız: hangi kaynaktan (1., 2. veya 3.) soru çözüldüyse yalnızca o işaretlenir.
+// Konu, herhangi bir kaynaktan soru çözülünce o adımı tamamlamış sayılır (src/lib/topic-done.ts).
 function applyToggle(t: Topic, key: Key): Partial<Record<Key, boolean>> {
-  const turnOn = !t[key];
-  const patch: Partial<Record<Key, boolean>> = { [key]: turnOn };
-  if (turnOn) {
-    if (key === 'kaynak3_sorular') { patch.kaynak2_sorular = true; patch.kaynak1_sorular = true; }
-    if (key === 'kaynak2_sorular') patch.kaynak1_sorular = true;
-  } else {
-    if (key === 'kaynak1_sorular') { patch.kaynak2_sorular = false; patch.kaynak3_sorular = false; }
-    if (key === 'kaynak2_sorular') patch.kaynak3_sorular = false;
-  }
-  return patch;
+  return { [key]: !t[key] };
 }
 
 function doneCount(t: Topic) {
-  return (['konu_tamamlandi', 'kaynak1_sorular', 'yanlislar_kontrol'] as Key[]).filter((k) => t[k]).length;
+  return topicStepsDone(t);
 }
 
 export function KonuKartlariClient({ initial, resources }: { initial: Topic[]; resources: Record<string, string[]> }) {

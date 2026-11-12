@@ -3,6 +3,7 @@
 // Yalnızca sunucuda, erişim kontrolü yapıldıktan SONRA service_role istemcisiyle çağrılmalıdır.
 
 import { activeDays, questionTotals, streakInfo, targetRows, trDate, type TargetRow } from './student-motivation';
+import { isTopicDone, TOPIC_FLAG_COLUMNS } from '@/lib/topic-done';
 
 export type StudentReport = {
   student: { id: string; full_name: string; kurum: string | null; sinif: string | null; track: string | null };
@@ -40,7 +41,7 @@ export async function loadStudentReport(admin: any, studentId: string): Promise<
       .eq('student_id', studentId).gte('log_date', since).order('log_date', { ascending: false }),
     admin.from('exams').select('exam_name, exam_type, exam_date, net_score')
       .eq('student_id', studentId).order('exam_date', { ascending: false }).limit(40),
-    admin.from('topic_progress').select('konu_tamamlandi, kaynak1_sorular, yanlislar_kontrol').eq('student_id', studentId),
+    admin.from('topic_progress').select(TOPIC_FLAG_COLUMNS).eq('student_id', studentId),
   ]);
 
   const taskList = tasks ?? [];
@@ -99,7 +100,7 @@ export async function loadStudentReport(admin: any, studentId: string): Promise<
     streak: { current: streak.current, best: streak.best },
     totalQuestions: qt.total,
     topics: {
-      done: topicList.filter((t: any) => t.konu_tamamlandi && t.kaynak1_sorular && t.yanlislar_kontrol).length,
+      done: topicList.filter((t: any) => isTopicDone(t)).length,
       total: topicList.length,
     },
     exams: examList.slice(0, 10).map((e: any) => ({

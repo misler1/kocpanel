@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { IconUser, IconPhone, IconUserCircle } from '@tabler/icons-react';
+import { IconUser, IconPhone, IconUserCircle, IconMail } from '@tabler/icons-react';
+import { isPlaceholderEmail } from '@/lib/student-account';
 import { PageHero } from '@/components/ui/PageHero';
 import { PushToggle } from '@/components/PushToggle';
 
@@ -92,9 +93,53 @@ export function HesabimClient({ profile, userId }: { profile: any; userId: strin
         </form>
       </div>
 
+      {profile?.role !== 'ogrenci' && profile?.role !== 'veli' && <EmailCard initial={profile?.email ?? ''} />}
+
       <div className="mt-4">
         <PushToggle />
       </div>
     </div>
+  );
+}
+/** E-posta adresi: ilk girişte "Daha sonra eklerim" diyen personel buradan ekler / değiştirir */
+function EmailCard({ initial }: { initial: string }) {
+  const real = initial && !isPlaceholderEmail(initial) ? initial : '';
+  const [email, setEmail] = useState(real);
+  const [current, setCurrent] = useState(real);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setMsg(null);
+    const res = await fetch('/api/personel/kurulum', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'email', email }),
+    }).catch(() => null);
+    const json = res ? await res.json().catch(() => ({})) : {};
+    setBusy(false);
+    if (!res?.ok) { setMsg({ ok: false, text: json.error ?? 'Kaydedilemedi, tekrar deneyin.' }); return; }
+    setCurrent(email.trim().toLowerCase());
+    setMsg({ ok: true, text: json.sent ? 'E-posta adresiniz kaydedildi, hoş geldiniz e-postası gönderildi.' : 'E-posta adresiniz kaydedildi.' });
+  }
+
+  return (
+    <form onSubmit={save} className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--card)] px-5 py-5">
+      <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-[var(--ink)]">
+        <IconMail size={14} /> E-posta adresi
+      </label>
+      <p className="mb-2 text-[12px] text-[var(--ink-muted)]">
+        {current ? 'Hesap bilgilendirmeleri bu adrese gönderilir.' : 'Henüz e-posta eklemediniz. Hesap bilgilendirmelerini almak için ekleyin.'}
+      </p>
+      <div className="flex gap-2">
+        <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ornek@email.com"
+          className="min-w-0 flex-1 rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]" />
+        <button type="submit" disabled={busy || !email.trim() || email.trim().toLowerCase() === current}
+          className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-60">
+          {busy ? 'Kaydediliyor…' : current ? 'Güncelle' : 'Ekle'}
+        </button>
+      </div>
+      {msg && <p className={`mt-2 text-sm font-medium ${msg.ok ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>{msg.text}</p>}
+    </form>
   );
 }

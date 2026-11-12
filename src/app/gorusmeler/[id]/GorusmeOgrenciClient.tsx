@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { IconCalendar, IconEdit, IconTrash, IconX, IconMessages, IconUser } from '@tabler/icons-react';
@@ -94,6 +94,27 @@ export function GorusmeOgrenciClient({
     return () => clearTimeout(t);
   }, [draftStorageKey, hasContent, formOpenedAt, student.id, meetingType, createdBy, createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi]);
 
+  // Sayfadan çıkılırken (başka sayfaya geçiş, panel kapanması, sekme kapanması) son yazılanlar da kaydedilir:
+  // yukarıdaki 400 ms'lik gecikme beklenmez.
+  const latestDraft = useRef<{ key: string | null; data: MeetingDraft | null }>({ key: null, data: null });
+  useEffect(() => {
+    latestDraft.current = {
+      key: draftStorageKey,
+      data: hasContent ? {
+        v: 1, savedAt: Date.now(), openedAt: formOpenedAt.getTime(), studentId: student.id, meetingType, createdBy,
+        createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi,
+      } : null,
+    };
+  });
+  useEffect(() => {
+    const flush = () => {
+      const { key, data } = latestDraft.current;
+      if (key && data) writeDraft(key, { ...data, savedAt: Date.now() });
+    };
+    window.addEventListener('pagehide', flush);
+    return () => { window.removeEventListener('pagehide', flush); flush(); };
+  }, []);
+
   // Kaydedilmemiş not varken sekme/pencere kapatılırken tarayıcı uyarısı
   useEffect(() => {
     if (!hasContent) return;
@@ -138,6 +159,22 @@ export function GorusmeOgrenciClient({
       if (!user) return;
       setCreatedBy(user.id);
 
+      // Bu öğrenci için kaydedilmemiş taslak varsa geri yükle
+      // (Görüşme ekle sayfasında bu öğrenci seçilerek başlanmış taslak da buraya taşınır)
+      const key = draftKey(user.id, student.id);
+      let d = readDraft(key);
+      const generalKey = draftKey(user.id, '');
+      const g = d ? null : readDraft(generalKey);
+      if (g && g.studentId === student.id) {
+        d = g;
+        writeDraft(key, g);
+        removeDraft(generalKey);
+      }
+      // Taslak, diğer sorguları beklemeden hemen geri yüklenir ve kaydedilmeye başlar
+      if (d) applyDraft(d);
+      setDraftStorageKey(key);
+
+
       const { data: currentProfile } = await (supabase as any)
         .from('profiles')
         .select('id, full_name')
@@ -175,19 +212,6 @@ export function GorusmeOgrenciClient({
       ) as string[];
       setTopicOptions(unique);
 
-      // Bu öğrenci için kaydedilmemiş taslak varsa geri yükle
-      // (Görüşme ekle sayfasında bu öğrenci seçilerek başlanmış taslak da buraya taşınır)
-      const key = draftKey(user.id, student.id);
-      let d = readDraft(key);
-      const generalKey = draftKey(user.id, '');
-      const g = d ? null : readDraft(generalKey);
-      if (g && g.studentId === student.id) {
-        d = g;
-        writeDraft(key, g);
-        removeDraft(generalKey);
-      }
-      if (d) applyDraft(d);
-      setDraftStorageKey(key);
     }
     load();
   }, [supabase, student.id]);
