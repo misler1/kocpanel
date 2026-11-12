@@ -18,8 +18,11 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `feed_views.sql` | Video izlenme takibi | ⏳ Çalıştırılacak |
 | `staff_programs.sql` | Belletmenin program hazırlaması + "yapmadı" işaretlemesi | ⏳ Çalıştırılacak |
 | `topic_progress_changes.sql` | Konu ilerleyişinde son değiştiren + koça bildirim | ⏳ Çalıştırılacak |
+| `daily_entry_pages.sql` | Günlük girişe sayfa aralığı; koçun girişlerinde "koç girdi" | ⏳ Çalıştırılacak |
+| `student_reports.sql` | Haftalık otomatik rapor (pazartesi 08:00) + koçun tarih aralığı raporu | ⏳ Çalıştırılacak |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
+`daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
 `staff_programs.sql`, `student_programs.sql`, `student_task_missed.sql` ve `belletmen_gunluk.sql`'den **sonra** çalıştırılmalı.
 
 ---
@@ -102,6 +105,27 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 - Koçun Konu İlerleyişi sayfasında konunun yanında "🧑‍🎓 öğrenci işaretledi" ya da "🧑‍🏫 belletmenin adı" etiketi çıkar; üzerine gelince tarih görünür.
 - Öğrenci ya da belletmen işaretleyince koça bildirim gider. Okunmamış bildirim varsa 12 saat içindeki değişiklikler tek bildirimde toplanır.
 
+### Günlük giriş ekranı yenilendi (koç, yurt yöneticisi, belletmen)
+- Üstte öğrenci kartı (aramalı öğrenci seçici, önceki/sonraki), 8 günlük gün şeridi, günün özeti (görev, soru, dakika).
+- Her görevde büyük **Yaptı / Yapmadı** düğmeleri. "Yaptı" formu hedefle dolu açılır: soru, doğru, yanlış, dakika, **sayfa** (isteğe bağlı, ör. 45-60).
+- Yapılan görevde özet görünür ("45 soru (12D 3Y) · 30 dk · s. 45-60 · Ali girdi"), Düzenle / Geri al.
+- Koç da kullanabilir: menüde "Günlük giriş", öğrenci sayfasında Program ve günlük → "✓ Programdan günlük gir". Stajyerde görünmez.
+- Öğrenci detayındaki günlükte sayfa ve girenin adı görünür.
+
+### Konu atama penceresi
+- Havuzdan konu atanınca pencere kapanır ve "N konu eklendi" yazar; pencerede ayrıca "Kapat" düğmesi var.
+
+### Haftalık rapor
+- Her pazartesi 08:00'de (Türkiye) koçu olan her aktif öğrencinin geçen hafta (pazartesi–pazar) raporu oluşur ve kaydedilir; koça tek bildirim gider. O hafta hiçbir şey olmayan öğrenci için rapor oluşmaz.
+- Koç, öğrenci sayfasındaki **Raporlar** sekmesinden istediği tarih aralığı için rapor alır (geçen hafta / bu hafta / son 7 gün / son 30 gün / özel, en fazla 6 ay). Raporlar aynı sekmede listelenir; yazdırılabilir / PDF, silinebilir.
+- **İçerik:**
+  - Programa uyum: hafta bazında ve gün bazında (günlük ortalama, kaç gün tam).
+  - Hedef soru gerçekleşme yüzdesi.
+  - Çözülen soru (önceki döneme göre değişim), doğruluk yüzdesi, çalışma süresi, aktif gün.
+  - Gün gün tablo: görev, uyum, hedef / çözülen, soru, D/Y, süre.
+  - Ders ders tablo; dönemdeki denemeler (net, bir öncekine göre değişim, ders netleri); ilerleyen ve tamamlanan konular.
+- Hesaplama `src/lib/period-report.ts`, otomatik çalışma `/api/cron/haftalik-rapor` (veritabanı zamanlayıcısı çağırır).
+
 ### Küçük düzeltmeler
 - Öğrenci görevlerinde:
   - "Yapmadım" çarpısı açık kırmızı.
@@ -113,7 +137,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 3. Yarım kalanlar / bilinen eksikler
 
-- **Üç SQL dosyası çalıştırılmadı:** `feed_views.sql`, `staff_programs.sql`, `topic_progress_changes.sql`. Çalıştırılana kadar bu özellikler görünmez ya da "henüz etkin değil" der; mevcut ekranlar bozulmaz.
+- **Beş SQL dosyası çalıştırılmadı:** `feed_views.sql`, `staff_programs.sql`, `topic_progress_changes.sql`, `daily_entry_pages.sql`, `student_reports.sql`. Çalıştırılana kadar bu özellikler görünmez ya da "henüz etkin değil" der; mevcut ekranlar bozulmaz.
 - **Ekranda denenmedi:**
   - Bu ve önceki turdaki değişiklikler tip, lint ve derleme kontrolünden geçti; tarayıcıda denenmedi.
   - Video süresi YouTube/Vimeo oynatıcısının mesajlarıyla ölçülüyor; gerçek bir videoda telefonda ve bilgisayarda denenmeli.
@@ -127,11 +151,14 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 4. Sıradaki adımlar
 
-1. Üç SQL dosyasını çalıştırmak (sıra önemli değil; `staff_programs.sql` için yukarıdaki not geçerli).
+1. Bekleyen beş SQL dosyasını çalıştırmak (yukarıdaki sıra notlarına dikkat).
 2. Telefonda ve bilgisayarda deneme turu:
    - video izleme
    - belletmen programı → koç onayı
    - belletmenin "yapmadı" işaretlemesi
    - platform öğrencisinin konu eklemesi
    - deneme analizi
+   - yeni günlük giriş ekranı
+   - rapor oluşturma
+   - ilk pazartesi otomatik raporunun gelip gelmediği
 3. *(İsteğe bağlı)* Video izlenme bilgisini öğrenci detay sayfasında da göstermek (öğrenci bazında "son 30 günde 5 içerikten 3'ünü izledi").

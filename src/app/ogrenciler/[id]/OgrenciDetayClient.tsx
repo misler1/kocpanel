@@ -3,6 +3,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { RaporlarPanel } from './RaporlarPanel';
 import { createClient } from '@/lib/supabase/client';
 import { formatTurkishNumber } from '@/lib/format';
 import {
@@ -151,6 +152,7 @@ const TABS = [
   { id: 'program', label: 'Program ve günlük' },
   { id: 'denemeler', label: 'Denemeler' },
   { id: 'gorusmeler', label: 'Görüşmeler' },
+  { id: 'raporlar', label: 'Raporlar' },
   { id: 'ayarlar', label: 'Ayarlar' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
@@ -423,6 +425,8 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
           </div>
         )}
 
+        {tab === 'raporlar' && <RaporlarPanel studentId={id} canCreate={access === 'coach'} />}
+
         {tab === 'gorusmeler' && (
           <Accordion icon={<IconCalendar size={16} />} title="Görüşmeler" theme="teal"
             right={canMeet ? <button type="button" onClick={openPanel} className="text-teal-700 hover:underline">+ Görüşme ekle</button> : null}>
@@ -688,7 +692,11 @@ export function GunlukAccordion({ studentId }: { studentId: string }) {
 
   return (
     <Accordion icon={<IconNotebook size={16} />} title="Günlük" theme="violet">
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
+        <Link href={`/gunluk-giris?ogrenci=${studentId}`}
+          className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[12px] font-semibold text-emerald-700 hover:bg-emerald-100">
+          ✓ Programdan günlük gir
+        </Link>
         <button
           onClick={openNew}
           className="text-[12px] font-medium text-blue-600 hover:underline"
@@ -777,8 +785,9 @@ export function GunlukAccordion({ studentId }: { studentId: string }) {
                         <span className="text-[13px] text-gray-700">
                           {q.subject ? `${q.subject} · ` : ''}{q.topic}
                           {q.resource && <span className="text-gray-400"> ({q.resource})</span>}
+                          {q.pages && <span className="text-gray-400"> · s. {q.pages}</span>}
                         </span>
-                        <span className="text-[12px] text-gray-400">{q.count} soru{(q.correct || q.wrong) ? ` · ${q.correct ?? 0}D ${q.wrong ?? 0}Y` : ''}{q.by === 'ogrenci' ? ' · öğrenci girdi' : ''}</span>
+                        <span className="text-[12px] text-gray-400">{q.count} soru{(q.correct || q.wrong) ? ` · ${q.correct ?? 0}D ${q.wrong ?? 0}Y` : ''}{q.by === 'ogrenci' ? ' · öğrenci girdi' : q.by_name ? ` · ${q.by_name} girdi` : ''}</span>
                       </div>
                     ))}
                   </div>

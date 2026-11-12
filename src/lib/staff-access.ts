@@ -32,12 +32,12 @@ const HIDDEN_FOR_STAFF = ['/gorusmeler', '/anketler', '/veli-gorusmeleri', '/aya
 
 /** Belletmen: yalnızca giriş yaptığı sayfalar (sade menü) */
 const BELLETMEN_NAV = ['/anasayfa', '/gunluk-giris', '/konu-ilerleyisi', '/denemeler', '/ajanda', '/mesajlar', '/hesabim'];
-/** Yalnızca kurum personeline görünen menüler */
+/** Stajyerde görünmeyen menüler (günlük giriş: koç, yurt yöneticisi ve belletmen öğrenci adına girer) */
 const STAFF_ONLY = ['/gunluk-giris'];
 
 export function navAllowed(kind: StaffKind, href: string): boolean {
   if (kind === 'belletmen') return BELLETMEN_NAV.includes(href);
-  if (STAFF_ONLY.includes(href) && kind !== 'manager') return false;
+  if (STAFF_ONLY.includes(href) && kind === 'intern') return false;
   if (kind === 'manager') {
     return !HIDDEN_FOR_STAFF.some((h) => href === h || href.startsWith(`${h}/`));
   }

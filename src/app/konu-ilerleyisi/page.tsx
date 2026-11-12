@@ -147,6 +147,7 @@ export default function KonuIlerleyisiPage() {
   const [adding, setAdding] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
+  const [addMsg, setAddMsg] = useState<{ ok: boolean; text: string } | null>(null);
   // Hangi ders kartları açık — varsayılan hepsi kapalı, tıklayınca açılır.
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   function toggleExpand(subject: string) {
@@ -389,16 +390,24 @@ export default function KonuIlerleyisiPage() {
       }));
 
     if (rows.length) {
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('topic_progress')
         .insert(rows)
         .select(TOPIC_SELECT);
 
+      if (error) {
+        setAdding(false);
+        setAddMsg({ ok: false, text: 'Konular eklenemedi: ' + error.message });
+        return;
+      }
       if (data) setTopics((prev) => [...prev, ...data]);
     }
 
     setPicked(new Set());
     setAdding(false);
+    // Atama bitince pencere kapanır, eklenen konular listede görünür
+    setShowAddPanel(false);
+    setAddMsg({ ok: true, text: `${label}: ${rows.length} konu eklendi ✓` });
   }
 
   // --- Elle ekleme (havuzda olmayan konu için) ---
@@ -574,15 +583,26 @@ export default function KonuIlerleyisiPage() {
           <div className="mb-3">
             <button
               type="button"
-              onClick={() => setShowAddPanel((v) => !v)}
+              onClick={() => { setShowAddPanel((v) => !v); setAddMsg(null); }}
               className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] font-medium text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
             >
               <IconPlus size={14} />
               {showAddPanel ? 'Ders / konu eklemeyi gizle' : 'Ders / konu ekle'}
             </button>
 
+            {addMsg && !showAddPanel && (
+              <p className={`mt-2 rounded-lg px-3 py-2 text-[12.5px] font-medium ${addMsg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{addMsg.text}</p>
+            )}
             {showAddPanel && (
               <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[13.5px] font-semibold text-[var(--ink)]">Ders / konu ekle</span>
+                  <button type="button" onClick={() => setShowAddPanel(false)}
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-[12.5px] font-medium text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]">
+                    <IconX size={14} /> Kapat
+                  </button>
+                </div>
+                {addMsg && !addMsg.ok && <p className="mb-2 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{addMsg.text}</p>}
                 {poolCats.length === 0 ? (
                   <p className="text-[12px] text-[var(--ink-muted)]">
                     Kazanım havuzunda henüz kayıt yok. Yönetici havuzu doldurunca

@@ -25,7 +25,7 @@ export interface NavItem {
 export const MAIN_NAV: NavItem[] = [
   { href: '/anasayfa', label: 'Ana sayfa', icon: IconHome },
   { href: '/ogrenciler', label: 'Öğrenciler', icon: IconUsers },
-  { href: '/gunluk-giris', label: 'Günlük takip', icon: IconChecklist }, // yalnızca kurum personeli (staff-access.ts)
+  { href: '/gunluk-giris', label: 'Günlük giriş', icon: IconChecklist }, // öğrenci adına günlük çalışma girişi (stajyerde gizli, staff-access.ts)
   { href: '/ajanda', label: 'Ajanda', icon: IconCalendarWeek },
 ];
 
