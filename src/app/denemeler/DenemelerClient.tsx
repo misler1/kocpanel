@@ -798,7 +798,7 @@ function ExamGroupCard({
                   {compareMode && (
                     <th rowSpan={2} className="sticky left-0 z-20 w-8 bg-gray-50 px-2 py-2" />
                   )}
-                  <th rowSpan={2} className={`sticky ${stickyNameLeft} z-20 min-w-[140px] bg-gray-50 px-3 py-2 text-left font-medium text-gray-500`}>
+                  <th rowSpan={2} className={`sticky ${stickyNameLeft} z-20 bg-gray-50 px-3 py-2 text-left font-medium text-gray-500 ${isStudent ? 'w-[104px] min-w-[104px] px-2 sm:w-auto sm:min-w-[140px] sm:px-3' : 'min-w-[140px]'}`}>
                     {isStudent ? 'Deneme' : 'Öğrenci'}
                   </th>
                   {subjects.map((s, i) => {
@@ -863,20 +863,21 @@ function ExamGroupCard({
                           />
                         </td>
                       )}
-                      <td className={`sticky ${stickyNameLeft} z-10 whitespace-nowrap bg-white px-3 py-2 font-medium text-gray-800`}>
+                      <td className={`sticky ${stickyNameLeft} z-10 bg-white py-2 font-medium text-gray-800 ${isStudent ? 'max-w-[104px] px-2 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.12)] sm:max-w-none sm:whitespace-nowrap sm:px-3 sm:shadow-none' : 'whitespace-nowrap px-3'}`}>
                         {isStudent ? (
                           <>
                             <button
                               type="button"
                               onClick={() => onShowQuestions?.(e)}
                               title="Karneyi aç"
-                              className="block max-w-[220px] truncate text-left text-indigo-700 hover:underline"
+                              className="line-clamp-2 block break-words text-left text-[10.5px] leading-tight text-indigo-700 hover:underline sm:line-clamp-none sm:max-w-[220px] sm:truncate sm:text-[11px]"
                             >
                               {e.exam_name}
                             </button>
                             <div className="text-[10px] font-normal text-gray-400">
-                              {new Date(e.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                              {e.entered_by_student && <span className="ml-1 rounded bg-violet-100 px-1 py-px font-semibold text-violet-700">öğrenci girdi</span>}
+                              <span className="sm:hidden">{new Date(e.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+                              <span className="hidden sm:inline">{new Date(e.exam_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                              {e.entered_by_student && !studentSelf && <span className="ml-1 rounded bg-violet-100 px-1 py-px font-semibold text-violet-700">öğrenci girdi</span>}
                             </div>
                           </>
                         ) : (
@@ -979,7 +980,7 @@ function ExamGroupCard({
                 <tfoot>
                   <tr className="border-t-2 border-gray-300 bg-gray-50 font-semibold">
                     {compareMode && <td className="sticky left-0 z-10 w-8 bg-gray-50" />}
-                    <td className={`sticky ${stickyNameLeft} z-10 whitespace-nowrap bg-gray-50 px-3 py-2 text-gray-800`}>
+                    <td className={`sticky ${stickyNameLeft} z-10 whitespace-nowrap bg-gray-50 px-2 py-2 text-gray-800 sm:px-3`}>
                       Ortalama
                       <div className="text-[10px] font-normal text-gray-400">{group.rows.length} deneme</div>
                     </td>
