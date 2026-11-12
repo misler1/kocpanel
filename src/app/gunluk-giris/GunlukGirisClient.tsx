@@ -227,10 +227,10 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
       <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-600 text-white shadow-md">
         <div className="flex items-center gap-2 p-3">
           <button type="button" onClick={() => goStudent(-1)} aria-label="Önceki öğrenci" className="rounded-full p-2 text-white/80 hover:bg-white/15"><IconArrowLeft size={20} /></button>
-          <button type="button" onClick={() => { setPicker(true); setQ(''); }} className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-2 py-1 text-left hover:bg-white/10">
+          <button type="button" onClick={() => { setPicker(true); setQ(''); }} title="Öğrenci seç" className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-white/15 px-2 py-1.5 text-left ring-1 ring-inset ring-white/30 transition-colors hover:bg-white/25">
             <span className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-[15px] font-bold ring-2 ring-white/60 ${avatarColor(studentId)}`}>{initials(student?.full_name ?? '')}</span>
             <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1 truncate text-[17px] font-bold">{student?.full_name} <IconChevronDown size={16} className="flex-shrink-0 opacity-80" /></span>
+              <span className="flex items-center gap-1 truncate text-[17px] font-bold"><span className="truncate">{student?.full_name}</span> <span className="flex flex-shrink-0 items-center justify-center rounded-full bg-white/25 p-0.5"><IconChevronDown size={15} /></span></span>
               <span className="block text-[12.5px] text-white/80">{student?.sinif_sube ?? 'Sınıf yok'} · {idx + 1}/{students.length} öğrenci</span>
             </span>
           </button>

@@ -264,7 +264,7 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
   );
 
   return (
-    <div className={panel !== 'closed' ? 'lg:flex lg:items-start lg:gap-4' : ''}>
+    <div className={panel !== 'closed' ? '2xl:flex 2xl:items-start 2xl:gap-4' : ''}>
     <div className="mx-auto min-w-0 max-w-5xl flex-1">
       {/* ── Başlık ── */}
       <div className={`relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-br ${isArchived ? 'from-slate-500 via-slate-600 to-slate-700' : 'from-indigo-500 via-violet-500 to-fuchsia-500'} p-5 text-white shadow-sm`}>

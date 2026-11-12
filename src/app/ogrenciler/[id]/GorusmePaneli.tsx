@@ -33,7 +33,7 @@ export function GorusmePaneli({ student, minimized, onMinimize, onClose }: {
 
   return (
     <aside
-      className={`${minimized ? 'hidden' : 'flex'} fixed inset-0 z-50 flex-col bg-[var(--paper)] lg:sticky lg:top-2 lg:z-10 lg:h-[calc(100vh-1rem)] lg:w-[430px] lg:flex-shrink-0 lg:overflow-hidden lg:rounded-2xl lg:border lg:border-[var(--border)] lg:shadow-lg`}
+      className={`${minimized ? 'hidden' : 'flex'} fixed inset-0 z-50 flex-col bg-[var(--paper)] md:inset-y-2 md:left-auto md:right-2 md:w-[440px] md:overflow-hidden md:rounded-2xl md:border md:border-[var(--border)] md:shadow-2xl 2xl:sticky 2xl:inset-auto 2xl:top-2 2xl:z-10 2xl:h-[calc(100vh-1rem)] 2xl:w-[430px] 2xl:flex-shrink-0 2xl:shadow-lg`}
       aria-label="Görüşme kaydı"
     >
       <div className="flex items-center gap-2 bg-gradient-to-r from-teal-500 via-emerald-500 to-green-500 px-4 py-3 text-white">
