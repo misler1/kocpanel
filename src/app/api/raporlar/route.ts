@@ -3,8 +3,11 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { buildPeriodReport } from '@/lib/period-report';
+import { shiftDate, todayTr, weekdayIndex } from '@/lib/day-tasks';
+import { reportCutoff, todayIncludedAuto } from '@/lib/report-cutoff';
 
-// Koç istediği tarih aralığı için rapor üretir ve öğrencinin sayfasına kaydeder. Body: { studentId, start, end }
+// Koç istediği tarih aralığı için rapor üretir ve öğrencinin sayfasına kaydeder. Body: { studentId, start, end, includeToday }
+// Bugün, öğrencinin günlük girişi için zaman tanınmadan rapora girmez (src/lib/report-cutoff.ts); includeToday ile zorlanabilir.
 // Yetki: öğrencinin koçu, sorumlu koçu ya da yönetici (raporlar tablosunun silme kuralıyla aynı).
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -16,7 +19,8 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const studentId = String(body?.studentId ?? '');
   const start = String(body?.start ?? '');
-  const end = String(body?.end ?? '');
+  let end = String(body?.end ?? '');
+  const includeToday = body?.includeToday === true;
   if (!/^[0-9a-f-]{36}$/i.test(studentId) || !DATE.test(start) || !DATE.test(end)) {
     return NextResponse.json({ error: 'Geçersiz istek' }, { status: 400 });
   }
@@ -25,12 +29,24 @@ export async function POST(req: Request) {
   if (days > 186) return NextResponse.json({ error: 'En fazla 6 aylık rapor alınabilir' }, { status: 400 });
 
   const [{ data: s }, { data: me }] = await Promise.all([
-    (supabase as any).from('students').select('id, coach_id, responsible_coach_id').eq('id', studentId).maybeSingle(),
+    (supabase as any).from('students').select('id, coach_id, responsible_coach_id, reminder_times, reminder_days').eq('id', studentId).maybeSingle(),
     (supabase as any).from('profiles').select('is_admin').eq('id', user.id).maybeSingle(),
   ]);
   if (!s) return NextResponse.json({ error: 'Öğrenci bulunamadı' }, { status: 404 });
   if (!(s.coach_id === user.id || s.responsible_coach_id === user.id || me?.is_admin)) {
     return NextResponse.json({ error: 'Bu öğrenci için rapor alma yetkiniz yok' }, { status: 403 });
+  }
+
+  // Bugün: saat ve hatırlatma kuralına göre ya da koç istediyse dahil
+  const today = todayTr();
+  if (end > today) end = today;
+  let todayExcluded = false;
+  if (end === today && !includeToday && !todayIncludedAuto(reportCutoff(s.reminder_times, s.reminder_days, weekdayIndex(today)))) {
+    end = shiftDate(today, -1);
+    todayExcluded = true;
+    if (end < start) {
+      return NextResponse.json({ error: 'Bugün henüz rapora dahil edilemiyor (öğrenci günlüğünü girmemiş olabilir). "Bugünü dahil et" işaretleyin ya da daha sonra deneyin.' }, { status: 400 });
+    }
   }
 
   const admin = createAdminClient() as any;
@@ -43,5 +59,5 @@ export async function POST(req: Request) {
     const missing = /student_reports/.test(error.message ?? '') && /exist|schema cache/i.test(error.message ?? '');
     return NextResponse.json({ error: missing ? 'Raporlar henüz etkin değil (student_reports.sql çalıştırılmalı).' : 'Rapor kaydedilemedi' }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, id: row.id });
+  return NextResponse.json({ ok: true, id: row.id, end, todayExcluded });
 }

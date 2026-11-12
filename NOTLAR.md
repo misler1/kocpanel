@@ -124,6 +124,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
   - Çözülen soru (önceki döneme göre değişim), doğruluk yüzdesi, çalışma süresi, aktif gün.
   - Gün gün tablo: görev, uyum, hedef / çözülen, soru, D/Y, süre.
   - Ders ders tablo; dönemdeki denemeler (net, bir öncekine göre değişim, ders netleri); ilerleyen ve tamamlanan konular.
+- **Bugün rapora ne zaman girer:** Saat 22:00'yi geçmiş ve öğrencinin o günkü son çalışma hatırlatmasının üzerinden 15 dakika geçmişse (ör. hatırlatma 23:20 → 23:35'ten itibaren). Hatırlatması yoksa 22:00. Öncesinde rapor dünle biter; koç "Bugünü de dahil et" işaretlerse bugün de girer. Kural `src/lib/report-cutoff.ts`.
 - Hesaplama `src/lib/period-report.ts`, otomatik çalışma `/api/cron/haftalik-rapor` (veritabanı zamanlayıcısı çağırır).
 
 ### Küçük düzeltmeler

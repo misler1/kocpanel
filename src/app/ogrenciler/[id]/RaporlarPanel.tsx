@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { IconChartBar, IconChevronRight } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { shiftDate, todayTr, weekdayIndex } from '@/lib/day-tasks';
+import { reportCutoff, todayIncludedAuto } from '@/lib/report-cutoff';
 
 // Öğrenci sayfası → Raporlar: her pazartesi 08:00'de otomatik oluşan haftalık raporlar + koçun istediği tarih aralığı
 // için oluşturduğu raporlar (supabase/student_reports.sql, /api/raporlar)
@@ -36,6 +37,9 @@ export function RaporlarPanel({ studentId, canCreate }: { studentId: string; can
   const [end, setEnd] = useState(opts[0].end);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [includeToday, setIncludeToday] = useState(false);
+  // Bugünün otomatik dahil olacağı saat (öğrencinin hatırlatma saatine göre)
+  const [cutoff, setCutoff] = useState<string | null | undefined>(undefined);
 
   const load = useCallback(async () => {
     const { data, error: e } = await (supabase as any).from('student_reports')
@@ -48,9 +52,17 @@ export function RaporlarPanel({ studentId, canCreate }: { studentId: string; can
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    (supabase as any).from('students').select('reminder_times, reminder_days').eq('id', studentId).maybeSingle()
+      .then(({ data }: any) => setCutoff(reportCutoff(data?.reminder_times, data?.reminder_days, weekdayIndex(today))));
+  }, [supabase, studentId, today]);
+
+  const endsToday = end >= today;
+  const autoToday = cutoff !== undefined && todayIncludedAuto(cutoff);
+
   async function create() {
     setBusy(true); setError(null);
-    const res = await fetch('/api/raporlar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, start, end }) });
+    const res = await fetch('/api/raporlar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studentId, start, end, includeToday }) });
     const j = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) { setError(j.error ?? 'Rapor oluşturulamadı'); return; }
@@ -89,6 +101,24 @@ export function RaporlarPanel({ studentId, canCreate }: { studentId: string; can
               {busy ? 'Hazırlanıyor…' : 'Raporu oluştur'}
             </button>
           </div>
+          {endsToday && (
+            <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-900">
+              {autoToday ? (
+                <p>✓ Bugün rapora dahil edilecek (günlük girişi için süre doldu).</p>
+              ) : (
+                <>
+                  <p>
+                    Öğrenci günlüğünü akşam girdiği için <b>bugün rapora dahil edilmeyecek</b>
+                    {cutoff ? <> (bugün saat <b>{cutoff}</b> itibarıyla otomatik dahil olur)</> : null}; rapor dünle biter.
+                  </p>
+                  <label className="mt-1.5 flex cursor-pointer items-center gap-2 font-semibold">
+                    <input type="checkbox" checked={includeToday} onChange={(e) => setIncludeToday(e.target.checked)} className="h-4 w-4 accent-violet-600" />
+                    Bugünü de dahil et (öğrenci bugünkü girişini tamamladı)
+                  </label>
+                </>
+              )}
+            </div>
+          )}
           {error && <p className="mt-2 text-[12.5px] text-rose-600">{error}</p>}
         </div>
       )}
