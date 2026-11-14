@@ -88,26 +88,36 @@ export async function callLlm(req: LlmRequest): Promise<LlmResult> {
 export async function readImageText(req: { system: string; prompt: string; imageBase64: string; mimeType: string }): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('Yazı okuma için yapay zekâ anahtarı (GEMINI_API_KEY) tanımlı değil.');
-  // Model bulunamazsa (ad değişmiş olabilir) sıradakini dene
-  const models = Array.from(new Set([process.env.GEMINI_VISION_MODEL, process.env.GEMINI_MODEL, 'gemini-flash-latest', 'gemini-2.5-flash']
+  // Yazı okuma için hızlı model, "düşünme" kapalı (düşünen modeller uzun sürüp zaman aşımına uğruyordu).
+  // Model bulunamazsa (ad değişmiş olabilir) sıradakini dene. GEMINI_VISION_MODEL ile değiştirilebilir.
+  const models = Array.from(new Set([process.env.GEMINI_VISION_MODEL, 'gemini-2.5-flash', 'gemini-flash-latest']
     .filter((m): m is string => !!m)));
   let res: Response | null = null;
   let detail = '';
   for (const model of models) {
-    res = await fetch(GEMINI_URL(model), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: req.system }] },
-        contents: [{ role: 'user', parts: [{ inline_data: { mime_type: req.mimeType, data: req.imageBase64 } }, { text: req.prompt }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
-      }),
-    });
+    const thinkingConfig = model.includes('2.5') ? { thinkingBudget: 0 } : model.startsWith('gemini-3') ? { thinkingLevel: 'low' } : undefined;
+    try {
+      res = await fetch(GEMINI_URL(model), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        signal: AbortSignal.timeout(100_000),
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: req.system }] },
+          contents: [{ role: 'user', parts: [{ inline_data: { mime_type: req.mimeType, data: req.imageBase64 } }, { text: req.prompt }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 8192, ...(thinkingConfig ? { thinkingConfig } : {}) },
+        }),
+      });
+    } catch (e) {
+      if (e instanceof Error && (e.name === 'TimeoutError' || e.name === 'AbortError')) {
+        throw new Error('Yapay zekâ zamanında cevap vermedi. Biraz sonra tekrar deneyin.');
+      }
+      throw new Error('Yapay zekâ hizmetine bağlanılamadı.');
+    }
     if (res.ok) break;
     const body = await res.json().catch(() => null);
     detail = String(body?.error?.message ?? '').slice(0, 200);
     console.error(`Gemini görsel okuma ${model}: ${res.status} ${detail}`);
-    if (res.status !== 404) break;
+    if (res.status !== 404 && !(res.status === 400 && /thinking/i.test(detail))) break;
   }
   if (!res || !res.ok) {
     const st = res?.status ?? 0;
