@@ -16,20 +16,43 @@ ${text}` : text;
 
 export const photoUrl = (path: string) => `/api/gorusme/foto?path=${encodeURIComponent(path)}`;
 
-/** Fotoğrafı en uzun kenarı 2000 px olacak şekilde JPEG'e çevirir; tarayıcı açamazsa (ör. HEIC) olduğu gibi döner */
-async function shrink(file: File): Promise<Blob> {
+/** Sunucuya giden en büyük dosya (Vercel isteği 4,5 MB'ta keser) */
+const MAX_UPLOAD = 4 * 1024 * 1024;
+
+async function loadImage(file: File): Promise<CanvasImageSource & { width: number; height: number }> {
   try {
-    const bmp = await createImageBitmap(file);
-    const scale = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(bmp.width * scale);
-    canvas.height = Math.round(bmp.height * scale);
-    canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
-    bmp.close();
-    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.85));
-    return blob ?? file;
+    return await createImageBitmap(file);
   } catch {
-    return file;
+    // Bazı tarayıcılarda createImageBitmap bazı biçimleri açamaz: <img> ile dene
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      return img;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+}
+
+/** Fotoğrafı en uzun kenarı 2000 px olacak şekilde JPEG'e çevirir (gerekirse 4 MB altına inene kadar küçültür).
+ *  Tarayıcı açamazsa (ör. bilgisayarda HEIC) küçükse olduğu gibi döner, büyükse null. */
+async function shrink(file: File): Promise<Blob | null> {
+  try {
+    const img = await loadImage(file);
+    for (const [side, q] of [[2000, 0.85], [1600, 0.8], [1280, 0.75]] as const) {
+      const scale = Math.min(1, side / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', q));
+      if (blob && blob.size <= MAX_UPLOAD) return blob;
+    }
+    return null;
+  } catch {
+    return file.size <= MAX_UPLOAD ? file : null;
   }
 }
 
@@ -73,12 +96,16 @@ export function MeetingPhotos({ studentId, photos, onChange, onReadText, deleteO
       setUploading((n) => n + 1);
       try {
         const blob = await shrink(f);
+        if (!blob) {
+          setMsg({ ok: false, text: `${f.name}: bu fotoğraf açılamadı ya da çok büyük. JPG ya da PNG olarak deneyin.` });
+          continue;
+        }
         const fd = new FormData();
         fd.append('studentId', studentId);
         fd.append('file', blob, f.name.replace(/\.[^.]+$/, '') + (blob.type === 'image/jpeg' ? '.jpg' : ''));
         const res = await fetch('/api/gorusme/foto', { method: 'POST', body: fd });
         const j = await res.json().catch(() => ({}));
-        if (!res.ok) setMsg({ ok: false, text: j.error ?? 'Fotoğraf yüklenemedi' });
+        if (!res.ok) setMsg({ ok: false, text: j.error ?? `Fotoğraf yüklenemedi (hata ${res.status}${res.status === 413 ? ': dosya çok büyük' : ''}).` });
         else { current = [...current, j.path]; photosRef.current = current; onChange(current); }
       } catch {
         setMsg({ ok: false, text: 'Fotoğraf yüklenemedi (bağlantıyı kontrol edin).' });

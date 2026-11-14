@@ -21,8 +21,11 @@ export async function POST(req: Request) {
   const { error } = await createAdminClient().storage.from(BUCKET)
     .upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false });
   if (error) {
-    const missing = /bucket/i.test(error.message);
-    return NextResponse.json({ error: missing ? 'Fotoğraf deposu henüz kurulmadı (meeting_photos.sql çalıştırılmalı).' : 'Fotoğraf yüklenemedi' }, { status: 500 });
+    console.error('Görüşme fotoğrafı yüklenemedi:', error.message);
+    const missing = /bucket not found/i.test(error.message);
+    return NextResponse.json({
+      error: missing ? 'Fotoğraf deposu henüz kurulmadı (meeting_photos.sql çalıştırılmalı).' : `Fotoğraf yüklenemedi: ${error.message}`,
+    }, { status: 500 });
   }
   return NextResponse.json({ ok: true, path });
 }
