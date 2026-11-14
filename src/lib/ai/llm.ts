@@ -84,6 +84,31 @@ export async function callLlm(req: LlmRequest): Promise<LlmResult> {
   return callGroq(req);
 }
 
+/** Görselden metin (ör. defterdeki el yazısı). Yalnızca Gemini (Groq'un ücretsiz modeli görsel okumaz). */
+export async function readImageText(req: { system: string; prompt: string; imageBase64: string; mimeType: string }): Promise<string> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error('Yazı okuma için yapay zekâ anahtarı (GEMINI_API_KEY) tanımlı değil.');
+  const model = process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || 'gemini-flash-latest';
+  const res = await fetch(GEMINI_URL(model), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: req.system }] },
+      contents: [{ role: 'user', parts: [{ inline_data: { mime_type: req.mimeType, data: req.imageBase64 } }, { text: req.prompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
+    }),
+  });
+  if (!res.ok) {
+    if (res.status === 429) throw new Error('Yapay zekâ kotası doldu, biraz sonra tekrar deneyin.');
+    throw new Error(`Yazı okunamadı (${res.status}).`);
+  }
+  const data = await res.json();
+  const parts: { text?: string; thought?: boolean }[] = data?.candidates?.[0]?.content?.parts ?? [];
+  const text = parts.filter((p) => !p.thought).map((p) => p.text ?? '').join('').trim();
+  if (!text) throw new Error('Fotoğrafta okunabilir yazı bulunamadı.');
+  return text;
+}
+
 /** Model yanıtındaki JSON'u çıkarır (```json bloklarını ve baştaki/sondaki metni temizler) */
 export function parseJsonLoose<T>(content: string): T {
   const cleaned = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();

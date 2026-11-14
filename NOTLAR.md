@@ -20,9 +20,12 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `topic_progress_changes.sql` | Konu ilerleyişinde son değiştiren + koça bildirim | ✅ Çalıştırıldı |
 | `daily_entry_pages.sql` | Günlük girişe sayfa aralığı; koçun girişlerinde "koç girdi" | ✅ Çalıştırıldı |
 | `student_reports.sql` | Haftalık otomatik rapor (pazartesi 08:00) + koçun tarih aralığı raporu | ✅ Çalıştırıldı |
+| `staff_activity.sql` | Ekip kayıtları: bağlı stajyer/personelin değişiklikleri + bildirim (/ekip-kayitlari) | ⏳ Çalıştırılacak |
+| `meeting_photos.sql` | Görüşmeye defter fotoğrafı (kapalı depo) | ⏳ Çalıştırılacak |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
+`staff_activity.sql`, `notifications_grouping.sql`'den **sonra** çalıştırılmalı.
 `staff_programs.sql`, `student_programs.sql`, `student_task_missed.sql` ve `belletmen_gunluk.sql`'den **sonra** çalıştırılmalı.
 
 ---
@@ -138,7 +141,11 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 3. Yarım kalanlar / bilinen eksikler
 
-- **`feed_views.sql` çalıştırılmadı** (video izlenme takibi). Çalıştırılana kadar bu özellikler görünmez ya da "henüz etkin değil" der; mevcut ekranlar bozulmaz.
+- **Defter fotoğrafından yazı okuma** Gemini ile (GEMINI_API_KEY gerekli; isteğe bağlı GEMINI_VISION_MODEL). Fotoğraf yükleme anahtarsız da çalışır.
+- **Sesli dikte** tarayıcının konuşma tanımasıyla (Chrome/Edge/Safari; Firefox'ta düğme görünmez). Ses tarayıcı üreticisinin (Google/Apple) sunucusunda yazıya çevrilir; konuşmacıları ayırmaz.
+- **Silinen görüşmenin fotoğrafları** depoda kalır (yalnızca kayıttan önce kaldırılan fotoğraf hemen silinir).
+
+- **`feed_views.sql`, `staff_activity.sql`, `meeting_photos.sql` çalıştırılmadı** (video izlenme, ekip kayıtları, defter fotoğrafı). Çalıştırılana kadar bu özellikler görünmez ya da "henüz etkin değil" der; mevcut ekranlar bozulmaz.
 - **Ekranda denenmedi:**
   - Bu ve önceki turdaki değişiklikler tip, lint ve derleme kontrolünden geçti; tarayıcıda denenmedi.
   - Video süresi YouTube/Vimeo oynatıcısının mesajlarıyla ölçülüyor; gerçek bir videoda telefonda ve bilgisayarda denenmeli.
@@ -152,7 +159,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 4. Sıradaki adımlar
 
-1. `feed_views.sql` dosyasını çalıştırmak.
+1. `feed_views.sql`, `staff_activity.sql`, `meeting_photos.sql` dosyalarını çalıştırmak.
 2. Telefonda ve bilgisayarda deneme turu:
    - video izleme
    - belletmen programı → koç onayı

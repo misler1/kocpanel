@@ -11,6 +11,7 @@ import {
   draftKey, readDraft, writeDraft, removeDraft, hasText, DURATION_RESUME_MS, type MeetingDraft,
 } from '@/lib/meetingDraft';
 import { SuggestInput } from '@/components/SuggestInput';
+import { MeetingPhotos, MeetingPhotoStrip, appendReadText } from '@/components/meeting/MeetingPhotos';
 
 const HAFTALIK_TAKIP_KURUMU = 'Hüdayi Vakfı Çekmeköy YKS Yurdu';
 const MEETING_SELECT = '*, created_by_profile:created_by(id, full_name)';
@@ -54,6 +55,7 @@ export function GorusmeOgrenciClient({
   const [durationEditedManually, setDurationEditedManually] = useState(false);
   const [topic, setTopic] = useState('');
   const [notes, setNotes] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
   const [haftalikTakipGetirdi, setHaftalikTakipGetirdi] = useState<'evet' | 'hayir' | ''>('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -63,7 +65,7 @@ export function GorusmeOgrenciClient({
   // ── Taslak: yazılanlar tarayıcıya kaydedilir, sayfa kapansa da geri yüklenir ──
   const [draftStorageKey, setDraftStorageKey] = useState<string | null>(null);
   const [restoredDraftAt, setRestoredDraftAt] = useState<number | null>(null);
-  const hasContent = hasText(notes) || topic.trim() !== '' || createdByOtherName.trim() !== '';
+  const hasContent = hasText(notes) || topic.trim() !== '' || createdByOtherName.trim() !== '' || photos.length > 0;
 
   function applyDraft(d: MeetingDraft) {
     setMeetingType(d.meetingType);
@@ -72,6 +74,7 @@ export function GorusmeOgrenciClient({
     if (d.scheduledAt) setScheduledAt(d.scheduledAt);
     setTopic(d.topic ?? '');
     setNotes(d.notes ?? '');
+    setPhotos(d.photos ?? []);
     setHaftalikTakipGetirdi(d.haftalikTakipGetirdi ?? '');
     if (d.durationEditedManually || Date.now() - d.openedAt > DURATION_RESUME_MS) {
       setDuration(d.duration);
@@ -88,11 +91,11 @@ export function GorusmeOgrenciClient({
       if (!hasContent) { removeDraft(draftStorageKey); return; }
       writeDraft(draftStorageKey, {
         v: 1, savedAt: Date.now(), openedAt: formOpenedAt.getTime(), studentId: student.id, meetingType, createdBy,
-        createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi,
+        createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi, photos,
       });
     }, 400);
     return () => clearTimeout(t);
-  }, [draftStorageKey, hasContent, formOpenedAt, student.id, meetingType, createdBy, createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi]);
+  }, [draftStorageKey, hasContent, formOpenedAt, student.id, meetingType, createdBy, createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi, photos]);
 
   // Sayfadan çıkılırken (başka sayfaya geçiş, panel kapanması, sekme kapanması) son yazılanlar da kaydedilir:
   // yukarıdaki 400 ms'lik gecikme beklenmez.
@@ -102,7 +105,7 @@ export function GorusmeOgrenciClient({
       key: draftStorageKey,
       data: hasContent ? {
         v: 1, savedAt: Date.now(), openedAt: formOpenedAt.getTime(), studentId: student.id, meetingType, createdBy,
-        createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi,
+        createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi, photos,
       } : null,
     };
   });
@@ -127,6 +130,7 @@ export function GorusmeOgrenciClient({
     const now = new Date();
     setTopic('');
     setNotes('');
+    setPhotos([]);
     setCreatedByOtherName('');
     setHaftalikTakipGetirdi('');
     setMeetingType('ogrenci');
@@ -244,6 +248,7 @@ export function GorusmeOgrenciClient({
         topic: topic.trim() || null,
         notes: notes.trim() || null,
         haftalik_takip_getirdi: showHaftalikTakip && haftalikTakipGetirdi ? haftalikTakipGetirdi === 'evet' : null,
+        ...(photos.length ? { photos } : {}), // sütun meeting_photos.sql ile gelir; fotoğraf yoksa gönderilmez
       })
       .select(MEETING_SELECT)
       .single();
@@ -369,6 +374,10 @@ export function GorusmeOgrenciClient({
           <div>
             <label className={labelCls}>Notlar</label>
             <NotesEditor value={notes} onChange={setNotes} rows={4} placeholder="Görüşme notları..." />
+            <div className="mt-2">
+              <MeetingPhotos studentId={student.id} photos={photos} onChange={setPhotos}
+                onReadText={(t) => setNotes((n) => appendReadText(n, t))} />
+            </div>
             {draftStorageKey && hasContent && (
               <p className="mt-1 text-[11px] text-[var(--ink-muted)]">Taslak otomatik kaydediliyor; sayfa kapansa da notların kaybolmaz.</p>
             )}
@@ -484,6 +493,7 @@ function MeetingCard({
         notes: editing.notes?.trim() || null,
         duration_minutes: Number(editing.duration_minutes),
         haftalik_takip_getirdi: editing.haftalik_takip_getirdi ?? null,
+        ...((editing.photos?.length || meeting.photos?.length) ? { photos: editing.photos ?? [] } : {}),
       })
       .eq('id', meeting.id)
       .select(MEETING_SELECT)
@@ -548,6 +558,11 @@ function MeetingCard({
               rows={4}
               placeholder="Görüşme notları..."
             />
+            <div className="mt-2">
+              <MeetingPhotos studentId={student.id} photos={editing.photos ?? []} deleteOnRemove={false}
+                onChange={(p) => setEditing((e: any) => ({ ...e, photos: p }))}
+                onReadText={(t) => setEditing((e: any) => ({ ...e, notes: appendReadText(e.notes ?? '', t) }))} />
+            </div>
           </div>
 
           {student.kurum === HAFTALIK_TAKIP_KURUMU && (
@@ -627,6 +642,13 @@ function MeetingCard({
         </div>
       )}
 
+      {meeting.photos?.length > 0 && (
+        <div className="mb-3">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Defter fotoğrafları</p>
+          <MeetingPhotoStrip photos={meeting.photos} />
+        </div>
+      )}
+
       {meeting.haftalik_takip_getirdi !== null && meeting.haftalik_takip_getirdi !== undefined && (
         <div className="mb-3">
           <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Haftalık takip çizelgesi</p>
@@ -636,7 +658,7 @@ function MeetingCard({
         </div>
       )}
 
-      {!meeting.topic && !meeting.notes && (
+      {!meeting.topic && !meeting.notes && !meeting.photos?.length && (
         <p className="mb-3 text-[13px] text-[var(--ink-muted)]">Bu görüşme için konu veya not girilmemiş.</p>
       )}
 

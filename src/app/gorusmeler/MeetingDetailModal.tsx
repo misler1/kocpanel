@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Link from 'next/link';
 import { IconEdit, IconTrash, IconX } from '@tabler/icons-react';
+import { MeetingPhotoStrip } from '@/components/meeting/MeetingPhotos';
 
 export function MeetingDetailModal({
   meeting,
@@ -73,6 +74,13 @@ export function MeetingDetailModal({
           </div>
         )}
 
+        {meeting.photos?.length > 0 && (
+          <div className="mb-3">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Defter fotoğrafları</p>
+            <MeetingPhotoStrip photos={meeting.photos} />
+          </div>
+        )}
+
         {meeting.haftalik_takip_getirdi !== null && meeting.haftalik_takip_getirdi !== undefined && (
           <div className="mb-3">
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Haftalık takip çizelgesi</p>
@@ -82,7 +90,7 @@ export function MeetingDetailModal({
           </div>
         )}
 
-        {!meeting.topic && !meeting.notes && (
+        {!meeting.topic && !meeting.notes && !meeting.photos?.length && (
           <p className="mb-3 text-[13px] text-[var(--ink-muted)]">Bu görüşme için konu veya not girilmemiş.</p>
         )}
 

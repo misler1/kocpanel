@@ -21,6 +21,7 @@ export const SIDEBAR_BG = 'bg-gradient-to-b from-indigo-950 via-violet-950 to-fu
 export function SidebarContent({ studentCount, onNavigate }: { studentCount?: number; onNavigate?: () => void }) {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasTeam, setHasTeam] = useState(false);
   const staffKind = useStaffKind();
 
   useEffect(() => {
@@ -33,6 +34,11 @@ export function SidebarContent({ studentCount, onNavigate }: { studentCount?: nu
         .eq('id', user.id)
         .single();
       setIsAdmin(!!profile?.is_admin);
+      // Kendisine bağlı stajyer koç / yurt personeli var mı? (Ekip kayıtları menüsü için)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { count } = await (supabase as any).from('teacher_access_profiles')
+        .select('teacher_id', { count: 'exact', head: true }).eq('mentor_id', user.id).neq('status', 'coach');
+      setHasTeam((count ?? 0) > 0);
     });
   }, []);
   const { filteredStudentCount } = useExamFilter();
@@ -46,7 +52,7 @@ export function SidebarContent({ studentCount, onNavigate }: { studentCount?: nu
     ...(isAdmin ? [{ items: YONETIM_NAV }] : []),
     { items: HESAP_NAV },
   ].map((g) => {
-    const items = g.items.filter((i) => navAllowed(staffKind, i.href));
+    const items = g.items.filter((i) => navAllowed(staffKind, i.href) && (i.href !== '/ekip-kayitlari' || isAdmin || hasTeam));
     // Bölüm başlığı ilk öğede durur; ilk öğe gizlendiyse başlık bir sonrakine geçer
     if (items.length && !items[0].section && g.items[0]?.section) items[0] = { ...items[0], section: g.items[0].section };
     return { items };

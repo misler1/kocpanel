@@ -12,6 +12,7 @@ import {
   IconClipboardList,
   IconDatabase,
   IconCalendarWeek,
+  IconListDetails,
 } from '@tabler/icons-react';
 
 export interface NavItem {
@@ -35,6 +36,8 @@ export const TAKIP_NAV: NavItem[] = [
   { href: '/konu-ilerleyisi', label: 'Konu ilerleyişi', icon: IconBooks },
   { href: '/denemeler', label: 'Deneme sonuçları', icon: IconChartBar },
   { href: '/anketler', label: 'Anketler', icon: IconClipboardList },
+  // Yalnızca yöneticide ve kendisine stajyer/personel bağlı koçta görünür (Sidebar.tsx)
+  { href: '/ekip-kayitlari', label: 'Ekip kayıtları', icon: IconListDetails },
 ];
 
 export const BAGLANTI_NAV: NavItem[] = [

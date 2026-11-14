@@ -19,6 +19,8 @@ export interface MeetingDraft {
   topic: string;
   notes: string;
   haftalikTakipGetirdi: 'evet' | 'hayir' | '';
+  /** Yüklenmiş defter fotoğrafları (depodaki yollar) */
+  photos?: string[];
 }
 export const draftKey = (userId: string, lockedStudentId: string) => `gorusme-taslak:${userId}:${lockedStudentId || 'genel'}`;
 export function readDraft(key: string): MeetingDraft | null {

@@ -10,6 +10,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { FORM_CARD_CLS, FormSectionTitle, FormActions, formInputCls, formCancelCls, formSubmitCls } from '@/components/ui/FormSection';
 import { Suspense } from 'react';
 import { NotesEditor } from '@/components/NotesEditor';
+import { MeetingPhotos, appendReadText } from '@/components/meeting/MeetingPhotos';
 import {
   draftKey, readDraft, writeDraft, removeDraft, hasText, DURATION_RESUME_MS, type MeetingDraft,
 } from '@/lib/meetingDraft';
@@ -45,6 +46,7 @@ function YeniGorusmeForm() {
   const [topic, setTopic] = useState('');
   const [topicOptions, setTopicOptions] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   // Taslak: anahtar kullanıcı bilgisi gelince belirlenir; geri yükleme bitmeden kayıt yapılmaz
@@ -60,6 +62,7 @@ function YeniGorusmeForm() {
     if (d.scheduledAt) setScheduledAt(d.scheduledAt);
     setTopic(d.topic ?? '');
     setNotes(d.notes ?? '');
+    setPhotos(d.photos ?? []);
     setHaftalikTakipGetirdi(d.haftalikTakipGetirdi ?? '');
     if (d.durationEditedManually || Date.now() - d.openedAt > DURATION_RESUME_MS) {
       setDuration(d.duration);
@@ -70,7 +73,7 @@ function YeniGorusmeForm() {
     setRestoredDraftAt(d.savedAt);
   }
 
-  const hasContent = hasText(notes) || topic.trim() !== '' || createdByOtherName.trim() !== '';
+  const hasContent = hasText(notes) || topic.trim() !== '' || createdByOtherName.trim() !== '' || photos.length > 0;
 
   // Yazıldıkça taslağı kaydet (kısa gecikmeyle)
   useEffect(() => {
@@ -80,11 +83,11 @@ function YeniGorusmeForm() {
       if (!hasContent) { removeDraft(draftStorageKey); return; }
       writeDraft(draftStorageKey, {
         v: 1, savedAt: Date.now(), openedAt: formOpenedAt.getTime(), studentId, meetingType, createdBy,
-        createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi,
+        createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi, photos,
       });
     }, 400);
     return () => clearTimeout(t);
-  }, [draftStorageKey, hasContent, formOpenedAt, studentId, meetingType, createdBy, createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi]);
+  }, [draftStorageKey, hasContent, formOpenedAt, studentId, meetingType, createdBy, createdByOtherName, scheduledAt, duration, durationEditedManually, topic, notes, haftalikTakipGetirdi, photos]);
 
   // Kaydedilmemiş not varken sekme/pencere kapatılırken tarayıcı uyarısı
   useEffect(() => {
@@ -104,6 +107,7 @@ function YeniGorusmeForm() {
     const now = new Date();
     setTopic('');
     setNotes('');
+    setPhotos([]);
     setCreatedByOtherName('');
     setHaftalikTakipGetirdi('');
     setMeetingType('ogrenci');
@@ -252,6 +256,8 @@ useEffect(() => {
       duration_minutes: duration,
       topic: topic.trim() || null,
       notes: notes.trim() || null,
+      // fotoğraflar seçili öğrencinin klasöründe olmalı (öğrenci sonradan değiştirildiyse eskiler alınmaz)
+      ...(photos.some((p) => p.startsWith(`${studentId}/`)) ? { photos: photos.filter((p) => p.startsWith(`${studentId}/`)) } : {}),
       haftalik_takip_getirdi: isTargetKurum && haftalikTakipGetirdi ? haftalikTakipGetirdi === 'evet' : null,
     });
 
@@ -407,6 +413,10 @@ useEffect(() => {
               rows={4}
               placeholder="Görüşme notları..."
             />
+            <div className="mt-2">
+              <MeetingPhotos studentId={studentId} photos={photos.filter((p) => p.startsWith(`${studentId}/`))} onChange={setPhotos}
+                onReadText={(t) => setNotes((n) => appendReadText(n, t))} />
+            </div>
             {draftStorageKey && hasContent && (
               <p className="mt-1 text-[11px] text-gray-400">Taslak otomatik kaydediliyor; sayfa kapansa da notların kaybolmaz.</p>
             )}
