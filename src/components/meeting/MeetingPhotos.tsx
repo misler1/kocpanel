@@ -127,7 +127,11 @@ export function MeetingPhotos({ studentId, photos, onChange, onReadText, deleteO
       .catch(() => null);
     const j = res ? await res.json().catch(() => ({})) : {};
     setReading(null);
-    if (!res?.ok || !j.text) { setMsg({ ok: false, text: j.error ?? 'Yazı okunamadı' }); return; }
+    if (!res?.ok || !j.text) {
+      const st = res?.status;
+      setMsg({ ok: false, text: j.error ?? (st === 504 ? 'Yazı okuma zaman aşımına uğradı; tekrar deneyin.' : `Yazı okunamadı${st ? ` (hata ${st})` : ' (bağlantı hatası)'}.`) });
+      return;
+    }
     onReadText?.(j.text);
     setMsg({ ok: true, text: 'Yazı notlara eklendi. Okunamayan yerler [?] ile işaretli; lütfen kontrol edin.' });
   }

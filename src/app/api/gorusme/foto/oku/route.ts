@@ -4,7 +4,7 @@ import { BUCKET, canSeeStudent, studentOfPath } from '@/lib/meeting-photos';
 import { readImageText } from '@/lib/ai/llm';
 
 // Defter fotoğrafındaki el yazısını metne çevirir (Gemini). Body: { path }. Sonuç görüşme notlarına eklenir; koç kontrol eder.
-export const maxDuration = 60;
+export const maxDuration = 120; // el yazısı okuma uzun sürebilir
 
 const SYSTEM = 'Sen el yazısı okuyan bir yardımcısın. Türkçe yazılmış defter notlarını metne çevirirsin. Yalnızca okuduğun metni yazarsın; yorum, özet ya da açıklama eklemezsin.';
 const PROMPT = `Bu fotoğraf, bir eğitim koçunun öğrenciyle görüşme sırasında deftere el yazısıyla aldığı notlardır.
