@@ -17,7 +17,7 @@ export type LlmRequest = {
 export type LlmResult = { text: string; provider: 'gemini' | 'groq'; model: string };
 
 async function callGemini(req: LlmRequest): Promise<LlmResult> {
-  const key = process.env.GEMINI_API_KEY;
+  const key = process.env.GEMINI_API_KEY?.trim();
   if (!key) throw new Error('GEMINI_API_KEY yok');
   const model = process.env.GEMINI_MODEL || 'gemini-flash-latest';
   const res = await fetch(GEMINI_URL(model), {
@@ -73,20 +73,28 @@ async function callGroq(req: LlmRequest): Promise<LlmResult> {
 
 /** Önce Gemini, olmazsa Groq. Hata mesajları kullanıcıya gösterilebilir. */
 export async function callLlm(req: LlmRequest): Promise<LlmResult> {
+  let geminiError = '';
   if (process.env.GEMINI_API_KEY) {
     try {
       return await callGemini(req);
     } catch (e) {
       console.error('Gemini başarısız, Groq deneniyor:', e);
       if (!process.env.GROQ_API_KEY) throw e;
+      geminiError = e instanceof Error ? e.message.slice(0, 160) : 'bilinmeyen hata';
     }
   }
-  return callGroq(req);
+  try {
+    return await callGroq(req);
+  } catch (e) {
+    // İkisi de olmadıysa Gemini'nin neden olmadığını da göster (sorunu bulmayı kolaylaştırır)
+    if (geminiError && e instanceof Error) throw new Error(`${e.message} (Gemini: ${geminiError})`);
+    throw e;
+  }
 }
 
 /** Görselden metin (ör. defterdeki el yazısı). Yalnızca Gemini (Groq'un ücretsiz modeli görsel okumaz). */
 export async function readImageText(req: { system: string; prompt: string; imageBase64: string; mimeType: string }): Promise<string> {
-  const key = process.env.GEMINI_API_KEY;
+  const key = process.env.GEMINI_API_KEY?.trim();
   if (!key) throw new Error('Yazı okuma için yapay zekâ anahtarı (GEMINI_API_KEY) tanımlı değil.');
   // Yazı okuma için hızlı model, "düşünme" kapalı (düşünen modeller uzun sürüp zaman aşımına uğruyordu).
   // Model bulunamazsa (ad değişmiş olabilir) sıradakini dene. GEMINI_VISION_MODEL ile değiştirilebilir.
