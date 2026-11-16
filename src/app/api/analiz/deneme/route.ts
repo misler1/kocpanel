@@ -2,8 +2,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { analyzeExams, MAX_ANALYSIS_EXAMS, type StudentExamGroup, type StudyInput } from '@/lib/groq/examAnalysis';
 
-// Yapay zekâ yanıtı uzun sürebilir (çok deneme + kazanım tablosu)
-export const maxDuration = 60;
+// Yapay zekâ yanıtı uzun sürebilir (çok deneme + kazanım tablosu); Gemini takılırsa Groq'a geçecek süre kalsın
+export const maxDuration = 300;
 
 type Body = {
   examIds?: string[];

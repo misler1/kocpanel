@@ -23,6 +23,8 @@ async function callGemini(req: LlmRequest): Promise<LlmResult> {
   const res = await fetch(GEMINI_URL(model), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    // Takılırsa Groq'a geçilir (sunucu süresi 300 sn)
+    signal: AbortSignal.timeout(150_000),
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: req.system }] },
       contents: [{ role: 'user', parts: [{ text: req.user }] }],
@@ -55,7 +57,7 @@ async function callGroq(req: LlmRequest): Promise<LlmResult> {
     ...(json ? { response_format: { type: 'json_object' } } : {}),
   });
   const send = (json: boolean) => fetch(GROQ_URL, {
-    method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: body(json),
+    method: 'POST', signal: AbortSignal.timeout(90_000), headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: body(json),
   });
   let res = await send(true);
   if (res.status === 400) res = await send(false); // JSON doğrulaması takılırsa serbest metinle tekrar
@@ -86,6 +88,9 @@ export async function callLlm(req: LlmRequest): Promise<LlmResult> {
   try {
     return await callGroq(req);
   } catch (e) {
+    if (e instanceof Error && (e.name === 'TimeoutError' || e.name === 'AbortError')) {
+      throw new Error('Yapay zekâ zamanında yanıt vermedi. Daha az deneme seçip tekrar deneyin.');
+    }
     // İkisi de olmadıysa Gemini'nin neden olmadığını da göster (sorunu bulmayı kolaylaştırır)
     if (geminiError && e instanceof Error) throw new Error(`${e.message} (Gemini: ${geminiError})`);
     throw e;

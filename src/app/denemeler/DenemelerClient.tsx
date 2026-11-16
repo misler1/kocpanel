@@ -1984,8 +1984,15 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
           includeMeetings,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Analiz başarısız oldu.');
+      // Sunucu süre aşımında JSON yerine düz metin hata sayfası dönebilir
+      const raw = await res.text();
+      let data: any = null;
+      try { data = JSON.parse(raw); } catch { /* JSON değil */ }
+      if (!res.ok || !data) {
+        throw new Error(data?.error ?? (res.status === 504 || !data
+          ? 'Analiz zaman aşımına uğradı. Biraz sonra tekrar deneyin ya da daha az deneme seçin.'
+          : 'Analiz başarısız oldu.'));
+      }
       setAnalysisResult(data.analysis);
       setSaved((data.analysis?.ogrenciler ?? []).some((o: StudentAnalysis) => !!o.analiz_id));
     } catch (err: any) {
