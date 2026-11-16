@@ -22,6 +22,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `student_reports.sql` | Haftalık otomatik rapor (pazartesi 08:00) + koçun tarih aralığı raporu | ✅ Çalıştırıldı |
 | `staff_activity.sql` | Ekip kayıtları: bağlı stajyer/personelin değişiklikleri + bildirim (/ekip-kayitlari) | ✅ Çalıştırıldı |
 | `meeting_photos.sql` | Görüşmeye defter fotoğrafı (kapalı depo) | ✅ Çalıştırıldı |
+| `fix_tyt_geometri_cift.sql` | Tek seferlik: TYT karnelerinde iki kez sayılan geometriyi düzeltir | ⏳ Çalıştırılacak |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.

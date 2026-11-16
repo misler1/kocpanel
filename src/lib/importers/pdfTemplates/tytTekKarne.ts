@@ -11,7 +11,10 @@ const TEK_SUBJECTS: { key: string; re: RegExp; soru: number }[] = [
   { key: 'cografya', re: /^CO[ĞG]RAFYA/, soru: 5 },
   { key: 'felsefe', re: /^FELSEFE/, soru: 5 },
   { key: 'din', re: /^D[İI]N/, soru: 5 },
-  { key: 'matematik', re: /^TYT-?\s*MATEMAT[İI]K/, soru: 40 },
+  // Matematik iki biçimde gelir: (a) ayrı "MATEMATİK 30" + "GEOMETRİ 10" satırları ve bunların toplamı "TYT-MATEMATİK 40";
+  // (b) yalnızca "TYT-MATEMATİK 40" (geometri dahil). Toplam satırı geometriyle birlikte alınırsa geometri iki kez sayılır.
+  { key: 'tytmat', re: /^TYT-?\s*MATEMAT[İI]K/, soru: 40 },
+  { key: 'matematik', re: /^MATEMAT[İI]K/, soru: 30 },
   { key: 'geometri', re: /^GEOMETR[İI]/, soru: 10 },
   { key: 'fizik', re: /^F[İI]Z[İI]K/, soru: 7 },
   { key: 'kimya', re: /^K[İI]MYA/, soru: 7 },
@@ -69,7 +72,7 @@ export const tytTekKarneTemplate: PdfTemplate = {
       // Satır sonlarına güvenmeden: etiketleri bulup her etiketle bir sonraki etiket arasını al
       const up = trUpper(section);
       const labelRe =
-        /(?<![A-ZÇĞİÖŞÜ])(TYT-?\s*T[ÜU]RK[ÇC]E|TAR[İI]H|CO[ĞG]RAFYA|FELSEFE|D[İI]N\s*K[ÜU]LT[ÜU]R[ÜU]|D[İI]N|TYT-?\s*SOSYAL\s*B[İI]L[İI]MLER|TYT-?\s*MATEMAT[İI]K|GEOMETR[İI]|F[İI]Z[İI]K|K[İI]MYA|B[İI]YOLOJ[İI]|TYT-?\s*FEN\s*B[İI]L[İI]MLER[İI]|TOPLAM)/g;
+        /(?<![A-ZÇĞİÖŞÜ])(TYT-?\s*T[ÜU]RK[ÇC]E|TAR[İI]H|CO[ĞG]RAFYA|FELSEFE|D[İI]N\s*K[ÜU]LT[ÜU]R[ÜU]|D[İI]N|TYT-?\s*SOSYAL\s*B[İI]L[İI]MLER|TYT-?\s*MATEMAT[İI]K|MATEMAT[İI]K|GEOMETR[İI]|F[İI]Z[İI]K|K[İI]MYA|B[İI]YOLOJ[İI]|TYT-?\s*FEN\s*B[İI]L[İI]MLER[İI]|TOPLAM)/g;
       const hits = [...up.matchAll(labelRe)];
       hits.forEach((h, i) => {
         const label = h[1];
@@ -82,6 +85,17 @@ export const tytTekKarneTemplate: PdfTemplate = {
         if (row.ort !== null) averages[def.key] = row.ort;
         if (!EXTRA_KEYS.has(def.key)) map[def.key] = { d: row.d, y: row.y };
       });
+      // Matematik toplamı (TYT-MATEMATİK 40): ayrı MATEMATİK satırı varsa yalnızca ortalaması için kullanılır;
+      // yoksa geometri satırı varsa toplamdan geometri çıkarılır, o da yoksa toplamın tamamı matematiktir.
+      const tot = map.tytmat;
+      delete map.tytmat;
+      const totOrt = averages.tytmat;
+      delete averages.tytmat;
+      if (tot && !map.matematik) {
+        const g = map.geometri;
+        map.matematik = g ? { d: Math.max(0, tot.d - g.d), y: Math.max(0, tot.y - g.y) } : tot;
+        if (totOrt !== undefined) averages.matematik = g && averages.geometri !== undefined ? Math.round((totOrt - averages.geometri) * 100) / 100 : totOrt;
+      }
       if (Object.keys(map).length < 3) continue;
 
       const pm = block.match(/PUAN T[ÜU]R[ÜU][\s\S]*?\n?\s*TYT\s*(\d{2,3},\d{2})/);
