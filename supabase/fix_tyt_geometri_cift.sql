@@ -8,14 +8,14 @@
 --  • Konu analizi yoksa: matematik doğru+yanlış 30'u aşıyorsa (30 soruluk matematikte imkânsız).
 -- Düzeltme: matematik = matematik − geometri; toplam net geometri neti kadar düşer; matematik ortalaması da düzeltilir.
 -- Sonuçta düzeltilen kayıtlar listelenir (öğrenci, deneme, eski/yeni matematik, yeni net). Tekrar çalıştırmak zararsızdır
--- (düzeltilmiş kayıt koşulu artık sağlamaz).
+-- (düzeltilmiş kayıt koşulu artık sağlamaz). Boş doğru/yanlış alanları 0 sayılır.
 
 with cand as (
   select e.id,
-    coalesce((e.subject_results->'matematik'->>'dogru')::int, 0) as md,
-    coalesce((e.subject_results->'matematik'->>'yanlis')::int, 0) as my,
-    coalesce((e.subject_results->'geometri'->>'dogru')::int, 0) as gd,
-    coalesce((e.subject_results->'geometri'->>'yanlis')::int, 0) as gy,
+    coalesce(nullif(trim(e.subject_results->'matematik'->>'dogru'), '')::numeric, 0)::int as md,
+    coalesce(nullif(trim(e.subject_results->'matematik'->>'yanlis'), '')::numeric, 0)::int as my,
+    coalesce(nullif(trim(e.subject_results->'geometri'->>'dogru'), '')::numeric, 0)::int as gd,
+    coalesce(nullif(trim(e.subject_results->'geometri'->>'yanlis'), '')::numeric, 0)::int as gy,
     q.qn, q.qd, q.qy
   from exams e
   cross join lateral (
@@ -24,6 +24,7 @@ with cand as (
            count(*) filter (where x->>'r' = 'Y') as qy
     from jsonb_array_elements(case when jsonb_typeof(e.question_results) = 'array' then e.question_results else '[]'::jsonb end) x
     where x->>'s' in ('matematik', 'geometri')
+      and coalesce(x->>'ks', '') <> 'true'   -- kazanım özeti satırları soru sayılmaz
   ) q
   where e.exam_type = 'TYT' and e.subject_results ? 'matematik' and e.subject_results ? 'geometri'
 ),
@@ -40,7 +41,7 @@ update exams e set
     jsonb_build_object('dogru', (w.md - w.gd)::text, 'yanlis', (w.my - w.gy)::text)),
   net_score = round((e.net_score - (w.gd - w.gy / 4.0))::numeric, 2),
   subject_averages = case
-    when e.subject_averages ? 'matematik' and e.subject_averages ? 'geometri'
+    when nullif(trim(e.subject_averages->>'matematik'), '') is not null and nullif(trim(e.subject_averages->>'geometri'), '') is not null
       then jsonb_set(e.subject_averages, '{matematik}',
         to_jsonb(round((e.subject_averages->>'matematik')::numeric - (e.subject_averages->>'geometri')::numeric, 2)))
     else e.subject_averages end
