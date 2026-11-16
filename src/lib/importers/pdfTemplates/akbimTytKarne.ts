@@ -16,15 +16,15 @@ const RESULT_KEYS = ['turkce', 'tarih', 'cografya', 'felsefe', 'din', 'matematik
 function sectionOf(label: string): string | null {
   const u = trUpper(label).replace(/\s+/g, '');
   if (/^T[ÜU]RK[ÇC]E$/.test(u)) return 'turkce';
-  if (/^TAR-?\d$/.test(u)) return 'tarih';
-  if (/^CO[ĞG]-?\d$/.test(u)) return 'cografya';
-  if (/^FEL-?\d$/.test(u)) return 'felsefe';
-  if (/^D[İI]N-?\d$/.test(u)) return 'din';
+  if (/^TAR(-?\d)?$/.test(u)) return 'tarih';
+  if (/^CO[ĞG](-?\d)?$/.test(u)) return 'cografya';
+  if (/^FEL(-?\d)?$/.test(u)) return 'felsefe';
+  if (/^D[İI]N(-?\d)?$/.test(u)) return 'din';
   if (/^T\.?MAT$/.test(u)) return 'matematik';
-  if (/^GEO-?\d$/.test(u)) return 'geometri';
-  if (/^F[İI]Z-?\d$/.test(u)) return 'fizik';
-  if (/^K[İI]M-?\d$/.test(u)) return 'kimya';
-  if (/^B[İI]Y-?\d$/.test(u)) return 'biyoloji';
+  if (/^GEO(-?\d)?$/.test(u)) return 'geometri';
+  if (/^F[İI]Z(-?\d)?$/.test(u)) return 'fizik';
+  if (/^K[İI]M(-?\d)?$/.test(u)) return 'kimya';
+  if (/^B[İI]Y(-?\d)?$/.test(u)) return 'biyoloji';
   return null;
 }
 
