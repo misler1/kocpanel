@@ -54,6 +54,7 @@ function wordScore(a: string, b: string): number {
   const sc = similarity(a, b);
   if (sc >= 0.85) return sc;
   const [sh, lo] = a.length <= b.length ? [a, b] : [b, a];
+  if (sh.length === 1 && lo.length > 1 && lo[0] === sh) return 0.86; // baş harf (M ↔ Mustafa)
   if (sh.length >= 4 && lo.startsWith(sh)) return 0.86;
   if (sh.length >= 3 && consonants(sh) === consonants(lo) && consonants(sh).length >= 3) return 0.86;
   return sc;
