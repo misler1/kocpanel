@@ -1136,13 +1136,14 @@ function StudentSelfAnalysisSection({ exam, card }: { exam: any; card: string })
   const items: { key: string; type: string; note: string }[] = exam.student_analysis?.items ?? [];
   if (items.length === 0) return null;
   const qs: any[] = exam.question_results ?? [];
-  const qMap = new Map(qs.map((q) => [`${q.s}|${q.n}`, q]));
+  const qMap = new Map(qs.filter((q) => !q.ks).map((q) => [`${q.s}|${q.n}`, q]));
   const counts = ERROR_TYPES.map((t) => ({ ...t, n: items.filter((i) => i.type === t.key).length })).filter((t) => t.n > 0);
   const subjects = subjectsFor(exam.exam_type);
   const labelOf = (key: string) =>
     subjects.find((x) => x.key === key)?.label ?? key.charAt(0).toLocaleUpperCase('tr') + key.slice(1);
   const describe = (key: string) => {
     if (key.startsWith('ders:')) return labelOf(key.slice(5));
+    if (key.startsWith('kz:')) { const [s, ...k] = key.slice(3).split('|'); return `${labelOf(s)} · ${k.join('|')}`; }
     const q = qMap.get(key);
     return q ? `${labelOf(q.s)} ${q.n}. soru · ${q.k}` : key;
   };
@@ -1170,8 +1171,12 @@ function StudentSelfAnalysisSection({ exam, card }: { exam: any; card: string })
 }
 
 function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) {
-  const questions: { s: string; n: number; k: string; dc: string; oc: string | null; r: 'D' | 'Y' | 'B' }[] =
-    exam.question_results ?? [];
+  // Karnede kazanım tablosu varsa (ks) kazanım analizi ondan yapılır; soru numarası bilinmediği için çip yerine sayı gösterilir
+  const questions = useMemo(() => {
+    const all: { s: string; n: number; k: string; dc: string; oc: string | null; r: 'D' | 'Y' | 'B'; ks?: boolean }[] =
+      exam.question_results ?? [];
+    return all.some((q) => q.ks) ? all.filter((q) => q.ks) : all;
+  }, [exam.question_results]);
   const subjects = subjectsFor(exam.exam_type);
   const avgs = exam.subject_averages ?? {};
   const ranks = exam.rankings ?? {};
@@ -1483,6 +1488,8 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
                         <div className="divide-y divide-slate-100 bg-white">
                           {Array.from(topics.entries()).map(([topic, qs]) => {
                             const td = qs.filter((q) => q.r === 'D').length;
+                            const ty = qs.filter((q) => q.r === 'Y').length;
+                            const tb = qs.length - td - ty;
                             const pct = Math.round((td / qs.length) * 100);
                             return (
                               <div key={topic} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5">
@@ -1496,7 +1503,13 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
                                   </div>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-1">
-                                  {qs.map((q) => (
+                                  {qs[0]?.ks ? (
+                                    <span className="text-[11.5px] font-semibold text-slate-500">
+                                      {qs.length} soru · <span className="text-emerald-600">{td} D</span>
+                                      {ty > 0 && <> · <span className="text-rose-500">{ty} Y</span></>}
+                                      {tb > 0 && <> · <span className="text-slate-400">{tb} B</span></>}
+                                    </span>
+                                  ) : qs.map((q) => (
                                     <span
                                       key={q.n}
                                       title={`Soru ${q.n}: doğru ${q.dc}, cevap ${q.oc ?? 'boş'}`}

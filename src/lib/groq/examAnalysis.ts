@@ -17,6 +17,8 @@ export interface SubjectResultRaw {
 /** Karnedeki soru satırı (pdfTemplates/types.ts → ExamQuestion) */
 export interface QuestionRow {
   s: string; n: number; k: string; dc: string; oc: string | null; r: "D" | "Y" | "B";
+  /** kazanım özeti satırı: soru numarası bilinmiyor (karnedeki kazanım tablosundan açıldı) */
+  ks?: boolean;
 }
 
 export interface ExamRow {
@@ -141,8 +143,11 @@ export function aggregateKazanim(exams: ExamRow[]) {
   const map = new Map<string, KazanimRow>();
   let withData = 0;
   for (const e of exams) {
-    const qs = Array.isArray(e.question_results) ? e.question_results : [];
+    const all = Array.isArray(e.question_results) ? e.question_results : [];
+    // Karnede kazanım tablosu varsa (ks) kazanımlar ondan sayılır; soru kayıtları yalnızca ders adı taşıyabilir
+    const qs = all.some((q) => q?.ks) ? all.filter((q) => q?.ks) : all;
     if (qs.length) withData++;
+    const notedKz = new Set<string>();
     const penalty = e.exam_type === "LGS" ? 1 / 3 : 1 / 4;
     const notes = new Map((e.student_analysis?.items ?? []).map((i) => [i.key, i]));
     for (const q of qs) {
@@ -155,7 +160,10 @@ export function aggregateKazanim(exams: ExamRow[]) {
       else {
         if (q.r === "Y") { row.yanlis++; row.net -= penalty; } else row.bos++;
         if (!row.denemeler.includes(e.exam_name)) row.denemeler.push(e.exam_name);
-        const n = notes.get(`${q.s}|${q.n}`);
+        // Kazanım özetinde not kazanım başına tutulur (kz:ders|kazanım), bir denemede bir kez sayılır
+        const nk = q.ks ? `kz:${q.s}|${q.k}` : `${q.s}|${q.n}`;
+        const n = q.ks && notedKz.has(nk) ? undefined : notes.get(nk);
+        if (q.ks) notedKz.add(nk);
         if (n?.type) { row.hata = row.hata ?? {}; row.hata[n.type] = (row.hata[n.type] ?? 0) + 1; }
         if (n?.note?.trim()) { row.notlar = row.notlar ?? []; row.notlar.push(n.note.trim().slice(0, 160)); }
       }

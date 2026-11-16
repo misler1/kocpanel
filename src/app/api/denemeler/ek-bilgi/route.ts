@@ -58,6 +58,11 @@ export async function POST(req: NextRequest) {
 
     const patch: Record<string, unknown> = {};
     if (isEmpty(row.question_results) && rec.questions?.length) patch.question_results = rec.questions;
+    else if (Array.isArray(row.question_results) && !row.question_results.some((q: any) => q?.ks)) {
+      // Daha önce soru soru yüklenmiş ama kazanım tablosu okunmamış denemeye kazanım özeti eklenir
+      const ks = (rec.questions ?? []).filter((q) => q.ks);
+      if (ks.length) patch.question_results = [...row.question_results.filter((q: any) => !q?.ks), ...ks];
+    }
     if (isEmpty(row.subject_averages) && rec.averages && Object.keys(rec.averages).length) patch.subject_averages = rec.averages;
     if (rec.rankings && Object.keys(rec.rankings).length) {
       // Var olan sıralamaları bozmadan yalnızca eksik anahtarları (katılımcı sayıları dahil) ekle

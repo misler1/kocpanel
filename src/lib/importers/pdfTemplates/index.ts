@@ -4,12 +4,14 @@ import { tytTekKarneTemplate } from './tytTekKarne';
 import { tytAytBirlesikKarneTemplate } from './tytAytBirlesikKarne';
 import { okulTytNetListesiTemplate } from './okulTytNetListesi';
 import { denemeSonucBelgesiTemplate } from './denemeSonucBelgesi';
+import { akbimTytKarneTemplate } from './akbimTytKarne';
 import type { PdfItem, FillRect } from './items';
 import type { PdfTemplate, PdfParseResult, PdfExamType } from './types';
 
 export type { PdfTemplate, PdfParseResult, PdfExamType } from './types';
 
 const TEMPLATES: PdfTemplate[] = [
+  akbimTytKarneTemplate, // AKBİM "SINAV SONUÇ BELGESİ": kazanım tablosu + Türkiye/il/ilçe/kurum/şube sıraları
   tytAytBirlesikKarneTemplate, // iki sütunlu TYT+AYT karnesi, tek öğrenci karnesinden önce denenmeli
   denemeSonucBelgesiTemplate, // "DENEME SINAVI SONUÇ BELGESİ" (sıralama listesi + karneler, renkli cevap çizelgesi)
   okulTytNetListesiTemplate, // "OKUL TYT NET LİSTESİ" + öğrenci karneleri (Ders / Test tablosu, cevap anahtarı)

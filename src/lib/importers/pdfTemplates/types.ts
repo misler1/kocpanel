@@ -7,6 +7,7 @@ export interface ExamQuestion {
   dc: string;         // doğru cevap
   oc: string | null;  // öğrenci cevabı (boş bıraktıysa null)
   r: 'D' | 'Y' | 'B'; // doğru / yanlış / boş
+  ks?: true;          // kazanım özeti: soru numarası bilinmiyor, yalnızca kazanım bazında sayı (kazanım analizinde kullanılır)
 }
 
 /** Sıralamalar. Anahtarlar PDF'teki sütunlardan gelir: genel, kurum, sube, sinif, il, ilce, osym23… */

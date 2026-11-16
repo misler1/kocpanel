@@ -18,7 +18,25 @@ type Row = { key: string; subject: string; title: string; detail: string; blank:
 
 /** Analiz edilecek satırlar: karnede soru verisi varsa yanlış/boş her soru, yoksa yanlış/boşu olan her ders */
 function buildRows(exam: any): Row[] {
-  const qs: any[] = Array.isArray(exam.question_results) ? exam.question_results : [];
+  const all: any[] = Array.isArray(exam.question_results) ? exam.question_results : [];
+  const qs = all.filter((q) => !q?.ks);
+  const kz = all.filter((q) => q?.ks);
+  if (!qs.length && kz.length) {
+    // Yalnızca kazanım özeti var (soru numarası yok): yanlış/boşu olan her kazanım bir satır
+    const map = new Map<string, { s: string; k: string; y: number; b: number }>();
+    for (const q of kz) {
+      if (q.r !== 'Y' && q.r !== 'B') continue;
+      const key = `kz:${q.s}|${q.k}`;
+      const c = map.get(key) ?? { s: q.s, k: q.k, y: 0, b: 0 };
+      if (q.r === 'Y') c.y++; else c.b++;
+      map.set(key, c);
+    }
+    return Array.from(map.entries()).map(([key, c]) => ({
+      key, subject: label(c.s), title: c.k,
+      detail: [c.y ? `${c.y} yanlış` : '', c.b ? `${c.b} boş` : ''].filter(Boolean).join(', '),
+      blank: c.y === 0,
+    }));
+  }
   if (qs.length) {
     return qs.filter((q) => q?.r === 'Y' || q?.r === 'B').map((q) => ({
       key: `${q.s}|${q.n}`, subject: label(q.s), title: `${q.n}. soru · ${q.k ?? ''}`.trim(),

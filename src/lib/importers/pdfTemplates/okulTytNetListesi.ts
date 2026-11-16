@@ -1,6 +1,7 @@
 import type { PdfTemplate, ExtractedPdfRecord, ExamQuestion, ExamRankings } from './types';
 import { tokenize, clusterRows, type PdfItem, type Row, type Tok } from './items';
 import { trUpper, toResults, type DY } from './shared';
+import { parseKazanimTable, expandKazanim } from './kazanimTablosu';
 
 // ───────────────────────── Şablon: "OKUL TYT NET LİSTESİ" + öğrenci karneleri ─────────────────────────
 // Dosya iki bölümden oluşur:
@@ -10,7 +11,8 @@ import { trUpper, toResults, type DY } from './shared';
 //     - Puan Türü / Puan / Genel Ortalama / Sıralamalar (Sınıf, Kurum, İlçe, İl, Genel) + Katılımlar
 //     - "Ders / Test · Soru · Doğru · Yanlış · Net · Başarı % · Sınıf · Kurum · Genel" tablosu
 //     - Cevap tablosu: soru numaraları, öğrenci cevapları (yanlışlar küçük harf), cevap anahtarı
-//     - 2. sayfa: kazanım bazında S/D/Y özeti (soru numarası verilmediği için soru eşleştirmesinde kullanılmaz)
+//     - 2. sayfa: kazanım bazında S/D/Y özeti. Soru numarası verilmediği için sorulara bağlanamaz;
+//       kazanım özeti kayıtları (ks) olarak eklenir ve kazanım analizinde kullanılır.
 // Karne sayfaları varsa (en zengin veri) onlar okunur; yoksa yalnızca liste sayfaları okunur.
 // pdf-parse'ın düz metni hücreleri bitiştirdiğinden okuma tamamen konum (x, y) bilgisine dayanır.
 
@@ -214,6 +216,21 @@ function parseKarnePage(rows: Row[]): ExtractedPdfRecord | null {
   };
 }
 
+/** Karnenin 2. sayfası: kazanım bazında S/D/Y (iki sütun; her ders başlığında "S D Y B%") */
+function parseKazanimPage(pageItems: PdfItem[]): ExamQuestion[] {
+  const rows = parseKazanimTable(pageItems, (label) => {
+    const k = labelToKey(label);
+    return k === 'sosyal' || k === 'tyt_matematik' || k === 'fen' ? null : k;
+  });
+  // Felsefe (Seçmeli) din kültürü yerine çözülen alternatif test: çözüldüyse din yerine o alınır, çözülmediyse atılır
+  const dy = (key: string) => rows.filter((r) => r.s === key).reduce((a, r) => a + r.d + r.y, 0);
+  const useSec = dy('felsefe_secmeli') > 0 && dy('din') === 0;
+  const kept = rows
+    .filter((r) => (useSec ? r.s !== 'din' : r.s !== 'felsefe_secmeli'))
+    .map((r) => (r.s === 'felsefe_secmeli' ? { ...r, s: 'din' } : r));
+  return expandKazanim(kept);
+}
+
 // ───────────── 2) Okul net listesi (karneler yoksa) ─────────────
 
 const LIST_GROUPS: (SubjectKey | 'toplam')[] = [
@@ -335,7 +352,16 @@ export const okulTytNetListesiTemplate: PdfTemplate = {
     const karne: ExtractedPdfRecord[] = [];
     for (const page of [...byPage.keys()].sort((a, b) => a - b)) {
       const rec = parseKarnePage(clusterRows(byPage.get(page) as Tok[]));
-      if (rec) karne.push(rec);
+      if (!rec) continue;
+      // Sonraki sayfa aynı öğrencinin kazanım sayfasıysa kazanım özetini ekle
+      const next = items.filter((i) => i.page === page + 1);
+      const nextName = clusterRows(byPage.get(page + 1) ?? []).find((r) => r.toks[0]?.s === 'Öğrenci');
+      const sameStudent = nextName && trUpper(nextName.toks.map((t) => t.s).join(' ')).includes(trUpper(rec.rawName));
+      if (sameStudent && !next.some((i) => /^Ders \/ Test/.test(i.str.trim()))) {
+        const kz = parseKazanimPage(next);
+        if (kz.length) rec.questions = [...(rec.questions ?? []), ...kz];
+      }
+      karne.push(rec);
     }
     if (karne.length) return { examName: karne[0].examName ?? null, examDate: null, records: karne };
 
