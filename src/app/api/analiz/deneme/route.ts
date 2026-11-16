@@ -144,11 +144,12 @@ export async function POST(req: Request) {
 
     const analysis = await analyzeExams(groups);
 
-    // Her öğrencinin analizi kaydedilir (öğrenciye göndermek için); tablo yoksa (SQL çalıştırılmadıysa) sessizce geçilir
+    // Her öğrencinin analizi kaydedilir (öğrenciye göndermek için); kaydedilemezse nedeni ekrana iletilir
+    let saveError: string | null = null;
     for (const o of analysis.ogrenciler) {
       const g = groups.find((x) => x.studentId === o.student_id);
       if (!g) continue;
-      const { data: saved } = await (supabase as any).from('exam_analyses').insert({
+      const { data: saved, error: saveErr } = await (supabase as any).from('exam_analyses').insert({
         coach_id: user.id,
         student_id: g.studentId,
         exam_ids: g.exams.map((e) => e.id),
@@ -157,8 +158,13 @@ export async function POST(req: Request) {
         analysis: { ...o, karsilastirma: null, kaynak: analysis.kaynak },
       }).select('id').single();
       if (saved?.id) o.analiz_id = saved.id;
+      else if (saveErr && !saveError) {
+        saveError = /does not exist|schema cache/i.test(saveErr.message)
+          ? 'Analiz kaydedilemedi: analiz tablosu yok (supabase/deneme_analizleri.sql çalıştırılmalı). Öğrenciye gönderme bu yüzden kapalı.'
+          : `Analiz kaydedilemedi (${saveErr.message}). Öğrenciye gönderme bu yüzden kapalı.`;
+      }
     }
-    return Response.json({ analysis });
+    return Response.json({ analysis, saveError });
   } catch (err) {
     console.error('Deneme analiz hatası:', err);
     const message = err instanceof Error ? err.message : 'Analiz başarısız oldu.';

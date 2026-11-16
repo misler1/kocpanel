@@ -138,6 +138,63 @@ const normK = (s: string) => s.toLocaleLowerCase("tr").replace(/[.…]+$/g, "").
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
+const fmtN = (n: number) => String(r2(n)).replace(".", ",");
+
+/**
+ * Bir net dizisinin gidişatını kesin kurallarla etiketler (yapay zekâ bu etiketlere dayanır, kendisi çıkarım yapmaz).
+ * thr: anlamlı fark sayılan net.
+ */
+export function describeSeries(vals: number[], thr: number): string {
+  const n = vals.length;
+  if (n < 2) return "tek deneme";
+  const max = Math.max(...vals), min = Math.min(...vals);
+  const first = vals[0], last = vals[n - 1];
+  if (max - min < thr) return "sabit (belirgin değişim yok)";
+  // Tek seferlik sapma: biri dışında hepsi birbirine yakın
+  if (n >= 3) {
+    for (let i = 0; i < n; i++) {
+      const others = vals.filter((_, j) => j !== i);
+      if (Math.max(...others) - Math.min(...others) >= thr) continue;
+      if (Math.min(...others) - vals[i] >= thr) return `sabit seyir, yalnızca ${i + 1}. denemede tek seferlik düşüş`;
+      if (vals[i] - Math.max(...others) >= thr) return `sabit seyir, yalnızca ${i + 1}. denemede tek seferlik yükseliş`;
+    }
+  }
+  const tags: string[] = [];
+  const steps = vals.slice(1).map((v, i) => v - vals[i]);
+  if (n >= 3 && vals[n - 1] < vals[n - 2] && vals[n - 2] < vals[n - 3] && vals[n - 3] - last >= thr) tags.push("son iki denemede üst üste düşüş");
+  else if (n >= 3 && vals[n - 1] > vals[n - 2] && vals[n - 2] > vals[n - 3] && last - vals[n - 3] >= thr) tags.push("son iki denemede üst üste artış");
+  else if (last - first >= thr && last >= max - thr / 2 && steps.every((d) => d > -thr)) tags.push("artış eğilimi");
+  else if (first - last >= thr && last <= min + thr / 2 && steps.every((d) => d < thr)) tags.push("düşüş eğilimi");
+  else tags.push(`dalgalı (${fmtN(min)} ile ${fmtN(max)} arası)`);
+  if (n >= 3 && last === min) tags.push("son deneme en düşük");
+  if (n >= 3 && last === max) tags.push("son deneme en yüksek");
+  return tags.join(", ");
+}
+
+/** Sınav türü başına toplam ve ders netlerinin denemeden denemeye gidişatı (eskiden yeniye) */
+export function netTrendLines(exams: ExamRow[]): string[] {
+  const out: string[] = [];
+  const types = Array.from(new Set(exams.map((e) => e.exam_type)));
+  for (const t of types) {
+    const ex = exams.filter((e) => e.exam_type === t);
+    if (ex.length < 2) continue;
+    const defs = t === "TYT" ? TYT_SUBJECTS : t === "AYT" ? AYT_SUBJECTS : t === "LGS" ? LGS_SUBJECTS : [];
+    const totalQ = t === "TYT" ? 120 : t === "AYT" ? 160 : 90;
+    const totals = ex.map((e) => Number(String(e.net_score).replace(",", ".")) || 0);
+    out.push(`    ${t} toplam net: ${totals.map(fmtN).join(" → ")} — ${describeSeries(totals, Math.max(2, totalQ * 0.025))}`);
+    const nets = ex.map((e) => subjectNets(e.subject_results, t));
+    const keys = Array.from(new Set(nets.flatMap((x) => Object.keys(x))));
+    for (const k of keys) {
+      const vals = nets.map((x) => x[k]?.net);
+      if (vals.filter((v) => v != null).length < 2) continue;
+      const v = vals.map((x) => x ?? 0);
+      const q = defs.find((d) => d.key === k)?.total ?? 10;
+      out.push(`    ${t} ${subjectLabel(k)}: ${v.map(fmtN).join(" → ")} — ${describeSeries(v, Math.max(1, q * 0.06))}`);
+    }
+  }
+  return out;
+}
+
 /** Seçilen denemelerdeki soruları kazanım bazında toplar (aynı kazanım farklı denemelerde birleşir) */
 export function aggregateKazanim(exams: ExamRow[]) {
   const map = new Map<string, KazanimRow>();
@@ -237,6 +294,10 @@ function formatGroup(g: StudentExamGroup, compact: boolean) {
   const firstExam = g.exams[0]?.exam_date ?? "";
 
   const examsTxt = g.exams.map(formatExam).join("\n");
+  const trendLines = netTrendLines(g.exams);
+  const trendTxt = trendLines.length
+    ? `\n\n  NET GİDİŞATI (kodda hesaplandı, eskiden yeniye; trend ve ders yorumlarını YALNIZCA buna dayandır):\n${trendLines.join("\n")}`
+    : "";
   const cand = withData === 0
     ? "\n\n  KAZANIM VERİSİ YOK (yalnızca ders netleri). cikarilacak boş dizi olsun."
     : `\n\n  ADAY KONULAR (kodda belirlendi: en az 2 soru, başarı %75 ve altı; numarayla an):\n` +
@@ -253,7 +314,7 @@ function formatGroup(g: StudentExamGroup, compact: boolean) {
     ? `\n\n  ÖĞRENCİNİN KENDİ ANALİZİ (yanlış/boş sorulara verdiği hata türleri): ${err.list.map((e) => `${e.etiket} ${e.adet}`).join(", ")}` +
       (err.notes.length && !compact ? `\n  Notları:\n${err.notes.slice(0, 20).map((n) => `    - ${n}`).join("\n")}` : "")
     : "";
-  return `ÖĞRENCİ: ${g.studentName}\n  DENEMELER (eskiden yeniye):\n${examsTxt}${cand}${meetings}${studies}${errTxt}`;
+  return `ÖĞRENCİ: ${g.studentName}\n  DENEMELER (eskiden yeniye):\n${examsTxt}${trendTxt}${cand}${meetings}${studies}${errTxt}`;
 }
 
 function systemPrompt(multi: boolean) {
@@ -271,6 +332,13 @@ function systemPrompt(multi: boolean) {
     okuma: soru kökünün altını çizerek okuma, olumsuz ifadeleri işaretleme, paragrafta önce soruyu okuma;
     işlem: işlemi kâğıda düzenli yazma, sağlama yapma; süre: turlama tekniği, süreli deneme pratiği). Yoksa boş dizi.
 3) genel_yorum: 2-3 cümle. trend: 1-2 cümle (tek denemede "Tek deneme, trend belirlenemedi").
+   GİDİŞAT KURALLARI (kesin):
+   - Gidişatı PUANA göre değil NETLERE göre yorumla; "NET GİDİŞATI" satırlarındaki etiketleri kullan ve onlarla çelişme.
+   - "Dalgalanma/dalgalı" sözünü yalnızca etiket "dalgalı" ise kullan. "Sabit" ya da "tek seferlik düşüş" ise öyle söyle
+     (ör. "netler 35-36 bandında sabit, 3. denemede tek seferlik düşüş var; artış olmaması dikkat edilmesi gereken nokta").
+   - Son denemelerde düşen bir dersi ("son iki denemede üst üste düşüş", "düşüş eğilimi", "son deneme en düşük")
+     asla "güçlü" ya da "iyi gidiyor" diye niteleme; bu düşüşü açıkça belirt.
+   - Bir ders ancak neti artıyorsa ya da yüksek seviyede sabitse güçlü sayılabilir.
 4) calisma_plani: 3-5 kısa, uygulanabilir madde.
 5) ogrenciye_mesaj: öğrenciye "sen" diye, 2-3 cümle, dürüst ama cesaretlendirici. Görüşme notlarındaki özel bilgileri buraya taşıma.
 6) capraz_degerlendirme: görüşme notu varsa 2-3 cümle (öğrenciye gösterilmez), yoksa null.

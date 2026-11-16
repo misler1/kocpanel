@@ -1962,9 +1962,18 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ExamAnalysisResult | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [shared, setShared] = useState<Record<string, 'busy' | 'ok' | string>>({});
 
   // Analizi öğrencinin paneline gönderir (öğrenciye bildirim gider)
+  // Yalnızca yapay zekâ analizini yazdır (karşılaştırma tabloları ve grafikler basılmaz)
+  function printAnalysisOnly() {
+    document.body.classList.add('print-ai-only');
+    const done = () => { document.body.classList.remove('print-ai-only'); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    window.print();
+  }
+
   async function shareToStudent(analizId: string) {
     setShared((p) => ({ ...p, [analizId]: 'busy' }));
     const { error } = await (createClient() as any).rpc('share_exam_analysis', { p_id: analizId });
@@ -1994,6 +2003,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
           : 'Analiz başarısız oldu.'));
       }
       setAnalysisResult(data.analysis);
+      setSaveError(data.saveError ?? null);
       setSaved((data.analysis?.ogrenciler ?? []).some((o: StudentAnalysis) => !!o.analiz_id));
     } catch (err: any) {
       setAnalysisError(err.message ?? 'Bir hata oluştu.');
@@ -2030,6 +2040,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
             }
             .compare-print-root .no-print { display: none !important; }
             .compare-print-root .print-avoid { break-inside: avoid; page-break-inside: avoid; }
+            body.print-ai-only .compare-print-root *:not(:has(.ai-print)):not(.ai-print):not(.ai-print *) { display: none !important; }
           }
         `}</style>
 
@@ -2129,7 +2140,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
           )}
 
           {analysisResult && (
-            <div>
+            <div className="ai-print">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <IconSparkles size={19} className="text-blue-600" />
@@ -2140,11 +2151,18 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
                     </span>
                   )}
                 </div>
-                <button onClick={() => setAnalysisResult(null)} className="no-print text-[12px] text-gray-400 hover:text-gray-600">
-                  Temizle
-                </button>
+                <div className="no-print flex items-center gap-2">
+                  <button type="button" onClick={printAnalysisOnly}
+                    className="flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-[12px] font-medium text-gray-700 hover:bg-gray-50">
+                    <IconPrinter size={14} /> Analizi yazdır / PDF
+                  </button>
+                  <button onClick={() => setAnalysisResult(null)} className="text-[12px] text-gray-400 hover:text-gray-600">
+                    Temizle
+                  </button>
+                </div>
               </div>
 
+              {saveError && <p className="no-print mb-2 rounded-lg bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800">{saveError}</p>}
               <div className="space-y-3">
                 <div className={`grid gap-3 ${analysisResult.ogrenciler.length > 1 ? 'lg:grid-cols-2 print:grid-cols-2' : ''}`}>
                   {analysisResult.ogrenciler.map((o, i) => {

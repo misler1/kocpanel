@@ -42,18 +42,25 @@ function Card({ title, children, tone = 'border-gray-100 bg-white' }: { title?: 
   );
 }
 
+const fmt = (n: number) => (Math.round(n * 100) / 100).toLocaleString('tr-TR');
+const netOf = (r: { net?: number; dogru: number; yanlis: number }) => r.net ?? r.dogru - r.yanlis / 4;
+
 function TopicList({ rows, tone }: { rows: KazanimRow[]; tone: 'rose' | 'amber' }) {
   if (rows.length === 0) return <p className="text-[12px] text-gray-400">—</p>;
   const chip = tone === 'rose' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800';
   return (
-    <ul className="space-y-1">
+    <ul className="space-y-1.5">
       {rows.map((r, i) => (
-        <li key={i} className="flex items-start justify-between gap-2 text-[12.5px]">
-          <span className="min-w-0 text-gray-800">{r.kazanim}</span>
-          <span className="flex flex-shrink-0 items-center gap-1">
-            <span className="text-[10.5px] text-gray-400">{r.soru} soru</span>
-            <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${chip}`}>%{r.basari}</span>
-          </span>
+        <li key={i} className="text-[12.5px]">
+          <div className="flex items-start justify-between gap-2">
+            <span className="min-w-0 text-gray-800">{r.kazanim}</span>
+            <span className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold ${chip}`} title="Net ÷ soru sayısı">
+              {fmt(netOf(r))} / {r.soru} net
+            </span>
+          </div>
+          <div className="text-[11px] text-gray-500">
+            {r.soru} soru: <span className="text-emerald-600">{r.dogru} doğru</span> · <span className="text-rose-600">{r.yanlis} yanlış</span> · {r.bos} boş
+          </div>
         </li>
       ))}
     </ul>
@@ -90,21 +97,30 @@ export function AnalysisView({ a, audience = 'coach', showName = true }: { a: St
         <div className="space-y-2.5">
           <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
             <h3 className="text-[15px] font-bold text-gray-900">Çalışılacak konular</h3>
-            <span className="text-[11px] text-gray-400">En az {MIN_SORU} soru gelen kazanımlar · %{SECOND_MAX} üstü listeye girmez</span>
+            <span className="text-[11px] text-gray-400">En az {MIN_SORU} soru gelen kazanımlar · başarısı %{SECOND_MAX} üstü olanlar listeye girmez</span>
           </div>
+          <p className="px-1 text-[11.5px] leading-relaxed text-gray-500">
+            Sayılar seçilen denemelerin toplamıdır. Başarı = net ÷ soru sayısı; 4 yanlış 1 doğruyu götürdüğü için yanlışı çok olan konuda net eksiye düşebilir.
+          </p>
           {dersler.map((d) => (
             <div key={d.ders} className="print-avoid overflow-hidden rounded-2xl border border-gray-100 bg-white">
               <div className="flex items-center justify-between gap-2 bg-violet-50 px-4 py-2">
                 <span className="text-[13.5px] font-bold text-violet-900">{d.ders}</span>
-                {d.basari !== null && <span className="text-[12px] font-semibold text-violet-700">ders başarısı %{d.basari}</span>}
+                {d.basari !== null && (
+                  <span className="text-right text-[12px] font-semibold text-violet-700">
+                    {d.soru != null
+                      ? <>{d.soru} soru · {d.dogru}D {d.yanlis}Y {d.bos}B · net {fmt(d.net ?? 0)} <span className="font-normal text-violet-500">(başarı %{d.basari})</span></>
+                      : <>başarı %{d.basari} <span className="font-normal text-violet-500">(net ÷ soru)</span></>}
+                  </span>
+                )}
               </div>
               <div className="grid gap-3 p-3.5 sm:grid-cols-2">
                 <div>
-                  <div className="mb-1.5 text-[11.5px] font-bold uppercase tracking-wide text-rose-600">🔴 Öncelikli · %0–{PRIORITY_BELOW - 1}</div>
+                  <div className="mb-1.5 text-[11.5px] font-bold uppercase tracking-wide text-rose-600">🔴 Öncelikli · başarı %{PRIORITY_BELOW} altı</div>
                   <TopicList rows={d.oncelikli as KazanimRow[]} tone="rose" />
                 </div>
                 <div className="sm:border-l sm:border-gray-100 sm:pl-3">
-                  <div className="mb-1.5 text-[11.5px] font-bold uppercase tracking-wide text-amber-600">🟠 İkinci öncelik · %{PRIORITY_BELOW}–{SECOND_MAX}</div>
+                  <div className="mb-1.5 text-[11.5px] font-bold uppercase tracking-wide text-amber-600">🟠 İkinci öncelik · başarı %{PRIORITY_BELOW}–{SECOND_MAX}</div>
                   <TopicList rows={d.ikinci as KazanimRow[]} tone="amber" />
                 </div>
               </div>
@@ -181,7 +197,7 @@ export function AnalysisView({ a, audience = 'coach', showName = true }: { a: St
                   {table.tum!.filter((r) => r.ders === ders).map((r, i) => (
                     <li key={i} className="flex justify-between gap-2 text-[12px] text-gray-700">
                       <span className="min-w-0">{r.kazanim}</span>
-                      <span className="flex-shrink-0 text-gray-500">{r.soru} soru · {r.dogru}D {r.yanlis}Y {r.bos}B · %{r.basari}</span>
+                      <span className="flex-shrink-0 text-gray-500">{r.soru} soru · {r.dogru}D {r.yanlis}Y {r.bos}B · net {fmt(netOf(r))}</span>
                     </li>
                   ))}
                 </ul>

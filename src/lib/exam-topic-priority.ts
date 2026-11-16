@@ -17,7 +17,9 @@ export type TopicRow = {
 
 export type DersKonulari = {
   ders: string;
-  basari: number | null; // dersin kazanım verisinden başarısı
+  basari: number | null; // dersin kazanım verisinden başarısı (net ÷ soru)
+  /** Seçilen denemelerin toplamı (eski kayıtlarda yok) */
+  soru?: number; dogru?: number; yanlis?: number; bos?: number; net?: number;
   oncelikli: TopicRow[];
   ikinci: TopicRow[];
   /** Listeye alınmayanlar (neden ile): yapay zekâ görüşme/günlük/öğrenci notuna dayanarak çıkardı ya da hepsi dikkat hatası */
@@ -50,17 +52,21 @@ export function candidateTopics<T extends TopicRow>(rows: T[]): T[] {
  */
 export function classifyTopics(rows: TopicRow[], excluded: Map<string, string> = new Map()): DersKonulari[] {
   const byDers = new Map<string, DersKonulari>();
-  const dersAgg = new Map<string, { soru: number; net: number }>();
+  const dersAgg = new Map<string, { soru: number; net: number; dogru: number; yanlis: number; bos: number }>();
   for (const r of rows) {
-    const a = dersAgg.get(r.ders) ?? { soru: 0, net: 0 };
-    a.soru += r.soru; a.net += r.net ?? r.dogru;
+    const a = dersAgg.get(r.ders) ?? { soru: 0, net: 0, dogru: 0, yanlis: 0, bos: 0 };
+    a.soru += r.soru; a.net += r.net ?? r.dogru; a.dogru += r.dogru; a.yanlis += r.yanlis; a.bos += r.bos;
     dersAgg.set(r.ders, a);
   }
   const get = (ders: string) => {
     let d = byDers.get(ders);
     if (!d) {
       const a = dersAgg.get(ders);
-      d = { ders, basari: a && a.soru ? Math.round((a.net / a.soru) * 100) : null, oncelikli: [], ikinci: [], cikarilan: [] };
+      d = {
+        ders, basari: a && a.soru ? Math.round((a.net / a.soru) * 100) : null,
+        ...(a ? { soru: a.soru, dogru: a.dogru, yanlis: a.yanlis, bos: a.bos, net: Math.round(a.net * 100) / 100 } : {}),
+        oncelikli: [], ikinci: [], cikarilan: [],
+      };
       byDers.set(ders, d);
     }
     return d;
