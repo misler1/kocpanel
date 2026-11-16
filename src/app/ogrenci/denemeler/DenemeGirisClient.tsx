@@ -19,8 +19,8 @@ const init = (t: ExamType): ResultMap => Object.fromEntries(SUBJECTS[t].map((s) 
 const fmt = (n: number) => n.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
 const num = (v: string | undefined) => Number(v) || 0;
 
-const field = 'w-full rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] px-3 py-2.5 text-[15px] font-bold text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none';
-const small = 'w-full rounded-xl border-2 border-[var(--border)] bg-white px-1 py-2 text-center text-[15px] font-bold text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none';
+const field = 'block w-full min-w-0 max-w-full rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] px-3 py-2.5 text-[15px] font-bold text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none';
+const small = 'min-w-0 rounded-xl border-2 border-[var(--border)] bg-white px-1 py-2 text-center text-[15px] font-bold text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none';
 
 /** Öğrencinin kendi deneme sonucunu girdiği / düzelttiği form. exam verilirse düzenleme. */
 export function DenemeGirisClient({ studentId, track, exam }: { studentId: string; track: string | null; exam?: any }) {
@@ -88,7 +88,7 @@ export function DenemeGirisClient({ studentId, track, exam }: { studentId: strin
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4 pb-24">
+    <form onSubmit={submit} className="min-w-0 max-w-full space-y-4 pb-24">
       <div className="flex items-center gap-2">
         <Link href="/ogrenci/denemeler" className="rounded-full p-2 text-[var(--ink-muted)] hover:bg-[var(--card)]"><IconArrowLeft size={20} /></Link>
         <div>
@@ -112,7 +112,7 @@ export function DenemeGirisClient({ studentId, track, exam }: { studentId: strin
         </label>
         <label className="block">
           <span className="mb-1 block text-[13px] font-bold text-[var(--ink-muted)]">Tarih</span>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${field} appearance-none`} />
         </label>
       </div>
 
