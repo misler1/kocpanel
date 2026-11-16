@@ -48,6 +48,17 @@ export interface MatchResult {
   alternatives: { id: string; full_name: string; score: number }[];
 }
 
+// İki kelimenin benzerliği: kesik yazım (KAHRA ↔ Kahraman) ve sesli harfsiz kısaltma (YLMZ ↔ Yılmaz) da eşleşir
+const consonants = (w: string) => w.replace(/[aeiou]/g, '');
+function wordScore(a: string, b: string): number {
+  const sc = similarity(a, b);
+  if (sc >= 0.85) return sc;
+  const [sh, lo] = a.length <= b.length ? [a, b] : [b, a];
+  if (sh.length >= 4 && lo.startsWith(sh)) return 0.86;
+  if (sh.length >= 3 && consonants(sh) === consonants(lo) && consonants(sh).length >= 3) return 0.86;
+  return sc;
+}
+
 // Kelime bazında benzerlik: kısa adın her kelimesi uzun adda (farklı bir kelimeyle) bulunuyorsa
 // iki isimli öğrencinin sistemde tek ismiyle kayıtlı olması (Yusuf Kahraman ↔ YUSUF SELİM KAHRAMAN) yüksek puan alır.
 function tokenScore(a: string, b: string): number {
@@ -61,7 +72,7 @@ function tokenScore(a: string, b: string): number {
   const used = new Set<number>();
   for (const w of short) {
     let bi = -1, bs = 0;
-    long.forEach((l, i) => { if (used.has(i)) return; const sc = similarity(w, l); if (sc > bs) { bs = sc; bi = i; } });
+    long.forEach((l, i) => { if (used.has(i)) return; const sc = wordScore(w, l); if (sc > bs) { bs = sc; bi = i; } });
     if (bs < 0.85) return 0;
     used.add(bi);
   }
