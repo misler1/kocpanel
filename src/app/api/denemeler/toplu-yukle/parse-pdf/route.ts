@@ -6,6 +6,7 @@ import { qDiag } from '@/lib/importers/pdfTemplates/questionsFromItems';
 import { dsDiag } from '@/lib/importers/pdfTemplates/denemeSonucBelgesi';
 import { readPdfTexts } from '@/lib/importers/readPdfTexts';
 import { matchStudentName } from '@/lib/matching/matchStudent';
+import { getUploadCandidates } from '@/lib/matching/uploadCandidates';
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -41,10 +42,8 @@ export async function POST(req: NextRequest) {
   const { result, templateId, examType } = parsedPdf;
   if (qDiag.info) console.log('[parse-pdf] kazanım teşhis:', qDiag.info);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: students } = await (supabase as any)
-    .from('students').select('id, full_name')
-    .eq('coach_id', user.id).neq('status', 'pasif');
+  // Kendi öğrencileri + stajyerlerinin öğrencileri (stajyer öğrencileri de eşleşebilsin)
+  const students = await getUploadCandidates(supabase, user.id);
 
   const preview = result.records.map((r, i) => ({
     rowIndex: i,
@@ -67,7 +66,7 @@ export async function POST(req: NextRequest) {
     examType,
     examName: result.examName,
     examDate: result.examDate,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    students: (students ?? []).map((s: any) => ({ id: s.id, full_name: s.full_name })),
+     
+    students: students,
   });
 }

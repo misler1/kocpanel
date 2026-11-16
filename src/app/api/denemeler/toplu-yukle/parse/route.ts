@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { parseExcelBuffer, type ExcelColumnMapping } from '@/lib/importers/parseExamExcel';
 import { matchStudentName } from '@/lib/matching/matchStudent';
+import { getUploadCandidates } from '@/lib/matching/uploadCandidates';
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -22,10 +23,8 @@ export async function POST(req: NextRequest) {
   const manualMapping: ExcelColumnMapping | undefined = manualMappingRaw ? JSON.parse(manualMappingRaw) : undefined;
   const { headers, rows, mapping } = parseExcelBuffer(buffer, examType, manualMapping);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: students } = await (supabase as any)
-    .from('students').select('id, full_name')
-    .eq('coach_id', user.id).neq('status', 'pasif');
+  // Kendi öğrencileri + stajyerlerinin öğrencileri (stajyer öğrencileri de eşleşebilsin)
+  const students = await getUploadCandidates(supabase, user.id);
 
    const preview = rows.map((r) => {
     const match = matchStudentName(r.rawName, students ?? []);
@@ -36,7 +35,7 @@ export async function POST(req: NextRequest) {
     headers,
     mapping,
     preview,
-    students: (students ?? []).map((s: any) => ({ id: s.id, full_name: s.full_name })),
+    students: students,
   });
   
 }

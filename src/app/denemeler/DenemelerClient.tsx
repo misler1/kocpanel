@@ -162,7 +162,7 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
   // Ek bilgi PDF'inde otomatik eşleşmeyen adlar: kullanıcı sistemdeki öğrenciyi seçer
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfUnmatched, setPdfUnmatched] = useState<{ rawName: string; suggestId: string | null }[]>([]);
-  const [pdfFree, setPdfFree] = useState<{ id: string; full_name: string }[]>([]);
+  const [pdfFree, setPdfFree] = useState<{ id: string; full_name: string; inExam: boolean }[]>([]);
   const [pdfChoice, setPdfChoice] = useState<Record<string, string>>({});
   const [groupError, setGroupError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -340,13 +340,16 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
       try { data = raw ? JSON.parse(raw) : null; } catch { /* JSON değil */ }
       if (!res.ok || !data) throw new Error(data?.error ?? `Sunucu hatası (HTTP ${res.status})`);
       const patchMap = new Map<string, any>((data.patches ?? []).map((p: any) => [p.id, p.patch]));
-      setExams((prev) => prev.map((e) => (patchMap.has(e.id) ? { ...e, ...patchMap.get(e.id) } : e)));
+      const created: any[] = data.created ?? [];
+      setExams((prev) => [...created, ...prev.map((e) => (patchMap.has(e.id) ? { ...e, ...patchMap.get(e.id) } : e))]);
+      // yeni kayıtlar da bu denemenin grubuna girer (sonraki yüklemede güncellenebilsin)
+      if (created.length) setRenameTarget((t) => (t ? { ...t, ids: [...t.ids, ...created.map((c) => c.id)] } : t));
       const parts = [`${data.updated} öğrencinin eksik bilgileri eklendi`];
+      if (created.length) parts.push(`${created.length} öğrenciye deneme kaydı eklendi`);
       if (data.alreadyComplete) parts.push(`${data.alreadyComplete} öğrencide zaten tamdı`);
       const um: { rawName: string; suggestId: string | null }[] = data.unmatched ?? [];
-      const free: { id: string; full_name: string }[] = data.free ?? [];
-      if (um.length && !free.length) parts.push(`Bu denemede kaydı olmayan: ${um.map((u) => u.rawName).join(', ')}`);
-      else if (um.length) parts.push(`${um.length} ad eşleşmedi; aşağıdan öğrenciyi seçin`);
+      const free: { id: string; full_name: string; inExam: boolean }[] = data.options ?? [];
+      if (um.length) parts.push(`${um.length} ad eşleşmedi; aşağıdan öğrenciyi seçin`);
       setPdfMsg({ ok: true, text: parts.join(' · ') });
       setPdfUnmatched(free.length ? um : []);
       setPdfFree(free);
@@ -611,7 +614,8 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
               {pdfUnmatched.length > 0 && pdfFile && (
                 <div className="mt-2 rounded-lg bg-white p-2 ring-1 ring-amber-200">
                   <div className="mb-1.5 text-[11.5px] font-medium text-amber-800">
-                    Eşleşmeyen adlar — sistemdeki öğrenciyi seçin (bu denemede kaydı olmayanları boş bırakın)
+                    Eşleşmeyen adlar — sistemdeki öğrenciyi seçin. Bu denemede kaydı olmayan öğrenci seçilirse PDF&apos;teki
+                    sonuçlarla deneme kaydı eklenir; tanımadıklarınızı boş bırakın.
                   </div>
                   <div className="max-h-56 space-y-1 overflow-y-auto">
                     {pdfUnmatched.map((u) => {
@@ -629,9 +633,18 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
                             className="min-w-0 flex-1 rounded-md border border-gray-300 px-1.5 py-1 text-[12px]"
                           >
                             <option value="">— eşleştirme —</option>
-                            {pdfFree.filter((f) => !takenByOthers.has(f.id)).map((f) => (
-                              <option key={f.id} value={f.id}>{f.full_name}</option>
-                            ))}
+                            {pdfFree.some((f) => f.inExam && !takenByOthers.has(f.id)) && (
+                              <optgroup label="Bu denemede kaydı olan">
+                                {pdfFree.filter((f) => f.inExam && !takenByOthers.has(f.id)).map((f) => (
+                                  <option key={f.id} value={f.id}>{f.full_name}</option>
+                                ))}
+                              </optgroup>
+                            )}
+                            <optgroup label="Diğer öğrenciler (deneme kaydı eklenir)">
+                              {pdfFree.filter((f) => !f.inExam && !takenByOthers.has(f.id)).map((f) => (
+                                <option key={f.id} value={f.id}>{f.full_name}</option>
+                              ))}
+                            </optgroup>
                           </select>
                         </div>
                       );

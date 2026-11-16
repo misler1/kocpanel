@@ -7,6 +7,7 @@ import { tytSiraliListeTemplate } from '@/lib/importers/pdfTemplates/tytSiraliLi
 import { konuAnalizliSinavSonucuTemplate } from '@/lib/importers/pdfTemplates/konuAnalizliSinavSonucu';
 import type { PdfParseResult } from '@/lib/importers/pdfTemplates';
 import { matchStudentName } from '@/lib/matching/matchStudent';
+import { getUploadCandidates } from '@/lib/matching/uploadCandidates';
 
 // Geçici teşhis için; sorun çözülünce kaldırılabilir
 const TEMPLATE_PROBE = [tytSiraliListeTemplate, tytTekKarneTemplate, konuAnalizliSinavSonucuTemplate];
@@ -66,10 +67,8 @@ export async function POST(req: NextRequest) {
     }, { status: 422 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: students } = await (supabase as any)
-    .from('students').select('id, full_name')
-    .eq('coach_id', user.id).neq('status', 'pasif');
+  // Kendi öğrencileri + stajyerlerinin öğrencileri (stajyer öğrencileri de eşleşebilsin)
+  const students = await getUploadCandidates(supabase, user.id);
 
   const preview = records.map((r, i) => {
     const match = matchStudentName(r.rawName, students ?? []);
@@ -82,7 +81,7 @@ export async function POST(req: NextRequest) {
     examDate,
     templateId,
     examType,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    students: (students ?? []).map((s: any) => ({ id: s.id, full_name: s.full_name })),
+     
+    students: students,
   });
 }
