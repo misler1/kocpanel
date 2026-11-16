@@ -17,6 +17,9 @@ export async function POST(req: NextRequest) {
   const file = form.get('file') as File | null;
   let examIds: string[] = [];
   try { examIds = JSON.parse(String(form.get('examIds') ?? '[]')); } catch { /* boş */ }
+  // Elle eşleştirme: PDF'teki ad → öğrenci id (otomatik eşleşmeyenler için kullanıcı seçer)
+  let manual: Record<string, string> = {};
+  try { manual = JSON.parse(String(form.get('manual') ?? '{}')) ?? {}; } catch { /* boş */ }
   if (!file || !examIds.length) return NextResponse.json({ error: 'Dosya veya deneme eksik' }, { status: 400 });
 
   const parsedText = await readPdfTexts(Buffer.from(await file.arrayBuffer()));
@@ -45,16 +48,22 @@ export async function POST(req: NextRequest) {
   const isEmpty = (v: any) => v == null || (Array.isArray(v) ? v.length === 0 : typeof v === 'object' && Object.keys(v).length === 0);
 
   const updates: { id: string; patch: Record<string, unknown> }[] = [];
-  const unmatched: string[] = [];
+  const unmatched: { rawName: string; suggestId: string | null }[] = [];
+  const matchedStudents = new Set<string>();
   let alreadyComplete = 0;
 
   for (const rec of parsed.result.records) {
-    const m = matchStudentName(rec.rawName, candidates);
-    if (!m.studentId || m.isAmbiguous) { unmatched.push(rec.rawName); continue; }
+    const manualId = manual[rec.rawName];
+    const m = manualId && candidates.some((c) => c.id === manualId)
+      ? { studentId: manualId, isAmbiguous: false, score: 1, alternatives: [] as { id: string; score: number }[] }
+      : matchStudentName(rec.rawName, candidates);
+    const suggestId = m.alternatives?.[0] && m.alternatives[0].score >= 0.6 ? m.alternatives[0].id : null;
+    if (!m.studentId || m.isAmbiguous) { unmatched.push({ rawName: rec.rawName, suggestId }); continue; }
     // Bir PDF'te hem TYT hem AYT varsa, kaydı sınav türü eşleşen denemeye uygula
     const recType = rec.examType ?? parsed.examType;
     const row = (exams ?? []).find((e: any) => e.student_id === m.studentId && e.exam_type === recType);
-    if (!row) { unmatched.push(rec.rawName); continue; }
+    if (!row) { unmatched.push({ rawName: rec.rawName, suggestId: null }); continue; }
+    matchedStudents.add(m.studentId);
 
     const patch: Record<string, unknown> = {};
     if (isEmpty(row.question_results) && rec.questions?.length) patch.question_results = rec.questions;
@@ -93,6 +102,8 @@ export async function POST(req: NextRequest) {
     updated: updates.length,
     alreadyComplete,
     unmatched,
+    // bu denemede kaydı olup PDF'te hiçbir adla eşleşmeyen öğrenciler (elle eşleştirme seçenekleri)
+    free: candidates.filter((c) => !matchedStudents.has(c.id)).sort((a, b) => a.full_name.localeCompare(b.full_name, 'tr')),
     patches: updates, // ekran, değişen alanları yerel olarak günceller
     pdfExamName: parsed.result.examName ?? parsed.result.records[0]?.examName ?? null,
   });

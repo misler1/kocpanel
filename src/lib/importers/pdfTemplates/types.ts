@@ -8,6 +8,7 @@ export interface ExamQuestion {
   oc: string | null;  // öğrenci cevabı (boş bıraktıysa null)
   r: 'D' | 'Y' | 'B'; // doğru / yanlış / boş
   ks?: true;          // kazanım özeti: soru numarası bilinmiyor, yalnızca kazanım bazında sayı (kazanım analizinde kullanılır)
+  u?: true;          // kazanım özeti: karne yanlış/boş ayrımını vermiyor, Y/B dağılımı ders toplamından tahmini (kaçırılan sayısı kesin)
 }
 
 /** Sıralamalar. Anahtarlar PDF'teki sütunlardan gelir: genel, kurum, sube, sinif, il, ilce, osym23… */

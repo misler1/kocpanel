@@ -8,6 +8,9 @@ import { trDateToIso, trUpper, toResults, type DY } from './shared';
 //   - ADI SOYADI · SINIF · OKUL NO · OKUL · KİTAPÇIK · SINAV TARİHİ
 //   - TYT PUANI · TOPLAM NET · DOĞRU·YANLIŞ·BOŞ, SIRALAMA tablosu (KAPSAM · SIRA · KATILIM · DİLİM)
 //   - DERS SONUÇLARI yalnızca 4 test düzeyinde: Türkçe, Sosyal Bilimler, Matematik, Fen Bilimleri
+//   - 2. sayfa KAZANIM ANALİZİ: "en zayıf N kazanım" — kazanım · doğru/soru (yanlış/boş ayrımı yok). Türkçe ve Sosyal
+//     genelde tam listelenir, Matematik/Fen kısmen. Listelenmeyen sorular ders adıyla tek satırda toplanır; yanlış/boş
+//     ayrımı ders toplamından dağıtılır (u: tahmini). Tutarsız test kazanım özetine alınmaz.
 //   - CEVAP ÇİZELGESİ: her soru için bir kutu. Doğru/yanlış/boş bilgisi YALNIZCA kutu rengindedir
 //     (yeşil doğru · kırmızı yanlış · gri boş); kutudaki harf doğru cevaptır.
 // Sosyal ve Fen testleri, uygulamadaki ders anahtarlarına (tarih, coğrafya, … fizik, kimya, biyoloji)
@@ -77,7 +80,9 @@ const RANK_KEYS: [RegExp, string][] = [
   [/^GENEL$|^T[ÜU]RK[İI]YE$/, 'genel'],
 ];
 
-function parseKarne(rows: Row[], rects: FillRect[]): ExtractedPdfRecord | null {
+type TestSum = { soru: number; d: number; y: number; b: number; ort: number | null };
+
+function parseKarne(rows: Row[], rects: FillRect[]): { rec: ExtractedPdfRecord; tests: Record<string, TestSum> } | null {
   const txt = (r: Row) => r.toks.map((t) => t.s).join(' ');
   const find = (re: RegExp, from = 0) => rows.findIndex((r, i) => i >= from && re.test(txt(r)));
 
@@ -134,7 +139,7 @@ function parseKarne(rows: Row[], rects: FillRect[]): ExtractedPdfRecord | null {
   const di = find(/^DERS SORU D Y B NET\b/);
   const ci = find(/\bCEVAP Ç[İI]ZELGES[İI]/);
   if (di < 0 || ci < 0) return fail(`ders tablosu/çizelge yok (${di},${ci})`);
-  const tests: Record<string, { soru: number; d: number; y: number; b: number; ort: number | null }> = {};
+  const tests: Record<string, TestSum> = {};
   for (let i = di + 1; i < ci; i++) {
     const r = rows[i].toks.filter((t) => t.x < 530);
     const ni = r.findIndex((t) => num(t.s) !== null);
@@ -196,7 +201,7 @@ function parseKarne(rows: Row[], rects: FillRect[]): ExtractedPdfRecord | null {
   const avgKey = { TUR: 'turkce', SOS: 'sosyal', MAT: 'matematik', FEN: 'fen' } as const;
   for (const [id, t] of Object.entries(tests)) if (t.ort !== null) averages[avgKey[id as keyof typeof avgKey]] = t.ort;
 
-  return {
+  const rec: ExtractedPdfRecord = {
     rawName,
     examName,
     examDate,
@@ -207,7 +212,131 @@ function parseKarne(rows: Row[], rects: FillRect[]): ExtractedPdfRecord | null {
     ...(Object.keys(averages).length ? { averages } : {}),
     ...(Object.keys(rankings).length ? { rankings } : {}),
   };
+  return { rec, tests };
 }
+
+// ── 2. sayfa: KAZANIM ANALİZİ ──
+const SOS_RULES: [RegExp, string][] = [
+  [/[İI]slamiyet öncesi|Selçuklu|Osmanlı|Kuva|Mill[îi] Mücadele|Cumhuriyet|Atatürk|[İI]nkılap|Beylik|Haçlı|Mezopotamya|Göktürk|Uygur|devlet/i, 'tarih'],
+  [/[İI]slam|Allah|Hz\.|Kur.?an|ibadet|ayet|hadis|peygamber|vahiy|ahiret|tevhid|[İI]nanç/i, 'din'],
+  [/felsef|filozof|akıl yürüt|düşünme/i, 'felsefe'],
+  [/iklim|tektonik|nüfus|afet|bölge|harita|yeryüzü|dünya.?nın|kayaç|toprak|bitki örtüsü|göç|yerleşme|ekonomik faaliyet|ulaşım|doğal/i, 'cografya'],
+];
+const FEN_RULES: [RegExp, string][] = [
+  [/hücre|canlı|kalıtım|ekosistem|sınıflandırma|biyoloji|mitoz|mayoz|enzim|protein|karbonhidrat|vitamin|nükleik|üreme|organel/i, 'biyoloji'],
+  [/atom|periyodik|kimya|asit|baz|tuz|karışım|mol|element|bileşik|tepkime|etkileşim/i, 'kimya'],
+  [/kuvvet|hareket|enerji|elektrik|ışık|dalga|basınç|ısı|sıcaklık|madde ve özellik|optik|manyetizma|fizik|kaldırma|akışkan/i, 'fizik'],
+];
+type TestId = 'TUR' | 'SOS' | 'MAT' | 'FEN';
+const keyFor = (test: TestId, k: string): string | null => {
+  if (test === 'TUR') return 'turkce';
+  if (test === 'MAT') return 'matematik';
+  if (test === 'SOS') return SOS_RULES.find(([re]) => re.test(k))?.[1] ?? 'tarih';
+  return FEN_RULES.find(([re]) => re.test(k))?.[1] ?? null;
+};
+
+type KzRow = { test: TestId; s: string; k: string; soru: number; d: number };
+
+/** Kazanım analizi sayfası: iki sütun; her satır "kazanım … d/soru"; uzun kazanım adları iki satıra kayar */
+function parseKazanimSayfasi(toks: Tok[]): KzRow[] {
+  const rows = clusterRows(toks, 1.5);
+  const ti = rows.findIndex((r) => r.toks.some((t) => t.s === 'KAZANIM') && r.toks.some((t) => /^ANAL[İI]Z[İI]$/.test(trUpper(t.s))));
+  if (ti < 0) return [];
+  const top = rows[ti].y;
+  const bi = rows.findIndex((r) => r.y < top && r.toks.some((t) => /^KIYASI$/.test(trUpper(t.s))));
+  const bottom = bi >= 0 ? rows[bi].y : -Infinity;
+  const band = toks.filter((t) => t.y < top - 2 && t.y > bottom + 2);
+
+  // Sütunlar: "d/soru" bölü işaretlerinin x'i (iki sütun arası geniş)
+  const slashX = band.filter((t) => t.s === '/' || /^\d+\/\d+$/.test(t.s)).map((t) => t.x).sort((a, b) => a - b);
+  const cols: number[] = [];
+  for (const x of slashX) if (!cols.length || x - cols[cols.length - 1] > 100) cols.push(x);
+
+  type Line = { y: number; label: string; num: { d: number; n: number } | null; sec: TestId | 'H' | null; parts: string[] };
+  const out: KzRow[] = [];
+  let cur: TestId | null = null; // bir ders bölümü sonraki sütunda sürebilir
+  cols.forEach((sx, ci) => {
+    const left = ci === 0 ? -Infinity : cols[ci - 1] + 40;
+    const lines: Line[] = clusterRows(band.filter((t) => t.x > left && t.x < sx + 40), 1.5).map((r) => {
+      const label = r.toks.filter((t) => t.x < sx - 10).map((t) => t.s).join(' ').replace(/\s+/g, ' ').trim();
+      const m = r.toks.filter((t) => t.x >= sx - 10 && t.x <= sx + 10).map((t) => t.s).join('').match(/^(\d+)\/(\d+)$/);
+      return { y: r.y, label, num: m ? { d: +m[1], n: +m[2] } : null, sec: null, parts: [] };
+    });
+    for (const l of lines) {
+      const t = !l.num && l.label ? testOf(l.label) : null;
+      if (t) { cur = t; l.sec = 'H'; continue; }
+      l.sec = cur;
+    }
+    const nums = lines.filter((l) => l.num && l.sec && l.sec !== 'H');
+    for (const l of lines) {
+      if (!l.label || !l.sec || l.sec === 'H') continue;
+      let best: Line | null = null;
+      for (const n of nums) if (n.sec === l.sec && Math.abs(n.y - l.y) <= 7 && (!best || Math.abs(n.y - l.y) < Math.abs(best.y - l.y))) best = n;
+      best?.parts.push(l.label);
+    }
+    for (const n of nums) {
+      const k = n.parts.join(' ').replace(/\s+/g, ' ').trim();
+      const test = n.sec as TestId;
+      const s = keyFor(test, k);
+      // okunamayan satır: o test kazanım özetine alınmaz
+      if (!k || !n.num || n.num.n <= 0 || n.num.d > n.num.n || !s) { out.push({ test, s: '', k, soru: -1, d: 0 }); continue; }
+      out.push({ test, s, k, soru: n.num.n, d: n.num.d });
+    }
+  });
+  return out;
+}
+
+const KEY_LABEL: Record<string, string> = {
+  turkce: 'Türkçe', matematik: 'Matematik', tarih: 'Tarih', cografya: 'Coğrafya', felsefe: 'Felsefe', din: 'Din Kültürü',
+  fizik: 'Fizik', kimya: 'Kimya', biyoloji: 'Biyoloji',
+};
+
+/** Kazanım satırlarını soru kayıtlarına açar (ks). Listelenmeyen sorular ders adıyla tek satırda toplanır. */
+function kazanimSorulari(kz: KzRow[], tests: Record<string, TestSum>, perQ: ExamQuestion[]): ExamQuestion[] {
+  const out: ExamQuestion[] = [];
+  const counter = new Map<string, number>();
+  for (const [id, tst] of Object.entries(tests)) {
+    const listed = kz.filter((r) => r.test === id);
+    if (!listed.length || listed.some((r) => r.soru < 0)) continue;
+    const sum = listed.reduce((a, r) => a + r.soru, 0);
+    const sumD = listed.reduce((a, r) => a + r.d, 0);
+    if (sum > tst.soru || sumD > tst.d) continue;
+    const rows = listed.map((r) => ({ s: r.s, k: r.k, soru: r.soru, d: r.d }));
+    if (sum < tst.soru) {
+      // Listelenmeyen kazanımlar: ders anahtarı başına kalan soru ve doğru (soru soru sonuçlardan)
+      const keys = [...new Set((sectionsFor(id as TestId, tst.soru) ?? []).map((x) => x.key))];
+      let ok = true;
+      const rest: typeof rows = [];
+      for (const key of keys) {
+        const qn = perQ.filter((q) => q.s === key).length;
+        const qd = perQ.filter((q) => q.s === key && q.r === 'D').length;
+        const ln = rows.filter((r) => r.s === key).reduce((a, r) => a + r.soru, 0);
+        const ld = rows.filter((r) => r.s === key).reduce((a, r) => a + r.d, 0);
+        if (ln > qn || ld > qd || qd - ld > qn - ln) { ok = false; break; }
+        if (qn > ln) rest.push({ s: key, k: KEY_LABEL[key] ?? key, soru: qn - ln, d: qd - ld });
+      }
+      if (!ok || rest.reduce((a, r) => a + r.soru, 0) + sum !== tst.soru) continue;
+      rows.push(...rest);
+    }
+    // Yanlış/boş ayrımı yok: testin yanlış sayısı en çok kaçırılan kazanımlardan başlayarak dağıtılır
+    const uncertain = tst.y > 0 && tst.b > 0;
+    let yLeft = tst.y;
+    const ys = new Map<number, number>();
+    rows.map((r, i) => ({ i, miss: r.soru - r.d })).sort((a, b) => b.miss - a.miss || a.i - b.i)
+      .forEach((o) => { const y = Math.min(o.miss, yLeft); ys.set(o.i, y); yLeft -= y; });
+    rows.forEach((r, i) => {
+      const y = ys.get(i) ?? 0;
+      for (let j = 0; j < r.soru; j++) {
+        const n = (counter.get(r.s) ?? 0) + 1;
+        counter.set(r.s, n);
+        const res: Mark = j < r.d ? 'D' : j < r.d + y ? 'Y' : 'B';
+        out.push({ s: r.s, n, k: r.k, dc: '', oc: null, r: res, ks: true, ...(uncertain && res !== 'D' ? { u: true as const } : {}) });
+      }
+    });
+  }
+  return out;
+}
+
 
 /** Sıralama listesindeki 3 ondalıklı puanlar (karnede 2 ondalık yazılıyor): ad → puan */
 function listPuanlari(items: PdfItem[]): Map<string, number> {
@@ -247,8 +376,18 @@ export const denemeSonucBelgesiTemplate: PdfTemplate = {
     for (const page of [...byPage.keys()].sort((a, b) => a - b)) {
       const pr = rectsByPage.get(page);
       if (!pr) continue;
-      const rec = parseKarne(clusterRows(byPage.get(page) as Tok[]), pr);
-      if (!rec) continue;
+      const res = parseKarne(clusterRows(byPage.get(page) as Tok[]), pr);
+      if (!res) continue;
+      const { rec, tests } = res;
+      // Sonraki sayfa aynı öğrencinin kazanım analizi ise kazanım özeti eklenir
+      const next = byPage.get(page + 1);
+      if (next && rec.questions?.length) {
+        const head = clusterRows(next)[0]?.toks.map((t) => t.s).join(' ').trim();
+        if (head && trUpper(head) === trUpper(rec.rawName)) {
+          const ks = kazanimSorulari(parseKazanimSayfasi(next), tests, rec.questions);
+          if (ks.length) rec.questions = [...rec.questions, ...ks];
+        }
+      }
       const lp = puanlar.get(trUpper(rec.rawName));
       if (lp !== undefined && (rec.puan === undefined || Math.abs(lp - rec.puan) < 0.011)) rec.puan = lp;
       records.push(rec);

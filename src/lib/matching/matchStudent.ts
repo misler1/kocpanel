@@ -48,11 +48,43 @@ export interface MatchResult {
   alternatives: { id: string; full_name: string; score: number }[];
 }
 
+// Kelime bazında benzerlik: kısa adın her kelimesi uzun adda (farklı bir kelimeyle) bulunuyorsa
+// iki isimli öğrencinin sistemde tek ismiyle kayıtlı olması (Yusuf Kahraman ↔ YUSUF SELİM KAHRAMAN) yüksek puan alır.
+function tokenScore(a: string, b: string): number {
+  const ta = a.split(' ').filter(Boolean);
+  const tb = b.split(' ').filter(Boolean);
+  if (!ta.length || !tb.length) return 0;
+  // Bitişik yazılmış ad (EMİRHANAKTUG ↔ Emirhan Aktuğ)
+  if ((ta.length === 1) !== (tb.length === 1) && similarity(ta.join(''), tb.join('')) >= 0.9) return 0.9;
+  const [short, long] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+  if (short.length < 2) return 0; // tek kelimelik ad: aşağıda adaylar arasında tekliğe bakılır
+  const used = new Set<number>();
+  for (const w of short) {
+    let bi = -1, bs = 0;
+    long.forEach((l, i) => { if (used.has(i)) return; const sc = similarity(w, l); if (sc > bs) { bs = sc; bi = i; } });
+    if (bs < 0.85) return 0;
+    used.add(bi);
+  }
+  // soyadlar da eşleşiyorsa daha güvenilir
+  return similarity(short[short.length - 1], long[long.length - 1]) >= 0.85 ? 0.93 : 0.88;
+}
+
 // Bir isim için öğrenci listesinden en iyi eşleşmeyi bulur
 export function matchStudentName(rawName: string, students: StudentCandidate[]): MatchResult {
   const target = normalizeTrName(rawName);
+  const words = target.split(' ').filter(Boolean);
+  // Tek kelimelik ad (ör. yalnızca soyadı ya da adı yazılmış): adaylardan yalnızca birinde bu kelime varsa önerilir
+  const single = words.length === 1
+    ? students.filter((s) => normalizeTrName(s.full_name).split(' ').includes(words[0]))
+    : [];
   const scored = students
-    .map((s) => ({ ...s, score: similarity(target, normalizeTrName(s.full_name)) }))
+    .map((s) => {
+      const n = normalizeTrName(s.full_name);
+      let score = Math.max(similarity(target, n), tokenScore(target, n));
+      if (single.length === 1 && single[0].id === s.id) score = Math.max(score, 0.86);
+      else if (single.length > 1 && single.some((x) => x.id === s.id)) score = Math.max(score, 0.65);
+      return { ...s, score };
+    })
     .sort((a, b) => b.score - a.score);
 
   const best = scored[0];

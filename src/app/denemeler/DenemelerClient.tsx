@@ -159,6 +159,11 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
   const [questionExam, setQuestionExam] = useState<any | null>(null); // kazanım (konu) analizi penceresi
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfMsg, setPdfMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // Ek bilgi PDF'inde otomatik eşleşmeyen adlar: kullanıcı sistemdeki öğrenciyi seçer
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfUnmatched, setPdfUnmatched] = useState<{ rawName: string; suggestId: string | null }[]>([]);
+  const [pdfFree, setPdfFree] = useState<{ id: string; full_name: string }[]>([]);
+  const [pdfChoice, setPdfChoice] = useState<Record<string, string>>({});
   const [groupError, setGroupError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
@@ -319,14 +324,16 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
     setGroupBusy(false);
   }
   // Eksik bilgileri (kazanım, ortalama, sıralama) karne PDF'inden ekle
-  async function handleAddInfoPdf(file: File) {
+  async function handleAddInfoPdf(file: File, manual: Record<string, string> = {}) {
     if (!renameTarget) return;
     setPdfBusy(true);
     setPdfMsg(null);
+    setPdfFile(file);
     try {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('examIds', JSON.stringify(renameTarget.ids));
+      fd.append('manual', JSON.stringify(manual));
       const res = await fetch('/api/denemeler/ek-bilgi', { method: 'POST', body: fd });
       const raw = await res.text();
       let data: any = null;
@@ -336,8 +343,18 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
       setExams((prev) => prev.map((e) => (patchMap.has(e.id) ? { ...e, ...patchMap.get(e.id) } : e)));
       const parts = [`${data.updated} öğrencinin eksik bilgileri eklendi`];
       if (data.alreadyComplete) parts.push(`${data.alreadyComplete} öğrencide zaten tamdı`);
-      if (data.unmatched?.length) parts.push(`Eşleşmeyen: ${data.unmatched.join(', ')}`);
+      const um: { rawName: string; suggestId: string | null }[] = data.unmatched ?? [];
+      const free: { id: string; full_name: string }[] = data.free ?? [];
+      if (um.length && !free.length) parts.push(`Bu denemede kaydı olmayan: ${um.map((u) => u.rawName).join(', ')}`);
+      else if (um.length) parts.push(`${um.length} ad eşleşmedi; aşağıdan öğrenciyi seçin`);
       setPdfMsg({ ok: true, text: parts.join(' · ') });
+      setPdfUnmatched(free.length ? um : []);
+      setPdfFree(free);
+      // öneri varsa ön seçili gelir (aynı öğrenci iki ada önerilmez)
+      const pre: Record<string, string> = {};
+      const used = new Set<string>();
+      for (const u of um) if (u.suggestId && free.some((f) => f.id === u.suggestId) && !used.has(u.suggestId)) { pre[u.rawName] = u.suggestId; used.add(u.suggestId); }
+      setPdfChoice(pre);
     } catch (err: any) {
       setPdfMsg({ ok: false, text: err.message ?? 'Yüklenemedi.' });
     } finally {
@@ -496,7 +513,7 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
               key={g.key}
               variant={singleStudent ? 'student' : 'exam'}
               onShowQuestions={setQuestionExam}
-              onRenameRequest={(grp) => { setGroupError(null); setPdfMsg(null); setRenameTarget({ ids: grp.rows.map((r: any) => r.id), name: grp.examName, newName: grp.examName, examType: grp.examType }); }}
+              onRenameRequest={(grp) => { setGroupError(null); setPdfMsg(null); setPdfUnmatched([]); setPdfFile(null); setRenameTarget({ ids: grp.rows.map((r: any) => r.id), name: grp.examName, newName: grp.examName, examType: grp.examType }); }}
               onDeleteGroupRequest={(grp) => { setGroupError(null); setDeleteGroupTarget({ ids: grp.rows.map((r: any) => r.id), name: grp.examName, examType: grp.examType }); }}
               group={g}
               isOpen={isGroupOpen(g.key, idx)}
@@ -591,6 +608,45 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
                 />
               </label>
               {pdfMsg && <p className={`mt-2 text-[12px] ${pdfMsg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{pdfMsg.text}</p>}
+              {pdfUnmatched.length > 0 && pdfFile && (
+                <div className="mt-2 rounded-lg bg-white p-2 ring-1 ring-amber-200">
+                  <div className="mb-1.5 text-[11.5px] font-medium text-amber-800">
+                    Eşleşmeyen adlar — sistemdeki öğrenciyi seçin (bu denemede kaydı olmayanları boş bırakın)
+                  </div>
+                  <div className="max-h-56 space-y-1 overflow-y-auto">
+                    {pdfUnmatched.map((u) => {
+                      const takenByOthers = new Set(Object.entries(pdfChoice).filter(([n]) => n !== u.rawName).map(([, id]) => id));
+                      return (
+                        <div key={u.rawName} className="flex items-center gap-2 text-[12px]">
+                          <span className="w-2/5 truncate text-gray-700" title={u.rawName}>{u.rawName}</span>
+                          <select
+                            value={pdfChoice[u.rawName] ?? ''}
+                            onChange={(ev) => setPdfChoice((prev) => {
+                              const next = { ...prev };
+                              if (ev.target.value) next[u.rawName] = ev.target.value; else delete next[u.rawName];
+                              return next;
+                            })}
+                            className="min-w-0 flex-1 rounded-md border border-gray-300 px-1.5 py-1 text-[12px]"
+                          >
+                            <option value="">— eşleştirme —</option>
+                            {pdfFree.filter((f) => !takenByOthers.has(f.id)).map((f) => (
+                              <option key={f.id} value={f.id}>{f.full_name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={pdfBusy || Object.keys(pdfChoice).length === 0}
+                    onClick={() => pdfFile && handleAddInfoPdf(pdfFile, pdfChoice)}
+                    className="mt-2 rounded-lg bg-amber-500 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+                  >
+                    Seçilenleri eşleştir ve ekle
+                  </button>
+                </div>
+              )}
             </div>
             {groupError && <p className="mt-2 text-[13px] text-red-600">{groupError}</p>}
             <div className="mt-5 flex gap-3">
@@ -1173,9 +1229,11 @@ function StudentSelfAnalysisSection({ exam, card }: { exam: any; card: string })
 function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) {
   // Karnede kazanım tablosu varsa (ks) kazanım analizi ondan yapılır; soru numarası bilinmediği için çip yerine sayı gösterilir
   const questions = useMemo(() => {
-    const all: { s: string; n: number; k: string; dc: string; oc: string | null; r: 'D' | 'Y' | 'B'; ks?: boolean }[] =
+    const all: { s: string; n: number; k: string; dc: string; oc: string | null; r: 'D' | 'Y' | 'B'; ks?: boolean; u?: boolean }[] =
       exam.question_results ?? [];
-    return all.some((q) => q.ks) ? all.filter((q) => q.ks) : all;
+    // ders bazında: kazanım özeti olan derste özet, olmayanda soru soru kayıtlar
+    const ksSubj = new Set(all.filter((q) => q.ks).map((q) => q.s));
+    return all.filter((q) => q.ks || !ksSubj.has(q.s));
   }, [exam.question_results]);
   const subjects = subjectsFor(exam.exam_type);
   const avgs = exam.subject_averages ?? {};
@@ -1221,13 +1279,14 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
   }, [questions]);
 
   const weak = useMemo(() => {
-    const map = new Map<string, { s: string; k: string; total: number; y: number; b: number }>();
+    const map = new Map<string, { s: string; k: string; total: number; y: number; b: number; u: boolean }>();
     questions.forEach((q) => {
       const key = `${q.s}|${q.k}`;
-      const cur = map.get(key) ?? { s: q.s, k: q.k, total: 0, y: 0, b: 0 };
+      const cur = map.get(key) ?? { s: q.s, k: q.k, total: 0, y: 0, b: 0, u: false };
       cur.total++;
       if (q.r === 'Y') cur.y++;
       if (q.r === 'B') cur.b++;
+      if (q.u) cur.u = true;
       map.set(key, cur);
     });
     return Array.from(map.values())
@@ -1453,8 +1512,14 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
                           {t.k}
                         </span>
                         <span className="flex flex-shrink-0 gap-1 whitespace-nowrap text-[11px] font-semibold">
-                          {t.y > 0 && <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-rose-600">{t.y} Y</span>}
-                          {t.b > 0 && <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-slate-500">{t.b} B</span>}
+                          {t.u ? (
+                            <span title="Karne yanlış/boş ayrımını vermiyor" className="rounded-full bg-rose-100 px-1.5 py-0.5 text-rose-600">{t.y + t.b} kaçırılan</span>
+                          ) : (
+                            <>
+                              {t.y > 0 && <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-rose-600">{t.y} Y</span>}
+                              {t.b > 0 && <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-slate-500">{t.b} B</span>}
+                            </>
+                          )}
                         </span>
                       </div>
                     ))}
@@ -1506,8 +1571,14 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
                                   {qs[0]?.ks ? (
                                     <span className="text-[11.5px] font-semibold text-slate-500">
                                       {qs.length} soru · <span className="text-emerald-600">{td} D</span>
-                                      {ty > 0 && <> · <span className="text-rose-500">{ty} Y</span></>}
-                                      {tb > 0 && <> · <span className="text-slate-400">{tb} B</span></>}
+                                      {qs.some((q) => q.u) ? (
+                                        ty + tb > 0 && <> · <span className="text-rose-500" title="Karne yanlış/boş ayrımını vermiyor">{ty + tb} kaçırılan</span></>
+                                      ) : (
+                                        <>
+                                          {ty > 0 && <> · <span className="text-rose-500">{ty} Y</span></>}
+                                          {tb > 0 && <> · <span className="text-slate-400">{tb} B</span></>}
+                                        </>
+                                      )}
                                     </span>
                                   ) : qs.map((q) => (
                                     <span

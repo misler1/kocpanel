@@ -144,8 +144,9 @@ export function aggregateKazanim(exams: ExamRow[]) {
   let withData = 0;
   for (const e of exams) {
     const all = Array.isArray(e.question_results) ? e.question_results : [];
-    // Karnede kazanım tablosu varsa (ks) kazanımlar ondan sayılır; soru kayıtları yalnızca ders adı taşıyabilir
-    const qs = all.some((q) => q?.ks) ? all.filter((q) => q?.ks) : all;
+    // Karnede kazanım özeti (ks) olan derslerde kazanımlar ondan sayılır; olmayan derslerde soru kayıtlarından
+    const ksSubj = new Set(all.filter((q) => q?.ks).map((q) => q.s));
+    const qs = all.filter((q) => q?.ks || !ksSubj.has(q?.s));
     if (qs.length) withData++;
     const notedKz = new Set<string>();
     const penalty = e.exam_type === "LGS" ? 1 / 3 : 1 / 4;
