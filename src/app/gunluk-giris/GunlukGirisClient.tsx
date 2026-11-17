@@ -74,6 +74,7 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
   const [programs, setPrograms] = useState<StaffProgram[]>([]);
   const [programNote, setProgramNote] = useState(programMsg);
   const [picker, setPicker] = useState(false);
+  const [nextStart, setNextStart] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -83,7 +84,7 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
 
   const load = useCallback(async () => {
     if (!studentId) return;
-    const [{ data: t }, { data: logs }, { data: progs }] = await Promise.all([
+    const [{ data: t }, { data: logs }, { data: progs }, { data: nextProg }] = await Promise.all([
       (supabase as any).from('question_logs').select('*')
         .eq('student_id', studentId).lte('week_start', date).gte('week_start', shiftDate(date, -21)),
       (supabase as any).from('daily_logs').select('question_solved, topic_studies, archived')
@@ -94,7 +95,12 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
         .eq('student_id', studentId).not('prepared_by', 'is', null)
         .or(`status.eq.bekliyor,and(status.eq.reddedildi,decided_at.gte.${shiftDate(todayTr(), -7)})`)
         .order('created_at', { ascending: false }).limit(5),
+      // Bu günden sonra başlayan ilk program (görev yoksa "program şu tarihte başlıyor" demek için)
+      (supabase as any).from('question_logs').select('week_start')
+        .eq('student_id', studentId).gt('week_start', date).is('appointment_id', null)
+        .order('week_start').limit(1),
     ]);
+    setNextStart(((nextProg as any[]) ?? [])[0]?.week_start ?? null);
     setRows((t as TaskRow[]) ?? []);
     const all: Entry[] = [];
     for (const l of (logs as any[]) ?? []) {
@@ -292,7 +298,15 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
         ) : tasks.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-8 text-center">
             <div className="mb-1 text-[28px]">📭</div>
-            <p className="text-[13.5px] text-gray-500">Bu gün için programda görev yok.</p>
+            <p className="text-[13.5px] text-gray-500">{(() => {
+              const prog = (rows ?? []).filter((r) => !r.appointment_id);
+              const covering = prog.some((r) => r.week_start <= date && (!r.week_end || date <= r.week_end));
+              if (covering) return 'Bu gün programda görev yok (dinlenme günü).';
+              if (nextStart) return `Öğrencinin programı ${ddmm(nextStart)} tarihinde başlıyor; bu güne ait görev yok.`;
+              const lastEnd = prog.map((r) => r.week_end ?? r.week_start).sort().pop();
+              if (lastEnd) return `Öğrencinin son programı ${ddmm(lastEnd)} tarihinde bitti; yeni program henüz yapılmamış.`;
+              return 'Öğrencinin henüz haftalık programı yok.';
+            })()}</p>
             <p className="text-[12.5px] text-gray-400">Yaptığı çalışmayı aşağıdan “Plan dışı çalışma” olarak ekleyebilirsiniz.</p>
           </div>
         ) : tasks.map((t) => {
