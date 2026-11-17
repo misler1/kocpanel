@@ -58,21 +58,40 @@ create or replace function notify_user(
 declare
   v_mentor uuid;
   v_intern_name text;
+  v_copy_kind boolean := p_kind in ('gunluk', 'deneme', 'plan_talebi', 'konu')
+                         or (p_kind = 'hesap' and p_title like 'Öğrencin%');
+  v_dup uuid;
 begin
-  perform _notify_user_one(p_recipient, p_kind, p_title, p_body, p_link, p_dedupe_minutes);
   if p_recipient is null then return; end if;
 
-  -- Öğrenciden gelen bildirim türleri (stajyerin kendi hesap/mesaj bildirimleri hariç)
-  if not (p_kind in ('gunluk', 'deneme', 'plan_talebi', 'konu')
-          or (p_kind = 'hesap' and p_title like 'Öğrencin%')) then
+  -- Aynı işlemde bu alıcıya aynı olayın stajyer kopyası zaten düştüyse, doğrudan bildirim onun yerine geçer
+  if v_copy_kind then
+    select id into v_dup from notifications
+      where recipient_id = p_recipient and kind = p_kind and link is not distinct from p_link
+        and created_at = now() and body like 'Stajyer %'
+      limit 1;
+    if v_dup is not null then
+      update notifications set title = p_title, body = p_body where id = v_dup;
+    else
+      perform _notify_user_one(p_recipient, p_kind, p_title, p_body, p_link, p_dedupe_minutes);
+    end if;
+  else
+    perform _notify_user_one(p_recipient, p_kind, p_title, p_body, p_link, p_dedupe_minutes);
     return;
   end if;
 
+  -- Stajyerin öğrencisinden gelen bildirim → rehber koça kopya
   begin
     select t.mentor_id, p.full_name into v_mentor, v_intern_name
       from teacher_access_profiles t join profiles p on p.id = t.teacher_id
       where t.teacher_id = p_recipient and t.status::text = 'intern';
     if v_mentor is null or v_mentor = p_recipient then return; end if;
+    -- Rehber koç aynı olayı bu işlemde zaten doğrudan aldıysa kopya açılmaz
+    if exists (select 1 from notifications
+               where recipient_id = v_mentor and kind = p_kind and link is not distinct from p_link
+                 and created_at = now()) then
+      return;
+    end if;
     perform _notify_user_one(v_mentor, p_kind, p_title,
       'Stajyer ' || coalesce(v_intern_name, '') || ' · ' || coalesce(p_body, ''),
       p_link, coalesce(p_dedupe_minutes, 0));

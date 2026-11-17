@@ -144,7 +144,7 @@ begin
     perform notify_user(r.recipient_id, 'gunluk',
       'Dün günlük girmeyen ' || r.n || ' öğrenci 📒',
       to_char(v_day, 'DD.MM') || ' ' || v_gun || ': ' || v_names,
-      '/haftalik-takip', 0);
+      '/haftalik-takip?ozet=' || r.recipient_id, 0);
     v_sent := v_sent + 1;
   end loop;
   return v_sent;

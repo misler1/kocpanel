@@ -25,9 +25,10 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `fix_tyt_geometri_cift.sql` | Tek seferlik: TYT karnelerinde iki kez sayılan geometriyi düzeltir | ✅ Çalıştırıldı |
 | `mentor_intern_exams_write.sql` | Rehber koç stajyerlerinin öğrencilerine deneme yazabilir (toplu yükleme / kazanım ekleme) | ✅ Çalıştırıldı |
 | `deneme_analizleri.sql` | Yapay zekâ deneme analizi kaydedilir; koç "Öğrenciye gönder" ile öğrenciye iletir (notifications.sql'den sonra) | ✅ Çalıştırıldı |
-| `gunluk_bildirimleri.sql` | Öğrenci günlük girince koça bildirim; her sabah 10:00'da dün günlük girmeyenlerin listesi | ⏳ Çalıştırılacak |
-| `ogrenci_ilk_giris.sql` | Öğrenci hesabıyla ilk kez giriş yapınca koça bildirim (+ hiç giriş yapmamışların listesi) | ⏳ Çalıştırılacak |
-| `stajyer_bildirim_kopyasi.sql` | Stajyerin öğrencisinden gelen bildirimler (günlük, deneme, program, konu, ilk giriş) rehber koça da düşer (notifications_grouping.sql'den sonra) | ⏳ Çalıştırılacak |
+| `gunluk_bildirimleri.sql` | Öğrenci günlük girince koça bildirim; her sabah 10:00'da dün günlük girmeyenlerin listesi | ✅ Çalıştırıldı |
+| `ogrenci_ilk_giris.sql` | Öğrenci hesabıyla ilk kez giriş yapınca koça bildirim (+ hiç giriş yapmamışların listesi) | ✅ Çalıştırıldı |
+| `stajyer_bildirim_kopyasi.sql` | Stajyerin öğrencisinden gelen bildirimler (günlük, deneme, program, konu, ilk giriş) rehber koça da düşer (notifications_grouping.sql'den sonra) | ✅ Çalıştırıldı |
+| `bildirim_cakisma_duzeltme.sql` | Rehber koça aynı olayın iki kez düşmesi ve sabah özetlerinin karışması düzeltildi (stajyer_bildirim_kopyasi.sql'den sonra) | ⏳ Çalıştırılacak |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
