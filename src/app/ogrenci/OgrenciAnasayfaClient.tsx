@@ -12,6 +12,7 @@ import { StudyLogSheet } from './StudyLogSheet';
 import { PushToggle } from '@/components/PushToggle';
 import { logExtraStudy, logStudy, setTaskDone, setTaskMissed, type ProgramDay, type StudyInput } from './studyApi';
 import { MissedSheet } from './MissedSheet';
+import { isMeetingUrl, meetingPlatform } from '@/lib/meeting-link';
 import { BadgesSection, StreakCard, TargetNetCard } from './Motivation';
 import { StudentBoard, StudentContentCard, type FeedItem } from '@/components/feed/StudentFeed';
 
@@ -252,6 +253,12 @@ export function OgrenciAnasayfaClient({
                     <IconCheck size={18} strokeWidth={3} />
                   </span>
                 </button>
+                {l.appointment_id && !done && isMeetingUrl(l.resource_name) && (
+                  <a href={l.resource_name.trim()} target="_blank" rel="noopener noreferrer" title={`${meetingPlatform(l.resource_name)} ile görüşmeye katıl`}
+                    className="flex flex-shrink-0 items-center gap-1 rounded-full bg-sky-500 px-3 py-1.5 text-[12px] font-bold text-white shadow-sm hover:bg-sky-600">
+                    🎥 Katıl
+                  </a>
+                )}
                 {!l.appointment_id && !done && (
                   <button type="button" onClick={() => (missed ? clearMissed(l) : setMissedTask(l))}
                     title={missed ? '"Yapmadım" işaretini kaldır' : 'Yapmadım'} aria-label={missed ? '"Yapmadım" işaretini kaldır' : 'Yapmadım'}

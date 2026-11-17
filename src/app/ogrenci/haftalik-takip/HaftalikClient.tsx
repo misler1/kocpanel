@@ -10,6 +10,7 @@ import { subjectEmoji, DAY_STYLES, cheer } from '../studentUi';
 import { StudyLogSheet } from '../StudyLogSheet';
 import { logStudy, setTaskDone, setTaskMissed, todayTr, type StudyInput } from '../studyApi';
 import { MissedSheet } from '../MissedSheet';
+import { isMeetingUrl, meetingPlatform } from '@/lib/meeting-link';
 import { useKeyboardInset } from '../useKeyboardInset';
 import { programDays, shortDate } from '@/lib/program-days';
 import { SuggestInput } from '@/components/SuggestInput';
@@ -358,7 +359,8 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                                 {l.student_added && !l.student_plan && <span className="ml-1.5 inline-block rounded-full bg-[var(--pink-soft)] px-2 py-0.5 align-middle text-[10px] font-extrabold text-[var(--pink)]">⭐ Ekstra</span>}
                               </span>
                               {detail && <span className="block text-[12px] font-medium text-[var(--ink-muted)]">{detail}</span>}
-                              {l.resource_name && <span className="block text-[11.5px] text-[var(--ink-muted)]">📘 {l.resource_name}</span>}
+                              {l.resource_name && !isMeetingUrl(l.resource_name) && <span className="block text-[11.5px] text-[var(--ink-muted)]">📘 {l.resource_name}</span>}
+                              {l.appointment_id && isMeetingUrl(l.resource_name) && <span className="block text-[11.5px] text-sky-700">🎥 Online görüşme · {meetingPlatform(l.resource_name)}</span>}
                               {time && <span className="block text-[11.5px] text-[var(--ink-muted)]">⏰ {time}</span>}
                               {done && <span className="block text-[11.5px] font-bold text-[var(--success)]">✓ Tamamlandı</span>}
                     {missed && <span className="block text-[11.5px] font-bold text-[var(--danger)]">✕ Yapmadım{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</span>}
@@ -371,6 +373,12 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                               className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${missed ? 'border-[var(--danger)] bg-[var(--danger)] text-white' : 'border-[var(--danger)]/35 bg-[var(--danger-soft)] text-[var(--danger)]/75 hover:border-[var(--danger)]/70 hover:text-[var(--danger)]'}`}>
                               <IconX size={16} strokeWidth={3} />
                             </button>
+                          )}
+                          {l.appointment_id && !done && isMeetingUrl(l.resource_name) && (
+                  <a href={l.resource_name.trim()} target="_blank" rel="noopener noreferrer" title={`${meetingPlatform(l.resource_name)} ile görüşmeye katıl`}
+                    className="flex flex-shrink-0 items-center gap-1 rounded-full bg-sky-500 px-3 py-1.5 text-[12px] font-bold text-white shadow-sm hover:bg-sky-600">
+                    🎥 Katıl
+                  </a>
                           )}
                           {l.appointment_id && !done && (
                             apptInfo[l.appointment_id]?.change_requested_at ? (

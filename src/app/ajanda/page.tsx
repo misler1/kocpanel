@@ -33,9 +33,13 @@ export default async function AjandaPage() {
     .in('role', ['koc', 'ogretmen']).eq('is_approved', true).eq('is_system', false).neq('id', user.id)
     .order('full_name');
 
+  // Varsayılan online görüşme bağlantısı (supabase/online_gorusme.sql çalıştırılmadıysa sütun yok → boş)
+  const { data: me } = await (supabase as any).from('profiles').select('meeting_url').eq('id', user.id).maybeSingle();
+
   return (
     <AjandaClient
       meId={user.id}
+      defaultMeetingUrl={(me as any)?.meeting_url ?? null}
       students={(students ?? []) as any[]}
       staff={(staff ?? []).map((p: any) => ({ id: p.id, full_name: p.full_name ?? '', role: p.role }))}
     />

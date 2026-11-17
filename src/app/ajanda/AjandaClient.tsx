@@ -6,8 +6,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   IconCalendarWeek, IconChevronLeft, IconChevronRight, IconPlus, IconX, IconUser, IconSchool, IconUserQuestion,
-  IconClock, IconMapPin, IconNotes, IconTrash,
+  IconClock, IconMapPin, IconNotes, IconTrash, IconVideo,
 } from '@tabler/icons-react';
+import { isMeetingUrl, meetingPlatform, newJitsiRoom } from '@/lib/meeting-link';
 import { createClient } from '@/lib/supabase/client';
 import { PageHero } from '@/components/ui/PageHero';
 
@@ -24,6 +25,7 @@ type Kind = 'ogrenci' | 'ogretmen' | 'diger';
 type Draft = {
   id: string | null; date: string; time: string; duration: number; kind: Kind;
   studentId: string; participantId: string; otherName: string; title: string; location: string; note: string;
+  online: boolean; meetingUrl: string; saveDefault: boolean;
 };
 
 const DAY_NAMES = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -68,7 +70,10 @@ function layout(items: CalItem[]) {
   return placed.map((p) => ({ ...p, lanes }));
 }
 
-export function AjandaClient({ meId, students, staff }: { meId: string; students: Student[]; staff: Staff[] }) {
+export function AjandaClient({ meId, students, staff, defaultMeetingUrl = null }: {
+  meId: string; students: Student[]; staff: Staff[]; defaultMeetingUrl?: string | null;
+}) {
+  const [myMeetingUrl, setMyMeetingUrl] = useState<string | null>(defaultMeetingUrl);
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
@@ -123,6 +128,7 @@ export function AjandaClient({ meId, students, staff }: { meId: string; students
     setDraft({
       id: null, date: ymd(date), time: `${pad(Math.floor(t / 60))}:${pad(t % 60)}`, duration: 40, kind: 'ogrenci',
       studentId: '', participantId: '', otherName: '', title: '', location: '', note: '',
+      online: false, meetingUrl: '', saveDefault: false,
     });
   }
 
@@ -133,7 +139,11 @@ export function AjandaClient({ meId, students, staff }: { meId: string; students
     setDraft({
       id: a.id, date: ymd(d), time: hm(d), duration: a.duration_minutes, kind: kindOf(a),
       studentId: a.student_id ?? '', participantId: a.participant_id ?? '', otherName: a.other_name ?? '',
-      title: a.title ?? '', location: a.location ?? '', note: a.note ?? '',
+      title: a.title ?? '', note: a.note ?? '',
+      ...(isMeetingUrl(a.location)
+        ? { location: '', online: true, meetingUrl: a.location.trim() }
+        : { location: a.location ?? '', online: false, meetingUrl: '' }),
+      saveDefault: false,
     });
   }
 
@@ -142,11 +152,18 @@ export function AjandaClient({ meId, students, staff }: { meId: string; students
     if (draft.kind === 'ogrenci' && !draft.studentId) { setError('Öğrenci seçin.'); return; }
     if (draft.kind === 'ogretmen' && !draft.participantId) { setError('Öğretmen/koç seçin.'); return; }
     if (draft.kind === 'diger' && !draft.otherName.trim() && !draft.title.trim()) { setError('Kiminle görüşeceğinizi ya da bir başlık yazın.'); return; }
+    const url = draft.meetingUrl.trim();
+    if (draft.online && !isMeetingUrl(url)) { setError('Online görüşme için https:// ile başlayan bir bağlantı yapıştırın ya da "Ücretsiz oda oluştur"a basın.'); return; }
     setBusy(true); setError(null);
+    if (draft.online && draft.saveDefault && url !== myMeetingUrl) {
+      const { error: pErr } = await (supabase as any).from('profiles').update({ meeting_url: url }).eq('id', meId);
+      if (pErr) { setBusy(false); setError(/meeting_url/.test(pErr.message) ? 'Varsayılan bağlantı kaydedilemedi (supabase/online_gorusme.sql çalıştırılmalı). Kutuyu kaldırıp tekrar deneyin.' : pErr.message); return; }
+      setMyMeetingUrl(url);
+    }
     const startsAt = new Date(`${draft.date}T${draft.time}:00`);
     const { error: err } = await (supabase as any).rpc('save_appointment', {
       p_id: draft.id, p_starts_at: startsAt.toISOString(), p_duration: draft.duration,
-      p_title: draft.title, p_note: draft.note, p_location: draft.location,
+      p_title: draft.title, p_note: draft.note, p_location: draft.online ? url : draft.location,
       p_student_id: draft.kind === 'ogrenci' ? draft.studentId : null,
       p_participant_id: draft.kind === 'ogretmen' ? draft.participantId : null,
       p_other_name: draft.kind === 'diger' ? draft.otherName : null,
@@ -178,7 +195,7 @@ export function AjandaClient({ meId, students, staff }: { meId: string; students
       map[idx].push({
         key: a.id, start: d, minutes: a.duration_minutes,
         label: whoOf(a) || a.title || 'Görüşme',
-        sub: [hm(d), a.title && whoOf(a) ? a.title : null].filter(Boolean).join(' · '),
+        sub: [hm(d), isMeetingUrl(a.location) ? '🎥 online' : null, a.title && whoOf(a) ? a.title : null].filter(Boolean).join(' · '),
         style: KIND_STYLE[kind], onClick: () => openEdit(a), flag: !!a.change_requested_at,
       });
     }
@@ -410,10 +427,67 @@ export function AjandaClient({ meId, students, staff }: { meId: string; students
               </Field>
             </div>
             <Field label="Konu"><input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} className={inputCls} placeholder="ör. Haftalık değerlendirme" /></Field>
-            <Field label="Yer / bağlantı"><input value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} className={inputCls} placeholder="ör. Ofis, Zoom linki" /></Field>
+            <div>
+              <span className="mb-1 block text-[12px] font-medium text-[var(--ink-muted)]">Görüşme şekli</span>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button type="button" onClick={() => setDraft({ ...draft, online: false })}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[12.5px] font-medium ${!draft.online ? 'border-teal-400 bg-teal-100 text-teal-800' : 'border-[var(--border)] text-[var(--ink-muted)] hover:bg-[var(--paper)]'}`}>
+                  <IconMapPin size={15} /> Yüz yüze
+                </button>
+                <button type="button" onClick={() => setDraft({ ...draft, online: true, meetingUrl: draft.meetingUrl || myMeetingUrl || '' })}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[12.5px] font-medium ${draft.online ? 'border-sky-400 bg-sky-100 text-sky-800' : 'border-[var(--border)] text-[var(--ink-muted)] hover:bg-[var(--paper)]'}`}>
+                  <IconVideo size={15} /> Online
+                </button>
+              </div>
+            </div>
+            {draft.online ? (
+              <div className="space-y-2 rounded-xl border border-sky-200 bg-sky-50/60 p-3">
+                <Field label="Görüşme bağlantısı (Google Meet, Zoom, Teams…)">
+                  <input value={draft.meetingUrl} onChange={(e) => setDraft({ ...draft, meetingUrl: e.target.value })} className={inputCls}
+                    placeholder="https://meet.google.com/abc-defg-hij" inputMode="url" />
+                </Field>
+                <div className="flex flex-wrap gap-1.5">
+                  {myMeetingUrl && draft.meetingUrl.trim() !== myMeetingUrl && (
+                    <button type="button" onClick={() => setDraft({ ...draft, meetingUrl: myMeetingUrl })}
+                      className="rounded-lg border border-sky-300 bg-white px-2.5 py-1 text-[12px] font-medium text-sky-800 hover:bg-sky-100">
+                      Kayıtlı bağlantımı kullan ({meetingPlatform(myMeetingUrl)})
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setDraft({ ...draft, meetingUrl: newJitsiRoom() })}
+                    className="rounded-lg border border-sky-300 bg-white px-2.5 py-1 text-[12px] font-medium text-sky-800 hover:bg-sky-100"
+                    title="Hesap gerektirmeyen ücretsiz Jitsi görüşme odası">
+                    Ücretsiz oda oluştur (Jitsi)
+                  </button>
+                  {isMeetingUrl(draft.meetingUrl) && (
+                    <a href={draft.meetingUrl.trim()} target="_blank" rel="noopener noreferrer"
+                      className="rounded-lg px-2.5 py-1 text-[12px] font-medium text-sky-700 hover:underline">Bağlantıyı dene ↗</a>
+                  )}
+                </div>
+                {isMeetingUrl(draft.meetingUrl) && draft.meetingUrl.trim() !== myMeetingUrl && (
+                  <label className="flex items-center gap-2 text-[12px] text-[var(--ink)]">
+                    <input type="checkbox" checked={draft.saveDefault} onChange={(e) => setDraft({ ...draft, saveDefault: e.target.checked })} />
+                    Bu bağlantıyı varsayılanım yap (sonraki online görüşmelerde otomatik gelsin)
+                  </label>
+                )}
+                <details className="text-[11.5px] text-[var(--ink-muted)]">
+                  <summary className="cursor-pointer font-medium text-sky-800">Bağlantıyı nereden alırım?</summary>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                    <li><b>Google Meet:</b> meet.google.com → &quot;Yeni toplantı&quot; → &quot;Sonrası için toplantı oluştur&quot; → bağlantıyı kopyalayın. Bu bağlantı kalıcıdır; varsayılanınız yapabilirsiniz.</li>
+                    <li><b>Zoom:</b> Zoom uygulaması → Profil → &quot;Kişisel toplantı odası&quot; bağlantısı (kalıcı).</li>
+                    <li><b>Teams:</b> Takvim → &quot;Hemen toplantı yap&quot; → bağlantıyı kopyala.</li>
+                    <li><b>Hesabınız yoksa:</b> &quot;Ücretsiz oda oluştur&quot;a basın; öğrenci de tarayıcıdan kurulum yapmadan katılır.</li>
+                  </ul>
+                </details>
+                <p className="text-[11.5px] text-[var(--ink-muted)]">Bağlantı katılımcının bildiriminde ve öğrencinin programında &quot;Görüşmeye katıl&quot; düğmesi olarak görünür.</p>
+              </div>
+            ) : (
+              <Field label="Yer"><input value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} className={inputCls} placeholder="ör. Ofis, etüt odası" /></Field>
+            )}
             <Field label="Not (yalnızca siz ve katılımcı görür)"><textarea value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} rows={2} className={inputCls} /></Field>
 
             {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] font-medium text-rose-700">{error}</p>}
+
+            {draft.id && draft.online && isMeetingUrl(draft.meetingUrl) && <JoinButton url={draft.meetingUrl.trim()} />}
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <button type="button" onClick={save} disabled={busy}
@@ -440,7 +514,9 @@ export function AjandaClient({ meId, students, staff }: { meId: string; students
             <p className="flex items-center gap-2"><IconClock size={15} className="text-teal-600" />
               {new Date(viewing.starts_at).toLocaleString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })} · {viewing.duration_minutes} dk
             </p>
-            {viewing.location && <p className="flex items-center gap-2"><IconMapPin size={15} className="text-teal-600" /> {viewing.location}</p>}
+            {isMeetingUrl(viewing.location)
+              ? <JoinButton url={viewing.location} />
+              : viewing.location && <p className="flex items-center gap-2"><IconMapPin size={15} className="text-teal-600" /> {viewing.location}</p>}
             {viewing.note && <p className="flex items-start gap-2"><IconNotes size={15} className="mt-0.5 text-teal-600" /> {viewing.note}</p>}
             {viewing.student_id && studentName.get(viewing.student_id) && (
               <Link href={`/ogrenciler/${viewing.student_id}`} className="inline-block text-[12.5px] font-medium text-teal-700 hover:underline">Öğrenci: {studentName.get(viewing.student_id)}</Link>
@@ -449,6 +525,15 @@ export function AjandaClient({ meId, students, staff }: { meId: string; students
         </Modal>
       )}
     </div>
+  );
+}
+
+function JoinButton({ url }: { url: string }) {
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer"
+      className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2.5 text-[13.5px] font-bold text-white shadow-sm hover:opacity-90">
+      <IconVideo size={17} /> Görüşmeye katıl · {meetingPlatform(url)}
+    </a>
   );
 }
 
