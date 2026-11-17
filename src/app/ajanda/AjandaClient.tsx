@@ -153,7 +153,7 @@ export function AjandaClient({ meId, students, staff, defaultMeetingUrl = null }
     if (draft.kind === 'ogretmen' && !draft.participantId) { setError('Öğretmen/koç seçin.'); return; }
     if (draft.kind === 'diger' && !draft.otherName.trim() && !draft.title.trim()) { setError('Kiminle görüşeceğinizi ya da bir başlık yazın.'); return; }
     const url = draft.meetingUrl.trim();
-    if (draft.online && !isMeetingUrl(url)) { setError('Online görüşme için https:// ile başlayan bir bağlantı yapıştırın ya da "Ücretsiz oda oluştur"a basın.'); return; }
+    if (draft.online && !isMeetingUrl(url)) { setError('Online görüşme için "Ücretsiz görüşme linki oluştur"a basın ya da https:// ile başlayan kendi linkinizi yapıştırın.'); return; }
     setBusy(true); setError(null);
     if (draft.online && draft.saveDefault && url !== myMeetingUrl) {
       const { error: pErr } = await (supabase as any).from('profiles').update({ meeting_url: url }).eq('id', meId);
@@ -434,51 +434,71 @@ export function AjandaClient({ meId, students, staff, defaultMeetingUrl = null }
                   className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[12.5px] font-medium ${!draft.online ? 'border-teal-400 bg-teal-100 text-teal-800' : 'border-[var(--border)] text-[var(--ink-muted)] hover:bg-[var(--paper)]'}`}>
                   <IconMapPin size={15} /> Yüz yüze
                 </button>
-                <button type="button" onClick={() => setDraft({ ...draft, online: true, meetingUrl: draft.meetingUrl || myMeetingUrl || '' })}
+                <button type="button" onClick={() => setDraft({ ...draft, online: true })}
                   className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[12.5px] font-medium ${draft.online ? 'border-sky-400 bg-sky-100 text-sky-800' : 'border-[var(--border)] text-[var(--ink-muted)] hover:bg-[var(--paper)]'}`}>
                   <IconVideo size={15} /> Online
                 </button>
               </div>
             </div>
             {draft.online ? (
-              <div className="space-y-2 rounded-xl border border-sky-200 bg-sky-50/60 p-3">
-                <Field label="Görüşme bağlantısı (Google Meet, Zoom, Teams…)">
-                  <input value={draft.meetingUrl} onChange={(e) => setDraft({ ...draft, meetingUrl: e.target.value })} className={inputCls}
+              <div className="space-y-2.5 rounded-xl border border-sky-200 bg-sky-50/60 p-3">
+                {/* 1) Önerilen: bu randevuya özel otomatik link */}
+                <button type="button" onClick={() => setDraft({ ...draft, meetingUrl: newJitsiRoom(), saveDefault: false })}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-3 text-[14px] font-bold text-white shadow-sm hover:opacity-90">
+                  <IconVideo size={18} /> {isJitsi(draft.meetingUrl) ? 'Yeni görüşme linki oluştur' : 'Ücretsiz görüşme linki oluştur'}
+                </button>
+                {isJitsi(draft.meetingUrl) ? (
+                  <p className="rounded-lg bg-white px-3 py-2 text-[12px] text-emerald-700">
+                    ✓ Bu randevuya özel link oluşturuldu. Kaydedince öğrenciye gider; öğrenci kurulum yapmadan tarayıcıdan katılır.
+                    <a href={draft.meetingUrl.trim()} target="_blank" rel="noopener noreferrer" className="ml-1 font-medium text-sky-700 hover:underline">Linki dene ↗</a>
+                  </p>
+                ) : (
+                  <p className="text-center text-[11.5px] text-[var(--ink-muted)]">
+                    Bu randevuya özel, tek kullanımlık bir görüşme linki oluşturur (Jitsi). Hesap ya da kurulum gerekmez.
+                  </p>
+                )}
+
+                <div className="flex items-center gap-2 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">
+                  <span className="h-px flex-1 bg-sky-200" /> veya <span className="h-px flex-1 bg-sky-200" />
+                </div>
+
+                {/* 2) Kendi Meet / Zoom / Teams linki */}
+                <Field label="Kendi görüşme linkinizi yapıştırın (Google Meet, Zoom, Teams…)">
+                  <input value={isJitsi(draft.meetingUrl) ? '' : draft.meetingUrl}
+                    onChange={(e) => setDraft({ ...draft, meetingUrl: e.target.value })} className={inputCls}
                     placeholder="https://meet.google.com/abc-defg-hij" inputMode="url" />
                 </Field>
                 <div className="flex flex-wrap gap-1.5">
                   {myMeetingUrl && draft.meetingUrl.trim() !== myMeetingUrl && (
                     <button type="button" onClick={() => setDraft({ ...draft, meetingUrl: myMeetingUrl })}
                       className="rounded-lg border border-sky-300 bg-white px-2.5 py-1 text-[12px] font-medium text-sky-800 hover:bg-sky-100">
-                      Kayıtlı bağlantımı kullan ({meetingPlatform(myMeetingUrl)})
+                      Kayıtlı linkimi kullan ({meetingPlatform(myMeetingUrl)})
                     </button>
                   )}
-                  <button type="button" onClick={() => setDraft({ ...draft, meetingUrl: newJitsiRoom() })}
-                    className="rounded-lg border border-sky-300 bg-white px-2.5 py-1 text-[12px] font-medium text-sky-800 hover:bg-sky-100"
-                    title="Hesap gerektirmeyen ücretsiz Jitsi görüşme odası">
-                    Ücretsiz oda oluştur (Jitsi)
-                  </button>
-                  {isMeetingUrl(draft.meetingUrl) && (
+                  {isMeetingUrl(draft.meetingUrl) && !isJitsi(draft.meetingUrl) && (
                     <a href={draft.meetingUrl.trim()} target="_blank" rel="noopener noreferrer"
-                      className="rounded-lg px-2.5 py-1 text-[12px] font-medium text-sky-700 hover:underline">Bağlantıyı dene ↗</a>
+                      className="rounded-lg px-2.5 py-1 text-[12px] font-medium text-sky-700 hover:underline">Linki dene ↗</a>
                   )}
                 </div>
-                {isMeetingUrl(draft.meetingUrl) && draft.meetingUrl.trim() !== myMeetingUrl && (
-                  <label className="flex items-center gap-2 text-[12px] text-[var(--ink)]">
-                    <input type="checkbox" checked={draft.saveDefault} onChange={(e) => setDraft({ ...draft, saveDefault: e.target.checked })} />
-                    Bu bağlantıyı varsayılanım yap (sonraki online görüşmelerde otomatik gelsin)
+                {isMeetingUrl(draft.meetingUrl) && !isJitsi(draft.meetingUrl) && draft.meetingUrl.trim() !== myMeetingUrl && (
+                  <label className="flex items-start gap-2 text-[12px] text-[var(--ink)]">
+                    <input type="checkbox" className="mt-0.5" checked={draft.saveDefault} onChange={(e) => setDraft({ ...draft, saveDefault: e.target.checked })} />
+                    <span>
+                      Bu linki kaydet (sonraki görüşmelerde &quot;Kayıtlı linkimi kullan&quot; ile seçilebilsin)
+                      <span className="block text-[11px] text-amber-700">Aynı link her görüşmede kullanılırsa, linki bilen eski öğrenciler de görüşmeye gelmeye çalışabilir.</span>
+                    </span>
                   </label>
                 )}
                 <details className="text-[11.5px] text-[var(--ink-muted)]">
-                  <summary className="cursor-pointer font-medium text-sky-800">Bağlantıyı nereden alırım?</summary>
+                  <summary className="cursor-pointer font-medium text-sky-800">Kendi linkimi nereden alırım?</summary>
                   <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                    <li><b>Google Meet:</b> meet.google.com → &quot;Yeni toplantı&quot; → &quot;Sonrası için toplantı oluştur&quot; → bağlantıyı kopyalayın. Bu bağlantı kalıcıdır; varsayılanınız yapabilirsiniz.</li>
-                    <li><b>Zoom:</b> Zoom uygulaması → Profil → &quot;Kişisel toplantı odası&quot; bağlantısı (kalıcı).</li>
-                    <li><b>Teams:</b> Takvim → &quot;Hemen toplantı yap&quot; → bağlantıyı kopyala.</li>
-                    <li><b>Hesabınız yoksa:</b> &quot;Ücretsiz oda oluştur&quot;a basın; öğrenci de tarayıcıdan kurulum yapmadan katılır.</li>
+                    <li><b>Google Meet:</b> meet.google.com → &quot;Yeni toplantı&quot; → &quot;Sonrası için toplantı oluştur&quot; → linki kopyalayın.</li>
+                    <li><b>Zoom:</b> Zoom uygulaması → &quot;Planla&quot; → toplantıyı oluşturup davet linkini kopyalayın.</li>
+                    <li><b>Teams:</b> Takvim → &quot;Hemen toplantı yap&quot; → linki kopyalayın.</li>
+                    <li>En güvenlisi her randevu için <b>yeni bir link</b> kullanmaktır; böylece önceki görüşmelerin katılımcıları yeni görüşmeye giremez. Meet ve Zoom&apos;da davetli olmayan biri girmek isterse sizin onayınız gerekir.</li>
                   </ul>
                 </details>
-                <p className="text-[11.5px] text-[var(--ink-muted)]">Bağlantı katılımcının bildiriminde ve öğrencinin programında &quot;Görüşmeye katıl&quot; düğmesi olarak görünür.</p>
+                <p className="text-[11.5px] text-[var(--ink-muted)]">Link, katılımcının bildiriminde ve öğrencinin programında &quot;Katıl&quot; düğmesi olarak görünür.</p>
               </div>
             ) : (
               <Field label="Yer"><input value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} className={inputCls} placeholder="ör. Ofis, etüt odası" /></Field>
@@ -536,6 +556,8 @@ function JoinButton({ url }: { url: string }) {
     </a>
   );
 }
+
+const isJitsi = (u: string) => isMeetingUrl(u) && /^https:\/\/meet\.jit\.si\//i.test(u.trim());
 
 const inputCls = 'w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-[13px] text-[var(--ink)] outline-none focus:border-teal-400';
 
