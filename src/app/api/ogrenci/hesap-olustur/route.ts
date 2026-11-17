@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { initialStudentPassword, phoneKey, studentEmailFromPhone } from '@/lib/student-account';
+import { matchStudentName } from '@/lib/matching/matchStudent';
 
 // Koçun öğrencileri için giriş hesabı oluşturur.
 // Body: { studentId: string } veya { all: true } (koçun hesabı olmayan tüm öğrencileri)
@@ -109,7 +110,7 @@ export async function POST(request: Request) {
  */
 async function linkExisting(admin: any, coachId: string, s: any, email: string, username: string) {
   const base = { id: s.id as string, name: s.full_name as string };
-  const { data: prof } = await admin.from('profiles').select('id, role').eq('email', email).maybeSingle();
+  const { data: prof } = await admin.from('profiles').select('id, role, full_name').eq('email', email).maybeSingle();
   if (!prof) return { ...base, status: 'atlandi' as const, reason: 'Bu telefonla açılmış bir hesap var ama bilgileri bulunamadı; yöneticiye bildirin' };
   if (prof.role !== 'ogrenci') return { ...base, status: 'atlandi' as const, reason: 'Bu telefon öğrenci olmayan bir hesapta kayıtlı' };
 
@@ -126,6 +127,12 @@ async function linkExisting(admin: any, coachId: string, s: any, email: string, 
         ? `Bu telefon başka bir öğrencinizin (${mine.full_name}) hesabında kayıtlı; telefonu kontrol edin`
         : 'Bu telefon başka bir koçun öğrencisinin hesabında kayıtlı; telefonu kontrol edin',
     };
+  }
+
+  // Başkasının hesabı yanlışlıkla (ya da kasıtlı) bağlanmasın: hesaptaki ad, koçun kaydettiği adla uyuşmalı
+  const m = matchStudentName(s.full_name, [{ id: prof.id, full_name: prof.full_name ?? '' }]);
+  if (!m.studentId || m.isAmbiguous) {
+    return { ...base, status: 'atlandi' as const, reason: 'Bu telefonla farklı bir ad adına açılmış bir hesap var; telefonu ve adı kontrol edin (doğruysa yöneticiye bildirin)' };
   }
 
   const { error: linkErr } = await admin.from('students').update({ profile_id: prof.id })
