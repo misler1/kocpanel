@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import type { Student } from '@/types/database';
-import { IconArchive, IconPlus, IconUsers } from '@tabler/icons-react';
+import { IconArchive, IconPlus, IconUsers, IconX } from '@tabler/icons-react';
 import { PageHero } from '@/components/ui/PageHero';
 import {
   StudentCard, StudentGrid, ListToolbar, matchesQuery, toolbarSelectCls,
@@ -40,6 +41,11 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'gorusme_eski', label: 'Son görüşme (eskiden yeniye)' },
 ];
 
+type AccResult = {
+  id: string; name: string; status: 'olusturuldu' | 'baglandi' | 'atlandi';
+  reason?: string; username?: string; password?: string;
+};
+
 function getSoyad(fullName: string) {
   const parts = fullName.trim().split(/\s+/);
   return parts[parts.length - 1] ?? '';
@@ -49,12 +55,30 @@ function getSoyad(fullName: string) {
 export function OgrencilerClient({ students, archiveMode, staffMode = false }: { students: ListedStudent[]; archiveMode: boolean; staffMode?: boolean }) {
   const [accBusy, setAccBusy] = useState(false);
   const [accMsg, setAccMsg] = useState<string | null>(null);
+  const [accResults, setAccResults] = useState<AccResult[] | null>(null);
+  const [accFilter, setAccFilter] = useState<'' | 'var' | 'yok'>('');
+  const router = useRouter();
+
+  // Hesabı olan öğrencinin şifresini ilk şifreye döndürür (öğrenci unuttuysa)
+  async function resetPassword(r: AccResult) {
+    if (!window.confirm(`${r.name} adlı öğrencinin şifresi ilk şifreye (telefonun son 4 hanesi + doğum yılı) döndürülsün mü?`)) return;
+    const res = await fetch('/api/ogrenci/hesap-olustur', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId: r.id, reset: true }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { window.alert(json.error ?? 'Şifre sıfırlanamadı.'); return; }
+    setAccResults((cur) => cur?.map((x) => x.id === r.id
+      ? { ...x, password: json.password, reason: 'Şifre ilk şifreye döndürüldü; ilk girişte değiştirmesi istenecek' }
+      : x) ?? null);
+  }
 
   // Henüz giriş hesabı olmayan öğrenciler için hesap oluşturur (telefon + doğum tarihi gerekir).
   async function createStudentAccounts() {
     if (!window.confirm('Giriş hesabı olmayan öğrencilerin hesapları oluşturulsun mu?\nKullanıcı adı: telefon · İlk şifre: telefonun son 4 hanesi + doğum yılı')) return;
     setAccBusy(true);
     setAccMsg(null);
+    setAccResults(null);
     try {
       const res = await fetch('/api/ogrenci/hesap-olustur', {
         method: 'POST',
@@ -63,13 +87,10 @@ export function OgrencilerClient({ students, archiveMode, staffMode = false }: {
       });
       const json = await res.json();
       if (!res.ok) { setAccMsg(json.error ?? 'Hesaplar oluşturulamadı.'); return; }
-      const results: { name: string; status: string; reason?: string }[] = json.results ?? [];
-      const ok = results.filter((r) => r.status === 'olusturuldu').length;
-      const skipped = results.filter((r) => r.status !== 'olusturuldu');
-      setAccMsg(
-        `${ok} hesap oluşturuldu.` +
-        (skipped.length ? ` Atlananlar: ${skipped.map((r) => `${r.name} (${r.reason})`).join(', ')}` : '')
-      );
+      const results: AccResult[] = json.results ?? [];
+      if (!results.length) setAccMsg('Hesabı olmayan öğrenciniz yok; herkesin hesabı açık.');
+      setAccResults(results);
+      if (results.some((r) => r.status !== 'atlandi')) router.refresh(); // listedeki hesap durumu güncellensin
     } catch {
       setAccMsg('Bağlantı hatası, tekrar deneyin.');
     } finally {
@@ -96,7 +117,10 @@ export function OgrencilerClient({ students, archiveMode, staffMode = false }: {
   }, [examFiltered]);
 
   const filtered = useMemo(() => {
-    const list = examFiltered.filter((s) => (!sinifFilter || s.sinif_sube === sinifFilter) && matchesQuery(s.full_name, query));
+    const list = examFiltered.filter((s) =>
+      (!sinifFilter || s.sinif_sube === sinifFilter)
+      && (!accFilter || (accFilter === 'var') === !!s.profile_id)
+      && matchesQuery(s.full_name, query));
 
     const sorted = [...list].sort((a, b) => {
       switch (sortKey) {
@@ -127,7 +151,7 @@ export function OgrencilerClient({ students, archiveMode, staffMode = false }: {
     });
 
     return sorted;
-  }, [examFiltered, sinifFilter, query, sortKey]);
+  }, [examFiltered, sinifFilter, accFilter, query, sortKey]);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -174,6 +198,39 @@ export function OgrencilerClient({ students, archiveMode, staffMode = false }: {
       {accMsg && (
         <p className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--paper)] px-3.5 py-2 text-[13px] text-[var(--ink)]">{accMsg}</p>
       )}
+      {accResults && accResults.length > 0 && (
+        <div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3.5 text-[13px] text-[var(--ink)]">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="font-semibold">
+              {accResults.filter((r) => r.status === 'olusturuldu').length} hesap oluşturuldu
+              {accResults.some((r) => r.status === 'baglandi') && `, ${accResults.filter((r) => r.status === 'baglandi').length} mevcut hesaba bağlandı`}
+              {accResults.some((r) => r.status === 'atlandi') && `, ${accResults.filter((r) => r.status === 'atlandi').length} atlandı`}
+            </span>
+            <button type="button" onClick={() => setAccResults(null)} className="text-gray-400 hover:text-gray-600" aria-label="Kapat"><IconX size={16} /></button>
+          </div>
+          <p className="mb-2 text-[12px] text-[var(--ink-muted)]">Giriş adresi: kocdefterim.com.tr/giris/ogrenci · Bu bilgileri öğrencilere iletin.</p>
+          <ul className="space-y-1.5">
+            {accResults.map((r) => (
+              <li key={r.id} className={`rounded-lg px-3 py-2 ${r.status === 'olusturuldu' ? 'bg-emerald-50' : r.status === 'baglandi' ? 'bg-sky-50' : 'bg-amber-50'}`}>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <Link href={`/ogrenciler/${r.id}`} className="font-semibold hover:underline">{r.name}</Link>
+                  <span className={`text-[11.5px] font-semibold ${r.status === 'olusturuldu' ? 'text-emerald-700' : r.status === 'baglandi' ? 'text-sky-700' : 'text-amber-700'}`}>
+                    {r.status === 'olusturuldu' ? 'hesap açıldı' : r.status === 'baglandi' ? 'mevcut hesaba bağlandı' : 'atlandı'}
+                  </span>
+                  {r.username && <span className="text-[12px]">Kullanıcı adı: <b>{r.username}</b></span>}
+                  {r.password && <span className="text-[12px]">İlk şifre: <b>{r.password}</b></span>}
+                  {r.status === 'baglandi' && !r.password && (
+                    <button type="button" onClick={() => resetPassword(r)} className="rounded-md border border-sky-200 bg-white px-2 py-0.5 text-[11.5px] font-medium text-sky-700 hover:bg-sky-100">
+                      İlk şifreye sıfırla
+                    </button>
+                  )}
+                </div>
+                {r.reason && <div className="mt-0.5 text-[12px] text-[var(--ink-muted)]">{r.reason}</div>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <ListToolbar query={query} onQuery={setQuery}>
         {availableSiniflar.length > 0 && (
@@ -182,6 +239,13 @@ export function OgrencilerClient({ students, archiveMode, staffMode = false }: {
             {availableSiniflar.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
+          </select>
+        )}
+        {!staffMode && (
+          <select value={accFilter} onChange={(e) => setAccFilter(e.target.value as '' | 'var' | 'yok')} className={toolbarSelectCls}>
+            <option value="">Hesap: tümü</option>
+            <option value="var">Hesabı açık olanlar</option>
+            <option value="yok">Hesabı olmayanlar</option>
           </select>
         )}
         <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} className={toolbarSelectCls}>
