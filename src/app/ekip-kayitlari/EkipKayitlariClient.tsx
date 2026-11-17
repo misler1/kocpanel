@@ -66,8 +66,8 @@ const statusLabel = (s: string | null) => (s === 'intern' ? 'Stajyer koç' : s ?
 
 const SEEN_KEY = 'ekip-kayitlari-son-bakis';
 
-export function EkipKayitlariClient({ rows, missing, people, initialPerson, days, isAdmin, all }: {
-  rows: Row[]; missing: boolean; people: { id: string; name: string; status: string }[];
+export function EkipKayitlariClient({ rows, missing, errorText, people, initialPerson, days, isAdmin, all }: {
+  rows: Row[]; missing: boolean; errorText?: string | null; people: { id: string; name: string; status: string }[];
   initialPerson: string; days: number; isAdmin: boolean; all: boolean;
 }) {
   const [person, setPerson] = useState(initialPerson);
@@ -126,7 +126,11 @@ export function EkipKayitlariClient({ rows, missing, people, initialPerson, days
 
       {missing ? (
         <p className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-[13px] text-gray-500">
-          Ekip kayıtları henüz etkin değil (supabase/staff_activity.sql çalıştırılmalı).
+          {/does not exist|schema cache/i.test(errorText ?? '')
+            ? 'Ekip kayıtları henüz etkin değil (supabase/staff_activity.sql çalıştırılmalı).'
+            : /permission denied/i.test(errorText ?? '')
+              ? 'Ekip kayıtları okunamadı: okuma izni eksik (supabase/staff_activity.sql dosyasını yeniden çalıştırın).'
+              : `Ekip kayıtları okunamadı: ${errorText ?? 'bilinmeyen hata'}`}
         </p>
       ) : (
         <>

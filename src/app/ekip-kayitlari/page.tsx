@@ -43,6 +43,7 @@ export default async function EkipKayitlariPage({ searchParams }: { searchParams
     <EkipKayitlariClient
       rows={(rows as any[]) ?? []}
       missing={!!error}
+      errorText={error?.message ?? null}
       people={people}
       initialPerson={kisi ?? ''}
       days={days}

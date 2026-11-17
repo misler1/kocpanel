@@ -31,6 +31,9 @@ create policy "staff_activity_select" on staff_activity for select using (
   or exists (select 1 from profiles p where p.id = auth.uid() and p.is_admin)
 );
 -- Ekleme yalnızca tetikleyiciden (security definer); doğrudan yazma/silme izni yok.
+revoke all on staff_activity from public, anon, authenticated;
+grant select on staff_activity to authenticated;
+grant all on staff_activity to service_role;
 
 create or replace function _log_staff_activity() returns trigger
 language plpgsql security definer set search_path = public as $$
