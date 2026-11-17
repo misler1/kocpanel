@@ -27,6 +27,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `deneme_analizleri.sql` | Yapay zekâ deneme analizi kaydedilir; koç "Öğrenciye gönder" ile öğrenciye iletir (notifications.sql'den sonra) | ✅ Çalıştırıldı |
 | `gunluk_bildirimleri.sql` | Öğrenci günlük girince koça bildirim; her sabah 10:00'da dün günlük girmeyenlerin listesi | ⏳ Çalıştırılacak |
 | `ogrenci_ilk_giris.sql` | Öğrenci hesabıyla ilk kez giriş yapınca koça bildirim (+ hiç giriş yapmamışların listesi) | ⏳ Çalıştırılacak |
+| `stajyer_bildirim_kopyasi.sql` | Stajyerin öğrencisinden gelen bildirimler (günlük, deneme, program, konu, ilk giriş) rehber koça da düşer (notifications_grouping.sql'den sonra) | ⏳ Çalıştırılacak |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
