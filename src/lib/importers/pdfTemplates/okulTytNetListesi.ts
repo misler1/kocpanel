@@ -231,6 +231,36 @@ function parseKazanimPage(pageItems: PdfItem[]): ExamQuestion[] {
   return expandKazanim(kept);
 }
 
+/**
+ * Karnenin başka bir düzeni: "SONUÇ BELGESİ" — tek sayfa, solda "Ders · Soru · Doğru · Yanlış · Net" tablosu,
+ * sağ yarıda "DERSLERE GÖRE ANALİZ" kazanım tablosu; öğrenci adı "Öğrenci  Numara  Sınıf" satırının altındaki satırda.
+ * Netler/puan/sıralama liste sayfasından okunur; buradan yalnızca kazanım özeti (ks) eklenir, kayıt ada göre eşlenir.
+ */
+function attachSonucBelgesiKazanim(items: PdfItem[], records: ExtractedPdfRecord[]) {
+  const pages = [...new Set(items.filter((i) => /DERSLERE\s+G[ÖO]RE\s+ANAL[İI]Z/i.test(i.str)).map((i) => i.page))];
+  if (!pages.length || !records.length) return;
+  const norm = (s: string) => trUpper(s).replace(/\s+/g, ' ').trim();
+  const byName = new Map(records.map((r) => [norm(r.rawName), r]));
+  for (const page of pages) {
+    const pi = items.filter((i) => i.page === page && i.str.trim() !== '');
+    const head = pi.find((i) => i.str.trim() === 'Öğrenci');
+    const title = pi.find((i) => /DERSLERE\s+G[ÖO]RE\s+ANAL[İI]Z/i.test(i.str));
+    if (!head || !title) continue;
+    // Ad: başlığın hemen altındaki satırda, "Numara" sütununun solunda kalan parçalar
+    const numX = pi.find((i) => i.str.trim() === 'Numara' && Math.abs(i.y - head.y) < 2)?.x ?? head.x + 150;
+    const below = pi.filter((i) => i.y < head.y - 2 && i.y > head.y - 25 && i.x < numX - 2).sort((a, b) => b.y - a.y || a.x - b.x);
+    if (!below.length) continue;
+    const nameY = below[0].y;
+    const name = norm(below.filter((i) => Math.abs(i.y - nameY) < 2).map((i) => i.str).join(' '));
+    const rec = name ? byName.get(name) : undefined;
+    if (!rec || rec.questions?.some((q) => q.ks)) continue;
+    // Sağ yarı: kazanım tablosu (başlık "DERSLERE GÖRE ANALİZ"in solundaki sütun sınırından itibaren)
+    const leftEdge = Math.min(...pi.filter((i) => Math.abs(i.y - title.y) < 20 && i.x > title.x - 120).map((i) => i.x)) - 5;
+    const kz = parseKazanimPage(pi.filter((i) => i.x >= Math.min(leftEdge, title.x - 10)));
+    if (kz.length) rec.questions = [...(rec.questions ?? []), ...kz];
+  }
+}
+
 // ───────────── 2) Okul net listesi (karneler yoksa) ─────────────
 
 const LIST_GROUPS: (SubjectKey | 'toplam')[] = [
@@ -367,6 +397,7 @@ export const okulTytNetListesiTemplate: PdfTemplate = {
 
     // Yalnızca liste sayfaları varsa
     const list = parseListPages(items);
+    attachSonucBelgesiKazanim(items, list.records);
     return { examName: list.examName, examDate: null, records: list.records };
   },
 };
