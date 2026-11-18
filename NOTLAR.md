@@ -30,6 +30,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `stajyer_bildirim_kopyasi.sql` | Stajyerin öğrencisinden gelen bildirimler (günlük, deneme, program, konu, ilk giriş) rehber koça da düşer (notifications_grouping.sql'den sonra) | ✅ Çalıştırıldı |
 | `bildirim_cakisma_duzeltme.sql` | Rehber koça aynı olayın iki kez düşmesi ve sabah özetlerinin karışması düzeltildi (stajyer_bildirim_kopyasi.sql'den sonra) | ⏳ Çalıştırılacak |
 | `online_gorusme.sql` | Ajanda'da online görüşme: koçun varsayılan Meet/Zoom bağlantısı | ⏳ Çalıştırılacak |
+| `program_duzenleyerek_onay.sql` | Onay bekleyen programı koç düzenleyip onaylayabilir (staff_programs.sql'den sonra) | ⏳ Çalıştırılacak |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.

@@ -153,7 +153,7 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   // Deneme (grup) düzeltme / silme
-  const [renameTarget, setRenameTarget] = useState<{ ids: string[]; name: string; newName: string; examType: string } | null>(null);
+  const [renameTarget, setRenameTarget] = useState<{ ids: string[]; name: string; newName: string; examType: string; date: string; newDate: string; mixedDates: boolean } | null>(null);
   const [deleteGroupTarget, setDeleteGroupTarget] = useState<{ ids: string[]; name: string; examType: string } | null>(null);
   const [groupBusy, setGroupBusy] = useState(false);
   const [questionExam, setQuestionExam] = useState<any | null>(null); // kazanım (konu) analizi penceresi
@@ -311,14 +311,19 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
     if (!renameTarget) return;
     const newName = renameTarget.newName.trim();
     if (!newName) { setGroupError('Deneme adı boş olamaz.'); return; }
+    const newDate = renameTarget.newDate;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) { setGroupError('Geçerli bir tarih seçin.'); return; }
+    // Tarih yalnızca değiştirildiyse (ya da kayıtların tarihleri farklıysa ve yeni tarih seçildiyse) yazılır
+    const dateChanged = newDate !== renameTarget.date;
+    const patch: Record<string, string> = { exam_name: newName, ...(dateChanged ? { exam_date: newDate } : {}) };
     setGroupBusy(true);
     setGroupError(null);
-    const { error } = await (supabase.from('exams') as any).update({ exam_name: newName }).in('id', renameTarget.ids);
+    const { error } = await (supabase.from('exams') as any).update(patch).in('id', renameTarget.ids);
     if (error) {
       setGroupError(error.message ?? 'Güncellenemedi.');
     } else {
       const idSet = new Set(renameTarget.ids);
-      setExams((prev) => prev.map((e) => (idSet.has(e.id) ? { ...e, exam_name: newName } : e)));
+      setExams((prev) => prev.map((e) => (idSet.has(e.id) ? { ...e, ...patch } : e)));
       setRenameTarget(null);
     }
     setGroupBusy(false);
@@ -516,7 +521,7 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
               key={g.key}
               variant={singleStudent ? 'student' : 'exam'}
               onShowQuestions={setQuestionExam}
-              onRenameRequest={(grp) => { setGroupError(null); setPdfMsg(null); setPdfUnmatched([]); setPdfFile(null); setRenameTarget({ ids: grp.rows.map((r: any) => r.id), name: grp.examName, newName: grp.examName, examType: grp.examType }); }}
+              onRenameRequest={(grp) => { setGroupError(null); setPdfMsg(null); setPdfUnmatched([]); setPdfFile(null); setRenameTarget({ ids: grp.rows.map((r: any) => r.id), name: grp.examName, newName: grp.examName, examType: grp.examType, date: grp.date, newDate: grp.date, mixedDates: new Set(grp.rows.map((r: any) => r.exam_date)).size > 1 }); }}
               onDeleteGroupRequest={(grp) => { setGroupError(null); setDeleteGroupTarget({ ids: grp.rows.map((r: any) => r.id), name: grp.examName, examType: grp.examType }); }}
               group={g}
               isOpen={isGroupOpen(g.key, idx)}
@@ -578,10 +583,11 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
       {renameTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl">
-            <h3 className="mb-1 text-base font-semibold text-gray-900">Deneme adını düzelt</h3>
+            <h3 className="mb-1 text-base font-semibold text-gray-900">Deneme adını / tarihini düzelt</h3>
             <p className="mb-4 text-[13px] text-gray-500">
-              {renameTarget.ids.length} kaydın deneme adı değişecek ({renameTarget.examType}).
+              {renameTarget.ids.length} öğrencinin kaydı birlikte değişir ({renameTarget.examType}).
             </p>
+            <label className="mb-1 block text-[12px] font-medium text-gray-600">Deneme adı</label>
             <input
               autoFocus
               value={renameTarget.newName}
@@ -589,6 +595,16 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
               onKeyDown={(ev) => { if (ev.key === 'Enter') handleRenameGroup(); }}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
             />
+            <label className="mb-1 mt-3 block text-[12px] font-medium text-gray-600">Sınav tarihi</label>
+            <input
+              type="date"
+              value={renameTarget.newDate}
+              onChange={(ev) => setRenameTarget({ ...renameTarget, newDate: ev.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            />
+            {renameTarget.mixedDates && (
+              <p className="mt-1 text-[11.5px] text-amber-700">Bu denemedeki kayıtların tarihleri farklı. Tarihi değiştirirseniz hepsi seçtiğiniz tarihe alınır.</p>
+            )}
             <div className="mt-4 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3">
               <div className="text-[12px] font-medium text-gray-700">Kazanım ve sıralama ekle</div>
               <p className="mt-0.5 text-[11px] leading-relaxed text-gray-500">
@@ -807,7 +823,7 @@ function ExamGroupCard({
           <div className="flex flex-shrink-0 items-center gap-0.5 pr-3">
             <button
               type="button"
-              title="Deneme adını düzelt"
+              title="Deneme adını / tarihini düzelt"
               onClick={() => onRenameRequest?.(group)}
               className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
             >
