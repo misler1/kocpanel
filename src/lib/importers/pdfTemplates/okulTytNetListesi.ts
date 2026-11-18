@@ -232,6 +232,54 @@ function parseKazanimPage(pageItems: PdfItem[]): ExamQuestion[] {
 }
 
 /**
+ * "SONUÇ BELGESİ" cevap tablosu: her test tek metin parçasıdır, karakter sırası soru sırasıdır
+ * (büyük harf doğru, küçük harf yanlış, boşluk boş). Test, ders toplamlarıyla (doğru/yanlış) tutmazsa alınmaz.
+ */
+function parseSonucBelgesiAnswers(pi: PdfItem[], results: Record<string, { dogru: string; yanlis: string }>): ExamQuestion[] {
+  const out: ExamQuestion[] = [];
+  const labels = pi.filter((i) => /^TYT\s+\S+/.test(i.str.trim()));
+  for (const lab of labels) {
+    const g = gridName(lab.str.trim().replace(/^TYT\s+/, ''));
+    if (!g) continue;
+    const ans = pi.filter((i) => Math.abs(i.y - lab.y) < 2.5 && i.x > lab.x + 30).sort((a, b) => a.x - b.x)[0];
+    const keyLab = pi.filter((i) => /^Cevap Anahtar/.test(i.str.trim()) && i.y < lab.y && lab.y - i.y < 20).sort((a, b) => b.y - a.y)[0];
+    if (!ans || !keyLab) continue;
+    const keyStr = pi.filter((i) => Math.abs(i.y - keyLab.y) < 2.5 && /^[A-E]{5,}$/.test(i.str.trim())).sort((a, b) => b.str.length - a.str.length)[0]?.str.trim();
+    if (!keyStr) continue;
+    const a = ans.str.replace(/\s+$/, '').padEnd(keyStr.length, ' ');
+    if (a.length !== keyStr.length) continue;
+    const at = (n: number) => { const c = a[n - 1]; return c && /[A-Ea-e]/.test(c) ? c : null; };
+
+    // Sosyal 25 soruluk: 21–25 Felsefe (Seçmeli), din yerine çözülmüşse din sayılır
+    let sections = GRID_SECTIONS[g];
+    if (g === 'SOSYAL' && keyStr.length === 25) {
+      const dinBlank = [16, 17, 18, 19, 20].every((n) => !at(n));
+      const secUsed = [21, 22, 23, 24, 25].some((n) => at(n));
+      if (dinBlank && secUsed) sections = [...sections.slice(0, 3), { from: 21, to: 25, key: 'din', k: 'Felsefe (Seçmeli)' }];
+    }
+    const qs: ExamQuestion[] = [];
+    for (const sec of sections) {
+      for (let n = sec.from; n <= sec.to; n++) {
+        const dc = keyStr[n - 1];
+        if (!dc) continue;
+        const raw = at(n);
+        const oc = raw ? raw.toUpperCase() : null;
+        qs.push({ s: sec.key, n: n - sec.from + 1, k: sec.k, dc, oc, r: !oc ? 'B' : raw === oc && oc === dc ? 'D' : 'Y' });
+      }
+    }
+    // Güvenlik: her ders için doğru/yanlış sayıları sonuç tablosuyla aynı olmalı
+    const ok = sections.every((sec) => {
+      const r = results[sec.key];
+      if (!r) return true;
+      const list = qs.filter((q) => q.s === sec.key);
+      return list.filter((q) => q.r === 'D').length === Number(r.dogru) && list.filter((q) => q.r === 'Y').length === Number(r.yanlis);
+    });
+    if (ok) out.push(...qs);
+  }
+  return out;
+}
+
+/**
  * Karnenin başka bir düzeni: "SONUÇ BELGESİ" — tek sayfa, solda "Ders · Soru · Doğru · Yanlış · Net" tablosu,
  * sağ yarıda "DERSLERE GÖRE ANALİZ" kazanım tablosu; öğrenci adı "Öğrenci  Numara  Sınıf" satırının altındaki satırda.
  * Netler/puan/sıralama liste sayfasından okunur; buradan yalnızca kazanım özeti (ks) eklenir, kayıt ada göre eşlenir.
@@ -254,6 +302,9 @@ function attachSonucBelgesiKazanim(items: PdfItem[], records: ExtractedPdfRecord
     const name = norm(below.filter((i) => Math.abs(i.y - nameY) < 2).map((i) => i.str).join(' '));
     const rec = name ? byName.get(name) : undefined;
     if (!rec || rec.questions?.some((q) => q.ks)) continue;
+    // Soru soru cevaplar (sol yarı): "TYT <Test>" satırında öğrencinin cevapları, altındaki "Cevap Anahtarı" satırında anahtar
+    const answers = parseSonucBelgesiAnswers(pi.filter((i) => i.x < title.x - 20), rec.results as Record<string, { dogru: string; yanlis: string }>);
+    if (answers.length && !rec.questions?.some((q) => !q.ks)) rec.questions = [...answers, ...(rec.questions ?? [])];
     // Sağ yarı: kazanım tablosu (başlık "DERSLERE GÖRE ANALİZ"in solundaki sütun sınırından itibaren)
     const leftEdge = Math.min(...pi.filter((i) => Math.abs(i.y - title.y) < 20 && i.x > title.x - 120).map((i) => i.x)) - 5;
     const kz = parseKazanimPage(pi.filter((i) => i.x >= Math.min(leftEdge, title.x - 10)));

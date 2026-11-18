@@ -1,6 +1,7 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { answerSheets } from '@/lib/answer-pattern';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
@@ -1255,6 +1256,48 @@ function StudentSelfAnalysisSection({ exam, card }: { exam: any; card: string })
   );
 }
 
+/** Cevap çizelgesi: test test her sorunun cevabı (yeşil doğru · kırmızı yanlış · gri boş) + boş bırakma deseni */
+function AnswerSheetSection({ exam, card }: { exam: any; card: string }) {
+  const sheets = answerSheets(exam.exam_type, exam.question_results);
+  if (!sheets.length) return null;
+  const notes = sheets.filter((t) => t.note);
+  return (
+    <section className={card}>
+      <ReportSectionTitle>📝 Cevap çizelgesi</ReportSectionTitle>
+      {notes.length > 0 && (
+        <div className="mb-3 space-y-1 rounded-xl bg-amber-50 px-3 py-2 text-[12.5px] text-amber-900 ring-1 ring-amber-200">
+          {notes.map((t) => <p key={t.test}>⏱️ {t.note}</p>)}
+        </div>
+      )}
+      <div className="space-y-3">
+        {sheets.map((t) => (
+          <div key={t.test}>
+            <div className="mb-1 flex flex-wrap items-baseline gap-x-2 text-[12.5px]">
+              <span className="font-semibold text-slate-800">{t.test}</span>
+              <span className="text-[11.5px] text-slate-500">
+                <span className="text-emerald-600">{t.d} D</span> · <span className="text-rose-500">{t.y} Y</span> · {t.b} B
+                {t.lastAnswered > 0 && t.trailingBlank > 0 && <> · son işaretlenen: {t.lastAnswered}. soru</>}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {t.cells.map((c) => (
+                <span key={c.no}
+                  title={`${c.no}. soru: doğru cevap ${c.dc || '?'}, öğrencinin cevabı ${c.oc ?? 'boş'}`}
+                  className={`flex h-8 w-7 flex-col items-center justify-center rounded-md text-[9.5px] leading-tight ${
+                    c.r === 'D' ? 'bg-emerald-500 text-white' : c.r === 'Y' ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                  <span className="opacity-80">{c.no}</span>
+                  <span className="text-[11px] font-bold">{c.r === 'B' ? '–' : c.oc}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-[10.5px] text-slate-400">Kutuda soru numarası ve öğrencinin işaretlediği şık var; üzerine gelince doğru cevap görünür.</p>
+    </section>
+  );
+}
+
 function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) {
   // Karnede kazanım tablosu varsa (ks) kazanım analizi ondan yapılır; soru numarası bilinmediği için çip yerine sayı gösterilir
   const questions = useMemo(() => {
@@ -1555,6 +1598,8 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
                   </div>
                 )}
               </section>
+
+              <AnswerSheetSection exam={exam} card={card} />
 
               <section className={card}>
                 <ReportSectionTitle>🧩 Kazanım analizi</ReportSectionTitle>

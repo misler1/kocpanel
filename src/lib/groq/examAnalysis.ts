@@ -1,4 +1,5 @@
 import { calcNetYKS, calcNetLGS, TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS } from "@/app/denemeler/examConstants";
+import { answerSheets } from "@/lib/answer-pattern";
 import { callLlm, parseJsonLoose } from "@/lib/ai/llm";
 import { candidateTopics, classifyTopics, topicKey, type DersKonulari } from "@/lib/exam-topic-priority";
 import { ERROR_LABEL, NON_TOPIC_ERRORS } from "@/lib/exam-error-types";
@@ -266,7 +267,9 @@ function formatExam(exam: ExamRow): string {
     exam.tyt_puan && `TYT ${exam.tyt_puan}`, exam.say_puan && `SAY ${exam.say_puan}`, exam.ea_puan && `EA ${exam.ea_puan}`,
     exam.soz_puan && `SÖZ ${exam.soz_puan}`, exam.lgs_puan && `LGS ${exam.lgs_puan}`,
   ].filter(Boolean).join(", ");
-  return `  • ${exam.exam_name} (${exam.exam_type}, ${exam.exam_date}) — toplam ${exam.net_score} net${puan ? `, puan: ${puan}` : ""}\n${lines}`;
+  // Soru soru cevap varsa: testin sonunu toplu boş bırakma gibi desenler (kodda hesaplanır)
+  const pattern = answerSheets(exam.exam_type, exam.question_results as any).filter((t) => t.note).map((t) => `    ! Cevap deseni: ${t.note}`).join("\n");
+  return `  • ${exam.exam_name} (${exam.exam_type}, ${exam.exam_date}) — toplam ${exam.net_score} net${puan ? `, puan: ${puan}` : ""}\n${lines}${pattern ? `\n${pattern}` : ""}`;
 }
 
 /** Öğrencinin tüm denemelerde işaretlediği hata türleri (kazanım verisi olmayan ders satırları dahil) */
@@ -339,6 +342,8 @@ function systemPrompt(multi: boolean) {
    - Son denemelerde düşen bir dersi ("son iki denemede üst üste düşüş", "düşüş eğilimi", "son deneme en düşük")
      asla "güçlü" ya da "iyi gidiyor" diye niteleme; bu düşüşü açıkça belirt.
    - Bir ders ancak neti artıyorsa ya da yüksek seviyede sabitse güçlü sayılabilir.
+   CEVAP DESENİ: "! Cevap deseni" satırı varsa (ör. testin son sorularında hiç işaretleme yok) bunu mutlaka yorumla:
+   süre yönetimi / test sırası / o testi bırakma ihtimalini belirt; aynı desen birden çok denemede tekrarlıyorsa vurgula.
 4) calisma_plani: 3-5 kısa, uygulanabilir madde.
 5) ogrenciye_mesaj: öğrenciye "sen" diye, 2-3 cümle, dürüst ama cesaretlendirici. Görüşme notlarındaki özel bilgileri buraya taşıma.
 6) capraz_degerlendirme: görüşme notu varsa 2-3 cümle (öğrenciye gösterilmez), yoksa null.

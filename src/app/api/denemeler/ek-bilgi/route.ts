@@ -105,10 +105,14 @@ export async function POST(req: NextRequest) {
 
     const patch: Record<string, unknown> = {};
     if (isEmpty(row.question_results) && rec.questions?.length) patch.question_results = rec.questions;
-    else if (Array.isArray(row.question_results) && !row.question_results.some((q: any) => q?.ks)) {
-      // Daha önce soru soru yüklenmiş ama kazanım tablosu okunmamış denemeye kazanım özeti eklenir
-      const ks = (rec.questions ?? []).filter((q) => q.ks);
-      if (ks.length) patch.question_results = [...row.question_results.filter((q: any) => !q?.ks), ...ks];
+    else if (Array.isArray(row.question_results)) {
+      // Eksik olan kısım eklenir: kazanım özeti (ks) yoksa ks, soru soru cevaplar yoksa cevaplar
+      const cur: any[] = row.question_results;
+      const hasKs = cur.some((q) => q?.ks);
+      const hasAns = cur.some((q) => q && !q.ks);
+      const addKs = hasKs ? [] : (rec.questions ?? []).filter((q) => q.ks);
+      const addAns = hasAns ? [] : (rec.questions ?? []).filter((q) => !q.ks);
+      if (addKs.length || addAns.length) patch.question_results = [...addAns, ...cur, ...addKs];
     }
     if (isEmpty(row.subject_averages) && rec.averages && Object.keys(rec.averages).length) patch.subject_averages = rec.averages;
     if (rec.rankings && Object.keys(rec.rankings).length) {
