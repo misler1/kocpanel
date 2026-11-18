@@ -4,11 +4,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  IconArrowLeft, IconSend, IconPlus, IconUsersGroup, IconSearch, IconDotsVertical, IconBan, IconX, IconCheck,
+  IconArrowLeft, IconSend, IconPlus, IconUsersGroup, IconSearch, IconDotsVertical, IconBan, IconX, IconCheck, IconSpeakerphone,
 } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { markMessagesRead } from '@/lib/use-unread-conversations';
 import { NOTIFICATIONS_CHANGED } from '@/components/NotificationBell';
+import { BulkMessage } from './BulkMessage';
 
 type Conv = {
   id: string; kind: 'direct' | 'group'; title: string | null; other_id: string | null; other_role: string | null;
@@ -55,6 +56,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   const [picker, setPicker] = useState<null | 'direct' | 'group' | 'add'>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<string | null>(activeId); // canlı abonelik açık sohbeti buradan okur
 
@@ -243,6 +245,11 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
             <h1 className={`text-[18px] text-[var(--ink)] ${student ? 'font-extrabold' : 'font-medium'}`}>{student ? '💬 Mesajlar' : 'Mesajlar'}</h1>
             <div className="flex gap-1.5">
               {isStaff && (
+                <button type="button" onClick={() => setBulkOpen(true)} className={ghostBtn} title="Grup kurmadan, seçtiğiniz öğrencilerin her birine ayrı mesaj">
+                  <IconSpeakerphone size={15} /> <span className="hidden sm:inline">Toplu</span>
+                </button>
+              )}
+              {isStaff && (
                 <button type="button" onClick={() => setPicker('group')} className={ghostBtn} title="Yeni grup">
                   <IconUsersGroup size={15} /> <span className="hidden sm:inline">Grup</span>
                 </button>
@@ -416,6 +423,8 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
           </>
         )}
       </div>
+
+      {bulkOpen && <BulkMessage supabase={supabase} onClose={() => setBulkOpen(false)} onSent={loadConvs} />}
 
       {picker && (
         <ContactPicker
