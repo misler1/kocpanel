@@ -46,10 +46,11 @@ function StatCard({ emoji, bg, tone, bar, label, value, sub, pct, href }: {
 const CONFETTI = ['🎉', '⭐', '🎊', '✨', '🌟', '💜'];
 
 export function OgrenciAnasayfaClient({
-  studentId, programDay, fullName, todayLabel, todayLogs, weekTotal, weekDone, topicsDone, topicsTotal, lastExam, lastExamRank, pendingRequests,
+  studentId, programDay, fullName, todayLabel, todayLogs, yesterday, weekTotal, weekDone, topicsDone, topicsTotal, lastExam, lastExamRank, pendingRequests,
   streak, todayQuestions, targets, badges, subjects, feed,
 }: {
-  studentId: string; programDay: ProgramDay | null; fullName: string; todayLabel: string; todayLogs: any[]; weekTotal: number; weekDone: number;
+  studentId: string; programDay: ProgramDay | null; fullName: string; todayLabel: string; todayLogs: any[];
+  yesterday: { date: string; label: string; logs: any[] }; weekTotal: number; weekDone: number;
   topicsDone: number; topicsTotal: number; lastExam: any; lastExamRank: any; pendingRequests: number;
   streak: { current: number; best: number; studiedToday: boolean }; todayQuestions: number;
   targets: TargetRow[]; badges: Badge[]; subjects: string[]; feed: FeedItem[];
@@ -60,6 +61,9 @@ export function OgrenciAnasayfaClient({
   const tasksRef = useRef<HTMLDivElement>(null);
   const [focusTasks, setFocusTasks] = useState(false);
   const [logs, setLogs] = useState(todayLogs);
+  // Dünden kalan görevler: işaretlenince kart üzerinde kalır (yapıldı/yapmadım görünür), sayfa yenilenince kaybolur
+  const [yLogs, setYLogs] = useState(yesterday.logs);
+  const isYesterday = (id: string) => yLogs.some((x) => x.id === id);
   const [celebrate, setCelebrate] = useState(0);
   // undefined: kapalı, null: plan dışı çalışma, nesne: tiklenen görev
   const [sheet, setSheet] = useState<any | null | undefined>(undefined);
@@ -82,6 +86,10 @@ export function OgrenciAnasayfaClient({
   const [msg, setMsg] = useState<string | null>(null);
 
   function markDone(id: string, done: boolean) {
+    if (isYesterday(id)) {
+      setYLogs((prev) => prev.map((x) => (x.id === id ? { ...x, student_done: done, ...(done ? { student_missed: false, student_missed_note: null } : {}) } : x)));
+      return;
+    }
     const updated = logs.map((x) => (x.id === id ? { ...x, student_done: done, ...(done ? { student_missed: false, student_missed_note: null } : {}) } : x));
     setLogs(updated);
     if (done && updated.every((x) => x.student_done)) setCelebrate((c) => c + 1);
@@ -101,8 +109,10 @@ export function OgrenciAnasayfaClient({
     if (err) { markDone(l.id, true); setMsg(err); } else { setMsg(null); router.refresh(); }
   }
 
-  const markMissed = (id: string, missed: boolean, note: string | null = null) =>
-    setLogs((prev) => prev.map((x) => (x.id === id ? { ...x, student_missed: missed, student_missed_note: missed ? note : null } : x)));
+  const markMissed = (id: string, missed: boolean, note: string | null = null) => {
+    const f = (prev: any[]) => prev.map((x) => (x.id === id ? { ...x, student_missed: missed, student_missed_note: missed ? note : null } : x));
+    if (isYesterday(id)) setYLogs(f); else setLogs(f);
+  };
 
   async function saveMissed(note: string) {
     const task = missedTask;
@@ -131,7 +141,8 @@ export function OgrenciAnasayfaClient({
       router.refresh();
       return null;
     }
-    const err = await logStudy(supabase, input);
+    // Dünden kalan görev: çalışma dünün günlüğüne yazılır
+    const err = await logStudy(supabase, isYesterday(input.taskId) ? { ...input, logDate: yesterday.date } : input);
     if (err) return err;
     markDone(input.taskId, true);
     setSheet(undefined);
@@ -148,6 +159,51 @@ export function OgrenciAnasayfaClient({
     const err = await setTaskDone(supabase, task.id, true);
     if (err) { markDone(task.id, false); setMsg(err); } else router.refresh();
   }
+
+  // Görev satırı (bugünün ve dünden kalan görevler için ortak)
+  const taskRow = (l: any) => {
+    const done = !!l.student_done;
+    const missed = !done && !!l.student_missed;
+    return (
+      <div key={l.id} className={`flex w-full items-center gap-2 rounded-2xl border-2 p-3 transition-all ${
+        done ? 'border-[var(--success)]/30 bg-[var(--success-soft)]' : missed ? 'border-[var(--danger)]/30 bg-[var(--danger-soft)]' : 'border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)]/40 hover:bg-[var(--accent-soft)]'}`}>
+      <button type="button" onClick={() => toggleDone(l)}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.98]">
+        <span className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl text-[22px] ${done ? 'bg-white' : 'bg-white shadow-sm'}`}>
+          {subjectEmoji(l.subject)}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-bold">
+            <span className={done ? 'text-[var(--success)] line-through decoration-2' : missed ? 'text-[var(--danger)]' : 'text-[var(--ink)]'}>{l.subject}</span>
+            {l.student_added && !l.student_plan && <span className="ml-1.5 inline-block rounded-full bg-[var(--pink-soft)] px-2 py-0.5 align-middle text-[10px] font-extrabold text-[var(--pink)]">⭐ Ekstra</span>}
+          </span>
+          <span className="block text-[12.5px] font-medium text-[var(--ink-muted)]">
+            {[l.topic, l.target_count > 0 ? `${l.target_count} soru` : null].filter(Boolean).join(' · ') || 'Görev'}
+          </span>
+          {done && <span className="block text-[12px] font-bold text-[var(--success)]">✓ Tamamlandı</span>}
+          {missed && <span className="block text-[12px] font-bold text-[var(--danger)]">✕ Yapmadım{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</span>}
+        </span>
+        <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+          done ? 'student-pop border-[var(--success)] bg-[var(--success)] text-white' : 'border-dashed border-[var(--success)]/50 bg-white text-[var(--success)]/35 hover:border-solid hover:border-[var(--success)] hover:text-[var(--success)]'}`}>
+          <IconCheck size={18} strokeWidth={3} />
+        </span>
+      </button>
+      {l.appointment_id && !done && isMeetingUrl(l.resource_name) && (
+        <a href={l.resource_name.trim()} target="_blank" rel="noopener noreferrer" title={`${meetingPlatform(l.resource_name)} ile görüşmeye katıl`}
+          className="flex flex-shrink-0 items-center gap-1 rounded-full bg-sky-500 px-3 py-1.5 text-[12px] font-bold text-white shadow-sm hover:bg-sky-600">
+          🎥 Katıl
+        </a>
+      )}
+      {!l.appointment_id && !done && (
+        <button type="button" onClick={() => (missed ? clearMissed(l) : setMissedTask(l))}
+          title={missed ? '"Yapmadım" işaretini kaldır' : 'Yapmadım'} aria-label={missed ? '"Yapmadım" işaretini kaldır' : 'Yapmadım'}
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${missed ? 'border-[var(--danger)] bg-[var(--danger)] text-white' : 'border-[var(--danger)]/35 bg-[var(--danger-soft)] text-[var(--danger)]/75 hover:border-[var(--danger)]/70 hover:text-[var(--danger)]'}`}>
+          <IconX size={16} strokeWidth={3} />
+        </button>
+      )}
+      </div>
+    );
+  };
 
   const todayDone = logs.filter((l) => l.student_done).length;
   const todayPct = logs.length > 0 ? Math.round((todayDone / logs.length) * 100) : 0;
@@ -190,6 +246,18 @@ export function OgrenciAnasayfaClient({
 
       {msg && <p className="rounded-2xl border-2 border-[var(--accent)]/20 bg-[var(--accent-soft)] px-4 py-2.5 text-[13px] font-bold text-[var(--accent-dark)]">💬 {msg}</p>}
 
+      {/* Dünden kalan görevler (gece yarısından sonra dünü girmek isteyenler için) */}
+      {yLogs.length > 0 && (
+        <div className="rounded-[28px] border-2 border-amber-300 bg-amber-50 p-4 md:p-5">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <h2 className="text-[16px] font-extrabold text-amber-900">🌙 Dünden kalan görevler</h2>
+            <span className="rounded-full bg-amber-200 px-3 py-1 text-[12px] font-bold text-amber-900">{yesterday.label}</span>
+          </div>
+          <p className="mb-3 text-[12.5px] font-medium text-amber-800">Dün ({yesterday.label}) işaretlemediğin görevler. Yaptıysan ✓, yapmadıysan ✕ ile işaretle.</p>
+          <div className="space-y-2.5">{yLogs.map(taskRow)}</div>
+        </div>
+      )}
+
       {/* Bugünün görevleri */}
       <div ref={tasksRef} className={`relative scroll-mt-4 overflow-hidden rounded-[28px] border-2 bg-[var(--card)] p-4 transition-shadow duration-500 md:p-5 ${focusTasks
         ? 'border-[var(--accent)] shadow-[0_0_0_4px_rgba(139,92,246,0.25)]' : 'border-[var(--border)]'}`}>
@@ -226,49 +294,7 @@ export function OgrenciAnasayfaClient({
           </div>
         ) : (
           <div className="space-y-2.5">
-            {logs.map((l) => {
-              const done = !!l.student_done;
-              const missed = !done && !!l.student_missed;
-              return (
-                <div key={l.id} className={`flex w-full items-center gap-2 rounded-2xl border-2 p-3 transition-all ${
-                  done ? 'border-[var(--success)]/30 bg-[var(--success-soft)]' : missed ? 'border-[var(--danger)]/30 bg-[var(--danger-soft)]' : 'border-[var(--border)] bg-[var(--paper)] hover:border-[var(--accent)]/40 hover:bg-[var(--accent-soft)]'}`}>
-                <button type="button" onClick={() => toggleDone(l)}
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.98]">
-                  <span className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl text-[22px] ${done ? 'bg-white' : 'bg-white shadow-sm'}`}>
-                    {subjectEmoji(l.subject)}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-bold">
-                      <span className={done ? 'text-[var(--success)] line-through decoration-2' : missed ? 'text-[var(--danger)]' : 'text-[var(--ink)]'}>{l.subject}</span>
-                      {l.student_added && !l.student_plan && <span className="ml-1.5 inline-block rounded-full bg-[var(--pink-soft)] px-2 py-0.5 align-middle text-[10px] font-extrabold text-[var(--pink)]">⭐ Ekstra</span>}
-                    </span>
-                    <span className="block text-[12.5px] font-medium text-[var(--ink-muted)]">
-                      {[l.topic, l.target_count > 0 ? `${l.target_count} soru` : null].filter(Boolean).join(' · ') || 'Görev'}
-                    </span>
-                    {done && <span className="block text-[12px] font-bold text-[var(--success)]">✓ Tamamlandı</span>}
-                    {missed && <span className="block text-[12px] font-bold text-[var(--danger)]">✕ Yapmadım{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</span>}
-                  </span>
-                  <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                    done ? 'student-pop border-[var(--success)] bg-[var(--success)] text-white' : 'border-dashed border-[var(--success)]/50 bg-white text-[var(--success)]/35 hover:border-solid hover:border-[var(--success)] hover:text-[var(--success)]'}`}>
-                    <IconCheck size={18} strokeWidth={3} />
-                  </span>
-                </button>
-                {l.appointment_id && !done && isMeetingUrl(l.resource_name) && (
-                  <a href={l.resource_name.trim()} target="_blank" rel="noopener noreferrer" title={`${meetingPlatform(l.resource_name)} ile görüşmeye katıl`}
-                    className="flex flex-shrink-0 items-center gap-1 rounded-full bg-sky-500 px-3 py-1.5 text-[12px] font-bold text-white shadow-sm hover:bg-sky-600">
-                    🎥 Katıl
-                  </a>
-                )}
-                {!l.appointment_id && !done && (
-                  <button type="button" onClick={() => (missed ? clearMissed(l) : setMissedTask(l))}
-                    title={missed ? '"Yapmadım" işaretini kaldır' : 'Yapmadım'} aria-label={missed ? '"Yapmadım" işaretini kaldır' : 'Yapmadım'}
-                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${missed ? 'border-[var(--danger)] bg-[var(--danger)] text-white' : 'border-[var(--danger)]/35 bg-[var(--danger-soft)] text-[var(--danger)]/75 hover:border-[var(--danger)]/70 hover:text-[var(--danger)]'}`}>
-                    <IconX size={16} strokeWidth={3} />
-                  </button>
-                )}
-                </div>
-              );
-            })}
+            {logs.map(taskRow)}
           </div>
         )}
 

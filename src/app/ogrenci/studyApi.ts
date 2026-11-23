@@ -9,6 +9,8 @@ export type StudyInput = {
   correct: number;
   wrong: number;
   minutes: number;
+  /** Günlüğün tarihi (boşsa bugün). Dünden kalan görev işaretlenirken dünün tarihi verilir. */
+  logDate?: string;
 };
 
 /** Türkiye saatine göre bugünün tarihi (YYYY-MM-DD) */
@@ -26,7 +28,7 @@ function friendly(error: any) {
 export async function logStudy(supabase: any, input: StudyInput): Promise<string | null> {
   const { error } = await supabase.rpc('student_log_study', {
     p_task_id: input.taskId,
-    p_log_date: todayTr(),
+    p_log_date: input.logDate ?? todayTr(),
     p_subject: input.subject,
     p_topic: input.topic,
     p_count: input.count,

@@ -12,7 +12,7 @@ import { logStudy, setTaskDone, setTaskMissed, todayTr, type StudyInput } from '
 import { MissedSheet } from '../MissedSheet';
 import { isMeetingUrl, meetingPlatform } from '@/lib/meeting-link';
 import { useKeyboardInset } from '../useKeyboardInset';
-import { programDays, shortDate } from '@/lib/program-days';
+import { addDays, programDays, shortDate } from '@/lib/program-days';
 import { SuggestInput } from '@/components/SuggestInput';
 
 const DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -120,7 +120,11 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   }
 
   async function saveStudy(input: StudyInput) {
-    const err = await logStudy(supabase, input);
+    // Geçmiş bir günün görevi işaretleniyorsa çalışma o günün günlüğüne yazılır (en fazla 7 gün geriye)
+    const task = logs.find((l) => l.id === input.taskId);
+    const taskDate = task ? weekDays.find((d) => d.weekday === task.plan_day)?.date ?? null : null;
+    const logDate = taskDate && taskDate < today && taskDate >= addDays(today, -7) ? taskDate : undefined;
+    const err = await logStudy(supabase, logDate ? { ...input, logDate } : input);
     if (err) return err;
     if (input.taskId) markDone(input.taskId, true);
     setSheetTask(null); setMsg(null);
@@ -225,6 +229,11 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   const todayIndex = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7;
   // Program hangi gün başladıysa o günden itibaren (ör. Perşembe → Çarşamba); kısa programlarda yalnızca o günler
   const weekDays = week ? programDays(week, currentWeekEnd, weekLogs) : [];
+  // Açık program bugün başlamışsa ve dün başka bir programdaysa: o programa geçiş kısayolu
+  const yesterday = addDays(today, -1);
+  const prevWeek = week === today
+    ? weeks.find((w) => w.ws !== week && w.ws <= yesterday && yesterday <= (w.we ?? addDays(w.ws, 6))) ?? null
+    : null;
 
   return (
     <div className="space-y-4">
@@ -242,6 +251,14 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
           </select>
         )}
       </div>
+
+      {/* Yeni program bugün başladıysa dünkü (önceki programın son) günü bir dokunuşla açılabilsin */}
+      {prevWeek && (
+        <button type="button" onClick={() => { setWeek(prevWeek.ws); resetEdit(); }}
+          className="w-full rounded-2xl border-2 border-amber-300 bg-amber-50 px-4 py-2.5 text-left text-[13px] font-bold text-amber-900 hover:bg-amber-100">
+          🌙 Dünkü görevlerin önceki programda ({weekLabel(prevWeek.ws, prevWeek.we)}). Girmek için dokun →
+        </button>
+      )}
 
       {msg && <p className="rounded-2xl border-2 border-[var(--accent)]/20 bg-[var(--accent-soft)] px-4 py-2.5 text-[13px] font-bold text-[var(--accent-dark)]">💬 {msg}</p>}
       {openEdit && <p className="rounded-2xl border-2 border-[var(--sun)]/30 bg-[var(--sun-soft)] px-4 py-2.5 text-[13px] font-bold text-[#B76E00]">⏳ Bu hafta için değişiklik talebin koç onayını bekliyor.</p>}

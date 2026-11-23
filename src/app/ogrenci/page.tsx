@@ -4,6 +4,7 @@ import { TRACK_RESOURCES } from '@/lib/track-resources';
 import { activeDays, computeBadges, questionTotals, streakInfo, targetRows, trDate } from '@/lib/student-motivation';
 import { OgrenciAnasayfaClient } from './OgrenciAnasayfaClient';
 import { isTopicDone, TOPIC_FLAG_COLUMNS } from '@/lib/topic-done';
+import { addDays, weekdayOf } from '@/lib/program-days';
 
 const DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
@@ -28,7 +29,7 @@ export default async function OgrenciAnaSayfa() {
   ] = await Promise.all([
     (supabase as any)
       .from('question_logs').select('*').eq('student_id', student.id)
-      .lte('week_start', today).order('week_start', { ascending: false }).limit(60),
+      .lte('week_start', today).order('week_start', { ascending: false }).limit(400),
     (supabase as any)
       .from('topic_progress').select(TOPIC_FLAG_COLUMNS).eq('student_id', student.id),
     (supabase as any)
@@ -50,6 +51,15 @@ export default async function OgrenciAnaSayfa() {
   const weekLogs = currentWeekStart ? (weekRows ?? []).filter((l: any) => l.week_start === currentWeekStart) : [];
   const todayLogs = weekLogs.filter((l: any) => l.plan_day === todayIndex);
   const currentWeekEnd = weekLogs[0]?.week_end ?? null;
+
+  // Dünden kalan, işaretlenmemiş görevler (dün başka bir programda olabilir: ör. program Cumartesi bitti,
+  // yenisi Pazar başladı; öğrenci gece yarısından sonra Cumartesi'yi girmek ister)
+  const yesterday = addDays(today, -1);
+  const yIndex = weekdayOf(yesterday);
+  const yWeekStart = (weekRows ?? []).find((l: any) => l.week_start <= yesterday && yesterday <= (l.week_end ?? addDays(l.week_start, 6)))?.week_start ?? null;
+  const yesterdayLogs = yWeekStart
+    ? (weekRows ?? []).filter((l: any) => l.week_start === yWeekStart && l.plan_day === yIndex && !l.student_done && !l.student_missed)
+    : [];
 
   const topicList = topics ?? [];
   const topicsDone = topicList.filter((t: any) => isTopicDone(t)).length;
@@ -76,6 +86,7 @@ export default async function OgrenciAnaSayfa() {
       fullName={student.full_name}
       todayLabel={DAYS[todayIndex]}
       todayLogs={todayLogs}
+      yesterday={{ date: yesterday, label: DAYS[yIndex], logs: yesterdayLogs }}
       weekTotal={weekLogs.length}
       weekDone={weekLogs.filter((l: any) => l.student_done).length}
       topicsDone={topicsDone}
