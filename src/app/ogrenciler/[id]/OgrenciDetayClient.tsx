@@ -14,6 +14,7 @@ import {
 } from '@tabler/icons-react';
 import { avatarColor, initials, trackPill } from '@/lib/ui-colors';
 import { OgrenciProgramlari } from './OgrenciProgramlari';
+import { CalisilanKonular } from './CalisilanKonular';
 import { allowedStudentTabs, type StaffKind } from '@/lib/staff-access';
 import { GorusmePaneli } from './GorusmePaneli';
 
@@ -380,6 +381,9 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
               <OgrenciProgramlari studentId={id} />
             </Accordion>
             <GunlukAccordion studentId={id} />
+            <Accordion icon={<IconBooks size={16} />} title="Çalışılan konular (günlükten)" theme="teal">
+              <CalisilanKonular studentId={id} />
+            </Accordion>
           </div>
         )}
 

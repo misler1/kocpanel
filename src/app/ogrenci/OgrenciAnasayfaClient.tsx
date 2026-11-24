@@ -291,6 +291,11 @@ export function OgrenciAnasayfaClient({
             <div className="mb-2 text-[44px]">🏖️</div>
             <p className="text-[15px] font-bold text-[var(--ink)]">Bugün planlanmış görevin yok</p>
             <p className="text-[13px] text-[var(--ink-muted)]">Yine de çalıştıysan aşağıdan plan dışı çalışma olarak ekleyebilirsin.</p>
+            {!programDay && (
+              <Link href="/ogrenci/haftalik-takip/program-yap" className="mt-3 inline-flex rounded-full bg-[var(--accent)] px-4 py-2 text-[13px] font-extrabold text-white shadow-sm hover:bg-[var(--accent-dark)]">
+                🗓️ Bu hafta programın yok, kendin yap
+              </Link>
+            )}
           </div>
         ) : (
           <div className="space-y-2.5">

@@ -1,6 +1,6 @@
 # KoçDefterim — Çalışma notları
 
-Son güncelleme: 12 Kasım 2026
+Son güncelleme: 23 Kasım 2026
 
 Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yapılır; her biri Supabase SQL Editor'da **bir kez** çalıştırılır.
 
@@ -32,6 +32,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `online_gorusme.sql` | Ajanda'da online görüşme: koçun varsayılan Meet/Zoom bağlantısı | ✅ Çalıştırıldı |
 | `program_duzenleyerek_onay.sql` | Onay bekleyen programı koç düzenleyip onaylayabilir (staff_programs.sql'den sonra) | ✅ Çalıştırıldı |
 | `toplu_mesaj.sql` | Grup kurmadan seçilen öğrencilere ayrı ayrı, isme özel ({ad}) toplu mesaj (messaging.sql'den sonra) | ✅ Çalıştırıldı |
+| `ogrenci_program_onayi.sql` | Koçu olan öğrencinin kendi yaptığı program, koçun programı olmasa da her zaman koçun onayına gider (staff_programs.sql ve program_duzenleyerek_onay.sql'den sonra) | ⏳ Çalıştırılacak |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
@@ -41,6 +42,15 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 ---
 
 ## 2. Tamamlananlar (yayında)
+
+### Günlükte konu adı, program onayı, onay ekranı (23 Kasım)
+- **Günlükte konu adı:** Öğrenci görevi "yaptım" diye işaretlerken ya da plan dışı çalışma eklerken "Hangi konuyu çalıştın?" alanı var. Görevde konu yazılıysa dolu gelir, değiştirilebilir. Öneriler öğrencinin Konu İlerleyişi listesinden, seçili derse göre gelir.
+- **Koç tarafında takip:** Öğrenci detayı → Program ve günlük → **Çalışılan konular (günlükten)**. Ders ders konu listesi: soru (D/Y), doğruluk, süre, kaç gün, son çalışma; son 7 / 30 / 90 gün ya da tümü; konu arama. Son 7 günde ilk kez çalışılan konuda "yeni" etiketi. Konu adı yazılmamış çalışmalar ayrıca toplanır.
+- **Öğrencinin programı her zaman onaya gider** (`ogrenci_program_onayi.sql`): Programı yoksa da öğrenci "Kendi programını yap" ile program yapıp koçun onayına gönderir; onaylanınca programı olur. Öğrenci bekleyen programını "Düzenle" ile değiştirip yeniden gönderebilir ya da geri çekebilir. Ana sayfada programı yoksa "Bu hafta programın yok, kendin yap" düğmesi çıkar. Sadece platform öğrencisinin programı eskisi gibi hemen geçerli.
+- **Onay ekranı yenilendi:** Haftalık Takip'in üstündeki onay listesinde "Programı aç ve onayla" programı Haftalık Takip panosunun aynısıyla tam ekran açar (renkli kartlar, gün sütunları, telefonda gün seçici). Görev ekle (birden çok güne), düzenle, sil, kopyala-yapıştır, saat değiştir.
+  - Öğrencinin/belletmenin programında koçun yaptığı değişiklikler işaretlenir; "Şu anki programınız" sekmesinde koçun o tarihlerdeki (onaylanırsa silinecek) programı görünür.
+  - Öğrencinin **değişiklik talebi** de aynı ekranda açılır: mevcut program üzerinde istenenler işaretli (Yeni / Değişiyor / Kaldırılacak, "Gün: Sal → Pzt" gibi). Koç ayrıca düzenleyebilir; onaylayınca panodaki son hal uygulanır.
+  - Ortak pano bileşeni `src/components/program/ProgramBoard.tsx`, onay ekranı `ProgramReview.tsx`; ders renkleri `src/lib/subject-colors.ts`.
 
 ### Öğrenci kaydı (`418fb67`)
 - Koç seçme listesinin yerine iki seçenek var: **"Koç öğretmen benimle iletişime geçsin"** / **"Koç istemiyorum, sadece platformu kullanacağım"**.

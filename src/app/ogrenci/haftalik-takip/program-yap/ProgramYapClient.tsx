@@ -23,8 +23,10 @@ const blank = (plan_day: number): PlanTask => ({ plan_day, subject: '', topic: '
 const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : '');
 const overlaps = (a: string, b: string, r: Range) => r.ws <= b && (r.we ?? addDays(r.ws, 6)) >= a;
 
-export function ProgramYapClient({ platformOnly, track: initialTrack, resources, defaultStart, today, coachRanges, lastProgram, staff }: {
+export function ProgramYapClient({ platformOnly, track: initialTrack, resources, defaultStart, today, coachRanges, lastProgram, staff, initial }: {
   platformOnly: boolean;
+  /** Onay bekleyen programı düzenlerken: görevler, başlangıç ve not dolu açılır */
+  initial?: { start: string; tasks: PlanTask[]; note: string };
   /** Belletmen/yurt personeli öğrenci adına hazırlıyorsa: program koçun onayına gider (staff_programs.sql) */
   staff?: { studentId: string; studentName: string; isCoach: boolean };
   track: string;
@@ -39,13 +41,13 @@ export function ProgramYapClient({ platformOnly, track: initialTrack, resources,
   const router = useRouter();
   const supabase = createClient();
   const [track, setTrack] = useState(initialTrack);
-  const [start, setStart] = useState(defaultStart);
+  const [start, setStart] = useState(initial?.start ?? defaultStart);
   const end = addDays(start, 6);
   const days = useMemo(() => programDays(start, end), [start, end]);
   const [day, setDay] = useState<number>(days[0].weekday);
-  const [tasks, setTasks] = useState<PlanTask[]>([]);
+  const [tasks, setTasks] = useState<PlanTask[]>(initial?.tasks ?? []);
   const [form, setForm] = useState<PlanTask>(() => blank(days[0].weekday));
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(initial?.note ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,6 +57,8 @@ export function ProgramYapClient({ platformOnly, track: initialTrack, resources,
   }, [resources, track]);
   const backHref = staff ? `/gunluk-giris?ogrenci=${staff.studentId}` : '/ogrenci/haftalik-takip';
   const conflict = !staff && !platformOnly && coachRanges.some((r) => overlaps(start, end, r));
+  // Koçu olan öğrencinin programı her zaman koçun onayına gider (supabase/ogrenci_program_onayi.sql)
+  const needsApproval = !staff && !platformOnly;
   const dayTasks = tasks.map((t, i) => ({ t, i })).filter(({ t }) => t.plan_day === day);
 
   async function pickTrack(t: string) {
@@ -110,7 +114,7 @@ export function ProgramYapClient({ platformOnly, track: initialTrack, resources,
       <div className="flex items-center gap-2">
         <Link href={backHref} className="rounded-full p-2 text-[var(--ink-muted)] hover:bg-[var(--card)]"><IconArrowLeft size={20} /></Link>
         <div>
-          <h1 className="text-[22px] font-extrabold tracking-tight text-[var(--ink)]">{staff ? `🗓️ ${staff.studentName} için program` : '🗓️ Kendi programını yap'}</h1>
+          <h1 className="text-[22px] font-extrabold tracking-tight text-[var(--ink)]">{staff ? `🗓️ ${staff.studentName} için program` : initial ? '🗓️ Programını düzenle' : '🗓️ Kendi programını yap'}</h1>
           <p className="text-[13px] font-medium text-[var(--ink-muted)]">
             {staff ? (staff.isCoach ? '7 günlük programı gün gün planlayın; kaydedince hemen geçerli olur.' : '7 günlük programı gün gün planlayın; koçun onayından sonra geçerli olur.') : '7 günlük programını gün gün planla.'}
           </p>
@@ -151,9 +155,13 @@ export function ProgramYapClient({ platformOnly, track: initialTrack, resources,
             ⏳ Bu tarihlerde koçun hazırladığı bir program var. Koç onaylarsa bu program onun yerine geçer.
           </p>
         )}
-        {conflict && (
+        {conflict ? (
           <p className="rounded-2xl bg-[var(--sun-soft)] px-3 py-2 text-[12.5px] font-bold text-[#8A5300]">
             ⏳ Bu tarihlerde koçunun hazırladığı bir program var. Programın koçunun onayına gidecek: onaylarsa koçunun programının yerine geçer; o zamana kadar ikisini de görürsün, işaretlemeyi koçunun programında yaparsın.
+          </p>
+        ) : needsApproval && (
+          <p className="rounded-2xl bg-[var(--sky-soft)] px-3 py-2 text-[12.5px] font-bold text-[#1F78BD]">
+            📨 Programın koçunun onayına gidecek. Koçun onaylayınca (gerekirse düzenleyerek) programın olarak başlar.
           </p>
         )}
       </div>
@@ -233,7 +241,7 @@ export function ProgramYapClient({ platformOnly, track: initialTrack, resources,
         <span className="pl-3 text-[13px] font-bold text-[var(--ink-muted)]">{tasks.length} görev</span>
         <button type="button" disabled={busy} onClick={save}
           className="flex-1 rounded-full bg-[var(--accent)] px-5 py-3 text-[15px] font-extrabold text-white shadow-sm hover:bg-[var(--accent-dark)] disabled:opacity-50">
-          {busy ? 'Kaydediliyor…' : staff ? (staff.isCoach ? 'Programı kaydet' : 'Koçun onayına gönder') : conflict ? 'Koçuma onaya gönder' : 'Programı kaydet 🚀'}
+          {busy ? 'Gönderiliyor…' : staff ? (staff.isCoach ? 'Programı kaydet' : 'Koçun onayına gönder') : needsApproval ? 'Koçumun onayına gönder 🚀' : 'Programı kaydet 🚀'}
         </button>
       </div>
     </div>

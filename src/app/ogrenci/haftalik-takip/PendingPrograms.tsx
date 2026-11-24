@@ -2,13 +2,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { DAY_NAMES, programDays, shortDate } from '@/lib/program-days';
+import { addDays, DAY_NAMES, programDays, shortDate } from '@/lib/program-days';
 import { subjectEmoji } from '../studentUi';
 
 /** Öğrencinin kendi yaptığı, koç onayı bekleyen (ya da yakında reddedilen) programlar: salt okunur önizleme. */
-export function PendingPrograms({ programs }: { programs: any[] }) {
+export function PendingPrograms({ programs, coachWeeks = [] }: { programs: any[]; coachWeeks?: { ws: string; we: string | null }[] }) {
   const router = useRouter();
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -27,18 +28,23 @@ export function PendingPrograms({ programs }: { programs: any[] }) {
       {programs.map((p) => {
         const pending = p.status === 'bekliyor';
         const tasks: any[] = Array.isArray(p.tasks) ? p.tasks : [];
+        const overCoach = coachWeeks.some((w) => w.ws <= p.week_end && (w.we ?? addDays(w.ws, 6)) >= p.week_start);
         return (
           <div key={p.id} className={`rounded-[24px] border-2 p-4 ${pending ? 'border-[var(--sun)]/40 bg-[var(--sun-soft)]' : 'border-[var(--danger)]/25 bg-[var(--danger-soft)]'}`}>
             <div className="flex flex-wrap items-center gap-2">
               <p className={`min-w-0 flex-1 text-[13.5px] font-bold ${pending ? 'text-[#8A5300]' : 'text-[var(--danger)]'}`}>
                 {pending
-                  ? `⏳ Kendi yaptığın program (${shortDate(p.week_start)} – ${shortDate(p.week_end)}) koçunun onayını bekliyor. Şimdilik işaretlemeyi koçunun programında yap.`
-                  : `Kendi yaptığın program (${shortDate(p.week_start)} – ${shortDate(p.week_end)}) onaylanmadı; koçunun programı geçerli.`}
+                  ? `⏳ Kendi yaptığın program (${shortDate(p.week_start)} – ${shortDate(p.week_end)}) koçunun onayını bekliyor.${overCoach ? ' Şimdilik işaretlemeyi koçunun programında yap.' : ' Onaylanınca programın olarak başlar.'}`
+                  : `Kendi yaptığın program (${shortDate(p.week_start)} – ${shortDate(p.week_end)}) onaylanmadı${overCoach ? '; koçunun programı geçerli.' : '.'}`}
               </p>
               <button type="button" onClick={() => setOpen(open === p.id ? null : p.id)}
                 className="rounded-full bg-white px-3 py-1.5 text-[12px] font-bold text-[var(--ink)] shadow-sm">
                 {open === p.id ? 'Gizle' : `Programımı gör (${tasks.length})`}
               </button>
+              {pending && (
+                <Link href={`/ogrenci/haftalik-takip/program-yap?duzenle=${p.id}`}
+                  className="rounded-full bg-white px-3 py-1.5 text-[12px] font-bold text-[var(--accent-dark)] shadow-sm">Düzenle</Link>
+              )}
               {pending && (
                 <button type="button" disabled={busy} onClick={() => withdraw(p.id)}
                   className="rounded-full border-2 border-white/70 px-3 py-1.5 text-[12px] font-bold text-[var(--ink-muted)] disabled:opacity-50">Geri çek</button>

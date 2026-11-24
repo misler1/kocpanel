@@ -1,15 +1,17 @@
 'use client';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { IconX } from '@tabler/icons-react';
 import { subjectEmoji } from './studentUi';
 import type { StudyInput } from './studyApi';
 import { useKeyboardInset } from './useKeyboardInset';
 import { SuggestInput } from '@/components/SuggestInput';
+import { createClient } from '@/lib/supabase/client';
 
 const field = 'w-full rounded-2xl border-2 border-[var(--border)] bg-[var(--paper)] px-3 py-2.5 text-[15px] font-bold text-[var(--ink)] focus:border-[var(--accent)] focus:outline-none';
 const num = (v: string) => Math.max(0, Math.floor(Number(v) || 0));
+const norm = (s: string) => s.toLocaleLowerCase('tr').replace(/^(tyt|ayt|ydt)\s+/, '').replace(/\s+/g, ' ').trim();
 
 /**
  * "Ne çalıştın?" penceresi. task verilirse programdaki görev tiklenir ve sayılar o göreve yazılır;
@@ -31,6 +33,19 @@ export function StudyLogSheet({ task, subjects, onSave, onSkip, onClose }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const kb = useKeyboardInset();
+  // Öğrencinin Konu İlerleyişi listesi (konu önerisi için). RLS: öğrenci yalnızca kendi konularını görür.
+  const [allTopics, setAllTopics] = useState<{ subject: string; topic: string }[]>([]);
+  useEffect(() => {
+    (createClient() as any).from('topic_progress').select('subject, topic').limit(2000)
+      .then(({ data }: any) => setAllTopics((data ?? []).filter((t: any) => t.topic)));
+  }, []);
+
+  // Seçili derse ait konular önce; ders eşleşmezse bütün konular önerilir
+  const topicOptions = useMemo(() => {
+    const sub = norm(subject || task?.subject || '');
+    const same = sub ? allTopics.filter((t) => { const ts = norm(t.subject); return ts === sub || ts.includes(sub) || sub.includes(ts); }) : [];
+    return (same.length ? same : allTopics).map((t) => t.topic);
+  }, [allTopics, subject, task?.subject]);
 
   const c = num(correct);
   const w = num(wrong);
@@ -74,11 +89,12 @@ export function StudyLogSheet({ task, subjects, onSave, onSkip, onClose }: {
 
         <div className="space-y-3">
           {!task && (
-            <>
-              <SuggestInput options={subjects} value={subject} onChange={setSubject} placeholder="Ders (örn. TYT Matematik)" className={field} autoFocus />
-              <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Konu (isteğe bağlı)" className={field} />
-            </>
+            <SuggestInput options={subjects} value={subject} onChange={setSubject} placeholder="Ders (örn. TYT Matematik)" className={field} autoFocus />
           )}
+          <label className="block">
+            <span className="mb-1 block text-[13px] font-bold text-[var(--ink-muted)]">📚 Hangi konuyu çalıştın?</span>
+            <SuggestInput options={topicOptions} value={topic} onChange={setTopic} placeholder="Konu adı (örn. Üslü Sayılar)" className={field} maxLength={200} />
+          </label>
 
           <label className="block">
             <span className="mb-1 block text-[13px] font-bold text-[var(--ink-muted)]">📝 Kaç soru çözdün?</span>

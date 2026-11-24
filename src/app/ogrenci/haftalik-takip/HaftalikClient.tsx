@@ -57,7 +57,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   const [newForm, setNewForm] = useState<Added | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(
-    programMsg === 'bekliyor' ? 'Programın koçunun onayına gönderildi. Onaylarsa koçunun programının yerine geçer; o zamana kadar koçunun programında işaretlemeye devam et.'
+    programMsg === 'bekliyor' ? 'Programın koçunun onayına gönderildi 📨 Koçun onaylayınca programın olarak başlar. Bu tarihlerde koçunun programı varsa o zamana kadar onda işaretlemeye devam et.'
       : programMsg === 'aktif' ? (platformOnly ? 'Programın kaydedildi, hadi başlayalım! 🚀' : 'Programın kaydedildi ve koçuna bilgi gitti. Hadi başlayalım! 🚀') : null,
   );
   // Ajanda'dan gelen görüşmeler: talep durumu ve "saat değişikliği iste" penceresi
@@ -264,14 +264,22 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
       {openEdit && <p className="rounded-2xl border-2 border-[var(--sun)]/30 bg-[var(--sun-soft)] px-4 py-2.5 text-[13px] font-bold text-[#B76E00]">⏳ Bu hafta için değişiklik talebin koç onayını bekliyor.</p>}
       {openNew && <p className="rounded-2xl border-2 border-[var(--sun)]/30 bg-[var(--sun-soft)] px-4 py-2.5 text-[13px] font-bold text-[#B76E00]">⏳ Yeni program talebin koçuna iletildi, hazırlanmasını bekliyor.</p>}
 
-      <PendingPrograms programs={studentPrograms} />
+      <PendingPrograms programs={studentPrograms} coachWeeks={weeks.filter((w) => logs.some((l) => l.week_start === w.ws && !l.student_plan && !l.student_added && !l.appointment_id))} />
 
       {weeks.length === 0 ? (
         <div className="rounded-[28px] border-2 border-[var(--border)] bg-[var(--card)] p-8 text-center">
           <div className="mb-2 text-[48px]">📭</div>
           <p className="text-[15px] font-bold text-[var(--ink)]">{platformOnly ? 'Henüz bir programın yok.' : 'Henüz bir haftalık programın yok.'}</p>
-          <p className="mt-1 text-[13px] text-[var(--ink-muted)]">Kendi programını yap, her gün neler çalışacağını planla.</p>
-          <Link href="/ogrenci/haftalik-takip/program-yap" className="mt-4 inline-flex rounded-full bg-[var(--accent)] px-5 py-2.5 text-[14px] font-extrabold text-white shadow-sm hover:bg-[var(--accent-dark)]">🗓️ Kendi programını yap</Link>
+          {studentPrograms.some((p) => p.status === 'bekliyor') ? (
+            <p className="mt-1 text-[13px] text-[var(--ink-muted)]">Yaptığın program koçunun onayında. Onaylanınca burada görünecek.</p>
+          ) : (
+            <>
+              <p className="mt-1 text-[13px] text-[var(--ink-muted)]">
+                {platformOnly ? 'Kendi programını yap, her gün neler çalışacağını planla.' : 'Kendi programını yap, koçunun onayına gönder. Onaylanınca programın olarak başlar.'}
+              </p>
+              <Link href="/ogrenci/haftalik-takip/program-yap" className="mt-4 inline-flex rounded-full bg-[var(--accent)] px-5 py-2.5 text-[14px] font-extrabold text-white shadow-sm hover:bg-[var(--accent-dark)]">🗓️ Kendi programını yap</Link>
+            </>
+          )}
         </div>
       ) : (
         <>

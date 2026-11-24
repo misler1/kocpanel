@@ -4,7 +4,10 @@ import { addDays } from '@/lib/program-days';
 import { todayTr } from '@/lib/day-tasks';
 import { ProgramYapClient } from './ProgramYapClient';
 
-export default async function ProgramYapPage() {
+const hhmm = (t: string | null | undefined) => (t ? String(t).slice(0, 5) : '');
+
+export default async function ProgramYapPage({ searchParams }: { searchParams: Promise<{ duzenle?: string }> }) {
+  const { duzenle } = await searchParams;
   const { supabase, student } = await getStudentContext();
   if (!student) return <p className="text-sm text-[var(--ink-muted)]">Öğrenci kaydı bulunamadı.</p>;
 
@@ -32,8 +35,26 @@ export default async function ProgramYapPage() {
   const lastWs = rows.find((l) => !l.student_added || l.student_plan)?.week_start;
   const lastProgram = lastWs ? rows.filter((l) => l.week_start === lastWs && (!l.student_added || l.student_plan)) : [];
 
+  // Onay bekleyen kendi programını düzenleme (yeniden gönderince eskisinin yerine geçer)
+  let initial: { start: string; tasks: any[]; note: string } | undefined;
+  if (duzenle) {
+    const { data: sp } = await (supabase as any).from('student_programs').select('week_start, tasks, note, status, prepared_by')
+      .eq('id', duzenle).eq('student_id', student.id).maybeSingle();
+    if (sp && sp.status === 'bekliyor' && !sp.prepared_by) {
+      initial = {
+        start: sp.week_start,
+        note: sp.note ?? '',
+        tasks: (Array.isArray(sp.tasks) ? sp.tasks : []).map((t: any) => ({
+          plan_day: Number(t.plan_day) || 0, subject: t.subject ?? '', topic: t.topic ?? '', resource_name: t.resource_name ?? '',
+          target_count: Number(t.target_count) || 0, start_time: hhmm(t.start_time), end_time: hhmm(t.end_time),
+        })),
+      };
+    }
+  }
+
   return (
     <ProgramYapClient
+      initial={initial}
       platformOnly={!!student.platform_only}
       track={student.track ?? 'DIGER'}
       resources={student.resources ?? {}}

@@ -2,12 +2,28 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-// Koç, öğrencinin haftalık program talebine karar verir. Body: { id, action: 'onayla' | 'reddet' }
+// Koç, öğrencinin haftalık program talebine karar verir. Body: { id, action: 'onayla' | 'reddet', ops? }
+// ops verilirse (koç onay ekranında talebi düzenlediyse) öğrencinin istediği değil, koçun son hali uygulanır;
+// bu durumda ders, konu, kaynak ve çalışma süresi de değiştirilebilir.
 // Tüm veri işlemleri KOÇUN oturumuyla yapılır; RLS yalnızca kendi öğrencilerinin kayıtlarına izin verir.
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-function cleanFields(f: any, forAdd: boolean) {
+function cleanFields(f: any, forAdd: boolean, byCoach = false) {
   const out: Record<string, any> = {};
+  if (byCoach && !forAdd) {
+    if (f?.subject !== undefined) {
+      const subject = String(f.subject ?? '').trim();
+      if (!subject || subject.length > 80) throw new Error('Ders adı geçersiz');
+      out.subject = subject;
+    }
+    if (f?.topic !== undefined) out.topic = f.topic ? String(f.topic).trim().slice(0, 120) : null;
+    if (f?.resource_name !== undefined) out.resource_name = f.resource_name ? String(f.resource_name).trim().slice(0, 120) : null;
+  }
+  if (byCoach && f?.topic_target_minutes !== undefined) {
+    const m = f.topic_target_minutes === null || f.topic_target_minutes === '' ? null : Number(f.topic_target_minutes);
+    if (m !== null && (!Number.isInteger(m) || m < 0 || m > 1440)) throw new Error('Süre geçersiz');
+    out.topic_target_minutes = m || null;
+  }
   if (f?.plan_day !== undefined) {
     const d = Number(f.plan_day);
     if (!Number.isInteger(d) || d < 0 || d > 6) throw new Error('Gün geçersiz');
@@ -66,8 +82,9 @@ export async function POST(request: Request) {
 
   // Düzenleme talebi: değişiklikleri doğrula ve uygula
   try {
-    const ops: any[] = Array.isArray(req.payload?.ops) ? req.payload.ops : [];
-    if (ops.length === 0 || ops.length > 100) throw new Error('Talepte geçerli değişiklik yok');
+    const byCoach = Array.isArray(body.ops);
+    const ops: any[] = byCoach ? body.ops : Array.isArray(req.payload?.ops) ? req.payload.ops : [];
+    if ((!byCoach && ops.length === 0) || ops.length > 150) throw new Error('Talepte geçerli değişiklik yok');
 
     const { data: weekLogs, error: wErr } = await db.from('question_logs')
       .select('id, week_end, appointment_id').eq('student_id', req.student_id).eq('week_start', req.week_start);
@@ -84,7 +101,7 @@ export async function POST(request: Request) {
       }
       if (op.op === 'update') {
         if (!ids.has(op.log_id)) throw new Error('Talepteki görev bu haftada bulunamadı (program değişmiş olabilir)');
-        const fields = cleanFields(op.fields, false);
+        const fields = cleanFields(op.fields, false, byCoach);
         if (Object.keys(fields).length === 0) throw new Error('Boş değişiklik');
         return { op: 'update', log_id: op.log_id, fields };
       }
@@ -92,7 +109,7 @@ export async function POST(request: Request) {
         if (!ids.has(op.log_id)) throw new Error('Talepteki görev bu haftada bulunamadı (program değişmiş olabilir)');
         return { op: 'delete', log_id: op.log_id };
       }
-      if (op.op === 'add') return { op: 'add', fields: cleanFields(op.fields, true) };
+      if (op.op === 'add') return { op: 'add', fields: cleanFields(op.fields, true, byCoach) };
       throw new Error('Bilinmeyen değişiklik');
     });
 
