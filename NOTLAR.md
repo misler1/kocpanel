@@ -43,7 +43,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 2. Tamamlananlar (yayında)
 
-### Günlükte konu adı, program onayı, onay ekranı (23 Kasım)
+### Günlükte konu adı, program onayı, onay ekranı (`098513a`)
 - **Günlükte konu adı:** Öğrenci görevi "yaptım" diye işaretlerken ya da plan dışı çalışma eklerken "Hangi konuyu çalıştın?" alanı var. Görevde konu yazılıysa dolu gelir, değiştirilebilir. Öneriler öğrencinin Konu İlerleyişi listesinden, seçili derse göre gelir.
 - **Koç tarafında takip:** Öğrenci detayı → Program ve günlük → **Çalışılan konular (günlükten)**. Ders ders konu listesi: soru (D/Y), doğruluk, süre, kaç gün, son çalışma; son 7 / 30 / 90 gün ya da tümü; konu arama. Son 7 günde ilk kez çalışılan konuda "yeni" etiketi. Konu adı yazılmamış çalışmalar ayrıca toplanır.
 - **Öğrencinin programı her zaman onaya gider** (`ogrenci_program_onayi.sql`): Programı yoksa da öğrenci "Kendi programını yap" ile program yapıp koçun onayına gönderir; onaylanınca programı olur. Öğrenci bekleyen programını "Düzenle" ile değiştirip yeniden gönderebilir ya da geri çekebilir. Ana sayfada programı yoksa "Bu hafta programın yok, kendin yap" düğmesi çıkar. Sadece platform öğrencisinin programı eskisi gibi hemen geçerli.
