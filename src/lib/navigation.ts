@@ -68,6 +68,6 @@ export const BELLETMEN_MOBILE_NAV: NavItem[] = [
 export const MOBILE_NAV: NavItem[] = [
   { href: '/anasayfa', label: 'Ana Sayfa', icon: IconHome },
   { href: '/ogrenciler', label: 'Öğrenciler', icon: IconUsers },
-  { href: '/haftalik-takip', label: 'Haftalık', icon: IconChecklist },
+  { href: '/haftalik-takip', label: 'Program', icon: IconChecklist },
   { href: '/ajanda', label: 'Ajanda', icon: IconCalendarWeek },
 ];

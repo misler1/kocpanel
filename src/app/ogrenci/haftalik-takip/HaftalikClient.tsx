@@ -12,6 +12,7 @@ import { logStudy, setTaskDone, setTaskMissed, todayTr, type StudyInput } from '
 import { MissedSheet } from '../MissedSheet';
 import { isMeetingUrl, meetingPlatform } from '@/lib/meeting-link';
 import { useKeyboardInset } from '../useKeyboardInset';
+import { TaskEntryInfo, useTaskEntries } from '../TaskEntryInfo';
 import { addDays, programDays, shortDate } from '@/lib/program-days';
 import { SuggestInput } from '@/components/SuggestInput';
 
@@ -38,6 +39,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
   const supabase = createClient();
   const [logs, setLogs] = useState<any[]>(initialLogs);
   const [requests, setRequests] = useState<any[]>(initialRequests);
+  const taskEntries = useTaskEntries(studentId);
   const weeks = useMemo(() => {
     const m = new Map<string, string | null>();
     logs.forEach((l) => { if (!m.has(l.week_start)) m.set(l.week_start, l.week_end ?? null); });
@@ -117,7 +119,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
     if (!l.student_done) { setSheetTask(l); return; } // tik = "ne çalıştın?" penceresi
     markDone(l.id, false);
     const err = await setTaskDone(supabase, l.id, false);
-    if (err) { markDone(l.id, true); setMsg(err); } else setMsg(null);
+    if (err) { markDone(l.id, true); setMsg(err); } else { setMsg(null); taskEntries.removed(l.id); }
   }
 
   async function saveStudy(input: StudyInput) {
@@ -128,6 +130,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
     const err = await logStudy(supabase, logDate ? { ...input, logDate } : input);
     if (err) return err;
     if (input.taskId) markDone(input.taskId, true);
+    taskEntries.saved(input);
     setSheetTask(null); setMsg(null);
     return null;
   }
@@ -240,7 +243,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-[24px] font-extrabold tracking-tight text-[var(--ink)]">🗓️ Haftalık Takip</h1>
+          <h1 className="text-[24px] font-extrabold tracking-tight text-[var(--ink)]">🗓️ Haftalık Program</h1>
           <p className="text-[13px] font-medium text-[var(--ink-muted)]">Bitirdiğin göreve dokun, kaç soru çözdüğünü yaz! Yapamadıysan ✕&apos;e bas.</p>
         </div>
         <Link href="/ogrenci/haftalik-takip/program-yap" className="rounded-full bg-[var(--accent)] px-4 py-2 text-[13px] font-bold text-white shadow-sm transition-colors hover:bg-[var(--accent-dark)]">
@@ -389,6 +392,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
                               {l.appointment_id && isMeetingUrl(l.resource_name) && <span className="block text-[11.5px] text-sky-700">🎥 Online görüşme · {meetingPlatform(l.resource_name)}</span>}
                               {time && <span className="block text-[11.5px] text-[var(--ink-muted)]">⏰ {time}</span>}
                               {done && <span className="block text-[11.5px] font-bold text-[var(--success)]">✓ Tamamlandı</span>}
+                              {done && <TaskEntryInfo entry={taskEntries.entries.get(l.id)} taskTopic={l.topic} />}
                     {missed && <span className="block text-[11.5px] font-bold text-[var(--danger)]">✕ Yapmadım{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</span>}
                             </span>
                             <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${done ? 'student-pop border-[var(--success)] bg-[var(--success)] text-white' : 'border-dashed border-[var(--success)]/50 bg-white text-[var(--success)]/35 hover:border-solid hover:border-[var(--success)] hover:text-[var(--success)]'}`}><IconCheck size={18} strokeWidth={3} /></span>

@@ -25,7 +25,7 @@ export default async function OgrenciAnaSayfa() {
 
   const [
     { data: weekRows }, { data: topics }, { data: exams }, { data: rank }, { data: pendingReqs },
-    { data: dailyLogs }, { data: allTasks }, { data: feed },
+    { data: dailyLogs }, { data: allTasks }, { data: feed }, { data: nextRows },
   ] = await Promise.all([
     (supabase as any)
       .from('question_logs').select('*').eq('student_id', student.id)
@@ -44,6 +44,10 @@ export default async function OgrenciAnaSayfa() {
       .from('question_logs').select('week_start, student_done, student_done_at').eq('student_id', student.id).limit(5000),
     // Koçun paylaşımları ve pano (home_feed.sql çalıştırılmamışsa boş döner)
     (supabase as any).rpc('student_feed'),
+    // Bugünden sonra başlayan ilk program (bugün program yoksa "yeni programın şu tarihte başlıyor" denir)
+    (supabase as any)
+      .from('question_logs').select('week_start, week_end').eq('student_id', student.id)
+      .gt('week_start', today).order('week_start', { ascending: true }).limit(1),
   ]);
 
   // Bugünü içeren en güncel hafta
@@ -81,6 +85,9 @@ export default async function OgrenciAnaSayfa() {
 
   return (
     <OgrenciAnasayfaClient
+      // Veri değişince (ör. koç yeni program gönderdi, sayfa yenilendi) ekran baştan kurulur
+      key={`${today}|${currentWeekStart}|${todayLogs.map((l: any) => l.id).join(',')}|${yesterdayLogs.length}`}
+      nextProgram={nextRows?.[0] ? { start: nextRows[0].week_start, end: nextRows[0].week_end } : null}
       studentId={student.id}
       programDay={currentWeekStart ? { weekStart: currentWeekStart, weekEnd: currentWeekEnd, planDay: todayIndex } : null}
       fullName={student.full_name}

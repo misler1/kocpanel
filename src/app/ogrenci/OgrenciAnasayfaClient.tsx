@@ -12,6 +12,7 @@ import { StudyLogSheet } from './StudyLogSheet';
 import { PushToggle } from '@/components/PushToggle';
 import { logExtraStudy, logStudy, setTaskDone, setTaskMissed, type ProgramDay, type StudyInput } from './studyApi';
 import { MissedSheet } from './MissedSheet';
+import { TaskEntryInfo, useTaskEntries } from './TaskEntryInfo';
 import { isMeetingUrl, meetingPlatform } from '@/lib/meeting-link';
 import { BadgesSection, StreakCard, TargetNetCard } from './Motivation';
 import { StudentBoard, StudentContentCard, type FeedItem } from '@/components/feed/StudentFeed';
@@ -46,10 +47,10 @@ function StatCard({ emoji, bg, tone, bar, label, value, sub, pct, href }: {
 const CONFETTI = ['🎉', '⭐', '🎊', '✨', '🌟', '💜'];
 
 export function OgrenciAnasayfaClient({
-  studentId, programDay, fullName, todayLabel, todayLogs, yesterday, weekTotal, weekDone, topicsDone, topicsTotal, lastExam, lastExamRank, pendingRequests,
+  studentId, programDay, nextProgram, fullName, todayLabel, todayLogs, yesterday, weekTotal, weekDone, topicsDone, topicsTotal, lastExam, lastExamRank, pendingRequests,
   streak, todayQuestions, targets, badges, subjects, feed,
 }: {
-  studentId: string; programDay: ProgramDay | null; fullName: string; todayLabel: string; todayLogs: any[];
+  studentId: string; programDay: ProgramDay | null; nextProgram: { start: string; end: string | null } | null; fullName: string; todayLabel: string; todayLogs: any[];
   yesterday: { date: string; label: string; logs: any[] }; weekTotal: number; weekDone: number;
   topicsDone: number; topicsTotal: number; lastExam: any; lastExamRank: any; pendingRequests: number;
   streak: { current: number; best: number; studiedToday: boolean }; todayQuestions: number;
@@ -65,6 +66,7 @@ export function OgrenciAnasayfaClient({
   const [yLogs, setYLogs] = useState(yesterday.logs);
   const isYesterday = (id: string) => yLogs.some((x) => x.id === id);
   const [celebrate, setCelebrate] = useState(0);
+  const taskEntries = useTaskEntries(studentId);
   // undefined: kapalı, null: plan dışı çalışma, nesne: tiklenen görev
   const [sheet, setSheet] = useState<any | null | undefined>(undefined);
   const [missedTask, setMissedTask] = useState<any | null>(null);
@@ -84,6 +86,17 @@ export function OgrenciAnasayfaClient({
     return () => { clearTimeout(t); clearTimeout(off); };
   }, [gunluk, todayLogs.length, router]);
   const [msg, setMsg] = useState<string | null>(null);
+
+  // Telefonda uygulama arka planda açık kalınca ana sayfa eski veriyle durmasın: geri dönüldüğünde yenile
+  useEffect(() => {
+    let hiddenAt = 0;
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+      if (hiddenAt && Date.now() - hiddenAt > 30_000) router.refresh();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [router]);
 
   function markDone(id: string, done: boolean) {
     if (isYesterday(id)) {
@@ -106,7 +119,7 @@ export function OgrenciAnasayfaClient({
     if (!l.student_done) { setSheet(l); return; } // tik = "ne çalıştın?" penceresi
     markDone(l.id, false);
     const err = await setTaskDone(supabase, l.id, false);
-    if (err) { markDone(l.id, true); setMsg(err); } else { setMsg(null); router.refresh(); }
+    if (err) { markDone(l.id, true); setMsg(err); } else { setMsg(null); taskEntries.removed(l.id); router.refresh(); }
   }
 
   const markMissed = (id: string, missed: boolean, note: string | null = null) => {
@@ -145,6 +158,7 @@ export function OgrenciAnasayfaClient({
     const err = await logStudy(supabase, isYesterday(input.taskId) ? { ...input, logDate: yesterday.date } : input);
     if (err) return err;
     markDone(input.taskId, true);
+    taskEntries.saved(input);
     setSheet(undefined);
     setMsg(null);
     router.refresh(); // seri, rozet ve bugünkü soru sayısı yenilensin
@@ -181,6 +195,7 @@ export function OgrenciAnasayfaClient({
             {[l.topic, l.target_count > 0 ? `${l.target_count} soru` : null].filter(Boolean).join(' · ') || 'Görev'}
           </span>
           {done && <span className="block text-[12px] font-bold text-[var(--success)]">✓ Tamamlandı</span>}
+          {done && <TaskEntryInfo entry={taskEntries.entries.get(l.id)} taskTopic={l.topic} />}
           {missed && <span className="block text-[12px] font-bold text-[var(--danger)]">✕ Yapmadım{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</span>}
         </span>
         <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
@@ -289,8 +304,17 @@ export function OgrenciAnasayfaClient({
         {logs.length === 0 ? (
           <div className="py-6 text-center">
             <div className="mb-2 text-[44px]">🏖️</div>
-            <p className="text-[15px] font-bold text-[var(--ink)]">Bugün planlanmış görevin yok</p>
-            <p className="text-[13px] text-[var(--ink-muted)]">Yine de çalıştıysan aşağıdan plan dışı çalışma olarak ekleyebilirsin.</p>
+            <p className="text-[15px] font-bold text-[var(--ink)]">
+              {programDay ? 'Bugün planlanmış görevin yok' : nextProgram ? 'Yeni programın hazır, henüz başlamadı' : 'Bugün planlanmış görevin yok'}
+            </p>
+            {!programDay && nextProgram ? (
+              <p className="text-[13px] text-[var(--ink-muted)]">
+                Programın <b>{new Date(`${nextProgram.start}T12:00:00Z`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long', timeZone: 'UTC' })}</b> başlıyor.{' '}
+                <Link href={`/ogrenci/haftalik-takip?hafta=${nextProgram.start}`} className="font-bold text-[var(--accent-dark)] underline">Programı gör</Link>
+              </p>
+            ) : (
+              <p className="text-[13px] text-[var(--ink-muted)]">Yine de çalıştıysan aşağıdan plan dışı çalışma olarak ekleyebilirsin.</p>
+            )}
             {!programDay && (
               <Link href="/ogrenci/haftalik-takip/program-yap" className="mt-3 inline-flex rounded-full bg-[var(--accent)] px-4 py-2 text-[13px] font-extrabold text-white shadow-sm hover:bg-[var(--accent-dark)]">
                 🗓️ Bu hafta programın yok, kendin yap

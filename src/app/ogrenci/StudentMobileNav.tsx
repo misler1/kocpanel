@@ -31,7 +31,7 @@ export function StudentMobileNav() {
                 </span>
               )}
             </span>
-            <span className="w-full truncate text-center">{item.label}</span>
+            <span className="w-full truncate text-center">{item.short ?? item.label}</span>
           </Link>
         );
       })}

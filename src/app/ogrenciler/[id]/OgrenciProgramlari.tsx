@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { programDays, shortDate, addDays, DAY_SHORT } from '@/lib/program-days';
 import { todayTr } from '@/lib/day-tasks';
+import { buildTaskEntries as buildEntries, entryStats, sameTopic, type TaskEntry as Entry } from '@/lib/task-entries';
 
 type Week = { weekStart: string; weekEnd: string; logs: any[] };
 const endOf = (w: Week) => w.weekEnd || addDays(w.weekStart, 6);
@@ -24,44 +25,11 @@ function fmt(d: string) {
   return new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
 }
 
-// Görev için günlüğe girilen çalışma (öğrenci ya da personel): konu, soru, D/Y, süre, sayfa
-type Entry = { topic: string; count: number; correct: number; wrong: number; minutes: number; pages: string; byStudent: boolean; byName: string };
-
-function buildEntries(dailyLogs: any[]): Map<string, Entry> {
-  const map = new Map<string, Entry>();
-  for (const d of dailyLogs) {
-    if (d.archived) continue;
-    const all = [
-      ...((d.question_solved ?? []) as any[]).map((e) => ({ ...e, _q: true })),
-      ...((d.topic_studies ?? []) as any[]).map((e) => ({ ...e, _q: false })),
-    ];
-    for (const e of all) {
-      if (!e?.task_id) continue;
-      const r = map.get(e.task_id) ?? { topic: '', count: 0, correct: 0, wrong: 0, minutes: 0, pages: '', byStudent: false, byName: '' };
-      if (!r.topic && e.topic) r.topic = String(e.topic).trim();
-      if (e._q) { r.count += Number(e.count) || 0; r.correct += Number(e.correct) || 0; r.wrong += Number(e.wrong) || 0; }
-      else r.minutes += Number(e.duration_minutes) || 0;
-      if (!r.pages && e.pages) r.pages = String(e.pages);
-      if (e.by === 'ogrenci') r.byStudent = true;
-      if (!r.byName && e.by_name) r.byName = String(e.by_name);
-      map.set(e.task_id, r);
-    }
-  }
-  return map;
-}
-
-const norm = (t: string | null | undefined) => (t ?? '').trim().toLocaleLowerCase('tr');
-
 function LogMini({ l, entry }: { l: any; entry?: Entry }) {
   // Öğrencinin girdiği bilgiler mavi; personelin girdikleri gri ve girenin adıyla
   const tone = entry?.byStudent ? 'text-blue-600' : 'text-gray-600';
-  const addedTopic = entry?.topic && norm(entry.topic) !== norm(l.topic) ? entry.topic : null;
-  const stats = entry ? [
-    entry.count ? `${entry.count} soru` : null,
-    entry.correct || entry.wrong ? `${entry.correct}D ${entry.wrong}Y` : null,
-    entry.minutes ? `${entry.minutes} dk` : null,
-    entry.pages ? `s. ${entry.pages}` : null,
-  ].filter(Boolean).join(' · ') : '';
+  const addedTopic = entry?.topic && !sameTopic(entry.topic, l.topic) ? entry.topic : null;
+  const stats = entry ? entryStats(entry) : '';
   const pct = l.target_count > 0 ? Math.round((l.done_count / l.target_count) * 100) : 0;
   const timeLabel = [l.start_time?.slice(0, 5), l.end_time?.slice(0, 5)].filter(Boolean).join(' - ');
   return (
