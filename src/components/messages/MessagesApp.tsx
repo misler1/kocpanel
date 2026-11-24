@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  IconArrowLeft, IconSend, IconPlus, IconUsersGroup, IconSearch, IconDotsVertical, IconBan, IconX, IconCheck, IconSpeakerphone,
+  IconArrowLeft, IconSend, IconPlus, IconUsersGroup, IconSearch, IconDotsVertical, IconBan, IconX, IconCheck, IconSpeakerphone, IconChecks, IconPencil, IconTrash, IconArrowBackUp, IconCopy, IconEye, IconEyeOff,
 } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { markMessagesRead } from '@/lib/use-unread-conversations';
@@ -16,7 +16,9 @@ type Conv = {
   member_count: number; created_by: string | null; last_message: string | null; last_sender: string | null;
   last_at: string; unread: number;
 };
-type Msg = { id: string; conversation_id: string; sender_id: string; content: string; created_at: string };
+type Msg = { id: string; conversation_id: string; sender_id: string; content: string; created_at: string; edited_at?: string | null; deleted_at?: string | null; deleted_by?: string | null };
+
+const EDIT_WINDOW_MS = 24 * 3600 * 1000; // supabase/mesaj_okundu_duzenleme.sql ile aynı
 type Member = { id: string; full_name: string; role: string; blocked: boolean };
 type Contact = { id: string; full_name: string; role: string; kurum: string | null; sinif: string | null; is_my_student: boolean };
 
@@ -57,6 +59,14 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   const [menuOpen, setMenuOpen] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  // Okundu / düzenleme (supabase/mesaj_okundu_duzenleme.sql çalıştırılmadıysa extras = false)
+  const [extras, setExtras] = useState(true);
+  const [receipts, setReceipts] = useState(true);
+  const [readState, setReadState] = useState<{ profile_id: string; read_at: string | null }[]>([]);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [actionFor, setActionFor] = useState<string | null>(null);
+  const [actionAt, setActionAt] = useState(0); // menü açıldığı an (24 saat düzenleme süresi buna göre)
+  const [editing, setEditing] = useState<Msg | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<string | null>(activeId); // canlı abonelik açık sohbeti buradan okur
 
@@ -71,22 +81,45 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
     setLoaded(true);
   }, [supabase]);
 
+  const loadReadState = useCallback(async (id: string) => {
+    const { data, error: err } = await (supabase as any).rpc('conversation_read_state', { p_conv: id });
+    if (!err && activeRef.current === id) setReadState(data ?? []);
+  }, [supabase]);
+
   const loadThread = useCallback(async (id: string) => {
-    const [{ data: msgs }, { data: mem }] = await Promise.all([
-      (supabase as any).from('messages').select('id, conversation_id, sender_id, content, created_at')
-        .eq('conversation_id', id).order('created_at', { ascending: false }).limit(200),
+    const msgQuery = (cols: string) => (supabase as any).from('messages').select(cols)
+      .eq('conversation_id', id).order('created_at', { ascending: false }).limit(200);
+    const [first, { data: mem }, hides] = await Promise.all([
+      msgQuery('id, conversation_id, sender_id, content, created_at, edited_at, deleted_at, deleted_by'),
       (supabase as any).rpc('conversation_members', { p_conv: id }),
+      (supabase as any).from('message_hides').select('message_id').limit(5000),
     ]);
+    let msgs = first.data;
+    const ready = !first.error;
+    if (!ready) msgs = (await msgQuery('id, conversation_id, sender_id, content, created_at')).data;
+    setExtras(ready);
     setMessages((msgs ?? []).reverse());
     setMembers(mem ?? []);
+    setHidden(new Set(((hides.data as any[]) ?? []).map((h) => h.message_id)));
+    if (ready) loadReadState(id);
     await (supabase as any).rpc('mark_conversation_read', { p_conv: id });
     markMessagesRead();
     setConvs((p) => p.map((c) => (c.id === id ? { ...c, unread: 0 } : c)));
-  }, [supabase]);
+  }, [supabase, loadReadState]);
 
   // İlk yükleme: veriler sunucudan (RPC) geldiği için effect içinde çekilir
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadConvs(); }, [loadConvs]);
+  useEffect(() => {
+    (supabase as any).rpc('my_read_receipts').then(({ data, error: err }: any) => { if (!err) setReceipts(data !== false); });
+  }, [supabase]);
+
+  // Açık sohbette "okundu" işaretleri sık yenilenir (karşı taraf okuyunca ✓✓ olur)
+  useEffect(() => {
+    if (!activeId || !extras || !receipts) return;
+    const t = setInterval(() => { if (document.visibilityState === 'visible') loadReadState(activeId); }, 15_000);
+    return () => clearInterval(t);
+  }, [activeId, extras, receipts, loadReadState]);
 
   // Mesajlar bölümüne girmek mesaj bildirimlerini görmek sayılır: zildeki ışık söner (sohbeti açmak gerekmez)
   useEffect(() => {
@@ -124,6 +157,11 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
         }
         loadConvs();
       })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload: any) => {
+        const m = payload.new as Msg;
+        if (m.conversation_id === activeRef.current) setMessages((p) => p.map((x) => (x.id === m.id ? { ...x, ...m } : x)));
+        loadConvs();
+      })
       .subscribe();
     const timer = setInterval(() => {
       loadConvs();
@@ -138,6 +176,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
     activeRef.current = id;
     setActiveId(id);
     setMenuOpen(false); setShowMembers(false); setError(null);
+    setActionFor(null); setEditing(null); setReadState([]);
     if (!id) { setMessages([]); setMembers([]); }
     const base = student ? '/ogrenci/mesajlar' : '/mesajlar';
     router.replace(id ? `${base}?c=${id}` : base, { scroll: false });
@@ -148,12 +187,59 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
     const content = text.trim();
     if (!content || !activeId || sending) return;
     setSending(true); setError(null);
+    if (editing) {
+      const { error: err } = await (supabase as any).rpc('edit_message', { p_id: editing.id, p_content: content });
+      setSending(false);
+      if (err) { setError(err.message); return; }
+      const now = new Date().toISOString();
+      setMessages((p) => p.map((x) => (x.id === editing.id ? { ...x, content, edited_at: x.content === content ? x.edited_at : now } : x)));
+      setEditing(null); setText('');
+      loadConvs();
+      return;
+    }
     const { data: id, error: err } = await (supabase as any).rpc('send_message', { p_conv: activeId, p_content: content });
     setSending(false);
     if (err) { setError(err.message); return; }
     setText('');
     setMessages((p) => (p.some((x) => x.id === id) ? p : [...p, { id, conversation_id: activeId, sender_id: meId, content, created_at: new Date().toISOString() }]));
     loadConvs();
+  }
+
+  async function unsend(m: Msg) {
+    setActionFor(null);
+    const other = m.sender_id !== meId;
+    if (!confirm(other ? 'Bu mesaj gruptan kaldırılsın mı? Herkes için silinir.' : 'Mesaj herkesten geri alınsın mı?')) return;
+    const { error: err } = await (supabase as any).rpc('unsend_message', { p_id: m.id });
+    if (err) { setError(err.message); return; }
+    setMessages((p) => p.map((x) => (x.id === m.id ? { ...x, content: '', deleted_at: new Date().toISOString(), deleted_by: meId } : x)));
+    if (editing?.id === m.id) { setEditing(null); setText(''); }
+    loadConvs();
+  }
+
+  async function hideForMe(m: Msg) {
+    setActionFor(null);
+    const { error: err } = await (supabase as any).rpc('hide_message', { p_id: m.id });
+    if (err) { setError(err.message); return; }
+    setHidden((p) => new Set(p).add(m.id));
+    loadConvs();
+  }
+
+  function startEdit(m: Msg) {
+    setActionFor(null);
+    setEditing(m);
+    setText(m.content);
+  }
+
+  async function toggleReceipts() {
+    setMenuOpen(false);
+    const next = !receipts;
+    if (!confirm(next
+      ? 'Okundu bilgisi açılsın mı? Mesajları okuduğunda karşı taraf görür; sen de onların okuyup okumadığını görürsün.'
+      : 'Okundu bilgisi kapatılsın mı? Mesajları okuduğunu kimse görmez; sen de başkalarının okuyup okumadığını göremezsin.')) return;
+    const { error: err } = await (supabase as any).rpc('set_read_receipts', { p_on: next });
+    if (err) { setError(err.message); return; }
+    setReceipts(next);
+    if (activeId) loadReadState(activeId);
   }
 
   async function toggleBlock() {
@@ -234,6 +320,16 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
 
   const filtered = convs.filter((c) => !search.trim() || (c.title ?? '').toLocaleLowerCase('tr').includes(search.trim().toLocaleLowerCase('tr')));
   const isOwner = active?.kind === 'group' && active.created_by === meId;
+  const visibleMessages = messages.filter((m) => !hidden.has(m.id));
+  // Kendi mesajım okundu mu? Okundu bilgisi kapalı olanlar (read_at boş) hesaba katılmaz.
+  function readInfo(m: Msg): { all: boolean; names: string } | null {
+    if (!extras || !receipts || readState.length === 0) return { all: false, names: '' };
+    const t = new Date(m.created_at).getTime();
+    const known = readState.filter((r) => r.read_at);
+    const readers = known.filter((r) => new Date(r.read_at!).getTime() >= t);
+    const names = active?.kind === 'group' ? readers.map((r) => memberMap.get(r.profile_id)?.full_name ?? '').filter(Boolean).join(', ') : '';
+    return { all: known.length > 0 && readers.length === known.length && known.length === readState.length, names };
+  }
   const otherBlocked = !!active?.other_id && blockedIds.has(active.other_id);
 
   return (
@@ -241,17 +337,17 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
       {/* Sohbet listesi */}
       <div className={`${card} ${activeId ? 'hidden md:flex' : 'flex'} w-full flex-col overflow-hidden md:w-80 md:flex-shrink-0`}>
         <div className="space-y-2.5 border-b border-[var(--border)] p-3">
-          <div className="flex items-center justify-between gap-2">
-            <h1 className={`text-[18px] text-[var(--ink)] ${student ? 'font-extrabold' : 'font-medium'}`}>{student ? '💬 Mesajlar' : 'Mesajlar'}</h1>
-            <div className="flex gap-1.5">
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <h1 className={`flex-shrink-0 text-[18px] text-[var(--ink)] ${student ? 'font-extrabold' : 'font-medium'}`}>{student ? '💬 Mesajlar' : 'Mesajlar'}</h1>
+            <div className="flex flex-shrink-0 gap-1.5">
               {isStaff && (
                 <button type="button" onClick={() => setBulkOpen(true)} className={ghostBtn} title="Grup kurmadan, seçtiğiniz öğrencilerin her birine ayrı mesaj">
-                  <IconSpeakerphone size={15} /> <span className="hidden sm:inline">Toplu</span>
+                  <IconSpeakerphone size={15} /> <span className="hidden sm:inline md:hidden">Toplu</span>
                 </button>
               )}
               {isStaff && (
                 <button type="button" onClick={() => setPicker('group')} className={ghostBtn} title="Yeni grup">
-                  <IconUsersGroup size={15} /> <span className="hidden sm:inline">Grup</span>
+                  <IconUsersGroup size={15} /> <span className="hidden sm:inline md:hidden">Grup</span>
                 </button>
               )}
               <button type="button" onClick={() => setPicker('direct')} className={primaryBtn}>
@@ -331,7 +427,12 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
                 <IconDotsVertical size={18} />
               </button>
               {menuOpen && (
-                <div className="absolute right-3 top-12 z-20 w-52 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] py-1 shadow-xl">
+                <div className="absolute right-3 top-12 z-20 w-60 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] py-1 shadow-xl">
+                  {extras && (
+                    <button type="button" onClick={toggleReceipts} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--ink)] hover:bg-[var(--paper)]">
+                      {receipts ? <IconEyeOff size={15} /> : <IconEye size={15} />} Okundu bilgisi: <b>{receipts ? 'Açık' : 'Kapalı'}</b>
+                    </button>
+                  )}
                   {active.kind === 'direct' ? (
                     <button type="button" onClick={toggleBlock} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--danger)] hover:bg-[var(--danger-soft)]">
                       <IconBan size={15} /> {otherBlocked ? 'Engeli kaldır' : 'Engelle'}
@@ -376,28 +477,49 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
             )}
 
             <div className="flex-1 space-y-1.5 overflow-y-auto bg-[var(--paper)] px-3 py-4">
-              {messages.length === 0 && (
+              {visibleMessages.length === 0 && (
                 <p className="py-10 text-center text-[13px] text-[var(--ink-muted)]">{student ? 'İlk mesajı sen yaz! 👋' : 'Henüz mesaj yok.'}</p>
               )}
-              {messages.map((m, i) => {
+              {visibleMessages.map((m, i) => {
                 const mine = m.sender_id === meId;
-                const prev = messages[i - 1];
+                const prev = visibleMessages[i - 1];
                 const showName = active.kind === 'group' && !mine && prev?.sender_id !== m.sender_id;
                 if (!mine && blockedIds.has(m.sender_id)) {
                   return <p key={m.id} className="text-center text-[11.5px] italic text-[var(--ink-muted)]">Engellediğin kişinin mesajı gizlendi</p>;
                 }
+                const deleted = !!m.deleted_at;
+                const open = actionFor === m.id;
+                const canEdit = open && mine && !deleted && actionAt - new Date(m.created_at).getTime() < EDIT_WINDOW_MS;
+                const canUnsend = open && !deleted && (canEdit || isOwner);
+                const read = mine && !deleted ? readInfo(m) : null;
                 return (
-                  <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] px-3.5 py-2 text-[14px] leading-snug shadow-sm ${
+                  <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
+                    <button type="button" disabled={!extras} onClick={() => { setActionAt(Date.now()); setActionFor(open ? null : m.id); }}
+                      className={`max-w-[80%] px-3.5 py-2 text-left text-[14px] leading-snug shadow-sm ${open ? 'ring-2 ring-[var(--accent-dark)]/40' : ''} ${
                       mine
-                        ? `${student ? 'rounded-[20px] rounded-br-md' : 'rounded-2xl rounded-br-sm'} bg-[var(--accent)] text-white`
+                        ? `${student ? 'rounded-[20px] rounded-br-md' : 'rounded-2xl rounded-br-sm'} ${deleted ? 'bg-[var(--accent)]/60' : 'bg-[var(--accent)]'} text-white`
                         : `${student ? 'rounded-[20px] rounded-bl-md' : 'rounded-2xl rounded-bl-sm'} bg-[var(--card)] text-[var(--ink)]`}`}>
                       {showName && <span className="mb-0.5 block text-[11.5px] font-bold text-[var(--accent-dark)]">{memberMap.get(m.sender_id)?.full_name ?? 'Eski üye'}</span>}
-                      <span className="whitespace-pre-wrap break-words">{m.content}</span>
-                      <span className={`mt-0.5 block text-right text-[10.5px] ${mine ? 'text-white/75' : 'text-[var(--ink-muted)]'}`}>
+                      {deleted
+                        ? <span className="italic opacity-80">🚫 {m.deleted_by && m.deleted_by !== m.sender_id ? 'Bu mesaj grup yöneticisi tarafından kaldırıldı' : 'Bu mesaj geri alındı'}</span>
+                        : <span className="whitespace-pre-wrap break-words">{m.content}</span>}
+                      <span className={`mt-0.5 flex items-center justify-end gap-1 text-[10.5px] ${mine ? 'text-white/75' : 'text-[var(--ink-muted)]'}`}>
+                        {m.edited_at && !deleted && <span className="italic">düzenlendi ·</span>}
                         {new Date(m.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                        {read && (read.all
+                          ? <span title={read.names ? `Okuyanlar: ${read.names}` : 'Okundu'} className="text-white"><IconChecks size={15} strokeWidth={2.5} /></span>
+                          : <span title={read.names ? `Okuyanlar: ${read.names}` : 'Gönderildi'}><IconCheck size={14} /></span>)}
                       </span>
-                    </div>
+                    </button>
+                    {open && (
+                      <div className="mt-1 flex flex-wrap gap-1 text-[12px]">
+                        {canEdit && <button type="button" onClick={() => startEdit(m)} className="flex items-center gap-1 rounded-full bg-[var(--card)] px-2.5 py-1 font-semibold text-[var(--ink)] shadow-sm"><IconPencil size={13} /> Düzenle</button>}
+                        {canUnsend && <button type="button" onClick={() => unsend(m)} className="flex items-center gap-1 rounded-full bg-[var(--card)] px-2.5 py-1 font-semibold text-[var(--danger)] shadow-sm"><IconArrowBackUp size={13} /> {mine ? 'Herkesten geri al' : 'Gruptan kaldır'}</button>}
+                        {!deleted && <button type="button" onClick={() => { navigator.clipboard?.writeText(m.content); setActionFor(null); }} className="flex items-center gap-1 rounded-full bg-[var(--card)] px-2.5 py-1 font-semibold text-[var(--ink)] shadow-sm"><IconCopy size={13} /> Kopyala</button>}
+                        <button type="button" onClick={() => hideForMe(m)} className="flex items-center gap-1 rounded-full bg-[var(--card)] px-2.5 py-1 font-semibold text-[var(--ink-muted)] shadow-sm"><IconTrash size={13} /> Benden sil</button>
+                        {mine && read?.names && <span className="self-center px-1 text-[11.5px] text-[var(--ink-muted)]">Okuyanlar: {read.names}</span>}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -409,6 +531,13 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
             {otherBlocked ? (
               <p className="border-t border-[var(--border)] px-4 py-3 text-center text-[13px] text-[var(--ink-muted)]">Bu kişiyi engelledin. Mesaj göndermek için engeli kaldır.</p>
             ) : (
+              <>
+              {editing && (
+                <div className="flex items-center gap-2 border-t border-[var(--border)] bg-[var(--accent-soft)] px-3 py-1.5 text-[12.5px] text-[var(--accent-dark)]">
+                  <IconPencil size={14} /> <span className="min-w-0 flex-1 truncate">Mesajı düzenliyorsun: <i>{editing.content}</i></span>
+                  <button type="button" onClick={() => { setEditing(null); setText(''); }} aria-label="Düzenlemeyi bırak"><IconX size={15} /></button>
+                </div>
+              )}
               <form onSubmit={send} className="flex items-end gap-2 border-t border-[var(--border)] p-2.5">
                 <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={2000}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e as any); } }}
@@ -416,9 +545,10 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
                   className={`max-h-32 min-h-[42px] flex-1 resize-none border border-[var(--border)] bg-[var(--paper)] px-3.5 py-2.5 text-[14px] outline-none focus:border-[var(--accent)] ${student ? 'rounded-[20px]' : 'rounded-xl'}`} />
                 <button type="submit" disabled={sending || !text.trim()} aria-label="Gönder"
                   className="flex h-[42px] w-[42px] flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white transition-colors hover:bg-[var(--accent-dark)] disabled:opacity-40">
-                  <IconSend size={18} />
+                  {editing ? <IconCheck size={18} /> : <IconSend size={18} />}
                 </button>
               </form>
+              </>
             )}
           </>
         )}
