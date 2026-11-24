@@ -31,9 +31,9 @@ const weekLabel = (ws: string, we?: string | null) => {
   return we ? `${f(ws)} – ${f(we)}` : f(ws);
 };
 
-export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs = [], initialRequests = [], platformOnly = false, studentPrograms = [], programMsg = null }: {
+export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs = [], initialRequests = [], platformOnly = false, studentPrograms = [], programMsg = null, initialWeek = null }: {
   studentId: string; coachId: string; resources?: Record<string, string[]>; initialLogs?: any[]; initialRequests?: any[];
-  platformOnly?: boolean; studentPrograms?: any[]; programMsg?: 'aktif' | 'bekliyor' | null;
+  platformOnly?: boolean; studentPrograms?: any[]; programMsg?: 'aktif' | 'bekliyor' | null; initialWeek?: string | null;
 }) {
   const supabase = createClient();
   const [logs, setLogs] = useState<any[]>(initialLogs);
@@ -46,6 +46,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
 
   const today = todayTr();
   const [week, setWeek] = useState<string>(() => {
+    if (initialWeek && weeks.some((w) => w.ws === initialWeek)) return initialWeek;
     const cur = weeks.find((w) => w.ws <= today && (!w.we || today <= w.we));
     return (cur ?? weeks[0])?.ws ?? '';
   });

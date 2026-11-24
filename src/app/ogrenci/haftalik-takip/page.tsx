@@ -4,8 +4,8 @@ import { HaftalikClient } from './HaftalikClient';
 import { addDays } from '@/lib/program-days';
 import { todayTr } from '@/lib/day-tasks';
 
-export default async function OgrenciHaftalikPage({ searchParams }: { searchParams: Promise<{ program?: string }> }) {
-  const { program } = await searchParams;
+export default async function OgrenciHaftalikPage({ searchParams }: { searchParams: Promise<{ program?: string; hafta?: string }> }) {
+  const { program, hafta } = await searchParams;
   const { supabase, student } = await getStudentContext();
   if (!student) return <p className="text-sm text-[var(--ink-muted)]">Öğrenci kaydı bulunamadı.</p>;
 
@@ -33,6 +33,7 @@ export default async function OgrenciHaftalikPage({ searchParams }: { searchPara
       platformOnly={!!student.platform_only}
       studentPrograms={((sp as any[]) ?? []).filter((p) => !p.prepared_by)} // belletmenin hazırladığı (koç onayı bekleyen) programlar öğrenciye gösterilmez
       programMsg={program === 'aktif' || program === 'bekliyor' ? program : null}
+      initialWeek={hafta && /^\d{4}-\d{2}-\d{2}$/.test(hafta) ? hafta : null} // bildirimden: o haftanın programı açılır
     />
   );
 }
