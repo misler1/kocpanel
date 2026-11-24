@@ -62,6 +62,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   // Okundu / düzenleme (supabase/mesaj_okundu_duzenleme.sql çalıştırılmadıysa extras = false)
   const [extras, setExtras] = useState(true);
   const [receipts, setReceipts] = useState(true);
+  const [receiptsReady, setReceiptsReady] = useState(false); // ayar okunabildi (SQL çalıştırılmış)
   const [readState, setReadState] = useState<{ profile_id: string; read_at: string | null }[]>([]);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [actionFor, setActionFor] = useState<string | null>(null);
@@ -111,7 +112,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadConvs(); }, [loadConvs]);
   useEffect(() => {
-    (supabase as any).rpc('my_read_receipts').then(({ data, error: err }: any) => { if (!err) setReceipts(data !== false); });
+    (supabase as any).rpc('my_read_receipts').then(({ data, error: err }: any) => { if (!err) { setReceipts(data !== false); setReceiptsReady(true); } });
   }, [supabase]);
 
   // Açık sohbette "okundu" işaretleri sık yenilenir (karşı taraf okuyunca ✓✓ olur)
@@ -234,8 +235,8 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
     setMenuOpen(false);
     const next = !receipts;
     if (!confirm(next
-      ? 'Okundu bilgisi açılsın mı? Mesajları okuduğunda karşı taraf görür; sen de onların okuyup okumadığını görürsün.'
-      : 'Okundu bilgisi kapatılsın mı? Mesajları okuduğunu kimse görmez; sen de başkalarının okuyup okumadığını göremezsin.')) return;
+      ? 'Okundu bilgisi TÜM sohbetlerinde açılsın mı? Mesajları okuduğunda karşı taraf görür; sen de onların okuyup okumadığını görürsün.'
+      : 'Okundu bilgisi TÜM sohbetlerinde kapatılsın mı? Mesajları okuduğunu kimse görmez; sen de başkalarının okuyup okumadığını göremezsin.')) return;
     const { error: err } = await (supabase as any).rpc('set_read_receipts', { p_on: next });
     if (err) { setError(err.message); return; }
     setReceipts(next);
@@ -360,6 +361,14 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Sohbet ara"
               className={`w-full border border-[var(--border)] bg-[var(--paper)] py-2 pl-9 pr-3 text-[13px] outline-none focus:border-[var(--accent)] ${student ? 'rounded-full' : 'rounded-lg'}`} />
           </div>
+          {receiptsReady && (
+            <button type="button" onClick={toggleReceipts} title="Tüm sohbetlerin için geçerlidir"
+              className="flex items-center gap-1.5 text-[12px] text-[var(--ink-muted)] hover:text-[var(--ink)]">
+              {receipts ? <IconEye size={14} /> : <IconEyeOff size={14} />}
+              Okundu bilgisi: <b className={receipts ? 'text-[var(--accent-dark)]' : ''}>{receipts ? 'Açık' : 'Kapalı'}</b>
+              <span className="underline">{receipts ? 'kapat' : 'aç'}</span>
+            </button>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto">
           {!loaded ? (
@@ -428,9 +437,9 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
               </button>
               {menuOpen && (
                 <div className="absolute right-3 top-12 z-20 w-60 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] py-1 shadow-xl">
-                  {extras && (
+                  {receiptsReady && (
                     <button type="button" onClick={toggleReceipts} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--ink)] hover:bg-[var(--paper)]">
-                      {receipts ? <IconEyeOff size={15} /> : <IconEye size={15} />} Okundu bilgisi: <b>{receipts ? 'Açık' : 'Kapalı'}</b>
+                      {receipts ? <IconEyeOff size={15} /> : <IconEye size={15} />} <span>Okundu bilgisi: <b>{receipts ? 'Açık' : 'Kapalı'}</b><span className="block text-[11px] text-[var(--ink-muted)]">tüm sohbetler için</span></span>
                     </button>
                   )}
                   {active.kind === 'direct' ? (
