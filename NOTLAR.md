@@ -35,6 +35,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `ogrenci_program_onayi.sql` | Koçu olan öğrencinin kendi yaptığı program, koçun programı olmasa da her zaman koçun onayına gider (staff_programs.sql ve program_duzenleyerek_onay.sql'den sonra) | ✅ Çalıştırıldı |
 | `program_bildirimi.sql` | Koç programa görev ekleyince / toplu işlemle program kopyalayınca öğrenciye her hafta için ayrı "Yeni haftalık programın hazır" bildirimi (notifications.sql'den sonra) | ✅ Çalıştırıldı |
 | `sayisiz_calisma.sql` | Öğrencinin çalışma kaydında soru sayısı/süre isteğe bağlı ("Sayıları hatırlamıyorum"); koç "sayı girilmedi" görür (student_daily_log.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
+| `gunluk_eksikler.sql` | Sabah 10:00 "günlük girmeyenler" bildirimi /gunluk-eksikler sayfasını açar (girmeyen + eksik girenler, mesaj/program/bildirimi kapat); ilk girişini yapmamış öğrenciler sayılmaz; öğrenci bazında süreli/süresiz sessize alma (bildirim_cakisma_duzeltme.sql'den sonra) | ⏳ Çalıştırılacak |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
