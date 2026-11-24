@@ -2,7 +2,7 @@
 // Programdaki bir göreve günlükte girilen çalışma (öğrenci ya da personel): konu, soru, D/Y, süre, sayfa.
 // Günlük kayıtları (daily_logs.question_solved / topic_studies) görev numarasını (task_id) taşır.
 
-export type TaskEntry = { topic: string; count: number; correct: number; wrong: number; minutes: number; pages: string; byStudent: boolean; byName: string };
+export type TaskEntry = { topic: string; count: number; correct: number; wrong: number; minutes: number; pages: string; byStudent: boolean; byName: string; noNumbers?: boolean };
 
 export function buildTaskEntries(dailyLogs: any[]): Map<string, TaskEntry> {
   const map = new Map<string, TaskEntry>();
@@ -19,6 +19,7 @@ export function buildTaskEntries(dailyLogs: any[]): Map<string, TaskEntry> {
       if (e._q) { r.count += Number(e.count) || 0; r.correct += Number(e.correct) || 0; r.wrong += Number(e.wrong) || 0; }
       else r.minutes += Number(e.duration_minutes) || 0;
       if (!r.pages && e.pages) r.pages = String(e.pages);
+      if (e.no_numbers) r.noNumbers = true;
       if (e.by === 'ogrenci') r.byStudent = true;
       if (!r.byName && e.by_name) r.byName = String(e.by_name);
       map.set(e.task_id, r);
@@ -34,6 +35,7 @@ export const sameTopic = (a: string | null | undefined, b: string | null | undef
 
 /** "45 soru · 30D 10Y · 40 dk · s. 45-60" */
 export function entryStats(e: TaskEntry) {
+  if (e.noNumbers && !e.count && !e.minutes) return 'sayı girilmedi';
   return [
     e.count ? `${e.count} soru` : null,
     e.correct || e.wrong ? `${e.correct}D ${e.wrong}Y` : null,

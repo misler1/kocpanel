@@ -22,6 +22,7 @@ export function useTaskEntries(studentId: string) {
     setEntries((m) => new Map(m).set(id, {
       topic: input.topic?.trim() ?? '', count: input.count || input.correct + input.wrong, correct: input.correct, wrong: input.wrong,
       minutes: input.minutes, pages: '', byStudent: true, byName: '',
+      noNumbers: !input.count && !input.correct && !input.wrong && !input.minutes,
     }));
   }, []);
   const removed = useCallback((taskId: string) => {
@@ -40,7 +41,7 @@ export function TaskEntryInfo({ entry, taskTopic }: { entry?: TaskEntry; taskTop
     <>
       {topic && <span className="block truncate text-[12px] font-semibold text-blue-600">📝 {topic}</span>}
       {stats && (
-        <span className="block text-[12px] font-semibold text-blue-600">
+        <span className={`block text-[12px] font-semibold ${entry.noNumbers && !entry.count && !entry.minutes ? 'text-[var(--ink-muted)]' : 'text-blue-600'}`}>
           {stats}{!entry.byStudent && entry.byName ? <span className="font-medium text-[var(--ink-muted)]"> · {entry.byName} girdi</span> : null}
         </span>
       )}

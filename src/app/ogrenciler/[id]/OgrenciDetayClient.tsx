@@ -770,7 +770,7 @@ export function GunlukAccordion({ studentId }: { studentId: string }) {
                           {t.resource && <span className="text-gray-400"> ({t.resource})</span>}
                         </span>
                         <span className="text-[12px] text-gray-400">
-                          {t.duration_minutes >= 60
+                          {t.no_numbers && !t.duration_minutes ? <span className="text-amber-600">sayı girilmedi</span> : t.duration_minutes >= 60
                             ? `${Math.floor(t.duration_minutes / 60)} saat${t.duration_minutes % 60 ? ` ${t.duration_minutes % 60} dk` : ''}`
                             : `${t.duration_minutes} dk`}
                         </span>

@@ -28,6 +28,7 @@ function fmt(d: string) {
 function LogMini({ l, entry }: { l: any; entry?: Entry }) {
   // Öğrencinin girdiği bilgiler mavi; personelin girdikleri gri ve girenin adıyla
   const tone = entry?.byStudent ? 'text-blue-600' : 'text-gray-600';
+  const statsTone = entry?.noNumbers && !entry.count && !entry.minutes ? 'text-amber-600' : tone; // "sayı girilmedi"
   const addedTopic = entry?.topic && !sameTopic(entry.topic, l.topic) ? entry.topic : null;
   const stats = entry ? entryStats(entry) : '';
   const pct = l.target_count > 0 ? Math.round((l.done_count / l.target_count) * 100) : 0;
@@ -45,7 +46,7 @@ function LogMini({ l, entry }: { l: any; entry?: Entry }) {
         <div className={`truncate text-[10.5px] font-medium ${tone}`} title={`Çalışılan konu: ${addedTopic}`}>📝 {addedTopic}</div>
       )}
       {stats && (
-        <div className={`text-[10.5px] font-medium ${tone}`}>
+        <div className={`text-[10.5px] font-medium ${statsTone}`}>
           {stats}{!entry?.byStudent && entry?.byName ? <span className="font-normal text-gray-400"> · {entry.byName} girdi</span> : null}
         </div>
       )}

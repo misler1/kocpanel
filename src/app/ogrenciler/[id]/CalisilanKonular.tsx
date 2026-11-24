@@ -49,7 +49,7 @@ export function CalisilanKonular({ studentId }: { studentId: string }) {
         const topic = String(e.topic ?? '').trim();
         const count = e._q ? Number(e.count) || 0 : 0;
         const minutes = e._q ? 0 : Number(e.duration_minutes) || 0;
-        if (!count && !minutes) continue;
+        if (!count && !minutes && !e.no_numbers) continue; // sayısız çalışma da konu/gün olarak sayılır
         if (!topic) {
           const u = untitled.get(subject) ?? { questions: 0, minutes: 0 };
           u.questions += count; u.minutes += minutes;
