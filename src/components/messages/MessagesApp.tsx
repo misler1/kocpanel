@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  IconArrowLeft, IconSend, IconPlus, IconUsersGroup, IconSearch, IconDotsVertical, IconBan, IconX, IconCheck, IconSpeakerphone, IconChecks, IconPencil, IconTrash, IconArrowBackUp, IconCopy, IconEye, IconEyeOff,
+  IconArrowLeft, IconSend, IconPlus, IconUsersGroup, IconSearch, IconDotsVertical, IconBan, IconX, IconCheck, IconSpeakerphone, IconChecks, IconPencil, IconTrash, IconArrowBackUp, IconCopy, IconEye, IconEyeOff, IconBellOff, IconBell,
 } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { markMessagesRead } from '@/lib/use-unread-conversations';
@@ -15,7 +15,24 @@ type Conv = {
   id: string; kind: 'direct' | 'group'; title: string | null; other_id: string | null; other_role: string | null;
   member_count: number; created_by: string | null; last_message: string | null; last_sender: string | null;
   last_at: string; unread: number;
+  // supabase/mesaj_kisi_ayarlari.sql çalıştırıldıysa gelir
+  muted_until?: string | null; read_receipts?: boolean; read_receipts_custom?: boolean;
 };
+
+const MUTE_FOREVER_YEAR = 9999;
+const MUTE_OPTIONS: { label: string; hours: number | null }[] = [
+  { label: '8 saat', hours: 8 }, { label: '1 gün', hours: 24 }, { label: '1 hafta', hours: 24 * 7 }, { label: '1 ay', hours: 24 * 30 }, { label: 'Süresiz', hours: null },
+];
+function addHours(hours: number) {
+  const d = new Date();
+  d.setTime(d.getTime() + hours * 3600_000);
+  return d.toISOString();
+}
+function muteText(until: string) {
+  const d = new Date(until);
+  if (d.getFullYear() >= MUTE_FOREVER_YEAR) return 'süresiz';
+  return d.toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' kadar';
+}
 type Msg = { id: string; conversation_id: string; sender_id: string; content: string; created_at: string; edited_at?: string | null; deleted_at?: string | null; deleted_by?: string | null };
 
 const EDIT_WINDOW_MS = 24 * 3600 * 1000; // supabase/mesaj_okundu_duzenleme.sql ile aynı
@@ -63,6 +80,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   const [extras, setExtras] = useState(true);
   const [receipts, setReceipts] = useState(true);
   const [receiptsReady, setReceiptsReady] = useState(false); // ayar okunabildi (SQL çalıştırılmış)
+  const [muteMenu, setMuteMenu] = useState(false);
   const [readState, setReadState] = useState<{ profile_id: string; read_at: string | null }[]>([]);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [actionFor, setActionFor] = useState<string | null>(null);
@@ -72,6 +90,8 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   const activeRef = useRef<string | null>(activeId); // canlı abonelik açık sohbeti buradan okur
 
   const active = convs.find((c) => c.id === activeId) ?? null;
+  const convReceipts = active?.read_receipts ?? receipts; // bu sohbetteki geçerli okundu ayarı
+  const perConv = active?.read_receipts !== undefined;      // sohbete özel ayarlar kullanılabilir
   const memberMap = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
   const blockedIds = useMemo(() => new Set(members.filter((m) => m.blocked).map((m) => m.id)), [members]);
 
@@ -117,10 +137,10 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
 
   // Açık sohbette "okundu" işaretleri sık yenilenir (karşı taraf okuyunca ✓✓ olur)
   useEffect(() => {
-    if (!activeId || !extras || !receipts) return;
+    if (!activeId || !extras || !convReceipts) return;
     const t = setInterval(() => { if (document.visibilityState === 'visible') loadReadState(activeId); }, 15_000);
     return () => clearInterval(t);
-  }, [activeId, extras, receipts, loadReadState]);
+  }, [activeId, extras, convReceipts, loadReadState]);
 
   // Mesajlar bölümüne girmek mesaj bildirimlerini görmek sayılır: zildeki ışık söner (sohbeti açmak gerekmez)
   useEffect(() => {
@@ -235,12 +255,35 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
     setMenuOpen(false);
     const next = !receipts;
     if (!confirm(next
-      ? 'Okundu bilgisi TÜM sohbetlerinde açılsın mı? Mesajları okuduğunda karşı taraf görür; sen de onların okuyup okumadığını görürsün.'
-      : 'Okundu bilgisi TÜM sohbetlerinde kapatılsın mı? Mesajları okuduğunu kimse görmez; sen de başkalarının okuyup okumadığını göremezsin.')) return;
+      ? 'Okundu bilgisi genel olarak açılsın mı? (Sohbete özel ayar yaptığın sohbetler değişmez.) Mesajları okuduğunda karşı taraf görür; sen de onların okuyup okumadığını görürsün.'
+      : 'Okundu bilgisi genel olarak kapatılsın mı? (Sohbete özel ayar yaptığın sohbetler değişmez.) Mesajları okuduğunu görmezler; sen de onların okuyup okumadığını göremezsin.')) return;
     const { error: err } = await (supabase as any).rpc('set_read_receipts', { p_on: next });
     if (err) { setError(err.message); return; }
     setReceipts(next);
+    await loadConvs();
     if (activeId) loadReadState(activeId);
+  }
+
+  async function toggleConvReceipts() {
+    if (!active) return;
+    setMenuOpen(false);
+    const next = !convReceipts;
+    // Genel ayarla aynıysa sohbete özel ayar kaldırılır (genel ayar değişince bu sohbet de ona uyar)
+    const { error: err } = await (supabase as any).rpc('set_conversation_receipts', { p_conv: active.id, p_on: next === receipts ? null : next });
+    if (err) { setError(err.message); return; }
+    setConvs((p) => p.map((c) => (c.id === active.id ? { ...c, read_receipts: next, read_receipts_custom: next !== receipts } : c)));
+    loadReadState(active.id);
+  }
+
+  async function setMute(hours: number | null | 'off') {
+    if (!active) return;
+    setMenuOpen(false); setMuteMenu(false);
+    const until = hours === 'off' ? null
+      : hours === null ? new Date(Date.UTC(MUTE_FOREVER_YEAR, 11, 31)).toISOString()
+      : addHours(hours);
+    const { error: err } = await (supabase as any).rpc('set_conversation_mute', { p_conv: active.id, p_until: until });
+    if (err) { setError(err.message); return; }
+    setConvs((p) => p.map((c) => (c.id === active.id ? { ...c, muted_until: until } : c)));
   }
 
   async function toggleBlock() {
@@ -324,7 +367,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   const visibleMessages = messages.filter((m) => !hidden.has(m.id));
   // Kendi mesajım okundu mu? Okundu bilgisi kapalı olanlar (read_at boş) hesaba katılmaz.
   function readInfo(m: Msg): { all: boolean; names: string } | null {
-    if (!extras || !receipts || readState.length === 0) return { all: false, names: '' };
+    if (!extras || !convReceipts || readState.length === 0) return { all: false, names: '' };
     const t = new Date(m.created_at).getTime();
     const known = readState.filter((r) => r.read_at);
     const readers = known.filter((r) => new Date(r.read_at!).getTime() >= t);
@@ -362,10 +405,10 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
               className={`w-full border border-[var(--border)] bg-[var(--paper)] py-2 pl-9 pr-3 text-[13px] outline-none focus:border-[var(--accent)] ${student ? 'rounded-full' : 'rounded-lg'}`} />
           </div>
           {receiptsReady && (
-            <button type="button" onClick={toggleReceipts} title="Tüm sohbetlerin için geçerlidir"
+            <button type="button" onClick={toggleReceipts} title="Sohbete özel ayar yapmadığın tüm sohbetler için geçerlidir"
               className="flex items-center gap-1.5 text-[12px] text-[var(--ink-muted)] hover:text-[var(--ink)]">
               {receipts ? <IconEye size={14} /> : <IconEyeOff size={14} />}
-              Okundu bilgisi: <b className={receipts ? 'text-[var(--accent-dark)]' : ''}>{receipts ? 'Açık' : 'Kapalı'}</b>
+              Okundu bilgisi (genel): <b className={receipts ? 'text-[var(--accent-dark)]' : ''}>{receipts ? 'Açık' : 'Kapalı'}</b>
               <span className="underline">{receipts ? 'kapat' : 'aç'}</span>
             </button>
           )}
@@ -389,7 +432,9 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
               <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-2">
                   <span className={`truncate text-[14px] text-[var(--ink)] ${c.unread ? 'font-bold' : 'font-medium'}`}>{c.title ?? 'Sohbet'}</span>
-                  <span className="flex-shrink-0 text-[11px] text-[var(--ink-muted)]">{shortTime(c.last_at)}</span>
+                  <span className="flex flex-shrink-0 items-center gap-1 text-[11px] text-[var(--ink-muted)]">
+                    {c.muted_until && <IconBellOff size={13} aria-label="Sessizde" />}{shortTime(c.last_at)}
+                  </span>
                 </span>
                 <span className="flex items-center justify-between gap-2">
                   <span className={`truncate text-[12.5px] ${c.unread ? 'font-semibold text-[var(--ink)]' : 'text-[var(--ink-muted)]'}`}>
@@ -430,17 +475,42 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
                 <span className={`block truncate text-[15px] text-[var(--ink)] ${student ? 'font-extrabold' : 'font-semibold'}`}>{active.title}</span>
                 <span className="block text-[12px] text-[var(--ink-muted)]">
                   {active.kind === 'group' ? `${members.length || active.member_count} üye · üyeleri gör` : ROLE_LABEL[active.other_role ?? ''] ?? ''}
+                  {active.muted_until ? ` · 🔕 ${muteText(active.muted_until)}` : ''}
                 </span>
               </button>
-              <button type="button" onClick={() => setMenuOpen((v) => !v)} className="rounded-full p-1.5 text-[var(--ink-muted)] hover:bg-[var(--paper)]" aria-label="Seçenekler">
+              <button type="button" onClick={() => { setMenuOpen((v) => !v); setMuteMenu(false); }} className="rounded-full p-1.5 text-[var(--ink-muted)] hover:bg-[var(--paper)]" aria-label="Seçenekler">
                 <IconDotsVertical size={18} />
               </button>
               {menuOpen && (
                 <div className="absolute right-3 top-12 z-20 w-60 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] py-1 shadow-xl">
-                  {receiptsReady && (
-                    <button type="button" onClick={toggleReceipts} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--ink)] hover:bg-[var(--paper)]">
-                      {receipts ? <IconEyeOff size={15} /> : <IconEye size={15} />} <span>Okundu bilgisi: <b>{receipts ? 'Açık' : 'Kapalı'}</b><span className="block text-[11px] text-[var(--ink-muted)]">tüm sohbetler için</span></span>
-                    </button>
+                  {perConv && (
+                    <>
+                      <button type="button" onClick={toggleConvReceipts} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--ink)] hover:bg-[var(--paper)]">
+                        {convReceipts ? <IconEyeOff size={15} /> : <IconEye size={15} />}
+                        <span>Okundu bilgisi: <b>{convReceipts ? 'Açık' : 'Kapalı'}</b>
+                          <span className="block text-[11px] text-[var(--ink-muted)]">yalnızca bu sohbet{active.read_receipts_custom ? ' · genel ayardan farklı' : ''} · {convReceipts ? 'kapat' : 'aç'}</span>
+                        </span>
+                      </button>
+                      {active.muted_until ? (
+                        <button type="button" onClick={() => setMute('off')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--ink)] hover:bg-[var(--paper)]">
+                          <IconBell size={15} /> <span>Sessizden çıkar<span className="block text-[11px] text-[var(--ink-muted)]">Sessiz: {muteText(active.muted_until)}</span></span>
+                        </button>
+                      ) : (
+                        <button type="button" onClick={() => setMuteMenu((v) => !v)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--ink)] hover:bg-[var(--paper)]">
+                          <IconBellOff size={15} /> Sessize al
+                        </button>
+                      )}
+                      {muteMenu && !active.muted_until && (
+                        <div className="flex flex-wrap gap-1 px-3 pb-2">
+                          {MUTE_OPTIONS.map((o) => (
+                            <button key={o.label} type="button" onClick={() => setMute(o.hours)}
+                              className="rounded-full bg-[var(--paper)] px-2.5 py-1 text-[12px] font-semibold text-[var(--ink)] ring-1 ring-[var(--border)] hover:bg-[var(--accent-soft)]">{o.label}</button>
+                          ))}
+                          <p className="w-full pt-1 text-[11px] text-[var(--ink-muted)]">Bu sohbetten bildirim gelmez; mesajlar yine görünür.</p>
+                        </div>
+                      )}
+                      <div className="my-1 border-t border-[var(--border)]" />
+                    </>
                   )}
                   {active.kind === 'direct' ? (
                     <button type="button" onClick={toggleBlock} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[var(--danger)] hover:bg-[var(--danger-soft)]">
