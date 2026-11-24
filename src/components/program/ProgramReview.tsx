@@ -286,7 +286,7 @@ export function ProgramReview({ item, onClose }: { item: ReviewItem; onClose: ()
                 {view === 'yeni' && (
                   <p className="text-[12px] text-[var(--ink-muted)]">
                     {isProgram
-                      ? 'Haftalık Takip’teki gibi düzenleyebilirsiniz: görev ekleyin, düzenleyin, silin, kopyalayıp başka güne yapıştırın, saatleri değiştirin.'
+                      ? 'Haftalık Program’daki gibi düzenleyebilirsiniz: görev ekleyin, düzenleyin, silin, kopyalayıp başka güne yapıştırın, saatleri değiştirin.'
                       : 'Öğrencinin istediği değişiklikler işaretli. Onaylamadan önce istediğiniz gibi düzenleyebilirsiniz; silinenleri ↶ ile geri alabilirsiniz.'}
                   </p>
                 )}

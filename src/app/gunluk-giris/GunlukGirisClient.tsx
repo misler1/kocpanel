@@ -219,7 +219,7 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
     <div className="mx-auto max-w-2xl space-y-3 pb-12">
       <div className="flex items-center gap-2">
         <Link href="/anasayfa" className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100" aria-label="Ana sayfaya dön"><IconArrowLeft size={20} /></Link>
-        <h1 className="text-[20px] font-bold text-gray-900">Günlük giriş</h1>
+        <h1 className="text-[20px] font-bold text-gray-900">Günlük Takip</h1>
       </div>
 
       {programNote && (

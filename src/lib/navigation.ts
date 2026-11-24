@@ -26,13 +26,13 @@ export interface NavItem {
 export const MAIN_NAV: NavItem[] = [
   { href: '/anasayfa', label: 'Ana sayfa', icon: IconHome },
   { href: '/ogrenciler', label: 'Öğrenciler', icon: IconUsers },
-  { href: '/gunluk-giris', label: 'Günlük giriş', icon: IconChecklist }, // öğrenci adına günlük çalışma girişi (stajyerde gizli, staff-access.ts)
+  { href: '/gunluk-giris', label: 'Günlük Takip', icon: IconChecklist }, // öğrenci adına günlük çalışma girişi (stajyerde gizli, staff-access.ts)
   { href: '/ajanda', label: 'Ajanda', icon: IconCalendarWeek },
 ];
 
 export const TAKIP_NAV: NavItem[] = [
   { href: '/gorusmeler', label: 'Görüşme kayıtları', icon: IconNotes, section: 'Takip' },
-  { href: '/haftalik-takip', label: 'Haftalık Takip', icon: IconChecklist },
+  { href: '/haftalik-takip', label: 'Haftalık Program', icon: IconChecklist },
   { href: '/konu-ilerleyisi', label: 'Konu ilerleyişi', icon: IconBooks },
   { href: '/denemeler', label: 'Deneme sonuçları', icon: IconChartBar },
   { href: '/anketler', label: 'Anketler', icon: IconClipboardList },

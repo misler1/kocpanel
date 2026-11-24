@@ -32,8 +32,8 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `online_gorusme.sql` | Ajanda'da online görüşme: koçun varsayılan Meet/Zoom bağlantısı | ✅ Çalıştırıldı |
 | `program_duzenleyerek_onay.sql` | Onay bekleyen programı koç düzenleyip onaylayabilir (staff_programs.sql'den sonra) | ✅ Çalıştırıldı |
 | `toplu_mesaj.sql` | Grup kurmadan seçilen öğrencilere ayrı ayrı, isme özel ({ad}) toplu mesaj (messaging.sql'den sonra) | ✅ Çalıştırıldı |
-| `ogrenci_program_onayi.sql` | Koçu olan öğrencinin kendi yaptığı program, koçun programı olmasa da her zaman koçun onayına gider (staff_programs.sql ve program_duzenleyerek_onay.sql'den sonra) | ⏳ Çalıştırılacak |
-| `program_bildirimi.sql` | Koç programa görev ekleyince / toplu işlemle program kopyalayınca öğrenciye her hafta için ayrı "Yeni haftalık programın hazır" bildirimi (notifications.sql'den sonra) | ⏳ Çalıştırılacak |
+| `ogrenci_program_onayi.sql` | Koçu olan öğrencinin kendi yaptığı program, koçun programı olmasa da her zaman koçun onayına gider (staff_programs.sql ve program_duzenleyerek_onay.sql'den sonra) | ✅ Çalıştırıldı |
+| `program_bildirimi.sql` | Koç programa görev ekleyince / toplu işlemle program kopyalayınca öğrenciye her hafta için ayrı "Yeni haftalık programın hazır" bildirimi (notifications.sql'den sonra) | ✅ Çalıştırıldı |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.

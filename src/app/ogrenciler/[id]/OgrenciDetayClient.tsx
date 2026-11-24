@@ -376,7 +376,7 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
 
         {tab === 'program' && (
           <div className="space-y-3">
-            <Accordion icon={<IconCalendar size={16} />} title="Haftalık takip programı" theme="indigo"
+            <Accordion icon={<IconCalendar size={16} />} title="Haftalık program" theme="indigo"
               right={<Link href={`/haftalik-takip?ogrenci=${id}`} className="text-indigo-700 hover:underline">Programı aç →</Link>}>
               <OgrenciProgramlari studentId={id} />
             </Accordion>

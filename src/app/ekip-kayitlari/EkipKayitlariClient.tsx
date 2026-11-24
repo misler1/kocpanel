@@ -14,7 +14,7 @@ type Row = {
 };
 
 const AREAS: Record<string, { label: string; emoji: string }> = {
-  gunluk: { label: 'Günlük giriş', emoji: '✅' },
+  gunluk: { label: 'Günlük takip', emoji: '✅' },
   program: { label: 'Haftalık program', emoji: '🗓️' },
   konu: { label: 'Konu ilerleyişi', emoji: '📚' },
   deneme: { label: 'Deneme', emoji: '📊' },
