@@ -36,8 +36,8 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `program_bildirimi.sql` | Koç programa görev ekleyince / toplu işlemle program kopyalayınca öğrenciye her hafta için ayrı "Yeni haftalık programın hazır" bildirimi (notifications.sql'den sonra) | ✅ Çalıştırıldı |
 | `sayisiz_calisma.sql` | Öğrencinin çalışma kaydında soru sayısı/süre isteğe bağlı ("Sayıları hatırlamıyorum"); koç "sayı girilmedi" görür (student_daily_log.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
 | `gunluk_eksikler.sql` | Sabah 10:00 "günlük girmeyenler" bildirimi /gunluk-eksikler sayfasını açar (girmeyen + eksik girenler, mesaj/program/bildirimi kapat); ilk girişini yapmamış öğrenciler sayılmaz; öğrenci bazında süreli/süresiz sessize alma (bildirim_cakisma_duzeltme.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
-| `mesaj_okundu_duzenleme.sql` | Mesajlarda okundu bilgisi (⋮ menüsünden açılıp kapatılır, karşılıklı); mesajı 24 saat içinde düzenleme / herkesten geri alma, benden silme; grup yöneticisi mesaj kaldırabilir (messaging.sql'den sonra) | ⏳ Çalıştırılacak |
-| `mesaj_kisi_ayarlari.sql` | Mesajlarda sohbete (kişiye) özel okundu bilgisi ve sohbeti süreli/süresiz sessize alma (⋮ menüsü); sessizdeki sohbetten bildirim gelmez (mesaj_okundu_duzenleme.sql'den sonra) | ⏳ Çalıştırılacak |
+| `mesaj_okundu_duzenleme.sql` | Mesajlarda okundu bilgisi (⋮ menüsünden açılıp kapatılır, karşılıklı); mesajı 24 saat içinde düzenleme / herkesten geri alma, benden silme; grup yöneticisi mesaj kaldırabilir (messaging.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
+| `mesaj_kisi_ayarlari.sql` | Mesajlarda sohbete (kişiye) özel okundu bilgisi ve sohbeti süreli/süresiz sessize alma (⋮ menüsü); sessizdeki sohbetten bildirim gelmez (mesaj_okundu_duzenleme.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
