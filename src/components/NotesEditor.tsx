@@ -46,6 +46,8 @@ interface Props {
   dictation?: boolean;
 }
 
+const nowMs = () => Date.now();
+
 export function NotesEditor({ value, onChange, rows = 5, placeholder, className, dictation = true }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canDictate = useSyncExternalStore(noopSubscribe, speechSupported, () => false);
@@ -67,6 +69,35 @@ export function NotesEditor({ value, onChange, rows = 5, placeholder, className,
   const speakingRef = useRef(false);
   const pendingBreakRef = useRef(false);
   const breakAfterRef = useRef(false);
+  // Henüz kesinleşmemiş son parça: bazı tarayıcılar (özellikle Safari) parçayı hiç "kesin" işaretlemez;
+  // dikte kapanırken ya da yeniden başlarken bu parça kaybolmasın diye nota eklenir
+  const interimRef = useRef('');
+  const gotResultRef = useRef(false);
+  const quickEndsRef = useRef(0);
+  const startedAtRef = useRef(0);
+  const [noSpeechHint, setNoSpeechHint] = useState(false);
+
+  // 10 sn içinde hiç yazı gelmezse kullanıcıya ne yapabileceği söylenir
+  useEffect(() => {
+    if (!listening) return;
+    const id = window.setTimeout(() => { if (!gotResultRef.current) setNoSpeechHint(true); }, 10000);
+    return () => window.clearTimeout(id);
+  }, [listening]);
+
+  function flushInterim() {
+    const t = interimRef.current;
+    interimRef.current = '';
+    if (t.trim()) {
+      appendSpoken(t, pendingBreakRef.current);
+      pendingBreakRef.current = false;
+      lastFinalAtRef.current = nowMs();
+    }
+  }
+
+  function fail(msg: string) {
+    wantRef.current = false;
+    setMicError(msg);
+  }
 
   function setValue(next: string) {
     valueRef.current = next;
@@ -134,6 +165,10 @@ export function NotesEditor({ value, onChange, rows = 5, placeholder, className,
     } catch { /* depolama kapalı */ }
     // Notta yazı varsa dikte yeni satırda başlar
     pendingBreakRef.current = valueRef.current.trim() !== '';
+    interimRef.current = '';
+    gotResultRef.current = false;
+    quickEndsRef.current = 0;
+    setNoSpeechHint(false);
     lastFinalAtRef.current = null;
     speakingRef.current = false;
     breakAfterRef.current = false;
@@ -143,6 +178,9 @@ export function NotesEditor({ value, onChange, rows = 5, placeholder, className,
     rec.interimResults = true;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onresult = (e: any) => {
+      gotResultRef.current = true;
+      quickEndsRef.current = 0;
+      setNoSpeechHint(false);
       // Yeni bir konuşma parçası başlıyor: öncekinden bu yana uzun sessizlik olduysa alt satıra geçilecek
       if (!speakingRef.current) {
         const last = lastFinalAtRef.current;
@@ -160,23 +198,35 @@ export function NotesEditor({ value, onChange, rows = 5, placeholder, className,
           speakingRef.current = false;
         } else partial += r[0].transcript;
       }
+      interimRef.current = partial;
       setInterim(partial);
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rec.onerror = (e: any) => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-        wantRef.current = false;
-        setMicError('Mikrofon izni verilmedi. Tarayıcının adres çubuğundan mikrofona izin verin.');
+      // no-speech (sessizlik) ve aborted zararsız: dikte kendiliğinden yeniden başlar
+      if (e.error === 'not-allowed') {
+        fail('Mikrofon izni verilmedi. Adres çubuğundaki kilit/mikrofon simgesinden bu siteye mikrofon izni verip tekrar deneyin.');
+      } else if (e.error === 'service-not-allowed') {
+        fail('Bu tarayıcı konuşma tanımaya izin vermiyor (ör. ana ekrana eklenmiş uygulama, Brave ya da gizli sekme). Siteyi Chrome, Edge ya da Safari’de açın veya klavyenizin mikrofon tuşuyla yazdırın.');
       } else if (e.error === 'audio-capture') {
-        wantRef.current = false;
-        setMicError('Mikrofon bulunamadı.');
+        fail('Mikrofon bulunamadı ya da başka bir uygulama kullanıyor (ör. görüntülü görüşme). Mikrofonu kontrol edip tekrar deneyin.');
+      } else if (e.error === 'network') {
+        fail('Konuşma tanıma servisine ulaşılamadı. İnternet bağlantınızı kontrol edin; Brave, Opera gibi tarayıcılar bu servisi desteklemez, Chrome, Edge ya da Safari kullanın.');
+      } else if (e.error === 'language-not-supported') {
+        fail('Bu tarayıcı Türkçe konuşma tanımayı desteklemiyor. Chrome, Edge ya da Safari kullanın.');
       }
     };
     rec.onend = () => {
+      flushInterim();
       setInterim('');
       speakingRef.current = false;
+      // Hiç yazı gelmeden art arda hemen kapanıyorsa (servis çalışmıyor) sonsuz yeniden başlatma yapılmaz
+      if (!gotResultRef.current && Date.now() - startedAtRef.current < 3000) quickEndsRef.current += 1;
+      if (quickEndsRef.current >= 4) {
+        fail('Sesli dikte bu tarayıcıda çalışmıyor görünüyor. Chrome, Edge ya da Safari’de deneyin veya klavyenizin mikrofon tuşuyla yazdırın.');
+      }
       if (wantRef.current) {
-        try { rec.start(); return; } catch { /* yeniden başlatılamadı */ }
+        try { startedAtRef.current = Date.now(); rec.start(); return; } catch { /* yeniden başlatılamadı */ }
       }
       wantRef.current = false;
       setListening(false);
@@ -184,6 +234,7 @@ export function NotesEditor({ value, onChange, rows = 5, placeholder, className,
     recRef.current = rec;
     wantRef.current = true;
     try {
+      startedAtRef.current = nowMs();
       rec.start();
       setListening(true);
     } catch {
@@ -194,7 +245,8 @@ export function NotesEditor({ value, onChange, rows = 5, placeholder, className,
 
   function stopDictation() {
     wantRef.current = false;
-    try { recRef.current?.stop(); } catch { /* zaten kapalı */ }
+    // Tarayıcı son parçayı durdurunca kesinleştirir; onend'de eklenir. Gelmezse (Safari) yarım parça da eklenir.
+    try { recRef.current?.stop(); } catch { flushInterim(); }
     setListening(false);
   }
 
@@ -355,6 +407,13 @@ export function NotesEditor({ value, onChange, rows = 5, placeholder, className,
           <p className="mt-1 min-h-[1.25rem] text-[12px] italic text-violet-700">
             {interim || 'Dinliyorum… konuştukça yazı buraya eklenir.'}
           </p>
+          {noSpeechHint && !interim && (
+            <p className="mt-1 rounded-md bg-amber-50 px-2.5 py-1.5 text-[12px] text-amber-800">
+              Henüz yazı gelmedi. Doğru mikrofonun seçili olduğundan ve tarayıcının mikrofon iznini verdiğinizden emin olun.
+              Yine çıkmıyorsa tarayıcınız konuşma tanımayı desteklemiyor olabilir: Chrome, Edge ya da Safari’de deneyin
+              veya klavyenizin 🎤 tuşuyla yazdırın.
+            </p>
+          )}
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg bg-violet-50 px-2.5 py-2 text-[11.5px] text-violet-900">
             <span className="font-semibold">Alt satır:</span>
             <div className="flex gap-1">

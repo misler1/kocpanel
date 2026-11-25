@@ -48,6 +48,12 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 2. Tamamlananlar (yayında)
 
+### Sesli dikte düzeltmesi (25 Kasım)
+- Görüşme notundaki **Sesli dikte** sessizce çalışmıyormuş gibi kalıyordu: tarayıcının konuşma tanıma hataları (servise ulaşılamadı, tarayıcı izin vermiyor, Türkçe desteklenmiyor) yok sayılıp dikte boşuna yeniden başlatılıyordu.
+- Artık her hata açık bir mesajla gösterilir ve dikte durur; hiç yazı gelmeden art arda kapanırsa sonsuz yeniden başlatma yapılmaz. 10 sn içinde yazı gelmezse ne yapılacağını söyleyen uyarı çıkar.
+- Kesinleşmemiş son parça (özellikle Safari/iPhone'da) dikte kapanınca ya da yeniden başlarken kaybolmaz, nota eklenir.
+- Not: Konuşma tanıma Chrome, Edge ve Safari'de çalışır; Brave, Opera, Firefox ve bazı "ana ekrana eklenmiş uygulama" görünümlerinde çalışmaz. Bu durumda klavyenin 🎤 tuşu kullanılabilir. Kod: `src/components/NotesEditor.tsx`.
+
 ### Ekstra çalışmalar programda (25 Kasım)
 - Günlüğe programdaki bir göreve bağlı olmadan girilen çalışmalar ("Plan dışı çalışma" / ekstra: koç, belletmen ya da öğrenci girmiş olsun) öğrenci detayı → Program ve günlük → Haftalık program'da, girildiği tarihin gün sütununda yeşil kesikli **"➕ Ekstra çalışma"** kartı olarak görünür: ders, konu, soru (D/Y), süre, sayfa ve kimin girdiği. Aynı gün aynı ders+konu+giren tek kartta toplanır.
 - Kart yalnızca o tarihi kapsayan bir program varsa görünür (programı olmayan haftanın ekstra çalışması yalnızca günlük listesinde ve "Çalışılan konular"da).
