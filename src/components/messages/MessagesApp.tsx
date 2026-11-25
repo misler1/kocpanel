@@ -193,6 +193,12 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ block: 'end' }); }, [messages.length, activeId]);
 
+  // Mesaja dokununca açılan seçenekler ekranın altında kalırsa sohbet hafifçe kayar ve görünür olur
+  useEffect(() => {
+    if (!actionFor) return;
+    requestAnimationFrame(() => document.getElementById(`msg-actions-${actionFor}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+  }, [actionFor]);
+
   function openConv(id: string | null) {
     activeRef.current = id;
     setActiveId(id);
@@ -591,7 +597,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
                       </span>
                     </button>
                     {open && (
-                      <div className="mt-1 flex flex-wrap gap-1 text-[12px]">
+                      <div id={`msg-actions-${m.id}`} className="mt-1 flex scroll-mb-3 flex-wrap gap-1 text-[12px]">
                         {canEdit && <button type="button" onClick={() => startEdit(m)} className="flex items-center gap-1 rounded-full bg-[var(--card)] px-2.5 py-1 font-semibold text-[var(--ink)] shadow-sm"><IconPencil size={13} /> Düzenle</button>}
                         {canUnsend && <button type="button" onClick={() => unsend(m)} className="flex items-center gap-1 rounded-full bg-[var(--card)] px-2.5 py-1 font-semibold text-[var(--danger)] shadow-sm"><IconArrowBackUp size={13} /> {mine ? 'Herkesten geri al' : 'Gruptan kaldır'}</button>}
                         {!deleted && <button type="button" onClick={() => { navigator.clipboard?.writeText(m.content); setActionFor(null); }} className="flex items-center gap-1 rounded-full bg-[var(--card)] px-2.5 py-1 font-semibold text-[var(--ink)] shadow-sm"><IconCopy size={13} /> Kopyala</button>}
