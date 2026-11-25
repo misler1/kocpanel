@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { programDays, shortDate, addDays, DAY_SHORT } from '@/lib/program-days';
 import { todayTr } from '@/lib/day-tasks';
-import { buildTaskEntries as buildEntries, entryStats, sameTopic, type TaskEntry as Entry } from '@/lib/task-entries';
+import { buildExtraEntries, buildTaskEntries as buildEntries, entryStats, sameTopic, type ExtraEntry, type TaskEntry as Entry } from '@/lib/task-entries';
 
 type Week = { weekStart: string; weekEnd: string; logs: any[] };
 const endOf = (w: Week) => w.weekEnd || addDays(w.weekStart, 6);
@@ -59,6 +59,21 @@ function LogMini({ l, entry }: { l: any; entry?: Entry }) {
   );
 }
 
+/** Programdaki bir göreve bağlı olmayan, günlüğe "plan dışı / ekstra" girilen çalışma */
+function ExtraMini({ e }: { e: ExtraEntry }) {
+  const tone = e.byStudent ? 'text-blue-600' : 'text-gray-600';
+  const stats = entryStats(e);
+  return (
+    <div className="rounded-md border border-dashed border-emerald-300 bg-emerald-50/60 p-1.5">
+      <div className="text-[9.5px] font-bold uppercase tracking-wide text-emerald-700">➕ Ekstra çalışma</div>
+      <div className="truncate text-[12px] font-medium text-gray-900">{e.subject || 'Ders yazılmamış'}</div>
+      {e.topic && <div className="truncate text-[10px] text-gray-500">{e.topic}</div>}
+      {stats && <div className={`text-[10.5px] font-medium ${e.noNumbers && !e.count && !e.minutes ? 'text-amber-600' : tone}`}>{stats}</div>}
+      <div className="text-[10px] text-gray-400">{e.byStudent ? 'Öğrenci girdi' : e.byName ? `${e.byName} girdi` : ''}</div>
+    </div>
+  );
+}
+
 export function OgrenciProgramlari({ studentId }: { studentId: string }) {
   const supabase = createClient();
   const [weeks, setWeeks] = useState<Week[]>([]);
@@ -66,6 +81,7 @@ export function OgrenciProgramlari({ studentId }: { studentId: string }) {
   const [loading, setLoading] = useState(true);
   const [jumpMsg, setJumpMsg] = useState('');
   const [entries, setEntries] = useState<Map<string, Entry>>(new Map());
+  const [extras, setExtras] = useState<Map<string, ExtraEntry[]>>(new Map());
 
   useEffect(() => {
     async function load() {
@@ -78,12 +94,13 @@ export function OgrenciProgramlari({ studentId }: { studentId: string }) {
         // Görevlere girilen çalışma ayrıntıları (konu, soru, D/Y, süre) günlükte görev numarasıyla tutulur
         (supabase as any)
           .from('daily_logs')
-          .select('question_solved, topic_studies, archived')
+          .select('log_date, question_solved, topic_studies, archived')
           .eq('student_id', studentId)
           .order('log_date', { ascending: false })
           .limit(1500),
       ]);
       setEntries(buildEntries(daily ?? []));
+      setExtras(buildExtraEntries(daily ?? []));
       const map = new Map<string, any>();
       for (const l of data ?? []) {
         if (!map.has(l.week_start)) {
@@ -166,17 +183,19 @@ export function OgrenciProgramlari({ studentId }: { studentId: string }) {
               >
                 {days.map(({ weekday: i, date }) => {
                   const dayLogs = sorted.filter((l) => l.plan_day === i);
+                  const dayExtras = date ? extras.get(date) ?? [] : [];
                   return (
-                    <div key={i} className={`rounded-lg bg-gray-50 p-2 ${dayLogs.length === 0 ? 'max-md:hidden' : ''}`}>
+                    <div key={i} className={`rounded-lg bg-gray-50 p-2 ${dayLogs.length === 0 && dayExtras.length === 0 ? 'max-md:hidden' : ''}`}>
                       <div className="mb-2 text-[11px] font-semibold text-gray-500">
                         {DAY_SHORT[i]}{date && <span className="ml-1 font-normal text-gray-400">{shortDate(date)}</span>}
                       </div>
                       <div className="flex flex-col gap-1.5">
-                        {dayLogs.length === 0 ? (
+                        {dayLogs.length === 0 && dayExtras.length === 0 ? (
                           <p className="py-3 text-center text-[11px] text-gray-300">Boş</p>
                         ) : (
                           dayLogs.map((l) => <LogMini key={l.id} l={l} entry={entries.get(l.id)} />)
                         )}
+                        {dayExtras.map((e, k) => <ExtraMini key={`x-${k}`} e={e} />)}
                       </div>
                     </div>
                   );

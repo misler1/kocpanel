@@ -48,6 +48,11 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 2. Tamamlananlar (yayında)
 
+### Ekstra çalışmalar programda (25 Kasım)
+- Günlüğe programdaki bir göreve bağlı olmadan girilen çalışmalar ("Plan dışı çalışma" / ekstra: koç, belletmen ya da öğrenci girmiş olsun) öğrenci detayı → Program ve günlük → Haftalık program'da, girildiği tarihin gün sütununda yeşil kesikli **"➕ Ekstra çalışma"** kartı olarak görünür: ders, konu, soru (D/Y), süre, sayfa ve kimin girdiği. Aynı gün aynı ders+konu+giren tek kartta toplanır.
+- Kart yalnızca o tarihi kapsayan bir program varsa görünür (programı olmayan haftanın ekstra çalışması yalnızca günlük listesinde ve "Çalışılan konular"da).
+- Veri değişikliği yok; kod: `buildExtraEntries` (`src/lib/task-entries.ts`), `OgrenciProgramlari.tsx`.
+
 ### Günlükte konu adı, program onayı, onay ekranı (`098513a`)
 - **Günlükte konu adı:** Öğrenci görevi "yaptım" diye işaretlerken ya da plan dışı çalışma eklerken "Hangi konuyu çalıştın?" alanı var. Görevde konu yazılıysa dolu gelir, değiştirilebilir. Öneriler öğrencinin Konu İlerleyişi listesinden, seçili derse göre gelir.
 - **Koç tarafında takip:** Öğrenci detayı → Program ve günlük → **Çalışılan konular (günlükten)**. Ders ders konu listesi: soru (D/Y), doğruluk, süre, kaç gün, son çalışma; son 7 / 30 / 90 gün ya da tümü; konu arama. Son 7 günde ilk kez çalışılan konuda "yeni" etiketi. Konu adı yazılmamış çalışmalar ayrıca toplanır.

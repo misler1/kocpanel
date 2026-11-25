@@ -43,3 +43,36 @@ export function entryStats(e: TaskEntry) {
     e.pages ? `s. ${e.pages}` : null,
   ].filter(Boolean).join(' · ');
 }
+
+/** Programdaki bir göreve bağlı olmayan ("plan dışı" / ekstra) çalışma: o günün programında ayrıca gösterilir */
+export type ExtraEntry = TaskEntry & { subject: string; date: string };
+
+/** Görev numarası taşımayan günlük kayıtları, tarihe göre (log_date). Aynı gün aynı ders+konu+giren tek kartta toplanır. */
+export function buildExtraEntries(dailyLogs: any[]): Map<string, ExtraEntry[]> {
+  const byKey = new Map<string, ExtraEntry>();
+  for (const d of dailyLogs) {
+    if (d.archived || !d.log_date) continue;
+    const all = [
+      ...((d.question_solved ?? []) as any[]).map((e) => ({ ...e, _q: true })),
+      ...((d.topic_studies ?? []) as any[]).map((e) => ({ ...e, _q: false })),
+    ];
+    for (const e of all) {
+      if (!e || e.task_id) continue;
+      const subject = String(e.subject ?? '').trim();
+      const topic = String(e.topic ?? '').trim();
+      if (!subject && !topic) continue;
+      const key = [d.log_date, norm(subject), norm(topic), e.by ?? '', e.by_name ?? ''].join('|');
+      const r: ExtraEntry = byKey.get(key) ?? { date: d.log_date, subject, topic, count: 0, correct: 0, wrong: 0, minutes: 0, pages: '', byStudent: false, byName: '' };
+      if (e._q) { r.count += Number(e.count) || 0; r.correct += Number(e.correct) || 0; r.wrong += Number(e.wrong) || 0; }
+      else r.minutes += Number(e.duration_minutes) || 0;
+      if (!r.pages && e.pages) r.pages = String(e.pages);
+      if (e.no_numbers) r.noNumbers = true;
+      if (e.by === 'ogrenci') r.byStudent = true;
+      if (!r.byName && e.by_name) r.byName = String(e.by_name);
+      byKey.set(key, r);
+    }
+  }
+  const map = new Map<string, ExtraEntry[]>();
+  for (const r of byKey.values()) map.set(r.date, [...(map.get(r.date) ?? []), r]);
+  return map;
+}
