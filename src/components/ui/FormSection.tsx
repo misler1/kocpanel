@@ -14,11 +14,11 @@ export const formInputCls =
 const THEMES = {
   violet: 'border-violet-100 from-violet-50 bg-violet-500',
   emerald: 'border-emerald-100 from-emerald-50 bg-emerald-500',
-  sky: 'border-sky-100 from-sky-50 bg-sky-500',
+  sky: 'border-[#DCE6F5] from-[#EEF3FA] bg-[#2A5CA8]',
   amber: 'border-amber-100 from-amber-50 bg-amber-500',
   rose: 'border-rose-100 from-rose-50 bg-rose-500',
   indigo: 'border-indigo-100 from-indigo-50 bg-indigo-500',
-  teal: 'border-teal-100 from-teal-50 bg-teal-500',
+  teal: 'border-[#C5EEEE] from-[#E6F7F7] bg-[#0C8A90]',
 } as const;
 
 // Başlığa göre renk ve simge (öğrenci formlarındaki bölümler)

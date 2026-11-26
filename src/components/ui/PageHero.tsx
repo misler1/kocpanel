@@ -5,15 +5,16 @@ import { IconArrowLeft } from '@tabler/icons-react';
 // Koç panelinin ortak sayfa başlığı: ana sayfadaki renkli karşılama kartının dili.
 // Her bölümün kendi renk teması var; böylece koç hangi sayfada olduğunu rengiyle de tanır.
 
+// Başlık bantları: lacivertten turkuaza (logo ile uyumlu); turuncu/pembe yalnızca yumuşak tonda
 export const HERO_THEMES = {
-  violet: 'from-indigo-500 via-violet-500 to-fuchsia-500',
-  sky: 'from-sky-500 via-blue-500 to-indigo-500',
-  teal: 'from-teal-500 via-emerald-500 to-green-500',
-  fuchsia: 'from-fuchsia-500 via-pink-500 to-rose-500',
-  amber: 'from-amber-500 via-orange-500 to-rose-500',
-  indigo: 'from-indigo-600 via-indigo-500 to-sky-500',
-  rose: 'from-rose-500 via-pink-500 to-fuchsia-500',
-  slate: 'from-slate-600 via-indigo-600 to-violet-600',
+  violet: 'from-[#1B4A8A] via-[#14709C] to-[#0FA3A8]',
+  sky: 'from-[#1B4A8A] via-[#2A5CA8] to-[#3E86C9]',
+  teal: 'from-[#0B7076] via-[#0C8A90] to-[#0FA3A8]',
+  fuchsia: 'from-[#B85A78] via-[#C96F85] to-[#D99A8E]',
+  amber: 'from-[#D9774A] via-[#E38D5C] to-[#EBAA72]',
+  indigo: 'from-[#132F57] via-[#1B4A8A] to-[#14709C]',
+  rose: 'from-[#C0566A] via-[#CC6E7B] to-[#D99A8E]',
+  slate: 'from-slate-600 via-[#1B4A8A] to-[#14709C]',
 } as const;
 
 export type HeroTheme = keyof typeof HERO_THEMES;
@@ -70,8 +71,8 @@ export function PageHero({ theme = 'violet', icon, title, subtitle, chips, actio
 
 /** Renkli başlıklı kutu (ana sayfadaki "Bu haftaki görüşmeler" kutusu gibi) */
 export const SECTION_THEMES = {
-  sky: { head: 'from-sky-50 border-sky-100', chip: 'bg-sky-500', link: 'text-sky-700' },
-  teal: { head: 'from-teal-50 border-teal-100', chip: 'bg-teal-500', link: 'text-teal-700' },
+  sky: { head: 'from-[#EEF3FA] border-[#DCE6F5]', chip: 'bg-[#2A5CA8]', link: 'text-[#1B4A8A]' },
+  teal: { head: 'from-[#E6F7F7] border-[#C5EEEE]', chip: 'bg-[#0C8A90]', link: 'text-[#0B7076]' },
   violet: { head: 'from-violet-50 border-violet-100', chip: 'bg-violet-500', link: 'text-violet-700' },
   amber: { head: 'from-amber-50 border-amber-100', chip: 'bg-amber-500', link: 'text-amber-700' },
   rose: { head: 'from-rose-50 border-rose-100', chip: 'bg-rose-500', link: 'text-rose-700' },

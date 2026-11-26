@@ -24,6 +24,52 @@
   --color-aqua-700: #007176;
   --color-aqua-800: #00595D;
   --color-aqua-900: #00474A;
+
+  /* Panel teması (A bandı + C menüsü): mor/çivit tonları lacivert-maviye, fuşya turkuaza bağlı */
+  --color-violet-50: #EEF3FA;
+  --color-violet-100: #DCE6F5;
+  --color-violet-200: #B9CDEB;
+  --color-violet-300: #8DAEDD;
+  --color-violet-400: #5D88C9;
+  --color-violet-500: #3468B0;
+  --color-violet-600: #1F5398;
+  --color-violet-700: #1B4A8A;
+  --color-violet-800: #173C70;
+  --color-violet-900: #132F57;
+  --color-violet-950: #0C1F3B;
+  --color-purple-50: #EEF3FA;
+  --color-purple-100: #DCE6F5;
+  --color-purple-200: #B9CDEB;
+  --color-purple-300: #8DAEDD;
+  --color-purple-400: #5D88C9;
+  --color-purple-500: #3468B0;
+  --color-purple-600: #1F5398;
+  --color-purple-700: #1B4A8A;
+  --color-purple-800: #173C70;
+  --color-purple-900: #132F57;
+  --color-purple-950: #0C1F3B;
+  --color-indigo-50: #EEF3FA;
+  --color-indigo-100: #DCE6F5;
+  --color-indigo-200: #B9CDEB;
+  --color-indigo-300: #8DAEDD;
+  --color-indigo-400: #5D88C9;
+  --color-indigo-500: #3468B0;
+  --color-indigo-600: #1F5398;
+  --color-indigo-700: #1B4A8A;
+  --color-indigo-800: #173C70;
+  --color-indigo-900: #132F57;
+  --color-indigo-950: #0C1F3B;
+  --color-fuchsia-50: #E6F7F7;
+  --color-fuchsia-100: #C5EEEE;
+  --color-fuchsia-200: #94DEDE;
+  --color-fuchsia-300: #5CCACB;
+  --color-fuchsia-400: #2DB5B8;
+  --color-fuchsia-500: #0FA3A8;
+  --color-fuchsia-600: #0C8A90;
+  --color-fuchsia-700: #0B7076;
+  --color-fuchsia-800: #0B595E;
+  --color-fuchsia-900: #0A494D;
+  --color-fuchsia-950: #052D30;
 }
 
 html, body {
@@ -31,21 +77,21 @@ html, body {
 }
 :root {
   /* KoçPanel design tokens */
-  --paper: #F7F6FC;
+  --paper: #F5F7FB;
   --card: #FFFFFF;
-  --border: #E8E5F1;
+  --border: #E3E8F0;
   --ink: #171A22;
   --ink-muted: #6B6F7A;
 
-  /* Ana sayfa ve sol menüdeki mor-pembe tasarım diliyle uyumlu vurgu rengi */
-  --accent: #8B5CF6;
-  --accent-dark: #7C3AED;
-  --accent-soft: #F3EEFF;
+  /* Vurgu: lacivert-mavi (başlık bandı lacivertten turkuaza) */
+  --accent: #2A5CA8;
+  --accent-dark: #1B4A8A;
+  --accent-soft: #EAF1FB;
 
   --track-yks: #3752CC;
   --track-yks-soft: #E9EDFC;
-  --track-lgs: #7C4FD1;
-  --track-lgs-soft: #F1EAFB;
+  --track-lgs: #0B7076;
+  --track-lgs-soft: #E6F7F7;
 
   --success: #2E8B62;
   --success-soft: #E4F3EB;

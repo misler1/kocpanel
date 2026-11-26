@@ -114,7 +114,7 @@ export function AnasayfaClient({ firstName, today, students, weekMeetings, pendi
   return (
     <div className="mx-auto w-full max-w-7xl px-1">
       {/* Karşılama kartı */}
-      <div className="relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 p-5 text-white shadow-sm sm:p-6">
+      <div className="relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B4A8A] via-[#14709C] to-[#0FA3A8] p-5 text-white shadow-sm sm:p-6">
         <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-white/10" />
         <div className="pointer-events-none absolute -bottom-16 right-32 h-36 w-36 rounded-full bg-white/10" />
         <div className="relative flex flex-wrap items-start justify-between gap-4">

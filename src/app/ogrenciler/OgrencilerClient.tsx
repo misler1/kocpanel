@@ -188,7 +188,7 @@ export function OgrencilerClient({ students, archiveMode, staffMode = false }: {
             </Link>
             <Link
               href="/ogrenciler/yeni"
-              className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-sky-500 to-indigo-500 px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+              className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#1B4A8A] to-[#2A5CA8] px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
             >
               <IconPlus size={15} />
               Öğrenci ekle

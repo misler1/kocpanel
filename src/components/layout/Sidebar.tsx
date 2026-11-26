@@ -13,8 +13,8 @@ import { useUnreadConversations } from '@/lib/use-unread-conversations';
 import { navAllowed } from '@/lib/staff-access';
 import { useStaffKind } from '@/lib/use-staff-kind';
 
-// Sol menünün renkli zemini; telefondaki açılır menü de aynı zemini kullanır
-export const SIDEBAR_BG = 'bg-gradient-to-b from-indigo-950 via-violet-950 to-fuchsia-950';
+// Sol menünün zemini (buz mavisi, ince kenarlık); telefondaki açılır menü de aynı zemini kullanır
+export const SIDEBAR_BG = 'bg-[#EAF1FB] md:border-r md:border-[#D9E4F3]';
 
 /** Menünün içeriği: logo, filtreler, bütün sayfalar ve web sitesi bağlantısı.
  *  Masaüstünde sol menüde, telefonda alttaki "Menü" düğmesiyle açılan pencerede kullanılır. */
@@ -60,9 +60,9 @@ export function SidebarContent({ studentCount, onNavigate }: { studentCount?: nu
 
   return (
     <>
-      <Link href="/anasayfa" onClick={onNavigate} className="mb-4 flex items-center gap-2.5 border-b border-white/10 px-2 pb-5" aria-label="KoçDefterim anasayfa">
-        <Image src="/brand/kocdefterim-mark-beyaz-k-v2.png" alt="KoçDefterim" width={38} height={38} className="h-9 w-9 flex-shrink-0 object-contain" priority />
-        <span className="text-[16px] font-semibold tracking-tight text-white">
+      <Link href="/anasayfa" onClick={onNavigate} className="mb-4 flex items-center gap-2.5 border-b border-[#D9E4F3] px-2 pb-5" aria-label="KoçDefterim anasayfa">
+        <Image src="/brand/kocdefterim-mark.png" alt="KoçDefterim" width={38} height={38} className="h-9 w-9 flex-shrink-0 object-contain" priority />
+        <span className="text-[16px] font-bold tracking-tight text-[#1E3A6E]">
           KoçDefterim
         </span>
       </Link>
@@ -78,29 +78,27 @@ export function SidebarContent({ studentCount, onNavigate }: { studentCount?: nu
               return (
                 <div key={item.href}>
                   {item.section && (
-                    <div className="px-2.5 pb-1.5 pt-3 text-[11px] font-semibold uppercase tracking-wider text-violet-200/50">
+                    <div className="px-2.5 pb-1.5 pt-3 text-[11px] font-semibold uppercase tracking-wider text-[#6E82A3]">
                       {item.section}
                     </div>
                   )}
                   <Link
                     href={item.href}
                     onClick={onNavigate}
-                    className={`relative mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-[15px] transition-colors ${
+                    className={`relative mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[14.5px] transition-colors ${
                       active
-                        ? 'bg-gradient-to-r from-indigo-500/45 via-violet-500/35 to-fuchsia-500/20 font-medium text-white shadow-sm ring-1 ring-white/10'
-                        : 'text-white/65 hover:bg-white/10 hover:text-white'
+                        ? 'bg-white font-semibold text-[#1B4A8A] shadow-sm ring-1 ring-[#D9E4F3]'
+                        : 'font-medium text-[#1E3A6E]/85 hover:bg-white/70 hover:text-[#1E3A6E]'
                     }`}
                   >
-                    {active && (
-                      <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-sky-300 to-fuchsia-300" />
-                    )}
                     <Icon
                       size={19}
-                      className={active ? 'text-fuchsia-200' : 'text-violet-200/60'}
+                      stroke={1.8}
+                      className={active ? 'text-[#0FA3A8]' : 'text-[#6E82A3]'}
                     />
                     {item.label}
                     {item.href === '/ogrenciler' && studentCount !== undefined && (
-                      <span className="ml-auto rounded-full bg-fuchsia-400/25 px-2 py-0.5 text-[11px] font-semibold text-fuchsia-100">
+                      <span className="ml-auto rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-[#1E3A6E]">
                         {filteredStudentCount}
                       </span>
                     )}
@@ -122,7 +120,7 @@ export function SidebarContent({ studentCount, onNavigate }: { studentCount?: nu
         href="/"
         target="_blank"
         rel="noopener"
-        className="mt-auto flex items-center gap-1.5 border-t border-white/10 px-2.5 pt-4 text-[12.5px] text-white/40 transition-colors hover:text-white/80"
+        className="mt-auto flex items-center gap-1.5 border-t border-[#D9E4F3] px-2.5 pt-4 text-[12.5px] text-[#6E82A3] transition-colors hover:text-[#1E3A6E]"
       >
         <IconExternalLink size={14} />
         Web sitesi

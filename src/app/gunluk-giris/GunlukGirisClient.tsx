@@ -240,7 +240,7 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
       )}
 
       {/* Öğrenci kartı */}
-      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-600 text-white shadow-md">
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#1B4A8A] via-[#14709C] to-[#0FA3A8] text-white shadow-md">
         <div className="flex items-center gap-2 p-3">
           <button type="button" onClick={() => goStudent(-1)} aria-label="Önceki öğrenci" className="rounded-full p-2 text-white/80 hover:bg-white/15"><IconArrowLeft size={20} /></button>
           <button type="button" onClick={() => { setPicker(true); setQ(''); }} title="Öğrenci seç" className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-white/15 px-2 py-1.5 text-left ring-1 ring-inset ring-white/30 transition-colors hover:bg-white/25">

@@ -36,7 +36,7 @@ export function GorusmePaneli({ student, minimized, onMinimize, onClose }: {
       className={`${minimized ? 'hidden' : 'flex'} fixed inset-0 z-50 flex-col bg-[var(--paper)] md:inset-y-2 md:left-auto md:right-2 md:w-[440px] md:overflow-hidden md:rounded-2xl md:border md:border-[var(--border)] md:shadow-2xl 2xl:sticky 2xl:inset-auto 2xl:top-2 2xl:z-10 2xl:h-[calc(100vh-1rem)] 2xl:w-[430px] 2xl:flex-shrink-0 2xl:shadow-lg`}
       aria-label="Görüşme kaydı"
     >
-      <div className="flex items-center gap-2 bg-gradient-to-r from-teal-500 via-emerald-500 to-green-500 px-4 py-3 text-white">
+      <div className="flex items-center gap-2 bg-gradient-to-r from-[#0B7076] via-[#0C8A90] to-[#0FA3A8] px-4 py-3 text-white">
         <IconMessages size={18} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-semibold">Görüşme · {student.full_name}</p>

@@ -20,7 +20,7 @@ export function ExamFilterBar() {
   ];
 
   return (
-    <div className="mb-3 space-y-2 border-b border-white/10 pb-3">
+    <div className="mb-3 space-y-2 border-b border-[#D9E4F3] pb-3">
       {/* 1) Kurum  2) Dönem */}
       <div className="flex flex-col gap-1.5">
         <Dropdown
@@ -50,7 +50,7 @@ export function ExamFilterBar() {
             className={`flex-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
               examGroup === g
                 ? 'bg-[var(--accent)] text-white'
-                : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
+                : 'border border-[#D9E4F3] bg-white text-[var(--ink-muted)] hover:bg-[var(--accent-soft)]'
             }`}
           >
             {g}
@@ -67,8 +67,8 @@ export function ExamFilterBar() {
               onClick={() => setYksTrack(yksTrack === t.value ? null : t.value)}
               className={`rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${
                 yksTrack === t.value
-                  ? 'border-[var(--accent)]/40 bg-[var(--accent)]/20 text-white'
-                  : 'border-white/10 bg-white/5 text-white/50 hover:bg-white/10'
+                  ? 'border-[var(--accent)]/40 bg-[var(--accent-soft)] text-[var(--accent-dark)]'
+                  : 'border-[#D9E4F3] bg-white text-[var(--ink-muted)] hover:bg-[var(--accent-soft)]'
               }`}
             >
               {t.label}
@@ -112,7 +112,7 @@ function Dropdown({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/10"
+        className="flex w-full items-center justify-between gap-1.5 rounded-lg border border-[#D9E4F3] bg-white px-2.5 py-1.5 text-xs text-[var(--ink-muted)] transition-colors hover:bg-[var(--accent-soft)]"
       >
         <span className="flex items-center gap-1.5 truncate">
           {icon}

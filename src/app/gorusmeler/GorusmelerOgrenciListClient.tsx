@@ -356,7 +356,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
                     onClick={() => setViewing(m)}
                     className="group flex items-stretch gap-3.5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
                   >
-                    <div className={`flex w-14 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-b py-2 leading-none text-white ${isVeli ? 'from-violet-400 to-purple-500' : 'from-teal-400 to-emerald-500'}`}>
+                    <div className={`flex w-14 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-b py-2 leading-none text-white ${isVeli ? 'from-violet-400 to-purple-500' : 'from-[#14709C] to-[#0FA3A8]'}`}>
                       <span className="text-[10.5px] font-semibold uppercase tracking-wide text-white/85">{monthShort}</span>
                       <span className="mt-1 text-[20px] font-bold">{dayNum}</span>
                     </div>
