@@ -47,7 +47,7 @@ export function PlanTalepleriClient({ requests }: { requests: any[] }) {
                     ? <Link href={`/ogrenciler/${r.students.id}`} className="font-semibold text-gray-900 hover:underline">{r.students.full_name}</Link>
                     : <span className="font-semibold text-gray-900">{r.students?.full_name}</span>}
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${edit ? 'bg-amber-100 text-amber-800' : 'bg-sky-50 text-sky-700'}`}>
-                    {edit ? `✏️ Programında ${n} değişiklik istiyor` : '✨ Yeni program istiyor'}
+                    {edit ? `Programında ${n} değişiklik istiyor` : 'Yeni program istiyor'}
                   </span>
                   {edit && r.week_start && (
                     <span className="text-gray-500">{new Date(r.week_start).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })} programı</span>

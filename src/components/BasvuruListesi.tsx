@@ -66,8 +66,8 @@ export function BasvuruListesi({ basvurular, koclar = [], mode }: { basvurular: 
                   {b.requested_coach_id && ` · İstenen koç: ${coachName(b.requested_coach_id) ?? '—'}`}
                 </div>
                 <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-amber-700">
-                  {b.wants_coach === true && <span className="rounded-full bg-teal-100 px-2 py-0.5 font-semibold text-teal-800">📞 Koç istiyor · aranacak</span>}
-                  {b.wants_coach === false && <span className="rounded-full bg-violet-100 px-2 py-0.5 font-semibold text-violet-800">🚀 Sadece platform</span>}
+                  {b.wants_coach === true && <span className="rounded-full bg-teal-100 px-2 py-0.5 font-semibold text-teal-800">Koç istiyor · aranacak</span>}
+                  {b.wants_coach === false && <span className="rounded-full bg-violet-100 px-2 py-0.5 font-semibold text-violet-800">Sadece platform</span>}
                   <span>{noCoachYet ? (b.wants_coach === false ? 'Paneli kullanıyor · koç atanmadı' : 'Onaylandı · koç atanmadı') : STATUS_LABEL[b.status]}</span>
                 </div>
               </div>

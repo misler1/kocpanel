@@ -79,15 +79,15 @@ export function InternToggle() {
   }
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--paper)] px-2.5 py-1.5">
-      <span className="truncate text-xs text-[var(--ink-muted)]">Stajyerlerin öğrencileri</span>
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
+      <span className="truncate text-xs text-white/70">Stajyerlerin öğrencileri</span>
       <button
         type="button"
         role="switch"
         aria-checked={on}
         onClick={toggle}
         className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${
-          on ? 'bg-[var(--accent)]' : 'bg-gray-300'
+          on ? 'bg-[var(--accent)]' : 'bg-white/20'
         }`}
       >
         <span

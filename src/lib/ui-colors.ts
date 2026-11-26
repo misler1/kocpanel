@@ -1,10 +1,17 @@
 // Koç panelinde ortak renk yardımcıları: öğrenci baş harf rozeti ve sınav türü etiketi her sayfada aynı görünsün.
 
-// Sade tema: rozetler tek renk (petrol mavisinin açık tonu); kimlik ayrımı baş harflerle
-const AVATAR_COLORS = ['bg-[var(--accent-soft)] text-[var(--accent-dark)]'];
+const AVATAR_COLORS = [
+  'bg-sky-100 text-sky-700', 'bg-violet-100 text-violet-700', 'bg-emerald-100 text-emerald-700',
+  'bg-amber-100 text-amber-700', 'bg-rose-100 text-rose-700', 'bg-indigo-100 text-indigo-700',
+  'bg-teal-100 text-teal-700', 'bg-fuchsia-100 text-fuchsia-700', 'bg-orange-100 text-orange-700',
+];
 
 // AVATAR_COLORS ile aynı sırada: kartların üst şeridi rozetle aynı renk ailesinden olsun
-const AVATAR_GRADIENTS = ['from-[#1F8C84] to-[#0F766E]'];
+const AVATAR_GRADIENTS = [
+  'from-sky-400 to-blue-500', 'from-violet-400 to-purple-500', 'from-emerald-400 to-teal-500',
+  'from-amber-400 to-orange-500', 'from-rose-400 to-pink-500', 'from-indigo-400 to-violet-500',
+  'from-teal-400 to-cyan-500', 'from-fuchsia-400 to-pink-500', 'from-orange-400 to-red-400',
+];
 
 function colorIndex(id: string) {
   let h = 0;

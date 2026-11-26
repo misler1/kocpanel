@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { IconLock, IconX, IconCircleCheck } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 
 type Step = 'loading' | 'info' | 'survey' | 'submitting' | 'done' | 'error' | 'inactive';
@@ -127,7 +128,7 @@ export default function AnketPage() {
       <div className="flex min-h-screen items-center justify-center bg-[var(--navy-900)] px-4">
         <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-8 text-center shadow-xl">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--paper)]">
-            <span className="text-2xl">🔒</span>
+            <IconLock size={26} className="text-gray-500" />
           </div>
           <h2 className="mb-2 text-lg font-semibold text-[var(--ink)]">Anket Kapalı</h2>
           <p className="text-sm text-[var(--ink-muted)]">Bu anket şu an aktif değil.</p>
@@ -141,7 +142,7 @@ export default function AnketPage() {
       <div className="flex min-h-screen items-center justify-center bg-[var(--navy-900)] px-4">
         <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-8 text-center shadow-xl">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)]">
-            <span className="text-2xl">❌</span>
+            <IconX size={26} className="text-rose-500" />
           </div>
           <h2 className="mb-2 text-lg font-semibold text-[var(--ink)]">Anket Bulunamadı</h2>
           <p className="text-sm text-[var(--ink-muted)]">Bu anket linki geçersiz.</p>
@@ -155,7 +156,7 @@ export default function AnketPage() {
       <div className="flex min-h-screen items-center justify-center bg-[var(--navy-900)] px-4">
         <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-8 text-center shadow-xl">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--success-soft)]">
-            <span className="text-3xl">✅</span>
+            <IconCircleCheck size={30} className="text-emerald-600" />
           </div>
           <h2 className="mb-2 text-xl font-semibold text-[var(--ink)]">Teşekkürler!</h2>
           <p className="text-sm text-[var(--ink-muted)]">Yanıtların kaydedildi. Hocana iletilecek.</p>

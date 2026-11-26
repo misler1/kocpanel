@@ -3,7 +3,6 @@
 // audience='student' iken görüşme notlarına dayanan değerlendirme gösterilmez.
 
 import { classifyTopics, MIN_SORU, PRIORITY_BELOW, SECOND_MAX, type DersKonulari } from '@/lib/exam-topic-priority';
-import { ERROR_EMOJI } from '@/lib/exam-error-types';
 
 export type KazanimRow = {
   ders: string; kazanim: string; soru: number; dogru: number; yanlis: number; bos: number; denemeler: string[];
@@ -116,11 +115,11 @@ export function AnalysisView({ a, audience = 'coach', showName = true }: { a: St
               </div>
               <div className="grid gap-3 p-3.5 sm:grid-cols-2">
                 <div>
-                  <div className="mb-1.5 text-[11.5px] font-bold uppercase tracking-wide text-rose-600">🔴 Öncelikli · başarı %{PRIORITY_BELOW} altı</div>
+                  <div className="mb-1.5 text-[11.5px] font-bold uppercase tracking-wide text-rose-600">Öncelikli · başarı %{PRIORITY_BELOW} altı</div>
                   <TopicList rows={d.oncelikli as KazanimRow[]} tone="rose" />
                 </div>
                 <div className="sm:border-l sm:border-gray-100 sm:pl-3">
-                  <div className="mb-1.5 text-[11.5px] font-bold uppercase tracking-wide text-amber-600">🟠 İkinci öncelik · başarı %{PRIORITY_BELOW}–{SECOND_MAX}</div>
+                  <div className="mb-1.5 text-[11.5px] font-bold uppercase tracking-wide text-amber-600">İkinci öncelik · başarı %{PRIORITY_BELOW}–{SECOND_MAX}</div>
                   <TopicList rows={d.ikinci as KazanimRow[]} tone="amber" />
                 </div>
               </div>
@@ -153,7 +152,7 @@ export function AnalysisView({ a, audience = 'coach', showName = true }: { a: St
         <Card title="Hata alışkanlıkları" tone="border-sky-100 bg-sky-50/40">
           {hata.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-1.5">
-              {hata.map((h) => <span key={h.tur} className="rounded-full bg-white px-2.5 py-1 text-[12px] font-medium text-gray-700 shadow-sm">{ERROR_EMOJI[h.tur] ?? '•'} {h.etiket}: {h.adet}</span>)}
+              {hata.map((h) => <span key={h.tur} className="rounded-full bg-white px-2.5 py-1 text-[12px] font-medium text-gray-700 shadow-sm">{h.etiket}: {h.adet}</span>)}
             </div>
           )}
           {!!a.hata_tavsiyeleri?.length && (

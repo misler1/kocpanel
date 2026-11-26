@@ -223,7 +223,7 @@ export function BulkMessage({ supabase, onClose, onSent }: {
 
         {step === 'done' && result && (
           <div className="space-y-3 p-5">
-            <p className="text-[15px] font-semibold text-[var(--ink)]">✅ {result.sent} öğrenciye gönderildi.</p>
+            <p className="text-[15px] font-semibold text-[var(--ink)]">{result.sent} öğrenciye gönderildi.</p>
             {result.skipped.length > 0 && (
               <div className="rounded-lg bg-[var(--danger-soft)] px-3 py-2 text-[12.5px] text-[var(--danger)]">
                 <p className="font-semibold">Gönderilemeyenler ({result.skipped.length}):</p>

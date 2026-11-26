@@ -34,7 +34,7 @@ export function FeedViewers({ postId, summary, timed }: { postId: string; summar
     <div className="mt-1">
       <button type="button" onClick={toggle}
         className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-2 py-0.5 text-[11.5px] font-semibold text-violet-700 hover:bg-violet-100">
-        👀 {summary.target} öğrenciden {summary.opened}&apos;i açtı
+        {summary.target} öğrenciden {summary.opened}&apos;i açtı
         {timed && summary.avg_percent !== null && <span className="font-medium text-violet-500">· ort. %{summary.avg_percent} izlendi</span>}
         <span className="text-violet-400">{open ? '▲' : '▼'}</span>
       </button>
@@ -50,7 +50,7 @@ export function FeedViewers({ postId, summary, timed }: { postId: string; summar
                 {rows.map((r) => (
                   <li key={r.student_id} className="flex items-center justify-between gap-2 text-[12px]">
                     <span className={`min-w-0 truncate ${r.opened_at ? 'font-medium text-[var(--ink)]' : 'text-[var(--ink-muted)]'}`}>
-                      {r.opened_at ? '✅' : '⚪'} {r.full_name}
+                      <span className={`mr-1.5 inline-block h-2 w-2 rounded-full ${r.opened_at ? 'bg-emerald-500' : 'bg-gray-300'}`} />{r.full_name}
                     </span>
                     <span className="flex-shrink-0 text-right text-[11px] text-[var(--ink-muted)]">
                       {!r.opened_at ? (r.has_account ? 'açmadı' : 'hesabı yok')

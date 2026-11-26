@@ -411,7 +411,7 @@ export function NotesEditor({ value, onChange, rows = 5, placeholder, className,
             <p className="mt-1 rounded-md bg-amber-50 px-2.5 py-1.5 text-[12px] text-amber-800">
               Henüz yazı gelmedi. Doğru mikrofonun seçili olduğundan ve tarayıcının mikrofon iznini verdiğinizden emin olun.
               Yine çıkmıyorsa tarayıcınız konuşma tanımayı desteklemiyor olabilir: Chrome, Edge ya da Safari’de deneyin
-              veya klavyenizin 🎤 tuşuyla yazdırın.
+              veya klavyenizin mikrofon tuşuyla yazdırın.
             </p>
           )}
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg bg-violet-50 px-2.5 py-2 text-[11.5px] text-violet-900">

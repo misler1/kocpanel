@@ -43,7 +43,7 @@ function LogMini({ l, entry }: { l: any; entry?: Entry }) {
         <div className="text-[10px] font-medium text-red-600">✕ Öğrenci yapmadı{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</div>
       )}
       {addedTopic && (
-        <div className={`truncate text-[10.5px] font-medium ${tone}`} title={`Çalışılan konu: ${addedTopic}`}>📝 {addedTopic}</div>
+        <div className={`truncate text-[10.5px] font-medium ${tone}`} title={`Çalışılan konu: ${addedTopic}`}>{addedTopic}</div>
       )}
       {stats && (
         <div className={`text-[10.5px] font-medium ${statsTone}`}>
@@ -65,7 +65,7 @@ function ExtraMini({ e }: { e: ExtraEntry }) {
   const stats = entryStats(e);
   return (
     <div className="rounded-md border border-dashed border-emerald-300 bg-emerald-50/60 p-1.5">
-      <div className="text-[9.5px] font-bold uppercase tracking-wide text-emerald-700">➕ Ekstra çalışma</div>
+      <div className="text-[9.5px] font-bold uppercase tracking-wide text-emerald-700">Ekstra çalışma</div>
       <div className="truncate text-[12px] font-medium text-gray-900">{e.subject || 'Ders yazılmamış'}</div>
       {e.topic && <div className="truncate text-[10px] text-gray-500">{e.topic}</div>}
       {stats && <div className={`text-[10.5px] font-medium ${e.noNumbers && !e.count && !e.minutes ? 'text-amber-600' : tone}`}>{stats}</div>}
@@ -162,7 +162,7 @@ export function OgrenciProgramlari({ studentId }: { studentId: string }) {
               </button>
               <span className="text-[11px] text-gray-400">{idx + 1}/{weeks.length}</span>
               {w.logs.some((l: any) => l.student_plan) && (
-                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">🧑‍🎓 Öğrencinin kendi programı</span>
+                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">Öğrencinin kendi programı</span>
               )}
               <label className="ml-auto flex items-center gap-1.5 text-[11px] text-gray-500">
                 Tarihe git

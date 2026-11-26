@@ -137,14 +137,14 @@ export function GunlukEksiklerClient({ day, today, result, muteReady }: { day: s
       )}
 
       <section className="space-y-2">
-        <h2 className="px-1 text-[15px] font-bold text-gray-900">🔴 Hiç girmeyenler</h2>
+        <h2 className="px-1 text-[15px] font-bold text-gray-900">Hiç girmeyenler</h2>
         {missing.length
           ? <ul className="space-y-2">{missing.map((r) => studentRow(r, 'missing'))}</ul>
-          : <p className="rounded-2xl border border-dashed border-gray-200 bg-white py-5 text-center text-[13px] text-gray-400">Herkes bir şey girmiş 👏</p>}
+          : <p className="rounded-2xl border border-dashed border-gray-200 bg-white py-5 text-center text-[13px] text-gray-400">Herkes bir şey girmiş</p>}
       </section>
 
       <section className="space-y-2">
-        <h2 className="px-1 text-[15px] font-bold text-gray-900">🟠 Eksik girenler</h2>
+        <h2 className="px-1 text-[15px] font-bold text-gray-900">Eksik girenler</h2>
         {partial.length
           ? <ul className="space-y-2">{partial.map((r) => studentRow(r, 'partial'))}</ul>
           : <p className="rounded-2xl border border-dashed border-gray-200 bg-white py-5 text-center text-[13px] text-gray-400">Eksik giren yok.</p>}
@@ -152,7 +152,7 @@ export function GunlukEksiklerClient({ day, today, result, muteReady }: { day: s
 
       {muted.length > 0 && (
         <section className="space-y-2">
-          <h2 className="px-1 text-[15px] font-bold text-gray-900">🔕 Bildirimi kapalı olanlar</h2>
+          <h2 className="px-1 text-[15px] font-bold text-gray-900">Bildirimi kapalı olanlar</h2>
           <ul className="space-y-1.5">
             {muted.map((s) => (
               <li key={s.id} className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2 shadow-sm ring-1 ring-gray-100">

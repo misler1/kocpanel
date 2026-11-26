@@ -424,7 +424,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
             <p className="p-6 text-center text-[13px] text-[var(--ink-muted)]">Yükleniyor…</p>
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center">
-              <div className="mb-2 text-[36px]">💬</div>
+              {student && <div className="mb-2 text-[36px]">💬</div>}
               <p className="text-[13px] text-[var(--ink-muted)]">
                 {convs.length === 0 ? (student ? 'Henüz mesajın yok. Koçuna yazmak için "Yeni"ye dokun.' : 'Henüz sohbet yok. "Yeni" ile başlayın.') : 'Sonuç yok.'}
               </p>
@@ -467,7 +467,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
             </div>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-[var(--ink-muted)]">
-              <div className="mb-2 text-[44px]">💌</div>
+              {student && <div className="mb-2 text-[44px]">💌</div>}
               <p className="text-[14px]">{activeId ? 'Sohbet bulunamadı.' : 'Soldan bir sohbet seç.'}</p>
             </div>
           )
@@ -481,7 +481,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
                 <span className={`block truncate text-[15px] text-[var(--ink)] ${student ? 'font-extrabold' : 'font-semibold'}`}>{active.title}</span>
                 <span className="block text-[12px] text-[var(--ink-muted)]">
                   {active.kind === 'group' ? `${members.length || active.member_count} üye · üyeleri gör` : ROLE_LABEL[active.other_role ?? ''] ?? ''}
-                  {active.muted_until ? ` · 🔕 ${muteText(active.muted_until)}` : ''}
+                  {active.muted_until ? ` · sessizde, ${muteText(active.muted_until)}` : ''}
                 </span>
               </button>
               <button type="button" onClick={() => { setMenuOpen((v) => !v); setMuteMenu(false); }} className="rounded-full p-1.5 text-[var(--ink-muted)] hover:bg-[var(--paper)]" aria-label="Seçenekler">
@@ -586,7 +586,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
                         : `${student ? 'rounded-[20px] rounded-bl-md' : 'rounded-2xl rounded-bl-sm'} bg-[var(--card)] text-[var(--ink)]`}`}>
                       {showName && <span className="mb-0.5 block text-[11.5px] font-bold text-[var(--accent-dark)]">{memberMap.get(m.sender_id)?.full_name ?? 'Eski üye'}</span>}
                       {deleted
-                        ? <span className="italic opacity-80">🚫 {m.deleted_by && m.deleted_by !== m.sender_id ? 'Bu mesaj grup yöneticisi tarafından kaldırıldı' : 'Bu mesaj geri alındı'}</span>
+                        ? <span className="italic opacity-80">{m.deleted_by && m.deleted_by !== m.sender_id ? 'Bu mesaj grup yöneticisi tarafından kaldırıldı' : 'Bu mesaj geri alındı'}</span>
                         : <span className="whitespace-pre-wrap break-words">{m.content}</span>}
                       <span className={`mt-0.5 flex items-center justify-end gap-1 text-[10.5px] ${mine ? 'text-white/75' : 'text-[var(--ink-muted)]'}`}>
                         {m.edited_at && !deleted && <span className="italic">düzenlendi ·</span>}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { IconChecklist, IconBooks, IconChartBar, IconSearch, IconChevronDown } from '@tabler/icons-react';
+import { IconChecklist, IconBooks, IconChartBar, IconSearch, IconChevronDown, IconCalendarPlus } from '@tabler/icons-react';
 import { avatarColor, initials } from '@/lib/ui-colors';
 
 // Belletmen ana sayfası: sade. Üstte 3 hızlı giriş kartı, altında öğrenci kartları.
@@ -12,7 +12,7 @@ export type BelletmenStudent = { id: string; full_name: string; sinif_sube: stri
 
 const QUICK = [
   { href: '/gunluk-giris', title: 'Günlük takip', desc: 'Bugünkü görevleri işaretle', icon: IconChecklist, tone: 'from-emerald-500 to-teal-500' },
-  { href: '/konu-ilerleyisi', title: 'Konu ilerleyişi', desc: 'Tamamlanan konuları gir', icon: IconBooks, tone: 'from-navy-600 to-aqua-600' },
+  { href: '/konu-ilerleyisi', title: 'Konu ilerleyişi', desc: 'Tamamlanan konuları gir', icon: IconBooks, tone: 'from-sky-500 to-indigo-500' },
   { href: '/denemeler', title: 'Deneme sonuçları', desc: 'Herkesin sonuçları', icon: IconChartBar, tone: 'from-fuchsia-500 to-violet-500' },
 ];
 
@@ -25,7 +25,7 @@ export function BelletmenAnasayfa({ name, students }: { name: string; students: 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       <div>
-        <h1 className="text-[22px] font-bold text-gray-900">Merhaba{name ? `, ${name.split(' ')[0]}` : ''} 👋</h1>
+        <h1 className="text-[22px] font-bold text-gray-900">Merhaba{name ? `, ${name.split(' ')[0]}` : ''}</h1>
         <p className="text-[13.5px] text-gray-500">
           {students.length} öğrenci · bugün görevlerini tamamlayan: <b className="text-gray-700">{doneAll}</b>
         </p>
@@ -88,7 +88,7 @@ export function BelletmenAnasayfa({ name, students }: { name: string; students: 
                         <IconChecklist size={18} /> Günlük takip gir
                       </Link>
                       <Link href={`/gunluk-giris/program?ogrenci=${s.id}`} className="flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-[14px] font-semibold text-amber-800 hover:bg-amber-100">
-                        <span className="text-[16px]">🗓️</span> Haftalık program hazırla
+                        <IconCalendarPlus size={17} /> Haftalık program hazırla
                       </Link>
                       <Link href={`/denemeler?ogrenci=${s.id}`} className="flex items-center gap-2 rounded-xl bg-violet-50 px-3 py-2.5 text-[14px] font-semibold text-violet-800 hover:bg-violet-100">
                         <IconChartBar size={18} /> Deneme sonuçlarına bak

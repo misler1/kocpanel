@@ -40,7 +40,7 @@ export function PeriodReportView({ r }: { r: PeriodReportData }) {
   const qDiff = t.questions - t.prevQuestions;
   return (
     <div className="space-y-3">
-      <header className="rounded-2xl bg-gradient-to-r from-navy-700 to-aqua-600 p-5 text-white">
+      <header className="rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 p-5 text-white">
         <div className="text-[12px] font-semibold uppercase tracking-wide opacity-80">Gelişim raporu</div>
         <h1 className="text-[22px] font-bold">{r.student.full_name}</h1>
         <p className="text-[13.5px] opacity-90">
@@ -189,7 +189,7 @@ export function PeriodReportView({ r }: { r: PeriodReportData }) {
             {r.topics.progressed.map((tp, i) => (
               <li key={i} className="flex items-center gap-2 rounded-lg bg-gray-50 px-2.5 py-1.5 text-[12.5px]">
                 <span className="min-w-0 flex-1 truncate"><span className="text-gray-400">{tp.subject} · </span><span className="text-gray-800">{tp.topic}</span></span>
-                {tp.done ? <span className="font-semibold text-emerald-600">✅ tamam</span> : <span className="text-gray-500">{tp.steps}/3 adım</span>}
+                {tp.done ? <span className="font-semibold text-emerald-600">tamam</span> : <span className="text-gray-500">{tp.steps}/3 adım</span>}
               </li>
             ))}
           </ul>

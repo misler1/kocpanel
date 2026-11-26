@@ -33,7 +33,7 @@ export function OgrenciProgramOnaylari({ programs }: { programs: any[] }) {
                     : <span className="font-semibold text-gray-900">{p.students?.full_name}</span>}
                   <span className="text-gray-500">{shortDate(p.week_start)} – {shortDate(p.week_end)} · {tasks.length} görev</span>
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${p.prepared_by ? 'bg-emerald-50 text-emerald-700' : 'bg-violet-100 text-violet-700'}`}>
-                    {p.prepared_by ? `🧑‍🏫 ${p.prepared_by_name ?? 'Personel'} hazırladı` : '🧑‍🎓 Öğrencinin kendi programı'}
+                    {p.prepared_by ? `${p.prepared_by_name ?? 'Personel'} hazırladı` : 'Öğrencinin kendi programı'}
                   </span>
                 </div>
                 {/* Gün gün görev sayısı */}

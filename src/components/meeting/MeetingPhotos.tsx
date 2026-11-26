@@ -11,7 +11,7 @@ import { IconCamera, IconLoader2, IconTextScan2, IconX } from '@tabler/icons-rea
 export const appendReadText = (notes: string, text: string) =>
   notes.trim() ? `${notes.trimEnd()}
 
-📷 Defterden:
+Defterden:
 ${text}` : text;
 
 export const photoUrl = (path: string) => `/api/gorusme/foto?path=${encodeURIComponent(path)}`;

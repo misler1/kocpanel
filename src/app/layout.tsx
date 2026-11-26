@@ -5,7 +5,6 @@ import { SITE_URL } from "@/lib/site";
 import { PwaRegister } from "@/components/PwaRegister";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { Suspense } from "react";
-import { inter } from "@/lib/fonts";
 
 export const metadata: Metadata = {
   // Göreli canonical/og adresleri bu adrese göre tam adrese çevrilir
@@ -31,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0F766E",
+  themeColor: "#2563eb",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -45,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" className={`h-full antialiased ${inter.variable}`}>
+    <html lang="tr" className="h-full antialiased">
       <head>
         <link rel="apple-touch-icon" href="/apple-icon.png" />
         <link rel="icon" href="/icon.png" type="image/png" />
@@ -53,7 +52,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="KoçDefterim" />
       </head>
-      <body className="min-h-full flex flex-col bg-[var(--paper)]">
+      <body className="min-h-full flex flex-col bg-gray-50">
         <PwaRegister />
         <Suspense>
           <NavigationProgress />

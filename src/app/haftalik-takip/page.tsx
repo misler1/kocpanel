@@ -902,7 +902,7 @@ export default function HaftalikTakipPage() {
           </div>
           <select value={editDraft.subject} onChange={(e) => setEditDraft((d) => ({ ...d, subject: e.target.value, resource: resourceMap[e.target.value]?.[0] ?? '' }))} className={inputCls}>
             {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
-            <option value={CUSTOM_SUBJECT}>✏️ Diğer (kendim yazayım)</option>
+            <option value={CUSTOM_SUBJECT}>Diğer (kendim yazayım)</option>
           </select>
           {editDraft.subject === CUSTOM_SUBJECT ? (
             <>
@@ -950,7 +950,7 @@ export default function HaftalikTakipPage() {
             {log.resource_name && <span className="block text-[10px] leading-tight text-[var(--ink-muted)]">{log.resource_name}</span>}
             {(log.student_done || log.student_missed || log.student_added) && (
               <span className="no-print mt-0.5 flex flex-wrap gap-x-1.5 text-[10px] font-semibold leading-tight">
-                {log.student_added && <span className="text-blue-600">⭐ Öğrenci ekledi</span>}
+                {log.student_added && <span className="text-blue-600">Öğrenci ekledi</span>}
                 {log.student_done && <span className="text-emerald-600">✓ Yaptı</span>}
                 {!log.student_done && log.student_missed && (
                   <span className="text-red-600">✕ Yapmadı{log.student_missed_note ? ` · ${log.student_missed_note}` : ''}{log.student_missed_by ? ` (${log.student_missed_by} girdi)` : ''}</span>
@@ -1028,7 +1028,7 @@ export default function HaftalikTakipPage() {
 
         <select value={draft.subject} onChange={(e) => setDraftSubject(e.target.value)} className={inputCls}>
           {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
-          <option value={CUSTOM_SUBJECT}>✏️ Diğer (kendim yazayım)</option>
+          <option value={CUSTOM_SUBJECT}>Diğer (kendim yazayım)</option>
         </select>
 
         {draft.subject === CUSTOM_SUBJECT ? (
@@ -1177,7 +1177,7 @@ export default function HaftalikTakipPage() {
             onClick={toggleColorMode}
             className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
           >
-            {colorMode ? '🎨 Renkli' : '⚫ Siyah-beyaz'}
+            {colorMode ? 'Renkli' : 'Siyah-beyaz'}
           </button>
           {logs.length > 0 && (
             <button
@@ -1191,7 +1191,7 @@ export default function HaftalikTakipPage() {
             onClick={syncFromDailyLogs}
             className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]"
           >
-            🔄 Günlükten güncelle
+            Günlükten güncelle
           </button>
           {logs.length > 0 && (
             <button
@@ -1345,7 +1345,7 @@ export default function HaftalikTakipPage() {
       {clipboardLog && (
         <div className="no-print mb-3 flex items-center justify-between rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-2 text-[12px] text-[var(--ink)]">
           <span>
-            📋 Kopyalanan: <b>{clipboardLog.subject}</b>{clipboardLog.topic ? ` · ${clipboardLog.topic}` : ''} —
+            Kopyalanan: <b>{clipboardLog.subject}</b>{clipboardLog.topic ? ` · ${clipboardLog.topic}` : ''} —
             gün başlığındaki <b>Yapıştır</b> butonuna basın veya fareyi günün üstüne getirip <b>Ctrl+V</b> yapın.
           </span>
           <button onClick={() => setClipboardLog(null)} className="ml-3 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[11px]">

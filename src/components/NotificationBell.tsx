@@ -3,7 +3,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { IconBell, IconTrash, IconX } from '@tabler/icons-react';
+import {
+  IconBell, IconTrash, IconX, IconUserPlus, IconSchool, IconMailbox, IconClipboardList, IconChartBar,
+  IconMessageCircle, IconCalendarEvent, IconAlarm, IconCircleCheck, IconBooks, IconFileText, IconUsers, IconPencil,
+} from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { syncPush } from '@/lib/push-client';
 import { PushToggle } from '@/components/PushToggle';
@@ -16,8 +19,9 @@ type Notification = {
 /** Mesajlar sayfası açılınca mesaj bildirimlerini okundu sayar; zil hemen güncellensin diye haber verir. */
 export const NOTIFICATIONS_CHANGED = 'kd:notifications-changed';
 
-const KIND_EMOJI: Record<string, string> = {
-  basvuru: '🧑‍🎓', koc: '🧑‍🏫', plan_talebi: '📬', gorev: '📋', deneme: '📊', mesaj: '💬', randevu: '📅', hatirlatma: '⏰', hesap: '✅', konu: '📚', rapor: '📊', personel: '👥', gunluk: '✍️',
+const KIND_ICON: Record<string, typeof IconBell> = {
+  basvuru: IconUserPlus, koc: IconSchool, plan_talebi: IconMailbox, gorev: IconClipboardList, deneme: IconChartBar, mesaj: IconMessageCircle,
+  randevu: IconCalendarEvent, hatirlatma: IconAlarm, hesap: IconCircleCheck, konu: IconBooks, rapor: IconFileText, personel: IconUsers, gunluk: IconPencil,
 };
 
 function timeAgo(iso: string) {
@@ -163,7 +167,7 @@ export function NotificationBell({ variant = 'coach' }: { variant?: 'coach' | 's
               return (
                 <div key={n.id} className={`group flex items-start border-b border-[var(--border)] transition-colors last:border-b-0 hover:bg-[var(--paper)] ${isNew ? 'bg-[var(--accent-soft)]/40' : ''}`}>
                   <button type="button" onClick={() => openItem(n)} className="flex min-w-0 flex-1 items-start gap-3 py-3 pl-4 text-left">
-                    <span className="mt-0.5 text-[18px] leading-none">{KIND_EMOJI[n.kind] ?? '🔔'}</span>
+                    {(() => { const KI = KIND_ICON[n.kind] ?? IconBell; return <span className="mt-px flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-dark)]"><KI size={16} stroke={1.8} /></span>; })()}
                     <span className="min-w-0 flex-1">
                       <span className={`block text-[13px] leading-snug text-[var(--ink)] ${isNew ? 'font-bold' : 'font-medium'}`}>
                         {n.title}

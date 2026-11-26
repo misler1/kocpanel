@@ -143,7 +143,7 @@ export function ProgramBoard({ weekStart, weekEnd, tasks, onChange, subjects, re
         </div>
         <select value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value, resource: resourceMap[e.target.value]?.[0] ?? '' })} className={inputCls}>
           {subjectList.map((s) => <option key={s} value={s}>{s}</option>)}
-          <option value={CUSTOM}>✏️ Diğer (kendim yazayım)</option>
+          <option value={CUSTOM}>Diğer (kendim yazayım)</option>
         </select>
         {draft.subject === CUSTOM ? (
           <>
@@ -219,7 +219,7 @@ export function ProgramBoard({ weekStart, weekEnd, tasks, onChange, subjects, re
             <span className={`block text-[12px] font-medium leading-tight text-[var(--ink)] ${removed ? 'line-through' : ''}`}>{t.subject}</span>
             {t.topic && <span className={`block text-[11px] leading-tight text-[var(--ink-muted)] ${removed ? 'line-through' : ''}`}>{t.topic}</span>}
             {t.resource_name && <span className="block text-[10px] leading-tight text-[var(--ink-muted)]">{t.resource_name}</span>}
-            {t.locked && <span className="block text-[10px] font-semibold text-teal-700">📅 Görüşme (Ajanda&apos;dan)</span>}
+            {t.locked && <span className="block text-[10px] font-semibold text-teal-700">Görüşme (Ajanda&apos;dan)</span>}
           </div>
           {!readOnly && !t.locked && (
             <div className="flex flex-shrink-0 items-center gap-1">
@@ -243,7 +243,7 @@ export function ProgramBoard({ weekStart, weekEnd, tasks, onChange, subjects, re
         )}
         <div className="mt-auto flex flex-wrap items-center gap-1 pt-1.5">
           {readOnly || t.locked || removed ? (
-            time ? <span className="text-[11px] text-[var(--ink-muted)]">⏰ {time}</span> : null
+            time ? <span className="text-[11px] text-[var(--ink-muted)]">{time}</span> : null
           ) : (
             <>
               <input type="time" value={t.start_time} onChange={(e) => patch(t, { start_time: e.target.value })} title="Başlangıç saati" className={timeCls} />
@@ -262,11 +262,11 @@ export function ProgramBoard({ weekStart, weekEnd, tasks, onChange, subjects, re
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setColorMode((v) => !v)}
           className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-[12px] text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]">
-          {colorMode ? '🎨 Renkli' : '⚫ Siyah-beyaz'}
+          {colorMode ? 'Renkli' : 'Siyah-beyaz'}
         </button>
         {clip && (
           <span className="flex flex-1 items-center justify-between gap-2 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-2.5 py-1 text-[12px] text-[var(--ink)]">
-            <span>📋 Kopyalanan: <b>{clip.subject}</b>{clip.topic ? ` · ${clip.topic}` : ''} — gün başlığındaki <b>Yapıştır</b>&apos;a basın.</span>
+            <span>Kopyalanan: <b>{clip.subject}</b>{clip.topic ? ` · ${clip.topic}` : ''} — gün başlığındaki <b>Yapıştır</b>&apos;a basın.</span>
             <button type="button" onClick={() => setClip(null)} className="rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-0.5 text-[11px]">İptal</button>
           </span>
         )}

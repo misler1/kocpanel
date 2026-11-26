@@ -24,30 +24,23 @@
   --color-aqua-700: #007176;
   --color-aqua-800: #00595D;
   --color-aqua-900: #00474A;
-
-  /* Panel teması: petrol mavisi. Sayfalarda doğrudan yazılmış mor / eflatun / çivit tonları da petrole bağlanır
-     (tek vurgu rengi; yeşil-turuncu-kırmızı anlam renkleri olarak kalır). */
-  --color-violet-50: #EFF8F7; --color-violet-100: #D8EFEC; --color-violet-200: #B3DFD9; --color-violet-300: #82C8C0; --color-violet-400: #4CA9A1; --color-violet-500: #1F8C84; --color-violet-600: #0F766E; --color-violet-700: #115E59; --color-violet-800: #134E4A; --color-violet-900: #123F3C; --color-violet-950: #082F2C;
-  --color-purple-50: #EFF8F7; --color-purple-100: #D8EFEC; --color-purple-200: #B3DFD9; --color-purple-300: #82C8C0; --color-purple-400: #4CA9A1; --color-purple-500: #1F8C84; --color-purple-600: #0F766E; --color-purple-700: #115E59; --color-purple-800: #134E4A; --color-purple-900: #123F3C; --color-purple-950: #082F2C;
-  --color-fuchsia-50: #EFF8F7; --color-fuchsia-100: #D8EFEC; --color-fuchsia-200: #B3DFD9; --color-fuchsia-300: #82C8C0; --color-fuchsia-400: #4CA9A1; --color-fuchsia-500: #1F8C84; --color-fuchsia-600: #0F766E; --color-fuchsia-700: #115E59; --color-fuchsia-800: #134E4A; --color-fuchsia-900: #123F3C; --color-fuchsia-950: #082F2C;
-  --color-indigo-50: #EFF8F7; --color-indigo-100: #D8EFEC; --color-indigo-200: #B3DFD9; --color-indigo-300: #82C8C0; --color-indigo-400: #4CA9A1; --color-indigo-500: #1F8C84; --color-indigo-600: #0F766E; --color-indigo-700: #115E59; --color-indigo-800: #134E4A; --color-indigo-900: #123F3C; --color-indigo-950: #082F2C;
 }
 
 html, body {
-  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 :root {
   /* KoçPanel design tokens */
-  --paper: #F4F7F7;
+  --paper: #F7F6FC;
   --card: #FFFFFF;
-  --border: #E1E8E8;
-  --ink: #111827;
-  --ink-muted: #5C6B6B;
+  --border: #E8E5F1;
+  --ink: #171A22;
+  --ink-muted: #6B6F7A;
 
-  /* Tek vurgu rengi: petrol mavisi (logodaki turkuazla uyumlu) */
-  --accent: #0F766E;
-  --accent-dark: #115E59;
-  --accent-soft: #E3F3F1;
+  /* Ana sayfa ve sol menüdeki mor-pembe tasarım diliyle uyumlu vurgu rengi */
+  --accent: #8B5CF6;
+  --accent-dark: #7C3AED;
+  --accent-soft: #F3EEFF;
 
   --track-yks: #3752CC;
   --track-yks-soft: #E9EDFC;
@@ -72,16 +65,15 @@ body {
 
 /* ─── Öğrenci paneli teması (10-18 yaş) ───────────────────────── */
 .student-theme {
-  /* Koç paneliyle aynı petrol mavisi; öğrenci tarafında ders renkleri (sun/sky/pink) biraz canlılık katar */
-  --paper: #F4F7F7;
+  --paper: #FBF7FF;
   --card: #FFFFFF;
-  --border: #E1E8E8;
-  --ink: #111827;
-  --ink-muted: #5C6B6B;
+  --border: #ECE4F7;
+  --ink: #2B2745;
+  --ink-muted: #7D7899;
 
-  --accent: #0F766E;
-  --accent-dark: #115E59;
-  --accent-soft: #E3F3F1;
+  --accent: #8B5CF6;
+  --accent-dark: #6D3FE0;
+  --accent-soft: #F1EBFF;
 
   --success: #16A36F;
   --success-soft: #E2F8EE;
@@ -95,8 +87,10 @@ body {
   --pink: #EC4899;
   --pink-soft: #FDE7F3;
 
-  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-student), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: var(--paper);
+  background-image: radial-gradient(#E9DFFA 1px, transparent 1px);
+  background-size: 22px 22px;
 }
 
 @keyframes student-pop {

@@ -241,8 +241,8 @@ export function ProgramReview({ item, onClose }: { item: ReviewItem; onClose: ()
   }
 
   const who = isProgram
-    ? row.prepared_by ? `🧑‍🏫 ${row.prepared_by_name ?? 'Personel'} hazırladı` : '🧑‍🎓 Öğrencinin kendi programı'
-    : '✏️ Öğrencinin değişiklik talebi';
+    ? row.prepared_by ? `${row.prepared_by_name ?? 'Personel'} hazırladı` : 'Öğrencinin kendi programı'
+    : 'Öğrencinin değişiklik talebi';
   const range = `${DAY_NAMES[weekdayOf(weekStart)]} ${shortDate(weekStart)} → ${shortDate(weekEnd ?? addDays(weekStart, 6))}`;
 
   return (
@@ -260,7 +260,7 @@ export function ProgramReview({ item, onClose }: { item: ReviewItem; onClose: ()
               <span className={`rounded-full px-2 py-0.5 font-semibold ${isProgram && row.prepared_by ? 'bg-emerald-50 text-emerald-700' : 'bg-violet-100 text-violet-700'}`}>{who}</span>
               <span className="text-[var(--ink-muted)]">{active.length} görev</span>
             </div>
-            {row.note && <p className="mt-1.5 max-w-3xl rounded-lg bg-[var(--card)] px-2.5 py-1.5 text-[12.5px] italic text-[var(--ink)] shadow-sm">💬 “{row.note}”</p>}
+            {row.note && <p className="mt-1.5 max-w-3xl rounded-lg bg-[var(--card)] px-2.5 py-1.5 text-[12.5px] italic text-[var(--ink)] shadow-sm">“{row.note}”</p>}
           </div>
           <button type="button" onClick={onClose} disabled={busy} className="rounded-full p-1.5 text-[var(--ink-muted)] hover:bg-[var(--paper)]" aria-label="Kapat"><IconX size={20} /></button>
         </div>

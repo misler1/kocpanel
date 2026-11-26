@@ -114,7 +114,7 @@ export function matchesQuery(name: string, query: string) {
 }
 
 export const toolbarSelectCls =
-  'rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] text-[var(--ink)] focus:border-aqua-300 focus:outline-none';
+  'rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] text-[var(--ink)] focus:border-sky-300 focus:outline-none';
 
 /** Arama kutusu + sağında sıralama/filtre seçimleri */
 export function ListToolbar({ query, onQuery, placeholder = 'Öğrenci ara…', children }: {
@@ -125,7 +125,7 @@ export function ListToolbar({ query, onQuery, placeholder = 'Öğrenci ara…', 
 }) {
   return (
     <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-2 shadow-sm sm:flex-row sm:items-center">
-      <label className="flex flex-1 items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 focus-within:ring-2 focus-within:ring-aqua-200">
+      <label className="flex flex-1 items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 focus-within:ring-2 focus-within:ring-sky-200">
         <IconSearch size={16} className="flex-shrink-0 text-gray-400" />
         <input
           type="search"
@@ -152,7 +152,7 @@ export function FilterChips<T extends string>({ value, onChange, options }: {
   options: { value: T; label: string; count: number; tone: 'sky' | 'rose' | 'amber' | 'emerald' }[];
 }) {
   const TONES = {
-    sky: 'border-navy-600 bg-navy-600 text-white',
+    sky: 'border-sky-500 bg-sky-500 text-white',
     rose: 'border-rose-500 bg-rose-500 text-white',
     amber: 'border-amber-500 bg-amber-500 text-white',
     emerald: 'border-emerald-500 bg-emerald-500 text-white',

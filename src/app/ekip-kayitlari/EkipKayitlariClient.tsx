@@ -13,16 +13,16 @@ type Row = {
   summary: string; changes: Record<string, { once: any; sonra: any }> | { _alanlar: string[] } | null; link: string | null; created_at: string;
 };
 
-const AREAS: Record<string, { label: string; emoji: string }> = {
-  gunluk: { label: 'Günlük takip', emoji: '✅' },
-  program: { label: 'Haftalık program', emoji: '🗓️' },
-  konu: { label: 'Konu ilerleyişi', emoji: '📚' },
-  deneme: { label: 'Deneme', emoji: '📊' },
-  gorusme: { label: 'Görüşme', emoji: '💬' },
-  ogrenci: { label: 'Öğrenci bilgisi', emoji: '🧑‍🎓' },
-  gorev: { label: 'Görev', emoji: '📋' },
-  randevu: { label: 'Randevu', emoji: '📅' },
-  paylasim: { label: 'Paylaşım', emoji: '📣' },
+const AREAS: Record<string, { label: string }> = {
+  gunluk: { label: 'Günlük takip' },
+  program: { label: 'Haftalık program' },
+  konu: { label: 'Konu ilerleyişi' },
+  deneme: { label: 'Deneme' },
+  gorusme: { label: 'Görüşme' },
+  ogrenci: { label: 'Öğrenci bilgisi' },
+  gorev: { label: 'Görev' },
+  randevu: { label: 'Randevu' },
+  paylasim: { label: 'Paylaşım' },
 };
 
 const ACTION_CLS: Record<string, string> = {
@@ -170,7 +170,7 @@ export function EkipKayitlariClient({ rows, missing, errorText, people, initialP
                 {areasPresent.map((a) => (
                   <button key={a} type="button" onClick={() => setArea(a)}
                     className={`rounded-full px-3 py-1 text-[12px] font-medium ${area === a ? 'bg-violet-600 text-white' : 'border border-gray-200 text-gray-600 hover:bg-violet-50'}`}>
-                    {AREAS[a]?.emoji ?? '•'} {AREAS[a]?.label ?? a}
+                    {AREAS[a]?.label ?? a}
                   </button>
                 ))}
               </div>
@@ -196,7 +196,7 @@ export function EkipKayitlariClient({ rows, missing, errorText, people, initialP
                         <li key={r.id} className={isNew ? 'bg-violet-50/50' : ''}>
                           <div className="flex items-start gap-3 px-3.5 py-2.5">
                             <span className="mt-0.5 w-11 flex-shrink-0 text-[12px] tabular-nums text-gray-400">{time(r.created_at)}</span>
-                            <span className="mt-0.5 text-[15px]" aria-hidden>{AREAS[r.area]?.emoji ?? '•'}</span>
+                            <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-[var(--accent)]" aria-hidden />
                             <div className="min-w-0 flex-1">
                               <p className="text-[13.5px] text-gray-900">
                                 {r.link ? <Link href={r.link} className="hover:text-violet-700 hover:underline">{r.summary}</Link> : r.summary}

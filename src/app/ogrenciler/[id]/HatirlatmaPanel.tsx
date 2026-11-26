@@ -71,7 +71,7 @@ export function HatirlatmaPanel({ studentId, coachId, times: initialTimes, days:
         </p>
       ) : !pushOn && (
         <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800">
-          Öğrenci telefon bildirimlerini henüz açmamış; hatırlatmayı yalnızca paneldeki 🔔 zilde görür. Öğrenciden uygulamayı
+          Öğrenci telefon bildirimlerini henüz açmamış; hatırlatmayı yalnızca paneldeki zilde görür. Öğrenciden uygulamayı
           ana ekrana ekleyip zil menüsünden “Bildirimler telefonuma da gelsin”e dokunmasını isteyin.
         </p>
       )}

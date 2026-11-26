@@ -875,7 +875,7 @@ export default function KonuIlerleyisiPage() {
                                       title={`Son işaretleyen: ${topic.updated_by_name ?? ''}${topic.steps_updated_at ? ` · ${new Date(topic.steps_updated_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}`}
                                       className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold ${topic.updated_by_role === 'ogrenci' ? 'bg-violet-50 text-violet-700' : 'bg-emerald-50 text-emerald-700'}`}
                                     >
-                                      {topic.updated_by_role === 'ogrenci' ? '🧑‍🎓 öğrenci işaretledi' : `🧑‍🏫 ${topic.updated_by_name?.split(' ')[0] ?? 'belletmen'}`}
+                                      {topic.updated_by_role === 'ogrenci' ? 'öğrenci işaretledi' : `${topic.updated_by_name?.split(' ')[0] ?? 'belletmen'}`}
                                     </span>
                                   )}
                                 </span>

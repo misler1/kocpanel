@@ -67,7 +67,7 @@ export function KurulumClient({ name, initialStep, currentEmail }: { name: strin
 
         {step === 'sifre' ? (
           <form onSubmit={savePassword} className="space-y-3">
-            <h1 className="text-center text-[18px] font-bold text-gray-900">Hoş geldiniz{name ? `, ${name.split(' ')[0]}` : ''} 👋</h1>
+            <h1 className="text-center text-[18px] font-bold text-gray-900">Hoş geldiniz{name ? `, ${name.split(' ')[0]}` : ''}</h1>
             <p className="text-center text-[13.5px] text-gray-500">Güvenliğiniz için size verilen ilk şifreyi kendi şifrenizle değiştirin.</p>
             <input type="password" autoComplete="new-password" className={input} placeholder="Yeni şifre (en az 8 karakter)" value={pw} onChange={(e) => setPw(e.target.value)} />
             <input type="password" autoComplete="new-password" className={input} placeholder="Yeni şifre (tekrar)" value={pw2} onChange={(e) => setPw2(e.target.value)} />

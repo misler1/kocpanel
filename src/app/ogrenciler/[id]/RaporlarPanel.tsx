@@ -138,7 +138,7 @@ export function RaporlarPanel({ studentId, canCreate }: { studentId: string; can
                       <span className="min-w-0 flex-1">
                         <span className="block text-[13.5px] font-semibold text-gray-900">{fmt(r.period_start)} – {fmt(r.period_end)}</span>
                         <span className="block text-[12px] text-gray-500">
-                          {r.kind === 'otomatik' ? '🗓️ Haftalık (otomatik)' : '✍️ Elle oluşturuldu'}
+                          {r.kind === 'otomatik' ? 'Haftalık (otomatik)' : 'Elle oluşturuldu'}
                           {r.totals ? ` · ${r.totals.questions ?? 0} soru` : ''}{r.exam_count ? ` · ${r.exam_count} deneme` : ''}
                         </span>
                       </span>

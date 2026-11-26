@@ -14,7 +14,7 @@ import {
 import { PageHero } from '@/components/ui/PageHero';
 import { AnalysisView, type StudentAnalysisView } from '@/components/exam/AnalysisView';
 import { useExamFilter } from '@/lib/exam-filter-context';
-import { ERROR_TYPES, ERROR_LABEL, ERROR_EMOJI } from '@/lib/exam-error-types';
+import { ERROR_TYPES, ERROR_LABEL } from '@/lib/exam-error-types';
 import { TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS, type SubjectDef } from './examConstants';
 
 
@@ -1238,16 +1238,16 @@ function StudentSelfAnalysisSection({ exam, card }: { exam: any; card: string })
       <ReportSectionTitle right={exam.student_analysis?.done_at
         ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">✓ Öğrenci analizi bitirdi</span>
         : <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">Yarım</span>}>
-        📝 Öğrencinin analizi
+        Öğrencinin analizi
       </ReportSectionTitle>
       <div className="mb-3 flex flex-wrap gap-1.5">
-        {counts.map((c) => <span key={c.key} className="rounded-full bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-700">{c.emoji} {c.label}: {c.n}</span>)}
+        {counts.map((c) => <span key={c.key} className="rounded-full bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-700">{c.label}: {c.n}</span>)}
       </div>
       <div className="divide-y divide-slate-100 rounded-xl ring-1 ring-slate-200/70">
         {items.map((i) => (
           <div key={i.key} className="flex flex-wrap items-baseline gap-x-2 px-3 py-2 text-[12.5px]">
             <span className="min-w-0 flex-1 text-slate-700">{describe(i.key)}</span>
-            {i.type && <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">{ERROR_EMOJI[i.type]} {ERROR_LABEL[i.type] ?? i.type}</span>}
+            {i.type && <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">{ERROR_LABEL[i.type] ?? i.type}</span>}
             {i.note && <span className="basis-full text-[12px] italic text-slate-500">“{i.note}”</span>}
           </div>
         ))}
@@ -1263,10 +1263,10 @@ function AnswerSheetSection({ exam, card }: { exam: any; card: string }) {
   const notes = sheets.filter((t) => t.note);
   return (
     <section className={card}>
-      <ReportSectionTitle>📝 Cevap çizelgesi</ReportSectionTitle>
+      <ReportSectionTitle>Cevap çizelgesi</ReportSectionTitle>
       {notes.length > 0 && (
         <div className="mb-3 space-y-1 rounded-xl bg-amber-50 px-3 py-2 text-[12.5px] text-amber-900 ring-1 ring-amber-200">
-          {notes.map((t) => <p key={t.test}>⏱️ {t.note}</p>)}
+          {notes.map((t) => <p key={t.test}>{t.note}</p>)}
         </div>
       )}
       <div className="space-y-3">
@@ -1376,7 +1376,7 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-3 backdrop-blur-[2px] sm:p-6" onClick={onClose}>
       <div className="relative w-full max-w-4xl overflow-hidden rounded-[28px] bg-[#F7F7FB] shadow-2xl ring-1 ring-black/5" onClick={(ev) => ev.stopPropagation()}>
         {/* Başlık */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-navy-700 via-navy-600 to-aqua-600 px-6 pb-20 pt-6 text-white sm:px-8">
+        <div className="relative overflow-hidden bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-500 px-6 pb-20 pt-6 text-white sm:px-8">
           <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-white/10" />
           <div className="pointer-events-none absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-white/10" />
           <button onClick={onClose} className="absolute right-4 top-4 z-10 rounded-full bg-white/15 p-1.5 text-white/90 hover:bg-white/25" aria-label="Kapat">
@@ -1476,7 +1476,7 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
           {/* Sıralamalar */}
           {rankItems.length > 0 && (
             <section className={card}>
-              <ReportSectionTitle>🏆 Sıralamalar</ReportSectionTitle>
+              <ReportSectionTitle>Sıralamalar</ReportSectionTitle>
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                 {rankItems.map((c) => {
                   const r = Number(ranks[c.key]);
@@ -1507,7 +1507,7 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
           {/* Ders sonuçları */}
           <section className={card}>
             <ReportSectionTitle right={<span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">{penaltyRule}</span>}>
-              📚 Ders sonuçları
+              Ders sonuçları
             </ReportSectionTitle>
             <div className="space-y-2">
               {rows.map((r) => {
@@ -1571,10 +1571,10 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
             <>
               <section className="rounded-3xl bg-gradient-to-br from-rose-50 via-orange-50 to-amber-50 p-5 ring-1 ring-rose-100">
                 <ReportSectionTitle right={<span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-rose-600 ring-1 ring-rose-100">{weak.length} konu</span>}>
-                  🎯 Öncelikli çalışılacak kazanımlar
+                  Öncelikli çalışılacak kazanımlar
                 </ReportSectionTitle>
                 {weak.length === 0 ? (
-                  <p className="text-[13px] font-medium text-emerald-700">Yanlış ya da boş bırakılan soru yok. Harika! 🎉</p>
+                  <p className="text-[13px] font-medium text-emerald-700">Yanlış ya da boş bırakılan soru yok. Harika!</p>
                 ) : (
                   <div className="grid gap-2 sm:grid-cols-2">
                     {weak.slice(0, 12).map((t) => (
@@ -1602,7 +1602,7 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
               <AnswerSheetSection exam={exam} card={card} />
 
               <section className={card}>
-                <ReportSectionTitle>🧩 Kazanım analizi</ReportSectionTitle>
+                <ReportSectionTitle>Kazanım analizi</ReportSectionTitle>
                 <div className="space-y-2.5">
                   {bySubject.map(([key, list]) => {
                     const idx = Math.max(0, subjects.findIndex((x) => x.key === key));
