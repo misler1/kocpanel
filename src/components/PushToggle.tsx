@@ -80,7 +80,7 @@ export function PushToggle({ variant = 'card' }: { variant?: 'card' | 'bell' | '
       : 'iPhone’da bildirim almak için önce uygulamayı ana ekrana ekle, sonra oradan aç.';
     const later = () => { dismissPrompt(); setDismissed(true); };
     return (
-      <div className={`bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white ${banner
+      <div className={`bg-gradient-to-r from-[#1B4A8A] to-[#0FA3A8] text-white ${banner
         ? 'flex flex-col gap-3 rounded-[28px] p-4 shadow-[0_8px_24px_rgba(139,92,246,0.25)] sm:flex-row sm:items-center md:p-5'
         : 'flex flex-col gap-2.5 border-b border-[var(--border)] px-4 py-3.5'}`}>
         <div className="flex items-start gap-3">
@@ -98,12 +98,12 @@ export function PushToggle({ variant = 'card' }: { variant?: 'card' | 'bell' | '
         </div>
         {state === 'off' ? (
           <button type="button" onClick={turnOn} disabled={busy}
-            className={`flex flex-shrink-0 items-center justify-center gap-1.5 rounded-full bg-white font-extrabold text-[#7C3AED] shadow-sm transition-transform active:scale-95 disabled:opacity-70 ${banner ? 'px-5 py-2.5 text-[14.5px] sm:ml-auto' : 'py-2 text-[13.5px]'}`}>
+            className={`flex flex-shrink-0 items-center justify-center gap-1.5 rounded-full bg-white font-extrabold text-[#1B4A8A] shadow-sm transition-transform active:scale-95 disabled:opacity-70 ${banner ? 'px-5 py-2.5 text-[14.5px] sm:ml-auto' : 'py-2 text-[13.5px]'}`}>
             <IconBellRinging size={16} /> {busy ? 'Açılıyor…' : 'Bildirimleri aç'}
           </button>
         ) : (
           <Link href="/uygulama"
-            className={`flex flex-shrink-0 items-center justify-center gap-1.5 rounded-full bg-white font-extrabold text-[#7C3AED] shadow-sm ${banner ? 'px-5 py-2.5 text-[14.5px] sm:ml-auto' : 'py-2 text-[13.5px]'}`}>
+            className={`flex flex-shrink-0 items-center justify-center gap-1.5 rounded-full bg-white font-extrabold text-[#1B4A8A] shadow-sm ${banner ? 'px-5 py-2.5 text-[14.5px] sm:ml-auto' : 'py-2 text-[13.5px]'}`}>
             <IconDeviceMobile size={16} /> Nasıl eklenir?
           </Link>
         )}

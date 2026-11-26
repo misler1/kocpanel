@@ -1410,8 +1410,8 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
                   />
                   <defs>
                     <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#8B5CF6" />
-                      <stop offset="100%" stopColor="#38BDF8" />
+                      <stop offset="0%" stopColor="#1B4A8A" />
+                      <stop offset="100%" stopColor="#0FA3A8" />
                     </linearGradient>
                   </defs>
                 </svg>

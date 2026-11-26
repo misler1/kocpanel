@@ -20,7 +20,7 @@ export function ExamFilterBar() {
   ];
 
   return (
-    <div className="mb-3 space-y-2 border-b border-[#D9E4F3] pb-3">
+    <div className="mb-3 space-y-2 border-b border-white/15 pb-3">
       {/* 1) Kurum  2) Dönem */}
       <div className="flex flex-col gap-1.5">
         <Dropdown
@@ -49,8 +49,8 @@ export function ExamFilterBar() {
             onClick={() => setExamGroup(examGroup === g ? null : g)}
             className={`flex-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
               examGroup === g
-                ? 'bg-[var(--accent)] text-white'
-                : 'border border-[#D9E4F3] bg-white text-[var(--ink-muted)] hover:bg-[var(--accent-soft)]'
+                ? 'bg-white font-semibold text-[#1B4A8A]'
+                : 'border border-white/15 bg-white/10 text-white/75 hover:bg-white/10'
             }`}
           >
             {g}
@@ -67,8 +67,8 @@ export function ExamFilterBar() {
               onClick={() => setYksTrack(yksTrack === t.value ? null : t.value)}
               className={`rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${
                 yksTrack === t.value
-                  ? 'border-[var(--accent)]/40 bg-[var(--accent-soft)] text-[var(--accent-dark)]'
-                  : 'border-[#D9E4F3] bg-white text-[var(--ink-muted)] hover:bg-[var(--accent-soft)]'
+                  ? 'border-white/40 bg-white/25 text-white'
+                  : 'border-white/15 bg-white/10 text-white/70 hover:bg-white/10'
               }`}
             >
               {t.label}
@@ -112,7 +112,7 @@ function Dropdown({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-1.5 rounded-lg border border-[#D9E4F3] bg-white px-2.5 py-1.5 text-xs text-[var(--ink-muted)] transition-colors hover:bg-[var(--accent-soft)]"
+        className="flex w-full items-center justify-between gap-1.5 rounded-lg border border-white/15 bg-white/10 px-2.5 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/10"
       >
         <span className="flex items-center gap-1.5 truncate">
           {icon}

@@ -75,7 +75,7 @@ export function NavigationProgress() {
     <div className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-[3px]" role="progressbar" aria-label="Sayfa yükleniyor"
       aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
       <div
-        className="h-full rounded-r-full bg-gradient-to-r from-[#8B5CF6] via-[#EC4899] to-[#F59E0B] shadow-[0_0_8px_rgba(236,72,153,0.6)]"
+        className="h-full rounded-r-full bg-gradient-to-r from-[#1B4A8A] via-[#14709C] to-[#0FA3A8] shadow-[0_0_8px_rgba(15,163,168,0.5)]"
         style={{
           width: `${progress}%`,
           opacity: finishing ? 0 : 1,
