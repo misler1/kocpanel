@@ -12,7 +12,7 @@ export type BelletmenStudent = { id: string; full_name: string; sinif_sube: stri
 
 const QUICK = [
   { href: '/gunluk-giris', title: 'Günlük takip', desc: 'Bugünkü görevleri işaretle', icon: IconChecklist, tone: 'from-emerald-500 to-teal-500' },
-  { href: '/konu-ilerleyisi', title: 'Konu ilerleyişi', desc: 'Tamamlanan konuları gir', icon: IconBooks, tone: 'from-sky-500 to-indigo-500' },
+  { href: '/konu-ilerleyisi', title: 'Konu ilerleyişi', desc: 'Tamamlanan konuları gir', icon: IconBooks, tone: 'from-navy-600 to-aqua-600' },
   { href: '/denemeler', title: 'Deneme sonuçları', desc: 'Herkesin sonuçları', icon: IconChartBar, tone: 'from-fuchsia-500 to-violet-500' },
 ];
 

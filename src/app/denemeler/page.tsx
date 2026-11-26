@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getStaffAccess } from '@/lib/staff-access';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { getRequestUser, getRequestScope } from '@/lib/supabase/request-cache';
 import { applyStudentScope } from '@/lib/effective-coach';
@@ -18,7 +17,8 @@ export default async function DenemelerPage({
   const user = await getRequestUser();
   if (!user) redirect('/giris');
 
-  const includeInterns = (await cookies()).get('show_interns')?.value === '1';
+  // Deneme sonuçlarında stajyer anahtarı yok: stajyerlerin öğrencileri her zaman listede
+  const includeInterns = true;
   const scope = await getRequestScope(user.id, includeInterns);
   const { data: rawStudents } = await applyStudentScope(
     (supabase as any)

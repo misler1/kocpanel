@@ -8,8 +8,10 @@ import type { Student } from '@/types/database';
 import { IconArchive, IconPlus, IconUsers, IconX } from '@tabler/icons-react';
 import { PageHero } from '@/components/ui/PageHero';
 import {
-  StudentCard, StudentGrid, ListToolbar, matchesQuery, toolbarSelectCls,
+  ListToolbar, matchesQuery, toolbarSelectCls,
 } from '@/components/StudentCard';
+import { avatarColor, initials, trackPill } from '@/lib/ui-colors';
+import { IconChevronRight } from '@tabler/icons-react';
 
 
 const STATUS_MAP: Record<string, { label: string; className: string }> = {
@@ -186,7 +188,7 @@ export function OgrencilerClient({ students, archiveMode, staffMode = false }: {
             </Link>
             <Link
               href="/ogrenciler/yeni"
-              className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-sky-500 to-indigo-500 px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+              className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
             >
               <IconPlus size={15} />
               Öğrenci ekle
@@ -263,12 +265,54 @@ export function OgrencilerClient({ students, archiveMode, staffMode = false }: {
           </p>
         </div>
       ) : (
-        <StudentGrid>
-          {filtered.map((s) => (
-            <StudentCard key={s.id} student={s} href={`/ogrenciler/${s.id}`} showMeeting={false}
-              statusLabel={s.status && s.status !== 'aktif' ? STATUS_MAP[s.status] ?? null : null} />
-          ))}
-        </StudentGrid>
+        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
+          <div className="hidden grid-cols-[minmax(0,2.2fr)_90px_minmax(0,1.6fr)_110px_24px] gap-3 border-b border-[var(--border)] bg-[var(--paper)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)] md:grid">
+            <span>Öğrenci</span><span>Sınıf</span><span>Kurum</span><span>{staffMode ? 'Durum' : 'Hesap'}</span><span />
+          </div>
+          <ul className="divide-y divide-[var(--border)]">
+            {filtered.map((s) => {
+              const tp = trackPill(s.track);
+              const st = s.status && s.status !== 'aktif' ? STATUS_MAP[s.status] ?? null : null;
+              return (
+                <li key={s.id}>
+                  <Link href={`/ogrenciler/${s.id}`}
+                    className={`group grid grid-cols-[minmax(0,1fr)_20px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--accent-soft)]/50 md:grid-cols-[minmax(0,2.2fr)_90px_minmax(0,1.6fr)_110px_24px] ${s.status === 'pasif' ? 'opacity-70' : ''}`}>
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[12.5px] font-bold ${avatarColor(s.id)}`}>{initials(s.full_name)}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-[14px] font-semibold text-[var(--ink)]">{s.full_name}</span>
+                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[var(--ink-muted)]">
+                          {tp && <span className={`rounded-md px-1.5 py-px text-[10.5px] font-semibold ${tp.cls}`}>{tp.label}</span>}
+                          <span className="md:hidden">{[s.sinif_sube, s.kurum].filter(Boolean).join(' · ')}</span>
+                          {s.is_intern_student && (
+                            <span className="rounded-full bg-amber-100 px-2 py-px text-[10.5px] font-medium text-amber-700">
+                              Stajyer{s.responsible_coach_other_name ? `: ${s.responsible_coach_other_name}` : ''}
+                            </span>
+                          )}
+                          {st && <span className={`rounded-full px-2 py-px text-[10.5px] font-medium md:hidden ${st.className}`}>{st.label}</span>}
+                        </span>
+                      </span>
+                    </span>
+                    <span className="hidden truncate text-[13px] text-[var(--ink)] md:block">{s.sinif_sube || '–'}</span>
+                    <span className="hidden truncate text-[13px] text-[var(--ink-muted)] md:block">{s.kurum || '–'}</span>
+                    <span className="hidden md:block">
+                      {st ? (
+                        <span className={`rounded-full px-2 py-0.5 text-[11.5px] font-medium ${st.className}`}>{st.label}</span>
+                      ) : staffMode ? (
+                        <span className="text-[12.5px] text-[var(--ink-muted)]">Aktif</span>
+                      ) : s.profile_id ? (
+                        <span className="rounded-full bg-[var(--success-soft)] px-2 py-0.5 text-[11.5px] font-medium text-[var(--success)]">Açık</span>
+                      ) : (
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11.5px] font-medium text-gray-500">Yok</span>
+                      )}
+                    </span>
+                    <IconChevronRight size={17} className="text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
     </div>
   );

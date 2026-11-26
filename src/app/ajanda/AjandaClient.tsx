@@ -269,7 +269,7 @@ export function AjandaClient({ meId, students, staff, defaultMeetingUrl = null }
         subtitle={`${weekLabel} · ${plannedCount} planlı görüşme`}
         actions={
           <button type="button" onClick={() => openNew(new Date(), Math.min(Math.max(new Date().getHours() + 1, START_HOUR), END_HOUR - 1) * 60)}
-            className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-teal-500 to-emerald-500 px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90">
+            className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-aqua-700 to-aqua-600 px-3.5 py-2 text-[13px] font-semibold text-white hover:opacity-90">
             <IconPlus size={15} /> Görüşme planla
           </button>
         }
@@ -310,7 +310,7 @@ export function AjandaClient({ meId, students, staff, defaultMeetingUrl = null }
 
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
         {/* Gün başlıkları (masaüstü) */}
-        <div className="hidden grid-cols-[56px_repeat(7,1fr)] border-b border-[var(--border)] bg-gradient-to-r from-teal-50 to-white md:grid">
+        <div className="hidden grid-cols-[56px_repeat(7,1fr)] border-b border-[var(--border)] bg-gradient-to-r from-aqua-50 to-white md:grid">
           <div />
           {days.map((d, i) => {
             const isToday = ymd(d) === today;
@@ -444,7 +444,7 @@ export function AjandaClient({ meId, students, staff, defaultMeetingUrl = null }
               <div className="space-y-2.5 rounded-xl border border-sky-200 bg-sky-50/60 p-3">
                 {/* 1) Önerilen: bu randevuya özel otomatik link */}
                 <button type="button" onClick={() => setDraft({ ...draft, meetingUrl: newJitsiRoom(), saveDefault: false })}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-3 text-[14px] font-bold text-white shadow-sm hover:opacity-90">
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-navy-600 to-aqua-600 px-4 py-3 text-[14px] font-bold text-white shadow-sm hover:opacity-90">
                   <IconVideo size={18} /> {isJitsi(draft.meetingUrl) ? 'Yeni görüşme linki oluştur' : 'Ücretsiz görüşme linki oluştur'}
                 </button>
                 {isJitsi(draft.meetingUrl) ? (
@@ -511,7 +511,7 @@ export function AjandaClient({ meId, students, staff, defaultMeetingUrl = null }
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <button type="button" onClick={save} disabled={busy}
-                className="rounded-lg bg-gradient-to-r from-teal-500 to-emerald-500 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-60">
+                className="rounded-lg bg-gradient-to-r from-aqua-700 to-aqua-600 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90 disabled:opacity-60">
                 {busy ? 'Kaydediliyor…' : draft.id ? 'Kaydet' : 'Planla'}
               </button>
               <button type="button" onClick={() => setDraft(null)} disabled={busy} className="rounded-lg px-3 py-2 text-[13px] text-[var(--ink-muted)] hover:bg-[var(--paper)]">Vazgeç</button>
@@ -551,7 +551,7 @@ export function AjandaClient({ meId, students, staff, defaultMeetingUrl = null }
 function JoinButton({ url }: { url: string }) {
   return (
     <a href={url} target="_blank" rel="noopener noreferrer"
-      className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2.5 text-[13.5px] font-bold text-white shadow-sm hover:opacity-90">
+      className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-navy-600 to-aqua-600 px-4 py-2.5 text-[13.5px] font-bold text-white shadow-sm hover:opacity-90">
       <IconVideo size={17} /> Görüşmeye katıl · {meetingPlatform(url)}
     </a>
   );
@@ -609,7 +609,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-[var(--card)] shadow-xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between bg-gradient-to-r from-teal-500 to-emerald-500 px-4 py-3 text-white">
+        <div className="flex items-center justify-between bg-gradient-to-r from-aqua-700 to-aqua-600 px-4 py-3 text-white">
           <h2 className="text-[15px] font-semibold">{title}</h2>
           <button type="button" onClick={onClose} className="rounded-lg p-1 hover:bg-white/20" aria-label="Kapat"><IconX size={18} /></button>
         </div>

@@ -1376,7 +1376,7 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-3 backdrop-blur-[2px] sm:p-6" onClick={onClose}>
       <div className="relative w-full max-w-4xl overflow-hidden rounded-[28px] bg-[#F7F7FB] shadow-2xl ring-1 ring-black/5" onClick={(ev) => ev.stopPropagation()}>
         {/* Başlık */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-500 px-6 pb-20 pt-6 text-white sm:px-8">
+        <div className="relative overflow-hidden bg-gradient-to-br from-navy-700 via-navy-600 to-aqua-600 px-6 pb-20 pt-6 text-white sm:px-8">
           <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-white/10" />
           <div className="pointer-events-none absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-white/10" />
           <button onClick={onClose} className="absolute right-4 top-4 z-10 rounded-full bg-white/15 p-1.5 text-white/90 hover:bg-white/25" aria-label="Kapat">

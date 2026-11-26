@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import {
   IconPlus, IconNotes, IconChartBar, IconZzz, IconMessageOff, IconFileAlert,
   IconSearch, IconArrowUpRight, IconArrowDownRight, IconChevronRight, IconBell, IconCheck,
-  IconCalendarWeek, IconSparkles,
+  IconCalendarWeek, IconSparkles, IconUsers, IconCircleCheck, IconAlertTriangle, IconPencil,
 } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { CoachFeedCard } from '@/components/feed/CoachFeedCard';
@@ -104,33 +104,37 @@ export function AnasayfaClient({ firstName, today, students, weekMeetings, pendi
   const toggle = (f: Filter) => setFilter(filter === f ? 'dikkat' : f);
 
   const card = 'rounded-xl border border-[var(--border)] bg-[var(--card)]';
-  const ghostBtn = 'flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[13px] font-medium text-[var(--ink)] hover:bg-[var(--paper)]';
+  const heroBtn = 'flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-2 text-[13px] font-medium text-white ring-1 ring-inset ring-white/30 hover:bg-white/25';
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5 px-1">
-      {/* Başlık */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-[var(--ink)]">{greeting(firstName)}</h1>
-          <p className="mt-0.5 text-[13px] capitalize text-[var(--ink-muted)]">
-            {dateLabel}{todayMeetings > 0 ? ` · bugün ${todayMeetings} görüşme` : ''}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/gorusmeler/yeni" className={ghostBtn}><IconNotes size={16} stroke={1.8} /> Görüşme ekle</Link>
-          <Link href="/denemeler/yeni" className={ghostBtn}><IconChartBar size={16} stroke={1.8} /> Deneme gir</Link>
-          <Link href="/ogrenciler/yeni" className="flex items-center gap-1.5 rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-[var(--accent-dark)]">
-            <IconPlus size={16} strokeWidth={2.4} /> Yeni öğrenci
-          </Link>
+      {/* Başlık: petrol karşılama bandı */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0F766E] via-aqua-700 to-navy-600 px-5 py-5 text-white shadow-sm md:px-6">
+        <div className="pointer-events-none absolute -right-12 -top-14 h-44 w-44 rounded-full bg-white/10" />
+        <div className="pointer-events-none absolute -bottom-20 right-40 h-36 w-36 rounded-full bg-aqua-300/15" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-[23px] font-bold tracking-tight">{greeting(firstName)}</h1>
+            <p className="mt-0.5 text-[13px] capitalize text-white/85">
+              {dateLabel}{todayMeetings > 0 ? ` · bugün ${todayMeetings} görüşme` : ''}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/gorusmeler/yeni" className={heroBtn}><IconNotes size={16} stroke={1.8} /> Görüşme ekle</Link>
+            <Link href="/denemeler/yeni" className={heroBtn}><IconChartBar size={16} stroke={1.8} /> Deneme gir</Link>
+            <Link href="/ogrenciler/yeni" className="flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-2 text-[13px] font-semibold text-[#0F766E] shadow-sm hover:bg-aqua-50">
+              <IconPlus size={16} strokeWidth={2.4} /> Yeni öğrenci
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* Özet */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Aktif öğrenci" value={visible.length.toLocaleString('tr-TR')} />
-        <Stat label="Yolunda" value={okCount.toLocaleString('tr-TR')} sub={visible.length ? `%${Math.round((okCount / visible.length) * 100)} öğrenci` : undefined} tone="ok" />
-        <Stat label="Dikkat bekleyen" value={attentionCount.toLocaleString('tr-TR')} sub={attentionCount ? 'Aşağıdaki listede' : 'Herkes yolunda'} tone={attentionCount ? 'warn' : 'ok'} />
-        <Stat label="7 günde çözülen soru" value={questionsWeek.toLocaleString('tr-TR')} />
+        <Stat tone="aqua" icon={IconUsers} label="Aktif öğrenci" value={visible.length.toLocaleString('tr-TR')} />
+        <Stat tone="emerald" icon={IconCircleCheck} label="Yolunda" value={okCount.toLocaleString('tr-TR')} sub={visible.length ? `%${Math.round((okCount / visible.length) * 100)} öğrenci` : undefined} />
+        <Stat tone={attentionCount ? 'amber' : 'emerald'} icon={IconAlertTriangle} label="Dikkat bekleyen" value={attentionCount.toLocaleString('tr-TR')} sub={attentionCount ? 'Aşağıdaki listede' : 'Herkes yolunda'} />
+        <Stat tone="navy" icon={IconPencil} label="7 günde çözülen soru" value={questionsWeek.toLocaleString('tr-TR')} />
       </div>
 
       {/* Onay bekleyen işler */}
@@ -392,20 +396,31 @@ export function AnasayfaClient({ firstName, today, students, weekMeetings, pendi
   );
 }
 
-function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'ok' | 'warn' }) {
+const STAT_TONES = {
+  aqua: { box: 'border-aqua-100 bg-aqua-50/70', chip: 'bg-aqua-600', sub: 'text-aqua-700' },
+  emerald: { box: 'border-emerald-100 bg-emerald-50/70', chip: 'bg-emerald-500', sub: 'text-emerald-700' },
+  amber: { box: 'border-amber-100 bg-amber-50/70', chip: 'bg-amber-500', sub: 'text-amber-700' },
+  navy: { box: 'border-navy-100 bg-navy-50/80', chip: 'bg-navy-500', sub: 'text-navy-600' },
+} as const;
+
+function Stat({ label, value, sub, tone, icon: Icon }: { label: string; value: string; sub?: string; tone: keyof typeof STAT_TONES; icon: any }) {
+  const t = STAT_TONES[tone];
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3.5">
-      <div className="text-[12.5px] font-medium text-[var(--ink-muted)]">{label}</div>
-      <div className="mt-1.5 text-[26px] font-bold leading-none tracking-tight tabular-nums text-[var(--ink)]">{value}</div>
-      {sub && <div className={`mt-1.5 text-[12px] font-medium ${tone === 'ok' ? 'text-emerald-700' : tone === 'warn' ? 'text-amber-700' : 'text-[var(--ink-muted)]'}`}>{sub}</div>}
+    <div className={`flex items-start gap-3 rounded-xl border px-4 py-3.5 ${t.box}`}>
+      <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-white ${t.chip}`}><Icon size={18} stroke={1.9} /></span>
+      <div className="min-w-0">
+        <div className="truncate text-[12.5px] font-medium text-[var(--ink-muted)]">{label}</div>
+        <div className="mt-1 text-[26px] font-bold leading-none tracking-tight tabular-nums text-[var(--ink)]">{value}</div>
+        {sub && <div className={`mt-1.5 text-[12px] font-medium ${t.sub}`}>{sub}</div>}
+      </div>
     </div>
   );
 }
 
 const TONES = {
-  warn: { dot: 'bg-amber-500', ring: 'ring-amber-400' },
-  risk: { dot: 'bg-rose-500', ring: 'ring-rose-400' },
-  accent: { dot: 'bg-[var(--accent)]', ring: 'ring-[var(--accent)]' },
+  warn: { box: 'border-amber-100 bg-amber-50/60 hover:bg-amber-50', chip: 'bg-amber-100 text-amber-700', ring: 'ring-amber-400' },
+  risk: { box: 'border-rose-100 bg-rose-50/60 hover:bg-rose-50', chip: 'bg-rose-100 text-rose-600', ring: 'ring-rose-400' },
+  accent: { box: 'border-navy-100 bg-navy-50/70 hover:bg-navy-50', chip: 'bg-navy-100 text-navy-600', ring: 'ring-navy-400' },
 } as const;
 
 function AlertCard({ tone, icon: Icon, count, label, hint, active, onClick, href }: {
@@ -413,17 +428,14 @@ function AlertCard({ tone, icon: Icon, count, label, hint, active, onClick, href
 }) {
   const ok = count === 0;
   const t = TONES[tone];
-  const cls = `flex w-full items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 text-left transition-colors hover:bg-[var(--paper)] ${active ? `ring-2 ${t.ring}` : ''}`;
+  const cls = `flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors ${ok ? 'border-emerald-100 bg-emerald-50/60 hover:bg-emerald-50' : t.box} ${active ? `ring-2 ${t.ring}` : ''}`;
   const body = (
     <>
-      <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${ok ? 'bg-emerald-50 text-emerald-600' : 'bg-[var(--paper)] text-[var(--ink-muted)]'}`}>
-        {ok ? <IconCheck size={18} strokeWidth={2.4} /> : <Icon size={18} stroke={1.8} />}
+      <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${ok ? 'bg-emerald-100 text-emerald-600' : t.chip}`}>
+        {ok ? <IconCheck size={19} strokeWidth={2.4} /> : <Icon size={19} stroke={1.8} />}
       </span>
       <span className="min-w-0">
-        <span className="flex items-center gap-2">
-          <span className="text-[24px] font-bold leading-none tabular-nums text-[var(--ink)]">{count}</span>
-          {!ok && <span className={`h-2 w-2 rounded-full ${t.dot}`} />}
-        </span>
+        <span className="block text-[24px] font-bold leading-none tabular-nums text-[var(--ink)]">{count}</span>
         <span className="mt-1.5 block text-[12.5px] font-semibold text-[var(--ink)]">{label}</span>
         <span className="block text-[11.5px] text-[var(--ink-muted)]">{ok ? 'Hepsi tamam' : hint}</span>
       </span>

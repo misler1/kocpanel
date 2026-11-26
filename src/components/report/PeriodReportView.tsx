@@ -40,7 +40,7 @@ export function PeriodReportView({ r }: { r: PeriodReportData }) {
   const qDiff = t.questions - t.prevQuestions;
   return (
     <div className="space-y-3">
-      <header className="rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 p-5 text-white">
+      <header className="rounded-2xl bg-gradient-to-r from-navy-700 to-aqua-600 p-5 text-white">
         <div className="text-[12px] font-semibold uppercase tracking-wide opacity-80">Gelişim raporu</div>
         <h1 className="text-[22px] font-bold">{r.student.full_name}</h1>
         <p className="text-[13.5px] opacity-90">

@@ -1,37 +1,78 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useExamFilter } from '@/lib/exam-filter-context';
 
 const COOKIE = 'show_interns';
 
+function cookieOn() {
+  return typeof document !== 'undefined' && document.cookie.split('; ').includes(`${COOKIE}=1`);
+}
+
+function writeCookie(on: boolean) {
+  document.cookie = on
+    ? `${COOKIE}=1; path=/; max-age=31536000; samesite=lax`
+    : `${COOKIE}=; path=/; max-age=0; samesite=lax`;
+}
+
+/**
+ * Stajyerlerin öğrencileri anahtarı yalnızca stajyerlerin çalıştığı kurum seçiliyken görünür
+ * (ör. stajyer programı olan vakıf). Başka kurum ya da "Tüm kurumlar" seçilince gizlenir ve kapanır.
+ * Deneme sonuçlarında gösterilmez: orada stajyerlerin öğrencileri her zaman listededir.
+ */
 export function InternToggle() {
-  const [hasInterns, setHasInterns] = useState(false);
-  const [on, setOn] = useState(false);
+  const pathname = usePathname();
+  const { kurum } = useExamFilter();
+  // null: henüz yüklenmedi; [] : stajyer yok
+  const [internKurumlar, setInternKurumlar] = useState<string[] | null>(null);
+  const [on, setOn] = useState(cookieOn);
 
   useEffect(() => {
-    setOn(document.cookie.split('; ').includes(`${COOKIE}=1`));
+    let cancelled = false;
     (async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { count } = await (supabase as any)
+      const sb = supabase as any;
+      const { data: interns } = await sb
         .from('teacher_access_profiles')
-        .select('teacher_id', { count: 'exact', head: true })
+        .select('teacher_id')
         .eq('mentor_id', user.id)
         .neq('status', 'coach');
-      setHasInterns((count ?? 0) > 0);
+      const ids: string[] = (interns ?? []).map((i: { teacher_id: string }) => i.teacher_id);
+      let kurumlar: string[] = [];
+      if (ids.length) {
+        const { data: st } = await sb.from('students').select('kurum').in('coach_id', ids).not('kurum', 'is', null);
+        kurumlar = [...new Set<string>((st ?? []).map((s: { kurum: string }) => s.kurum.trim()).filter(Boolean))];
+      }
+      if (!cancelled) setInternKurumlar(ids.length ? kurumlar : []);
     })();
+    return () => { cancelled = true; };
   }, []);
 
-  if (!hasInterns) return null;
+  const hasInterns = !!internKurumlar && internKurumlar.length > 0;
+  const kurumOk = !!kurum && !!internKurumlar?.includes(kurum.trim());
+  const visible = hasInterns && kurumOk && !pathname?.startsWith('/denemeler');
+
+  // Anahtar açıkken stajyer kurumu dışına çıkılırsa kapat (deneme sayfası hariç; orada etkisi yok)
+  useEffect(() => {
+    if (internKurumlar === null || pathname?.startsWith('/denemeler')) return;
+    if (on && !kurumOk) {
+      writeCookie(false);
+      // Filtre seçimi önce kaydedilsin, sonra sayfa yenilensin
+      const t = setTimeout(() => window.location.reload(), 60);
+      return () => clearTimeout(t);
+    }
+  }, [internKurumlar, kurumOk, on, pathname]);
+
+  if (!visible) return null;
 
   function toggle() {
     const next = !on;
-    document.cookie = next
-      ? `${COOKIE}=1; path=/; max-age=31536000; samesite=lax`
-      : `${COOKIE}=; path=/; max-age=0; samesite=lax`;
+    writeCookie(next);
     setOn(next);
     // Sunucu sayfaları, menü sayacı ve filtreler yeni seçimle baştan yüklensin
     window.location.reload();

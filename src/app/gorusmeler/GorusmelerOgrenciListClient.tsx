@@ -356,7 +356,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
                     onClick={() => setViewing(m)}
                     className="group flex items-stretch gap-3.5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
                   >
-                    <div className={`flex w-14 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-b py-2 leading-none text-white ${isVeli ? 'from-violet-400 to-purple-500' : 'from-teal-400 to-emerald-500'}`}>
+                    <div className={`flex w-14 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-b py-2 leading-none text-white ${isVeli ? 'from-[#D9886A] to-[#C96F5A]' : 'from-aqua-600 to-navy-600'}`}>
                       <span className="text-[10.5px] font-semibold uppercase tracking-wide text-white/85">{monthShort}</span>
                       <span className="mt-1 text-[20px] font-bold">{dayNum}</span>
                     </div>
@@ -373,7 +373,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
                       </div>
                       {m.topic && <div className="mt-1 truncate text-[13px] text-[var(--ink)]">{m.topic}</div>}
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${isVeli ? 'bg-violet-50 text-violet-700' : 'bg-teal-50 text-teal-700'}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${isVeli ? 'bg-orange-50 text-orange-700' : 'bg-aqua-50 text-aqua-700'}`}>
                           {isVeli ? 'Veli görüşmesi' : 'Öğrenci görüşmesi'}
                         </span>
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${m.completed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>

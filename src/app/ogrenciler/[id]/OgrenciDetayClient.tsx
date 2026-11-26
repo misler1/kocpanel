@@ -12,7 +12,7 @@ import {
   IconUsers, IconSchool, IconTrophy,
   IconEdit, IconTrash, IconNotebook, IconTarget, IconArrowLeft, IconCalendarPlus, IconUser,
 } from '@tabler/icons-react';
-import { avatarColor, initials, trackPill } from '@/lib/ui-colors';
+import { initials, trackPill } from '@/lib/ui-colors';
 import { OgrenciProgramlari } from './OgrenciProgramlari';
 import { CalisilanKonular } from './CalisilanKonular';
 import { allowedStudentTabs, type StaffKind } from '@/lib/staff-access';
@@ -76,8 +76,8 @@ export const AccordionCardMode = createContext(false);
 
 const CARD_THEMES = {
   violet: 'border-violet-100 from-violet-50 bg-violet-500',
-  sky: 'border-sky-100 from-sky-50 bg-sky-500',
-  teal: 'border-teal-100 from-teal-50 bg-teal-500',
+  sky: 'border-navy-100 from-navy-50 bg-navy-500',
+  teal: 'border-aqua-100 from-aqua-50 bg-aqua-600',
   amber: 'border-amber-100 from-amber-50 bg-amber-500',
   rose: 'border-rose-100 from-rose-50 bg-rose-500',
   indigo: 'border-indigo-100 from-indigo-50 bg-indigo-500',
@@ -268,7 +268,7 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
     <div className={panel !== 'closed' ? '2xl:flex 2xl:items-start 2xl:gap-4' : ''}>
     <div className="mx-auto min-w-0 max-w-5xl flex-1">
       {/* ── Başlık ── */}
-      <div className={`relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-br ${isArchived ? 'from-slate-500 via-slate-600 to-slate-700' : 'from-indigo-500 via-violet-500 to-fuchsia-500'} p-5 text-white shadow-sm`}>
+      <div className={`relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-br ${isArchived ? 'from-slate-500 via-slate-600 to-slate-700' : 'from-navy-700 via-navy-600 to-aqua-600'} p-5 text-white shadow-sm`}>
         <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10" />
         <div className="pointer-events-none absolute -bottom-16 right-28 h-32 w-32 rounded-full bg-white/10" />
         <div className="relative flex flex-wrap items-center gap-3">
@@ -276,13 +276,13 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
             className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white/20 hover:bg-white/30">
             <IconArrowLeft size={18} />
           </Link>
-          <span className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl text-[20px] font-bold ring-4 ring-white/30 ${avatarColor(id)}`}>
+          <span className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white text-[20px] font-bold text-navy-700 ring-4 ring-white/25`}>
             {initials(student.full_name)}
           </span>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-[22px] font-semibold tracking-tight">{student.full_name}</h1>
             <div className="mt-1.5 flex flex-wrap gap-1.5 text-[12px]">
-              {pill && <span className={`rounded-full px-2.5 py-0.5 font-semibold ${pill.cls}`}>{pill.label}</span>}
+              {pill && <span className="rounded-full bg-white px-2.5 py-0.5 font-semibold text-navy-700">{pill.label}</span>}
               <span className={`rounded-full px-2.5 py-0.5 font-semibold ${status.className}`}>{status.label}</span>
               {[student.kurum, student.grade_level, student.sinif_sube, student.donem].filter(Boolean).map((c: string) => (
                 <span key={c} className="rounded-full bg-white/20 px-2.5 py-0.5">{c}</span>
@@ -536,7 +536,7 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
       )}
       {panel === 'min' && (
         <button type="button" onClick={openPanel}
-          className="fixed bottom-20 right-4 z-40 flex items-center gap-2 rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 px-4 py-3 text-[13px] font-semibold text-white shadow-lg hover:brightness-110 lg:bottom-6">
+          className="fixed bottom-20 right-4 z-40 flex items-center gap-2 rounded-full bg-gradient-to-r from-aqua-700 to-aqua-600 px-4 py-3 text-[13px] font-semibold text-white shadow-lg hover:brightness-110 lg:bottom-6">
           <IconCalendarPlus size={18} /> Görüşmeye dön
         </button>
       )}

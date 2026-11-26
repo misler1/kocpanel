@@ -230,7 +230,7 @@ export function CoachFeedCard({ isAdmin, inactive, pendingExams, total, today }:
     <section className="mb-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
       <button type="button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}
         className="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 text-left transition-colors hover:bg-[var(--paper)]">
-        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
           <IconSparkles size={17} />
         </span>
         <span className="min-w-0 flex-1">

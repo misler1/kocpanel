@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { IconArrowLeft, IconArrowRight, IconCheck, IconChevronDown, IconPlus, IconRotate, IconSearch, IconX, IconPencil } from '@tabler/icons-react';
+import { IconArrowLeft, IconArrowRight, IconCalendarPlus, IconCheck, IconChevronDown, IconPlus, IconRotate, IconSearch, IconX, IconPencil } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { shiftDate, tasksForDay, todayTr, weekdayIndex, type TaskRow } from '@/lib/day-tasks';
 import { avatarColor, initials } from '@/lib/ui-colors';
@@ -240,11 +240,11 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
       )}
 
       {/* Öğrenci kartı */}
-      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-600 text-white shadow-md">
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-navy-700 via-navy-600 to-aqua-600 text-white shadow-md">
         <div className="flex items-center gap-2 p-3">
           <button type="button" onClick={() => goStudent(-1)} aria-label="Önceki öğrenci" className="rounded-full p-2 text-white/80 hover:bg-white/15"><IconArrowLeft size={20} /></button>
           <button type="button" onClick={() => { setPicker(true); setQ(''); }} title="Öğrenci seç" className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-white/15 px-2 py-1.5 text-left ring-1 ring-inset ring-white/30 transition-colors hover:bg-white/25">
-            <span className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-[15px] font-bold ring-2 ring-white/60 ${avatarColor(studentId)}`}>{initials(student?.full_name ?? '')}</span>
+            <span className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-[15px] font-bold text-navy-700 ring-2 ring-white/60`}>{initials(student?.full_name ?? '')}</span>
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1 truncate text-[17px] font-bold"><span className="truncate">{student?.full_name}</span> <span className="flex flex-shrink-0 items-center justify-center rounded-full bg-white/25 p-0.5"><IconChevronDown size={15} /></span></span>
               <span className="block text-[12.5px] text-white/80">{student?.sinif_sube ?? 'Sınıf yok'} · {idx + 1}/{students.length} öğrenci</span>
@@ -259,7 +259,7 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
             const on = d === date;
             return (
               <button key={d} type="button" onClick={() => setDate(d)}
-                className={`flex min-w-[44px] flex-1 flex-col items-center rounded-xl py-1.5 transition-colors ${on ? 'bg-white text-emerald-700 shadow-sm' : 'text-white/85 hover:bg-white/15'}`}>
+                className={`flex min-w-[44px] flex-1 flex-col items-center rounded-xl py-1.5 transition-colors ${on ? 'bg-white text-navy-700 shadow-sm' : 'text-white/85 hover:bg-white/15'}`}>
                 <span className="text-[10.5px] font-semibold uppercase">{d === today ? 'Bugün' : DAY_SHORT[weekdayIndex(d)]}</span>
                 <span className="text-[16px] font-bold leading-tight">{Number(d.slice(8))}</span>
               </button>
@@ -280,7 +280,7 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
       <div className="flex flex-wrap items-center gap-2">
         <Link href={`/gunluk-giris/program?ogrenci=${studentId}`}
           className="flex items-center gap-1.5 rounded-full border border-violet-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-violet-700 hover:bg-violet-50">
-          🗓️ Haftalık program hazırla
+          <IconCalendarPlus size={15} /> Haftalık program hazırla
         </Link>
         {programs.map((p) => (
           <span key={p.id} className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium ${p.status === 'bekliyor' ? 'bg-amber-50 text-amber-800' : 'bg-rose-50 text-rose-700'}`}>
@@ -470,13 +470,13 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
               {filtered.map((s) => (
                 <li key={s.id}>
                   <button type="button" onClick={() => { setStudentId(s.id); setPicker(false); }}
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-gray-50 ${s.id === studentId ? 'bg-emerald-50' : ''}`}>
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-gray-50 ${s.id === studentId ? 'bg-[var(--accent-soft)]' : ''}`}>
                     <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-bold ${avatarColor(s.id)}`}>{initials(s.full_name)}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[14.5px] font-semibold text-gray-900">{s.full_name}</span>
                       {s.sinif_sube && <span className="block text-[12px] text-gray-500">{s.sinif_sube}</span>}
                     </span>
-                    {s.id === studentId && <IconCheck size={18} className="text-emerald-600" />}
+                    {s.id === studentId && <IconCheck size={18} className="text-[var(--accent)]" />}
                   </button>
                 </li>
               ))}
