@@ -34,6 +34,7 @@ export function StudyLogSheet({ task, subjects, onSave, onSkip, onClose }: {
   const [count, setCount] = useState(task?.target_count > 0 ? String(task.target_count) : '');
   const [correct, setCorrect] = useState('');
   const [wrong, setWrong] = useState('');
+  const [blankIn, setBlankIn] = useState(''); // Boş: girilirse soru sayısı doğru + yanlış + boş olur
   const [minutes, setMinutes] = useState('');
   // Öğrenci sayıları hatırlamıyorsa uydurmasın: bilerek boş bırakır
   const [forgot, setForgot] = useState(false);
@@ -57,17 +58,22 @@ export function StudyLogSheet({ task, subjects, onSave, onSkip, onClose }: {
   const c = num(correct);
   const w = num(wrong);
   const total = num(count);
-  const blank = total > 0 && c + w <= total ? total - c - w : null;
+  const b = num(blankIn);
+  const blank = total > 0 && c + w <= total ? total - c - w : null; // boş kutusu doldurulmadıysa önerilen değer
+  // Doğru / yanlış / boş değişince: boş yazıldıysa soru sayısı = D + Y + B
+  function setDYB(nc: number, nw: number, nbStr: string) {
+    if (nbStr.trim() !== '') setCount(String(nc + nw + num(nbStr)));
+  }
   const noNumbers = total === 0 && c + w === 0 && num(minutes) === 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!task && !subject.trim()) { setError('Hangi dersi çalıştın?'); return; }
-    if (total > 0 && c + w > total) { setError('Doğru + yanlış, çözdüğün soru sayısını geçemez.'); return; }
+    if (total > 0 && c + w + b > total) { setError('Doğru + yanlış + boş, çözdüğün soru sayısını geçemez.'); return; }
     setBusy(true); setError(null);
     const err = await onSave(forgot
       ? { taskId: task?.id ?? null, subject: subject.trim(), topic: topic.trim(), count: 0, correct: 0, wrong: 0, minutes: 0 }
-      : { taskId: task?.id ?? null, subject: subject.trim(), topic: topic.trim(), count: total || c + w, correct: c, wrong: w, minutes: num(minutes) });
+      : { taskId: task?.id ?? null, subject: subject.trim(), topic: topic.trim(), count: total || c + w + b, correct: c, wrong: w, minutes: num(minutes) });
     setBusy(false);
     if (err) setError(err);
   }
@@ -113,19 +119,21 @@ export function StudyLogSheet({ task, subjects, onSave, onSkip, onClose }: {
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-3 gap-2.5">
             <label className="block">
               <span className="mb-1 block text-[13px] font-bold text-[var(--success)]">✅ Doğru</span>
-              <input type="number" inputMode="numeric" min={0} value={correct} onChange={(e) => setCorrect(e.target.value)} placeholder="0" className={field} />
+              <input type="number" inputMode="numeric" min={0} value={correct} onChange={(e) => { setCorrect(e.target.value); setDYB(num(e.target.value), w, blankIn); }} placeholder="0" className={field} />
             </label>
             <label className="block">
               <span className="mb-1 block text-[13px] font-bold text-[var(--danger)]">❌ Yanlış</span>
-              <input type="number" inputMode="numeric" min={0} value={wrong} onChange={(e) => setWrong(e.target.value)} placeholder="0" className={field} />
+              <input type="number" inputMode="numeric" min={0} value={wrong} onChange={(e) => { setWrong(e.target.value); setDYB(c, num(e.target.value), blankIn); }} placeholder="0" className={field} />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[13px] font-bold text-[var(--ink-muted)]">⚪ Boş</span>
+              <input type="number" inputMode="numeric" min={0} value={blankIn} onChange={(e) => { setBlankIn(e.target.value); setDYB(c, w, e.target.value); }}
+                placeholder={blank !== null && (c > 0 || w > 0) ? String(blank) : '0'} className={field} />
             </label>
           </div>
-          {blank !== null && (c > 0 || w > 0) && (
-            <p className="text-[12.5px] font-semibold text-[var(--ink-muted)]">⚪ Boş: {blank}</p>
-          )}
 
           <label className="block">
             <span className="mb-1 block text-[13px] font-bold text-[var(--ink-muted)]">⏱️ Kaç dakika çalıştın? <span className="font-medium">(isteğe bağlı)</span></span>

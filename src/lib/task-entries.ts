@@ -38,7 +38,7 @@ export function entryStats(e: TaskEntry) {
   if (e.noNumbers && !e.count && !e.minutes) return 'sayı girilmedi';
   return [
     e.count ? `${e.count} soru` : null,
-    e.correct || e.wrong ? `${e.correct}D ${e.wrong}Y` : null,
+    e.correct || e.wrong ? `${e.correct}D ${e.wrong}Y${e.count > e.correct + e.wrong ? ` ${e.count - e.correct - e.wrong}B` : ''}` : null,
     e.minutes ? `${e.minutes} dk` : null,
     e.pages ? `s. ${e.pages}` : null,
   ].filter(Boolean).join(' · ');

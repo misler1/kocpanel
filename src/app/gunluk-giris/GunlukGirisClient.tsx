@@ -13,7 +13,7 @@ import { avatarColor, initials } from '@/lib/ui-colors';
 // Akış: öğrenci seç → gün seç → her görevde "Yaptı" (soru/doğru/yanlış/dakika/sayfa) ya da "Yapmadı".
 
 type Student = { id: string; full_name: string; sinif_sube: string | null };
-type Draft = { count: string; correct: string; wrong: string; minutes: string; pages: string };
+type Draft = { count: string; correct: string; wrong: string; blank: string; minutes: string; pages: string };
 type Entry = {
   subject: string; topic?: string; count?: number; correct?: number; wrong?: number; duration_minutes?: number;
   pages?: string; task_id?: string; by?: string; by_name?: string;
@@ -21,7 +21,7 @@ type Entry = {
 type StaffProgram = { id: string; week_start: string; week_end: string; tasks: unknown[]; status: string; created_at: string };
 
 const DAY_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-const emptyDraft: Draft = { count: '', correct: '', wrong: '', minutes: '', pages: '' };
+const emptyDraft: Draft = { count: '', correct: '', wrong: '', blank: '', minutes: '', pages: '' };
 const num = (v: string) => Math.max(0, Math.round(Number(v.replace(',', '.')) || 0));
 const ddmm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}`;
 
@@ -35,19 +35,28 @@ const FIELDS: { k: keyof Draft; label: string; ph?: string; text?: boolean }[] =
   { k: 'count', label: 'Soru' },
   { k: 'correct', label: 'Doğru' },
   { k: 'wrong', label: 'Yanlış' },
+  { k: 'blank', label: 'Boş' },
   { k: 'minutes', label: 'Dakika' },
   { k: 'pages', label: 'Sayfa', ph: 'ör. 45-60', text: true },
 ];
 
 function DraftFields({ d, onChange }: { d: Draft; onChange: (patch: Partial<Draft>) => void }) {
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
       {FIELDS.map((f) => (
-        <label key={f.k} className={`block ${f.k === 'pages' ? 'col-span-2 sm:col-span-1' : ''}`}>
+        <label key={f.k} className={`block ${f.k === 'pages' ? 'col-span-4 sm:col-span-1' : f.k === 'minutes' ? 'col-span-4 sm:col-span-1' : ''}`}>
           <span className="mb-0.5 block text-[11px] font-semibold text-gray-500">{f.label}{f.k === 'pages' && <span className="font-normal text-gray-400"> (isteğe bağlı)</span>}</span>
           <input
             inputMode={f.text ? 'text' : 'numeric'} value={d[f.k]} placeholder={f.ph ?? '0'} maxLength={f.text ? 40 : 5}
-            onChange={(e) => onChange({ [f.k]: e.target.value })}
+            onChange={(e) => {
+              const patch: Partial<Draft> = { [f.k]: e.target.value };
+              // Boş yazıldıysa soru sayısı = doğru + yanlış + boş
+              const nd = { ...d, ...patch };
+              if ((f.k === 'correct' || f.k === 'wrong' || f.k === 'blank') && nd.blank.trim() !== '') {
+                patch.count = String((Number(nd.correct) || 0) + (Number(nd.wrong) || 0) + (Number(nd.blank) || 0));
+              }
+              onChange(patch);
+            }}
             className="w-full rounded-xl border border-gray-200 bg-white px-2.5 py-2.5 text-center text-[16px] font-semibold text-gray-900 placeholder:font-normal placeholder:text-gray-300 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
           />
         </label>
@@ -142,6 +151,7 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
     return {
       count: e.count ? String(e.count) : t.done_count ? String(t.done_count) : t.target_count ? String(t.target_count) : '',
       correct: e.correct ? String(e.correct) : '', wrong: e.wrong ? String(e.wrong) : '',
+      blank: (e.correct || e.wrong) && e.count > e.correct + e.wrong ? String(e.count - e.correct - e.wrong) : '',
       minutes: e.minutes ? String(e.minutes) : t.topic_target_minutes ? String(t.topic_target_minutes) : '',
       pages: e.pages,
     };
@@ -335,7 +345,7 @@ export function GunlukGirisClient({ students, initialStudentId, programMsg = nul
                 {/* Yapıldıysa özet */}
                 {done && e && !open && (
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-emerald-50/70 px-3 py-2 text-[13px] text-emerald-900">
-                    {e.count > 0 && <span><b>{e.count}</b> soru{(e.correct || e.wrong) ? ` (${e.correct}D ${e.wrong}Y)` : ''}</span>}
+                    {e.count > 0 && <span><b>{e.count}</b> soru{(e.correct || e.wrong) ? ` (${e.correct}D ${e.wrong}Y${e.count > (e.correct ?? 0) + (e.wrong ?? 0) ? ` ${e.count - (e.correct ?? 0) - (e.wrong ?? 0)}B` : ''})` : ''}</span>}
                     {e.minutes > 0 && <span><b>{e.minutes}</b> dk</span>}
                     {e.pages && <span>s. <b>{e.pages}</b></span>}
                     {e.by && <span className="text-[11.5px] text-emerald-700/70">{e.by} girdi</span>}
