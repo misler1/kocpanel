@@ -64,7 +64,7 @@ export function MobileBottomNav({ studentCount }: { studentCount?: number }) {
           <button type="button" aria-label="Menüyü kapat" onClick={() => setOpen(false)} className="absolute inset-0 bg-black/50" />
           <div className={`absolute inset-y-0 left-0 flex w-[82%] max-w-[300px] flex-col overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-5 shadow-2xl ${SIDEBAR_BG}`}>
             <button type="button" onClick={() => setOpen(false)} aria-label="Kapat"
-              className="absolute right-3 top-5 rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white">
+              className="absolute right-3 top-5 rounded-lg p-1.5 text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]">
               <IconX size={20} />
             </button>
             <SidebarContent studentCount={studentCount} onNavigate={() => setOpen(false)} />
