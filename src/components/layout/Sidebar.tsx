@@ -14,7 +14,7 @@ import { navAllowed } from '@/lib/staff-access';
 import { useStaffKind } from '@/lib/use-staff-kind';
 
 // Sol menünün zemini (buz mavisi, ince kenarlık); telefondaki açılır menü de aynı zemini kullanır
-export const SIDEBAR_BG = 'bg-[#EAF1FB] md:border-r md:border-[#D9E4F3]';
+export const SIDEBAR_BG = 'bg-gradient-to-b from-[#E6EEF9] via-[#E5F0F5] to-[#E1F2F2] md:border-r md:border-[#D3E2EC]';
 
 /** Menünün içeriği: logo, filtreler, bütün sayfalar ve web sitesi bağlantısı.
  *  Masaüstünde sol menüde, telefonda alttaki "Menü" düğmesiyle açılan pencerede kullanılır. */
@@ -87,10 +87,13 @@ export function SidebarContent({ studentCount, onNavigate }: { studentCount?: nu
                     onClick={onNavigate}
                     className={`relative mb-0.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[14.5px] transition-colors ${
                       active
-                        ? 'bg-white font-semibold text-[#1B4A8A] shadow-sm ring-1 ring-[#D9E4F3]'
+                        ? 'bg-white font-semibold text-[#1B4A8A] shadow-sm ring-1 ring-[#D3E2EC]'
                         : 'font-medium text-[#1E3A6E]/85 hover:bg-white/70 hover:text-[#1E3A6E]'
                     }`}
                   >
+                    {active && (
+                      <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-[#1B4A8A] to-[#0FA3A8]" />
+                    )}
                     <Icon
                       size={19}
                       stroke={1.8}
