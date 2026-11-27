@@ -48,6 +48,13 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 2. Tamamlananlar (yayında)
 
+### Programı dolu haftaya aktarma (27 Kasım)
+- Haftalık Takip → **Sonraki haftalara aktar**: programı olan haftalar artık seçilebilir (eskiden "Bu tarihlerde program var" diye kapalıydı). Seçilince uyarı çıkar: aktarılan program oradaki programın yerine geçer ve sorulur:
+  - **Verileri koru** (varsayılan): mevcut programda yapılmış ya da veri girilmiş görevler (soru/süre > 0, yaptı/yapmadı işaretli, öğrencinin eklediği) programda kalır; hiç çalışılmamış görevler silinir. Aynı gün aynı ders+konu+kaynaktaki görev tekrar eklenmez.
+  - **Hepsini sil**: mevcut programın bütün görevleri silinir (öğrencinin günlük kayıtları silinmez).
+  - Ajanda'dan gelen görüşme görevleri her durumda kalır. Kalan görevler aktarılan programın tarihlerine alınır. Son onay penceresi de sorar.
+- Örnek kullanım: iki hafta önceki programı açıp "Sonraki haftalara aktar" → "2 hafta sonra" (bu hafta). SQL gerekmez.
+
 ### Görüşmelerde içerik araması (27 Kasım)
 - **Görüşme kayıtları** sayfasında üstte **"Görüşmelerde ara"** düğmesi: bütün öğrencilerin görüşmelerinin konusu, notları ve görüşmeyi yapan kişi aranır. Sonuçta tarih, öğrenci, konu ve notun aranan kelimenin geçtiği kısmı (vurgulu) görünür; tıklayınca görüşme açılır (düzenle/sil oradan). Üstteki sınav/kurum filtresine uyar.
 - **Bir öğrencinin görüşme kayıtları** sayfasında (ve öğrenci detayındaki görüşme panelinde) liste üstünde arama kutusu: yalnızca o öğrencinin görüşmelerinde arar; eşleşen görüşmeler kelimeler vurgulu, tam haliyle (düzenlenebilir) listelenir.

@@ -215,6 +215,10 @@ export default function HaftalikTakipPage() {
   // Programı sonraki haftalara aktarma (seçilen her haftaya bir kopya)
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferSel, setTransferSel] = useState<string[]>([]);
+  // Programı olan haftaya aktarırken: mevcut programda yapılmış görevler ve girilen veriler korunsun mu
+  const [transferKeepDone, setTransferKeepDone] = useState(true);
+  // Seçilen dolu haftalardaki mevcut görevler (sayıları göstermek için)
+  const [transferExisting, setTransferExisting] = useState<Record<string, { total: number; withData: number }>>({});
 
   // Toplu işlemler (programı birden çok öğrenciye kopyalama / herkesin son haftasını aktarma)
   const [bulkMode, setBulkMode] = useState<BulkMode | null>(null);
@@ -412,25 +416,97 @@ export default function HaftalikTakipPage() {
     return [1, 2, 3, 4, 5, 6].map((k) => {
       const start = addDays(weekStart, 7 * k);
       const end = addDays(start, len - 1);
-      const taken = programOptions.some((p) => rangesOverlap(start, end, p.weekStart, p.weekEnd));
-      return { k, start, end, taken };
+      // O tarihlerdeki mevcut program(lar): seçilirse aktarılan program onların yerine geçer
+      const existing = programOptions.filter((p) => rangesOverlap(start, end, p.weekStart, p.weekEnd));
+      const taken = existing.length > 0;
+      // Aktarılan programın kendisiyle çakışan hafta seçilemez (uzun programlarda)
+      const blocked = existing.some((p) => p.weekStart === weekStart);
+      return { k, start, end, taken, blocked, existing };
     });
+  }
+
+  /** Görevde yapılmış iş ya da girilmiş veri var mı (soru, süre, yaptı/yapmadı, öğrencinin eklediği görev) */
+  const logHasData = (l: any) =>
+    (l.done_count ?? 0) > 0 || (l.topic_done_minutes ?? 0) > 0 || !!l.student_done || !!l.student_missed || !!l.student_added;
+
+  async function fetchLogsOf(starts: string[]) {
+    if (!selectedStudentId || starts.length === 0) return [] as any[];
+    const { data } = await (supabase as any).from('question_logs').select('*')
+      .eq('student_id', selectedStudentId).in('week_start', starts);
+    return (data ?? []) as any[];
+  }
+
+  // Dolu bir hafta seçilince oradaki görev sayıları yüklenir
+  async function loadTransferExisting(sel: string[]) {
+    const opts = transferOptions().filter((o) => sel.includes(o.start) && o.taken && !transferExisting[o.start]);
+    if (opts.length === 0) return;
+    const rows = await fetchLogsOf(Array.from(new Set(opts.flatMap((o) => o.existing.map((p) => p.weekStart)))));
+    const next: Record<string, { total: number; withData: number }> = {};
+    for (const o of opts) {
+      const own = rows.filter((l) => !l.appointment_id && o.existing.some((p) => p.weekStart === l.week_start));
+      next[o.start] = { total: own.length, withData: own.filter(logHasData).length };
+    }
+    setTransferExisting((prev) => ({ ...prev, ...next }));
+  }
+
+  function toggleTransfer(start: string) {
+    const next = transferSel.includes(start) ? transferSel.filter((x) => x !== start) : [...transferSel, start];
+    setTransferSel(next);
+    loadTransferExisting(next);
   }
 
   function openTransfer() {
     setFormError('');
+    setTransferKeepDone(true);
+    setTransferExisting({});
     const first = transferOptions().find((o) => !o.taken);
     setTransferSel(first ? [first.start] : []);
     setTransferOpen(true);
   }
 
   async function transferProgram() {
-    const opts = transferOptions().filter((o) => transferSel.includes(o.start) && !o.taken);
+    const opts = transferOptions().filter((o) => transferSel.includes(o.start) && !o.blocked);
     if (!selectedStudentId || logs.length === 0 || opts.length === 0) return;
+    const replacing = opts.filter((o) => o.taken);
+    if (replacing.length > 0) {
+      const names = replacing.map((o) => `${fmtDate(o.start)} – ${fmtDate(o.end)}`).join(', ');
+      const ok = window.confirm(
+        `${names} tarihlerinde zaten program var. Bu program onun yerine geçecek.\n\n`
+        + (transferKeepDone
+          ? 'Mevcut programda yapılmış görevler ve girilen veriler (soru, süre, yaptı/yapmadı) korunur; yalnızca hiç çalışılmamış görevler kaldırılır.'
+          : 'Mevcut programın bütün görevleri, yapılan görevlerin verileriyle birlikte silinecek. Bu geri alınamaz.')
+        + '\n\nDevam edilsin mi?');
+      if (!ok) return;
+    }
     setCreatingProgram(true);
     setFormError('');
     const { data: { user } } = await supabase.auth.getUser();
-    const rows = opts.flatMap((o) => logs.filter((log) => !log.appointment_id).map((log) => ({
+
+    // Dolu haftalar: mevcut görevlerden silinecekler silinir, kalanlar (görüşmeler ve istenirse verisi olanlar) yeni tarihlere alınır
+    const keptByWeek = new Map<string, any[]>();
+    for (const o of replacing) {
+      const existing = (await fetchLogsOf(o.existing.map((p) => p.weekStart)))
+        .filter((l) => o.existing.some((p) => p.weekStart === l.week_start));
+      const keep = existing.filter((l) => l.appointment_id || (transferKeepDone && logHasData(l)));
+      const drop = existing.filter((l) => !keep.includes(l));
+      if (drop.length > 0) {
+        const { error } = await (supabase as any).from('question_logs').delete().in('id', drop.map((l) => l.id));
+        if (error) { setCreatingProgram(false); setFormError(error.message); setTransferOpen(false); return; }
+      }
+      const move = keep.filter((l) => l.week_start !== o.start || (l.week_end ?? null) !== o.end);
+      if (move.length > 0) {
+        const { error } = await (supabase as any).from('question_logs').update({ week_start: o.start, week_end: o.end }).in('id', move.map((l) => l.id));
+        if (error) { setCreatingProgram(false); setFormError(error.message); setTransferOpen(false); return; }
+      }
+      keptByWeek.set(o.start, keep.filter((l) => !l.appointment_id));
+    }
+
+    const norm = (v: any) => String(v ?? '').trim().toLocaleLowerCase('tr');
+    const rows = opts.flatMap((o) => logs.filter((log) => !log.appointment_id)
+      // Korunan (yapılmış) görevin aynısı tekrar eklenmez
+      .filter((log) => !(keptByWeek.get(o.start) ?? []).some((k) => k.plan_day === log.plan_day
+        && norm(k.subject) === norm(log.subject) && norm(k.topic) === norm(log.topic) && norm(k.resource_name) === norm(log.resource_name)))
+      .map((log) => ({
       student_id: selectedStudentId,
       coach_id: user?.id,
       subject: log.subject,
@@ -446,7 +522,7 @@ export default function HaftalikTakipPage() {
       topic_target_minutes: log.topic_target_minutes,
       topic_done_minutes: 0,
     })));
-    const { error } = await (supabase as any).from('question_logs').insert(rows);
+    const { error } = rows.length > 0 ? await (supabase as any).from('question_logs').insert(rows) : { error: null };
     setCreatingProgram(false);
     if (error) {
       setFormError(weeklyPlanErrorMessage(error));
@@ -1298,27 +1374,54 @@ export default function HaftalikTakipPage() {
             </div>
             <p className="text-[12px] text-[var(--ink-muted)]">
               {weekLabel} programındaki görevler seçtiğiniz haftalara aynı gün ve saatlerle kopyalanır. Yapılan soru ve süre bilgileri sıfırlanır.
+              Programı olan bir haftayı da seçebilirsiniz; o zaman bu program oradaki programın yerine geçer.
             </p>
             <div className="space-y-1.5">
               {transferOptions().map((o) => {
                 const on = transferSel.includes(o.start);
                 return (
                   <label key={o.start}
-                    className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-[13px] ${o.taken
+                    className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-[13px] ${o.blocked
                       ? 'cursor-not-allowed border-[var(--border)] bg-[var(--paper)] text-[var(--ink-muted)]'
-                      : on ? 'cursor-pointer border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--ink)]' : 'cursor-pointer border-[var(--border)] text-[var(--ink)] hover:bg-[var(--paper)]'}`}>
-                    <input type="checkbox" disabled={o.taken} checked={on}
-                      onChange={() => setTransferSel((p) => (p.includes(o.start) ? p.filter((x) => x !== o.start) : [...p, o.start]))}
+                      : on ? `cursor-pointer ${o.taken ? 'border-amber-400 bg-amber-50' : 'border-[var(--accent)] bg-[var(--accent-soft)]'} text-[var(--ink)]` : 'cursor-pointer border-[var(--border)] text-[var(--ink)] hover:bg-[var(--paper)]'}`}>
+                    <input type="checkbox" disabled={o.blocked} checked={on}
+                      onChange={() => toggleTransfer(o.start)}
                       className="h-4 w-4 accent-[var(--accent)]" />
                     <span className="flex-1">
                       <span className="font-semibold">{o.k === 1 ? 'Bir sonraki hafta' : `${o.k} hafta sonra`}</span>
                       <span className="ml-1.5 text-[var(--ink-muted)]">{fmtDate(o.start)} – {fmtDate(o.end)}</span>
                     </span>
-                    {o.taken && <span className="text-[11px] font-medium">Bu tarihlerde program var</span>}
+                    {o.blocked ? <span className="text-[11px] font-medium">Bu programla çakışıyor</span>
+                      : o.taken && <span className={`text-[11px] font-medium ${on ? 'text-amber-700' : 'text-[var(--ink-muted)]'}`}>{on ? 'Mevcut programın yerine geçecek' : 'Bu tarihlerde program var'}</span>}
                   </label>
                 );
               })}
             </div>
+            {(() => {
+              const sel = transferOptions().filter((o) => transferSel.includes(o.start) && o.taken && !o.blocked);
+              if (sel.length === 0) return null;
+              const known = sel.map((o) => transferExisting[o.start]).filter(Boolean) as { total: number; withData: number }[];
+              const total = known.reduce((a, x) => a + x.total, 0);
+              const withData = known.reduce((a, x) => a + x.withData, 0);
+              return (
+                <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-[12.5px] text-amber-900">
+                  <p className="font-semibold">
+                    ⚠️ Seçtiğiniz {sel.length > 1 ? `${sel.length} haftada` : 'haftada'} zaten program var
+                    {known.length === sel.length ? ` (${total} görev, ${withData} tanesinde yapılan iş ya da girilen veri var)` : ''}.
+                    Aktarırsanız bu program onun yerine geçer.
+                  </p>
+                  <p className="font-medium">Mevcut programda şu ana kadar yapılan görevler ne olsun?</p>
+                  <label className="flex cursor-pointer items-start gap-2">
+                    <input type="radio" name="keepDone" checked={transferKeepDone} onChange={() => setTransferKeepDone(true)} className="mt-0.5 accent-amber-600" />
+                    <span><b>Verileri koru</b> (önerilen): Yapılmış ya da veri girilmiş görevler (soru, süre, yaptı/yapmadı, öğrencinin eklediği görevler) programda kalır; yalnızca hiç çalışılmamış görevler kaldırılır. Aynı gün aynı ders/konu/kaynaktaki görev tekrar eklenmez.</span>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-2">
+                    <input type="radio" name="keepDone" checked={!transferKeepDone} onChange={() => setTransferKeepDone(false)} className="mt-0.5 accent-amber-600" />
+                    <span><b>Hepsini sil</b>: Mevcut programın bütün görevleri, yapılan görevlerin verileriyle birlikte silinir. Geri alınamaz. (Öğrencinin günlük kayıtları silinmez.)</span>
+                  </label>
+                </div>
+              );
+            })()}
             <div className="flex justify-end gap-2">
               <button onClick={() => setTransferOpen(false)} disabled={creatingProgram} className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--ink)] hover:bg-[var(--paper)]">
                 İptal
@@ -1328,7 +1431,9 @@ export default function HaftalikTakipPage() {
                 disabled={creatingProgram || transferSel.length === 0}
                 className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-60"
               >
-                {creatingProgram ? 'Aktarılıyor...' : transferSel.length > 1 ? `${transferSel.length} haftaya aktar` : 'Aktar'}
+                {creatingProgram ? 'Aktarılıyor...'
+                  : transferOptions().some((o) => transferSel.includes(o.start) && o.taken) ? (transferSel.length > 1 ? `${transferSel.length} haftaya aktar (değiştir)` : 'Değiştir ve aktar')
+                  : transferSel.length > 1 ? `${transferSel.length} haftaya aktar` : 'Aktar'}
               </button>
             </div>
           </div>
