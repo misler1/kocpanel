@@ -16,16 +16,31 @@ export async function computeStudentSummaries(supabase: any, studentIds: string[
   const to = shiftDate(today, -1);
   const summaryMap: Record<string, StudentSummary> = {};
   if (studentIds.length === 0) return summaryMap;
+    // Supabase bir istekte en fazla 1000 satır döndürür; sayfa sayfa hepsi alınır (eskiden fazlası kesiliyor,
+    // bazı günlerde görevler eksik ya da eski programdan sayılıyor ve uyum yanlış çıkıyordu)
+    const allPages = async (build: () => any) => {
+      const out: any[] = [];
+      for (let page = 0; page < 50; page++) {
+        const { data, error } = await build().range(page * 1000, page * 1000 + 999);
+        if (error) throw error;
+        out.push(...(data ?? []));
+        if (!data || data.length < 1000) break;
+      }
+      return out;
+    };
+    // Son 7 günü kapsayabilecek programlar (programlar en fazla birkaç hafta sürer)
+    const logsQuery = (cols: string) => (chunk: string[]) => allPages(() => (supabase as any).from('question_logs')
+      .select(cols).in('student_id', chunk).lte('week_start', to).gte('week_start', shiftDate(from, -28)).order('id'))
+      .then((data) => ({ data }));
     const [exams, logs] = await Promise.all([
-      fetchChunkedByIds<any>(studentIds, (chunk) => (supabase as any).from('exams')
-        .select('student_id, exam_type, exam_date, net_score').in('student_id', chunk)
-        .gte('exam_date', shiftDate(today, -365)).order('exam_date', { ascending: false }).limit(5000), 25).catch(() => [] as any[]),
-      fetchChunkedByIds<any>(studentIds, (chunk) => (supabase as any).from('question_logs')
-        .select('id, student_id, week_start, week_end, plan_day, student_done, appointment_id, postponed_from_id, postponed_to_id').in('student_id', chunk)
-        .lte('week_start', today).gte('week_start', shiftDate(from, -35)).limit(5000), 25)
-        .catch(() => fetchChunkedByIds<any>(studentIds, (chunk) => (supabase as any).from('question_logs')
-          .select('id, student_id, week_start, week_end, plan_day, student_done, appointment_id').in('student_id', chunk)
-          .lte('week_start', today).gte('week_start', shiftDate(from, -35)).limit(5000), 25))
+      fetchChunkedByIds<any>(studentIds, (chunk) => allPages(() => (supabase as any).from('exams')
+        .select('id, student_id, exam_type, exam_date, net_score').in('student_id', chunk)
+        .gte('exam_date', shiftDate(today, -365)).order('exam_date', { ascending: false }).order('id'))
+        .then((data) => ({ data })), 25).catch(() => [] as any[]),
+      fetchChunkedByIds<any>(studentIds,
+        logsQuery('id, student_id, week_start, week_end, plan_day, student_done, appointment_id, postponed_from_id, postponed_to_id'), 25)
+        .catch(() => fetchChunkedByIds<any>(studentIds,
+          logsQuery('id, student_id, week_start, week_end, plan_day, student_done, appointment_id'), 25))
         .catch(() => [] as any[]),
     ]);
     const examsBy = new Map<string, any[]>();
@@ -39,10 +54,21 @@ export async function computeStudentSummaries(supabase: any, studentIds: string[
       const lastNet = last ? Math.round((Number(last.net_score) || 0) * 100) / 100 : null;
       let weekDone = 0, weekPlanned = 0;
       const rows = logsBy.get(id) ?? [];
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      // Ertelenen görev, ertelendiği gün yapıldıysa yapılmış sayılır (dönem raporuyla aynı kural)
+      const doneResolved = (t: TaskRow) => {
+        let cur: TaskRow | undefined = t;
+        for (let i = 0; cur && i < 10; i++) {
+          if (cur.student_done) return true;
+          cur = cur.postponed_to_id ? byId.get(cur.postponed_to_id) : undefined;
+        }
+        return false;
+      };
       for (let d = from; d <= to; d = shiftDate(d, 1)) {
+        // Ertelenmiş kopyalar ayrıca sayılmaz
         const day = tasksForDay(rows, d).filter((t) => !t.postponed_from_id);
         weekPlanned += day.length;
-        weekDone += day.filter((t) => t.student_done).length;
+        weekDone += day.filter(doneResolved).length;
       }
       summaryMap[id] = {
         examType: last?.exam_type ?? null, lastNet, examDate: last?.exam_date ?? null,

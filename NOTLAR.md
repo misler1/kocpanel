@@ -48,6 +48,11 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 2. Tamamlananlar (yayında)
 
+### Görüşme listesinde program uyumu düzeltmesi (27 Kasım)
+- Görüşme kayıtları → öğrenci listesindeki "son 7 gün program uyumu" yanlış çıkıyordu (ör. %90 yerine %33). Neden: görevler 25 öğrencilik gruplar halinde tek istekte çekiliyordu; Supabase bir istekte en fazla 1000 satır döndürdüğü için fazlası kesiliyor, bazı günlerin görevleri eksik ya da yanlış programdan sayılıyordu.
+- Artık sayfa sayfa hepsi alınır (denemeler de). Ayrıca ertelenen görev, ertelendiği gün yapıldıysa yapılmış sayılır (dönem raporuyla aynı kural).
+- Ölçü değişmedi: dünden geriye son 7 gün, o günlerin programındaki görevlerden "yaptı" işaretli olanların oranı (görüşme görevleri hariç). Kod: `src/lib/student-summary.ts`.
+
 ### Programı dolu haftaya aktarma (27 Kasım)
 - Haftalık Takip → **Sonraki haftalara aktar**: programı olan haftalar artık seçilebilir (eskiden "Bu tarihlerde program var" diye kapalıydı). Seçilince uyarı çıkar: aktarılan program oradaki programın yerine geçer ve sorulur:
   - **Verileri koru** (varsayılan): mevcut programda yapılmış ya da veri girilmiş görevler (soru/süre > 0, yaptı/yapmadı işaretli, öğrencinin eklediği) programda kalır; hiç çalışılmamış görevler silinir. Aynı gün aynı ders+konu+kaynaktaki görev tekrar eklenmez.
