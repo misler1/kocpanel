@@ -10,6 +10,7 @@ import { TYT_SUBJECTS, AYT_SUBJECTS, LGS_SUBJECTS, calcNetYKS, calcNetLGS } from
 export type ReportDay = {
   date: string; weekday: number;
   planned: number; done: number; missed: number; compliance: number | null; // görev bazında uyum %
+  postponed?: number; // başka güne ertelenen görev (ertelendiği gün yapıldıysa done'a sayılır)
   target: number; solvedForTasks: number; // program görevlerinin hedef / çözülen soru sayısı
   questions: number; correct: number; wrong: number; minutes: number; // günlüğe girilen toplam
 };
@@ -33,6 +34,7 @@ export type PeriodReportData = {
   subjects: ReportSubject[];
   totals: {
     planned: number; done: number; missed: number; compliance: number | null; // hafta bazında uyum
+    postponed?: number;
     dayAvgCompliance: number | null; programDays: number; fullDays: number; // gün bazında: ortalama, programlı gün, %100 gün
     activeDays: number; target: number; solvedForTasks: number; targetRate: number | null;
     questions: number; correct: number; wrong: number; accuracy: number | null; minutes: number;
@@ -86,6 +88,24 @@ export async function buildPeriodReport(admin: any, studentId: string, start: st
   ]);
 
   const taskRows = (tasks ?? []) as TaskRow[];
+
+  // Ertelenen görevler: kopyası dönem dışında kalmış olabilir, ayrıca getirilir
+  const byId = new Map(taskRows.map((t) => [t.id, t]));
+  let missing = taskRows.map((t) => t.postponed_to_id).filter((id): id is string => !!id && !byId.has(id));
+  for (let guard = 0; missing.length && guard < 5; guard++) {
+    const { data: extra } = await admin.from('question_logs').select('*').in('id', missing);
+    for (const t of (extra ?? []) as TaskRow[]) byId.set(t.id, t);
+    missing = ((extra ?? []) as TaskRow[]).map((t) => t.postponed_to_id).filter((id): id is string => !!id && !byId.has(id));
+  }
+  // Ertelendiği gün (ya da yeniden ertelendiği gün) yapıldıysa görev yapılmış sayılır
+  const doneResolved = (t: TaskRow) => {
+    let cur: TaskRow | undefined = t;
+    for (let i = 0; cur && i < 10; i++) {
+      if (cur.student_done) return true;
+      cur = cur.postponed_to_id ? byId.get(cur.postponed_to_id) : undefined;
+    }
+    return false;
+  };
   const logList = ((logs ?? []) as any[]).filter((l) => !l.archived);
 
   // Günlük kayıtları güne ve derse göre topla
@@ -117,21 +137,26 @@ export async function buildPeriodReport(admin: any, studentId: string, start: st
   // Gün gün program uyumu
   const days: ReportDay[] = [];
   for (let d = start; d <= end; d = day(d, 1)) {
-    const list = tasksForDay(taskRows, d);
-    const done = list.filter((t) => t.student_done).length;
-    const missed = list.filter((t) => !t.student_done && t.student_missed).length;
+    // Ertelenmiş kopyalar sayılmaz: asıl görev, kopyası yapıldıysa yapılmış sayılır (aynı görev iki kez girmez)
+    const list = tasksForDay(taskRows, d).filter((t) => !t.postponed_from_id);
+    const isDone = (t: TaskRow) => doneResolved(t);
+    const done = list.filter(isDone).length;
+    const missed = list.filter((t) => !isDone(t) && (t.student_missed || t.postponed_to_id)).length;
+    const postponed = list.filter((t) => t.postponed_to_id).length;
     const a = perDay.get(d) ?? { questions: 0, correct: 0, wrong: 0, minutes: 0 };
     let target = 0, solved = 0;
     for (const t of list) {
       target += n(t.target_count);
       // Görev "yaptı" işaretliyse girilen soru sayısı (girilmediyse hedef kadar çözülmüş sayılır)
-      solved += t.student_done ? (n(t.done_count) || n(t.target_count)) : 0;
+      const doneT = isDone(t);
+      const src = t.student_done || !t.postponed_to_id ? t : (byId.get(t.postponed_to_id) ?? t); // ertelendiyse çözülen kopyada
+      solved += doneT ? (n(src.done_count) || n(t.target_count)) : 0;
       const s = subj(t.subject);
-      s.planned++; if (t.student_done) s.done++;
-      s.target += n(t.target_count); if (t.student_done) s.solvedForTasks += n(t.done_count) || n(t.target_count);
+      s.planned++; if (doneT) s.done++;
+      s.target += n(t.target_count); if (doneT) s.solvedForTasks += n(src.done_count) || n(t.target_count);
     }
     days.push({
-      date: d, weekday: weekdayIndex(d), planned: list.length, done, missed, compliance: pct(done, list.length),
+      date: d, weekday: weekdayIndex(d), planned: list.length, done, missed, postponed, compliance: pct(done, list.length),
       target, solvedForTasks: solved, ...a,
     });
   }
@@ -144,7 +169,7 @@ export async function buildPeriodReport(admin: any, studentId: string, start: st
   const sum = (k: keyof ReportDay) => days.reduce((s, d) => s + n(d[k]), 0);
   const programDays = days.filter((d) => d.planned > 0);
   const totals = {
-    planned: sum('planned'), done: sum('done'), missed: sum('missed'),
+    planned: sum('planned'), done: sum('done'), missed: sum('missed'), postponed: sum('postponed'),
     compliance: pct(sum('done'), sum('planned')),
     dayAvgCompliance: programDays.length ? Math.round(programDays.reduce((s, d) => s + (d.compliance ?? 0), 0) / programDays.length) : null,
     programDays: programDays.length,

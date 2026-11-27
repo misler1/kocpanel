@@ -52,7 +52,7 @@ export function PeriodReportView({ r }: { r: PeriodReportData }) {
       {/* Özet */}
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
         <Kpi label="Programa uyum (hafta)" value={t.compliance === null ? '—' : `%${t.compliance}`} p={t.compliance}
-          sub={t.planned ? `${t.done}/${t.planned} görev yapıldı${t.missed ? ` · ${t.missed} yapılmadı` : ''}` : 'Bu dönemde program yok'} />
+          sub={t.planned ? `${t.done}/${t.planned} görev yapıldı${t.missed ? ` · ${t.missed} yapılmadı` : ''}${t.postponed ? ` · ${t.postponed} ertelendi` : ''}` : 'Bu dönemde program yok'} />
         <Kpi label="Programa uyum (gün ort.)" value={t.dayAvgCompliance === null ? '—' : `%${t.dayAvgCompliance}`} p={t.dayAvgCompliance}
           sub={t.programDays ? `${t.programDays} programlı günün ${t.fullDays}'i tam` : undefined} />
         <Kpi label="Hedef soru gerçekleşme" value={t.targetRate === null ? '—' : `%${t.targetRate}`} p={t.targetRate}
@@ -86,7 +86,7 @@ export function PeriodReportView({ r }: { r: PeriodReportData }) {
                   <tr key={d.date}>
                     <td className="px-1 py-2 font-medium text-gray-800">{DAY_NAMES[d.weekday]} <span className="text-gray-400">{fmtDate(d.date, { day: 'numeric', month: 'short' })}</span></td>
                     <td className="px-1 py-2 text-gray-700">
-                      {d.planned ? <>{d.done}/{d.planned}{d.missed ? <span className="text-rose-500"> · {d.missed}✕</span> : null}</> : <span className="text-gray-300">program yok</span>}
+                      {d.planned ? <>{d.done}/{d.planned}{d.missed ? <span className="text-rose-500"> · {d.missed}✕</span> : null}{d.postponed ? <span className="text-amber-600" title="Ertelenen görev (ertelendiği gün yapıldıysa yapıldı sayılır)"> · {d.postponed} ertelendi</span> : null}</> : <span className="text-gray-300">program yok</span>}
                     </td>
                     <td className="px-1 py-2">
                       {d.compliance === null ? <span className="text-gray-300">—</span> : (

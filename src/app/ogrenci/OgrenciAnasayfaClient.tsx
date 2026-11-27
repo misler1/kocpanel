@@ -197,6 +197,8 @@ export function OgrenciAnasayfaClient({
           {done && <span className="block text-[12px] font-bold text-[var(--success)]">✓ Tamamlandı</span>}
           {done && <TaskEntryInfo entry={taskEntries.entries.get(l.id)} taskTopic={l.topic} />}
           {missed && <span className="block text-[12px] font-bold text-[var(--danger)]">✕ Yapmadım{l.student_missed_note ? ` · ${l.student_missed_note}` : ''}</span>}
+          {!done && l.postponed_to_date && <span className="block text-[12px] font-bold text-amber-700">Koçun erteledi → {new Date(`${l.postponed_to_date}T12:00:00Z`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', timeZone: 'UTC' })}</span>}
+          {l.postponed_from_date && <span className="block text-[12px] font-bold text-amber-700">{new Date(`${l.postponed_from_date}T12:00:00Z`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', timeZone: 'UTC' })} tarihinden ertelendi</span>}
         </span>
         <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
           done ? 'student-pop border-[var(--success)] bg-[var(--success)] text-white' : 'border-dashed border-[var(--success)]/50 bg-white text-[var(--success)]/35 hover:border-solid hover:border-[var(--success)] hover:text-[var(--success)]'}`}>

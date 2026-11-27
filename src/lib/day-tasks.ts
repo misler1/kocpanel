@@ -6,6 +6,8 @@ export type TaskRow = {
   week_start: string; week_end: string | null; plan_day: number | null; target_count: number | null;
   topic_target_minutes: number | null; done_count: number | null; topic_done_minutes: number | null;
   student_done: boolean | null; student_missed?: boolean | null; student_missed_note?: string | null; student_missed_by?: string | null; student_added?: boolean | null; start_time: string | null; end_time: string | null; appointment_id: string | null;
+  // supabase/gorev_erteleme.sql: ertelenen görev (to) ve ertelenmiş kopyası (from)
+  postponed_to_id?: string | null; postponed_to_date?: string | null; postponed_from_id?: string | null; postponed_from_date?: string | null;
 };
 
 export const weekdayIndex = (date: string) => (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7;

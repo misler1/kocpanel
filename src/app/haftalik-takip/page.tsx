@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { IconTrash, IconPlus, IconDownload, IconPrinter, IconCopy, IconX, IconEdit, IconDeviceFloppy, IconChecklist, IconCalendarShare } from '@tabler/icons-react';
+import { IconTrash, IconPlus, IconDownload, IconPrinter, IconCopy, IconX, IconEdit, IconDeviceFloppy, IconChecklist, IconCalendarShare, IconArrowForwardUp } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { getStudentScope, applyStudentScope } from '@/lib/effective-coach';
 import { PageHero } from '@/components/ui/PageHero';
@@ -159,6 +159,10 @@ export default function HaftalikTakipPage() {
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [logs, setLogs] = useState<any[]>([]);
+  // Görev erteleme (supabase/gorev_erteleme.sql)
+  const [postponeFor, setPostponeFor] = useState<string | null>(null);
+  const [postponeDate, setPostponeDate] = useState('');
+  const [postponeError, setPostponeError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [resourceMap, setResourceMap] = useState<Record<string, string[]>>({});
   const filteredStudents = students.filter((s) => matchesFilter(s));
@@ -675,6 +679,32 @@ export default function HaftalikTakipPage() {
     }
   }
 
+  // Yapılmayan görevi sonraki bir güne ertele: kopya o güne yazılır, bu görev "ertelendi" olarak silik kalır
+  async function postponeLog(log: any) {
+    if (!postponeDate) return;
+    setPostponeError(null);
+    const { data: newId, error } = await (supabase as any).rpc('postpone_task', { p_id: log.id, p_date: postponeDate });
+    if (error) {
+      setPostponeError(/postpone_task/i.test(error.message) ? 'Erteleme henüz etkin değil (supabase/gorev_erteleme.sql çalıştırılmalı).' : error.message);
+      return;
+    }
+    const { data: copy } = await (supabase as any).from('question_logs').select('*').eq('id', newId).maybeSingle();
+    setLogs((prev) => [
+      ...prev.map((l) => (l.id === log.id ? { ...l, postponed_to_id: newId, postponed_to_date: postponeDate } : l)),
+      ...(copy && copy.week_start === weekStart ? [copy] : []),
+    ]);
+    setPostponeFor(null); setPostponeDate('');
+  }
+
+  async function unpostponeLog(log: any) {
+    if (!confirm('Erteleme geri alınsın mı? Ertelenen gündeki görev silinir.')) return;
+    const { error } = await (supabase as any).rpc('unpostpone_task', { p_id: log.id });
+    if (error) { alert(error.message); return; }
+    setLogs((prev) => prev
+      .filter((l) => l.id !== log.postponed_to_id)
+      .map((l) => (l.id === log.id ? { ...l, postponed_to_id: null, postponed_to_date: null } : l)));
+  }
+
   async function deleteLog(id: string) {
     await (supabase as any).from('question_logs').delete().eq('id', id);
     setLogs((prev) => prev.filter((l) => l.id !== id));
@@ -936,11 +966,14 @@ export default function HaftalikTakipPage() {
     }
 
     const c = getSubjectColor(log.subject);
+    const postponed = !!log.postponed_to_id;
+    const taskDate = days.find((d) => d.weekday === log.plan_day)?.date ?? null;
+    const canPostpone = !log.student_done && !postponed && !log.appointment_id;
 
     return (
       <div
         key={log.id}
-        className={`log-card ${colorMode ? 'colored' : ''} relative flex w-full flex-col rounded-lg border border-[var(--border)] bg-[var(--card)] p-1.5`}
+        className={`log-card ${colorMode ? 'colored' : ''} relative flex w-full flex-col rounded-lg border border-[var(--border)] bg-[var(--card)] p-1.5 ${postponed ? 'opacity-55' : ''}`}
         style={colorMode ? { backgroundColor: `${c}22`, borderLeft: `4px solid ${c}` } : undefined}
       >
         <div className="flex items-start justify-between gap-1">
@@ -948,17 +981,30 @@ export default function HaftalikTakipPage() {
             <span className="block text-[12px] font-medium leading-tight text-[var(--ink)]">{log.subject}</span>
             {log.topic && <span className="block text-[11px] leading-tight text-[var(--ink-muted)]">{log.topic}</span>}
             {log.resource_name && <span className="block text-[10px] leading-tight text-[var(--ink-muted)]">{log.resource_name}</span>}
-            {(log.student_done || log.student_missed || log.student_added) && (
+            {(log.student_done || log.student_missed || log.student_added || postponed || log.postponed_from_date) && (
               <span className="no-print mt-0.5 flex flex-wrap gap-x-1.5 text-[10px] font-semibold leading-tight">
                 {log.student_added && <span className="text-blue-600">Öğrenci ekledi</span>}
+                {log.postponed_from_date && <span className="text-amber-700">{shortDate(log.postponed_from_date)} tarihinden ertelendi</span>}
                 {log.student_done && <span className="text-emerald-600">✓ Yaptı</span>}
-                {!log.student_done && log.student_missed && (
-                  <span className="text-red-600">✕ Yapmadı{log.student_missed_note ? ` · ${log.student_missed_note}` : ''}{log.student_missed_by ? ` (${log.student_missed_by} girdi)` : ''}</span>
+                {!log.student_done && (log.student_missed || postponed) && (
+                  <span className="text-red-600">✕ Yapılmadı{log.student_missed_note ? ` · ${log.student_missed_note}` : ''}{log.student_missed_by ? ` (${log.student_missed_by} girdi)` : ''}</span>
+                )}
+                {postponed && (
+                  <span className="text-amber-700">
+                    · ertelendi → {shortDate(log.postponed_to_date)}{' '}
+                    <button type="button" onClick={() => unpostponeLog(log)} className="font-semibold underline hover:text-[var(--ink)]">geri al</button>
+                  </span>
                 )}
               </span>
             )}
           </div>
           <div className="no-print flex flex-shrink-0 items-center gap-1">
+            {canPostpone && (
+              <button onClick={() => { setPostponeFor(postponeFor === log.id ? null : log.id); setPostponeDate(''); setPostponeError(null); }}
+                title="Sonraki bir güne ertele" className={postponeFor === log.id ? 'text-[var(--accent)]' : 'text-[var(--ink-muted)] hover:text-[var(--accent)]'}>
+                <IconArrowForwardUp size={13} />
+              </button>
+            )}
             <button onClick={() => setClipboardLog(log)} title="Kopyala (sonra bir güne yapıştır)" className="text-[var(--ink-muted)] hover:text-[var(--accent)]">
               <IconCopy size={13} />
             </button>
@@ -970,6 +1016,20 @@ export default function HaftalikTakipPage() {
             </button>
           </div>
         </div>
+
+        {postponeFor === log.id && (
+          <div className="no-print mt-1.5 space-y-1 rounded-md bg-[var(--accent-soft)] p-1.5">
+            <span className="block text-[10.5px] font-semibold text-[var(--accent-dark)]">Hangi güne ertelensin?</span>
+            <input type="date" value={postponeDate} min={taskDate ? addDays(taskDate, 1) : undefined}
+              onChange={(e) => setPostponeDate(e.target.value)} className={inputCls} />
+            {postponeError && <p className="text-[10.5px] text-red-600">{postponeError}</p>}
+            <div className="flex gap-1">
+              <button type="button" onClick={() => setPostponeFor(null)} className="flex-1 rounded-md border border-[var(--border)] bg-[var(--card)] py-1 text-[11px] text-[var(--ink-muted)]">Vazgeç</button>
+              <button type="button" disabled={!postponeDate} onClick={() => postponeLog(log)}
+                className="flex-1 rounded-md bg-[var(--accent)] py-1 text-[11px] font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-50">Ertele</button>
+            </div>
+          </div>
+        )}
 
         {/* Alt kısım hep kartın dibinde: kartlar farklı içerikte olsa da hizalı durur */}
         <div className="mt-auto pt-1.5">
