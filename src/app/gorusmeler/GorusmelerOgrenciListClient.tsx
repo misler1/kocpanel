@@ -4,11 +4,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { createClient } from '@/lib/supabase/client';
-import { IconCalendar, IconNotes, IconAlertCircle, IconCircleCheck, IconArchive, IconClock } from '@tabler/icons-react';
+import { IconCalendar, IconNotes, IconAlertCircle, IconCircleCheck, IconArchive, IconClock, IconChevronRight } from '@tabler/icons-react';
 import { MeetingDetailModal } from './MeetingDetailModal';
 import { PageHero } from '@/components/ui/PageHero';
 import {
-  StudentCard, StudentGrid, ListToolbar, SectionTitle, FilterChips, matchesQuery, lateBy, toolbarSelectCls,
+  StudentMeetingList, ListToolbar, SectionTitle, FilterChips, matchesQuery, lateBy, toolbarSelectCls,
 } from '@/components/StudentCard';
 import { avatarColor, initials } from '@/lib/ui-colors';
 import { SuggestInput } from '@/components/SuggestInput';
@@ -279,31 +279,25 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
               <section>
                 <SectionTitle tone="rose" icon={<IconAlertCircle size={18} />} title="Bu hafta görüşülmeyenler" count={notMetThisWeek.length} />
                 {notMetThisWeek.length === 0 ? (
-                  <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[13.5px] font-medium text-emerald-700">
+                  <p className="rounded-2xl border border-[var(--success-soft)] bg-[var(--success-soft)] px-4 py-3 text-[13.5px] font-medium text-[var(--success)]">
                     Bu hafta herkesle görüşülmüş
                   </p>
                 ) : (
-                  <StudentGrid>
-                    {notMetThisWeek.map((s) => <StudentCard key={s.id} student={s} href={`/gorusmeler/${s.id}`} />)}
-                  </StudentGrid>
+                  <StudentMeetingList students={notMetThisWeek} hrefFor={(s) => `/gorusmeler/${s.id}`} />
                 )}
               </section>
 
               {metThisWeek.length > 0 && (
                 <section>
                   <SectionTitle tone="emerald" icon={<IconCircleCheck size={18} />} title="Bu hafta görüşülenler" count={metThisWeek.length} />
-                  <StudentGrid>
-                    {metThisWeek.map((s) => <StudentCard key={s.id} student={s} href={`/gorusmeler/${s.id}`} />)}
-                  </StudentGrid>
+                  <StudentMeetingList students={metThisWeek} hrefFor={(s) => `/gorusmeler/${s.id}`} />
                 </section>
               )}
 
               {passive.length > 0 && (
                 <section>
                   <SectionTitle tone="slate" icon={<IconArchive size={18} />} title="Pasif öğrenciler" count={passive.length} />
-                  <StudentGrid>
-                    {passive.map((s) => <StudentCard key={s.id} student={s} href={`/gorusmeler/${s.id}`} />)}
-                  </StudentGrid>
+                  <StudentMeetingList students={passive} hrefFor={(s) => `/gorusmeler/${s.id}`} />
                 </section>
               )}
             </div>
@@ -339,56 +333,59 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
               <p className="text-[13px] text-[var(--ink-muted)]">Henüz görüşme yok.</p>
             </div>
           ) : (
-            <div className="grid gap-3 lg:grid-cols-2">
-              {allMeetingsFilteredSorted.map((m) => {
-                const dt = new Date(m.scheduled_at);
-                const monthShort = dt.toLocaleDateString('tr-TR', { month: 'short' });
-                const dayNum = dt.getDate();
-                const weekdayStr = dt.toLocaleDateString('tr-TR', { weekday: 'long' });
-                const timeStr = dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-                const isVeli = m.meeting_type === 'veli';
-                const studentInfo: any = studentsById.get(m.student_id) ?? m.students;
-                const name = studentInfo?.full_name ?? 'Bilinmeyen öğrenci';
+            <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
+              <div className="hidden grid-cols-[56px_minmax(0,1.8fr)_minmax(0,2fr)_minmax(0,1.5fr)_24px] gap-3 border-b border-[var(--border)] bg-[var(--paper)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)] md:grid">
+                <span>Tarih</span><span>Öğrenci</span><span>Konu</span><span>Durum</span><span />
+              </div>
+              <ul className="divide-y divide-[var(--border)]">
+                {allMeetingsFilteredSorted.map((m) => {
+                  const dt = new Date(m.scheduled_at);
+                  const monthShort = dt.toLocaleDateString('tr-TR', { month: 'short' });
+                  const dayNum = dt.getDate();
+                  const weekdayStr = dt.toLocaleDateString('tr-TR', { weekday: 'long' });
+                  const timeStr = dt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                  const isVeli = m.meeting_type === 'veli';
+                  const studentInfo: any = studentsById.get(m.student_id) ?? m.students;
+                  const name = studentInfo?.full_name ?? 'Bilinmeyen öğrenci';
 
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => setViewing(m)}
-                    className="group flex items-stretch gap-3.5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <div className={`flex w-14 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-b py-2 leading-none text-white ${isVeli ? 'from-violet-400 to-purple-500' : 'from-[#14709C] to-[#0FA3A8]'}`}>
-                      <span className="text-[10.5px] font-semibold uppercase tracking-wide text-white/85">{monthShort}</span>
-                      <span className="mt-1 text-[20px] font-bold">{dayNum}</span>
-                    </div>
+                  return (
+                    <li key={m.id}>
+                      <button
+                        onClick={() => setViewing(m)}
+                        className="group grid w-full grid-cols-[48px_minmax(0,1fr)_20px] items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--accent-soft)]/50 md:grid-cols-[56px_minmax(0,1.8fr)_minmax(0,2fr)_minmax(0,1.5fr)_24px]"
+                      >
+                        <span className={`flex w-12 flex-col items-center justify-center rounded-xl bg-gradient-to-b py-1.5 leading-none text-white ${isVeli ? 'from-[#C96F85] to-[#D99A8E]' : 'from-[#14709C] to-[#0FA3A8]'}`}>
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-white/85">{monthShort}</span>
+                          <span className="mt-0.5 text-[17px] font-bold">{dayNum}</span>
+                        </span>
 
-                    <div className="min-w-0 flex-1 py-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${avatarColor(m.student_id ?? name)}`}>
-                          {initials(name)}
-                        </span>
-                        <span className="truncate text-[14px] font-semibold text-[var(--ink)]">{name}</span>
-                      </div>
-                      <div className="mt-1 flex items-center gap-1 text-[12px] text-[var(--ink-muted)]">
-                        <IconClock size={13} /> {weekdayStr} · {timeStr} · {m.duration_minutes} dk
-                      </div>
-                      {m.topic && <div className="mt-1 truncate text-[13px] text-[var(--ink)]">{m.topic}</div>}
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${isVeli ? 'bg-violet-50 text-violet-700' : 'bg-teal-50 text-teal-700'}`}>
-                          {isVeli ? 'Veli görüşmesi' : 'Öğrenci görüşmesi'}
-                        </span>
-                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${m.completed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                          {m.completed ? 'Tamamlandı' : 'Bekliyor'}
-                        </span>
-                        {studentInfo?.is_intern_student && (
-                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-                            Stajyer{studentInfo.responsible_coach_other_name ? `: ${studentInfo.responsible_coach_other_name}` : ''}
+                        <span className="min-w-0">
+                          <span className="flex items-center gap-2">
+                            <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${avatarColor(m.student_id ?? name)}`}>
+                              {initials(name)}
+                            </span>
+                            <span className="truncate text-[14px] font-semibold text-[var(--ink)]">{name}</span>
                           </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+                          <span className="mt-0.5 flex items-center gap-1 text-[11.5px] text-[var(--ink-muted)]">
+                            <IconClock size={12} /> {weekdayStr} · {timeStr} · {m.duration_minutes} dk
+                          </span>
+                          {m.topic && <span className="mt-0.5 block truncate text-[12.5px] text-[var(--ink)] md:hidden">{m.topic}</span>}
+                          <span className="mt-1 flex flex-wrap items-center gap-1.5 md:hidden">
+                            <MeetingBadges isVeli={isVeli} completed={m.completed} studentInfo={studentInfo} />
+                          </span>
+                        </span>
+
+                        <span className="hidden min-w-0 truncate text-[13px] text-[var(--ink)] md:block">{m.topic || <span className="text-[var(--ink-muted)]">–</span>}</span>
+
+                        <span className="hidden flex-wrap items-center gap-1.5 md:flex">
+                          <MeetingBadges isVeli={isVeli} completed={m.completed} studentInfo={studentInfo} />
+                        </span>
+                        <IconChevronRight size={17} className="text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           )}
         </>
@@ -503,5 +500,24 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Görüşme satırındaki tür / durum / stajyer rozetleri
+function MeetingBadges({ isVeli, completed, studentInfo }: { isVeli: boolean; completed: boolean; studentInfo: any }) {
+  return (
+    <>
+      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${isVeli ? 'bg-[#FBEEF1] text-[#A4506A]' : 'bg-[#E6F7F7] text-[#0B7076]'}`}>
+        {isVeli ? 'Veli' : 'Öğrenci'}
+      </span>
+      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${completed ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+        {completed ? 'Tamamlandı' : 'Bekliyor'}
+      </span>
+      {studentInfo?.is_intern_student && (
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+          Stajyer{studentInfo.responsible_coach_other_name ? `: ${studentInfo.responsible_coach_other_name}` : ''}
+        </span>
+      )}
+    </>
   );
 }

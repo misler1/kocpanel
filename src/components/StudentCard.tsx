@@ -30,7 +30,7 @@ export function daysSinceMeeting(iso: string | null | undefined) {
 }
 
 /** Son görüşme rozeti: 7 güne kadar yeşil, 14 güne kadar sarı, sonrası ve hiç görüşme yoksa kırmızı */
-function recency(iso: string | null | undefined) {
+export function recency(iso: string | null | undefined) {
   const d = daysSinceMeeting(iso);
   if (d === null) return { text: 'Henüz görüşme yok', cls: 'bg-rose-50 text-rose-600' };
   const text = d === 0 ? 'Bugün görüşüldü' : d === 1 ? 'Dün görüşüldü' : `${d} gün önce görüşüldü`;
@@ -100,6 +100,61 @@ export function StudentCard({ student: s, href, statusLabel, showMeeting = true 
       </div>
       )}
     </Link>
+  );
+}
+
+/** Görüşme kayıtları için satır satır öğrenci listesi (Öğrenciler sayfasındaki liste düzeni) */
+export function StudentMeetingList({ students, hrefFor }: {
+  students: StudentCardData[];
+  hrefFor: (s: StudentCardData) => string;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
+      <div className="hidden grid-cols-[minmax(0,2.2fr)_90px_minmax(0,1.4fr)_minmax(0,1.5fr)_24px] gap-3 border-b border-[var(--border)] bg-[var(--paper)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)] md:grid">
+        <span>Öğrenci</span><span>Sınıf</span><span>Kurum</span><span>Son görüşme</span><span />
+      </div>
+      <ul className="divide-y divide-[var(--border)]">
+        {students.map((s) => {
+          const tp = trackPill(s.track);
+          const rec = recency(s.last_meeting_at);
+          const lastDate = s.last_meeting_at
+            ? new Date(s.last_meeting_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })
+            : null;
+          return (
+            <li key={s.id}>
+              <Link href={hrefFor(s)}
+                className={`group grid grid-cols-[minmax(0,1fr)_20px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--accent-soft)]/50 md:grid-cols-[minmax(0,2.2fr)_90px_minmax(0,1.4fr)_minmax(0,1.5fr)_24px] ${s.status === 'pasif' ? 'opacity-70' : ''}`}>
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[12.5px] font-bold ${avatarColor(s.id)}`}>{initials(s.full_name)}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-[14px] font-semibold text-[var(--ink)]">{s.full_name}</span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[var(--ink-muted)]">
+                      {tp && <span className={`rounded-md px-1.5 py-px text-[10.5px] font-semibold ${tp.cls}`}>{tp.label}</span>}
+                      <span className="md:hidden">{[s.sinif_sube, s.kurum].filter(Boolean).join(' · ')}</span>
+                      {s.is_intern_student && (
+                        <span className="rounded-full bg-amber-100 px-2 py-px text-[10.5px] font-medium text-amber-700">
+                          Stajyer{s.responsible_coach_other_name ? `: ${s.responsible_coach_other_name}` : ''}
+                        </span>
+                      )}
+                      <span className={`rounded-full px-2 py-px text-[10.5px] font-semibold md:hidden ${rec.cls}`}>{rec.text}</span>
+                    </span>
+                  </span>
+                </span>
+                <span className="hidden truncate text-[13px] text-[var(--ink)] md:block">{s.sinif_sube || '–'}</span>
+                <span className="hidden truncate text-[13px] text-[var(--ink-muted)] md:block">{s.kurum || '–'}</span>
+                <span className="hidden min-w-0 items-center gap-2 md:flex">
+                  <span className={`flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${rec.cls}`}>
+                    <IconCalendarEvent size={13} /> {rec.text}
+                  </span>
+                  {lastDate && <span className="truncate text-[11.5px] text-[var(--ink-muted)]">{lastDate}</span>}
+                </span>
+                <IconChevronRight size={17} className="text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
