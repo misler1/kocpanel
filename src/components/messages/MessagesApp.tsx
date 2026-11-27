@@ -4,12 +4,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  IconArrowLeft, IconSend, IconPlus, IconUsersGroup, IconSearch, IconDotsVertical, IconBan, IconX, IconCheck, IconSpeakerphone, IconChecks, IconPencil, IconTrash, IconArrowBackUp, IconCopy, IconEye, IconEyeOff, IconBellOff, IconBell,
+  IconArrowLeft, IconSend, IconPlus, IconUsersGroup, IconSearch, IconDotsVertical, IconBan, IconX, IconCheck, IconSpeakerphone, IconChecks, IconPencil, IconTrash, IconArrowBackUp, IconCopy, IconEye, IconEyeOff, IconBellOff, IconBell, IconMoodSmile,
 } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { markMessagesRead } from '@/lib/use-unread-conversations';
 import { NOTIFICATIONS_CHANGED } from '@/components/NotificationBell';
 import { BulkMessage } from './BulkMessage';
+import { EmojiPicker, QUICK_REACTIONS } from './EmojiPicker';
 
 type Conv = {
   id: string; kind: 'direct' | 'group'; title: string | null; other_id: string | null; other_role: string | null;
@@ -37,6 +38,8 @@ type Msg = { id: string; conversation_id: string; sender_id: string; content: st
 
 const EDIT_WINDOW_MS = 24 * 3600 * 1000; // supabase/mesaj_okundu_duzenleme.sql ile aynı
 type Member = { id: string; full_name: string; role: string; blocked: boolean };
+// supabase/mesaj_tepkileri.sql çalıştırıldıysa gelir
+type Reaction = { message_id: string; conversation_id: string; profile_id: string; emoji: string };
 type Contact = { id: string; full_name: string; role: string; kurum: string | null; sinif: string | null; is_my_student: boolean };
 
 const ROLE_LABEL: Record<string, string> = { koc: 'Koç', ogretmen: 'Öğretmen', ogrenci: 'Öğrenci', veli: 'Veli' };
@@ -86,6 +89,11 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   const [actionFor, setActionFor] = useState<string | null>(null);
   const [actionAt, setActionAt] = useState(0); // menü açıldığı an (24 saat düzenleme süresi buna göre)
   const [editing, setEditing] = useState<Msg | null>(null);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
+  const [reactionsReady, setReactionsReady] = useState(false);
+  const [composerEmoji, setComposerEmoji] = useState(false);
+  const [reactPickerFor, setReactPickerFor] = useState<string | null>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<string | null>(activeId); // canlı abonelik açık sohbeti buradan okur
 
@@ -110,11 +118,16 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   const loadThread = useCallback(async (id: string) => {
     const msgQuery = (cols: string) => (supabase as any).from('messages').select(cols)
       .eq('conversation_id', id).order('created_at', { ascending: false }).limit(200);
-    const [first, { data: mem }, hides] = await Promise.all([
+    const [first, { data: mem }, hides, reacts] = await Promise.all([
       msgQuery('id, conversation_id, sender_id, content, created_at, edited_at, deleted_at, deleted_by'),
       (supabase as any).rpc('conversation_members', { p_conv: id }),
       (supabase as any).from('message_hides').select('message_id').limit(5000),
+      (supabase as any).from('message_reactions').select('message_id, conversation_id, profile_id, emoji').eq('conversation_id', id).limit(5000),
     ]);
+    if (activeRef.current === id) {
+      setReactionsReady(!reacts.error);
+      setReactions(reacts.error ? [] : (reacts.data ?? []));
+    }
     let msgs = first.data;
     const ready = !first.error;
     if (!ready) msgs = (await msgQuery('id, conversation_id, sender_id, content, created_at')).data;
@@ -183,6 +196,14 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
         if (m.conversation_id === activeRef.current) setMessages((p) => p.map((x) => (x.id === m.id ? { ...x, ...m } : x)));
         loadConvs();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, (payload: any) => {
+        const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Reaction;
+        if (!row?.message_id || row.conversation_id !== activeRef.current) return;
+        setReactions((p) => {
+          const rest = p.filter((x) => !(x.message_id === row.message_id && x.profile_id === row.profile_id));
+          return payload.eventType === 'DELETE' ? rest : [...rest, row];
+        });
+      })
       .subscribe();
     const timer = setInterval(() => {
       loadConvs();
@@ -203,7 +224,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
     activeRef.current = id;
     setActiveId(id);
     setMenuOpen(false); setShowMembers(false); setError(null);
-    setActionFor(null); setEditing(null); setReadState([]);
+    setActionFor(null); setEditing(null); setReadState([]); setReactions([]); setReactPickerFor(null); setComposerEmoji(false);
     if (!id) { setMessages([]); setMembers([]); }
     const base = student ? '/ogrenci/mesajlar' : '/mesajlar';
     router.replace(id ? `${base}?c=${id}` : base, { scroll: false });
@@ -230,6 +251,32 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
     setText('');
     setMessages((p) => (p.some((x) => x.id === id) ? p : [...p, { id, conversation_id: activeId, sender_id: meId, content, created_at: new Date().toISOString() }]));
     loadConvs();
+  }
+
+  // Tepki: aynı emojiye tekrar dokunmak kaldırır, başkası seçilirse eskisinin yerine geçer
+  async function react(m: Msg, emoji: string) {
+    setActionFor(null); setReactPickerFor(null);
+    const before = reactions;
+    const mineNow = reactions.find((x) => x.message_id === m.id && x.profile_id === meId);
+    const rest = reactions.filter((x) => !(x.message_id === m.id && x.profile_id === meId));
+    setReactions(mineNow?.emoji === emoji ? rest : [...rest, { message_id: m.id, conversation_id: m.conversation_id, profile_id: meId, emoji }]);
+    const { error: err } = await (supabase as any).rpc('react_message', { p_id: m.id, p_emoji: emoji });
+    if (err) { setReactions(before); setError(err.message); }
+  }
+
+  // Yazı alanında imlecin olduğu yere emoji ekle
+  function insertEmoji(emoji: string) {
+    const el = textRef.current;
+    const start = el?.selectionStart ?? text.length;
+    const end = el?.selectionEnd ?? text.length;
+    const next = (text.slice(0, start) + emoji + text.slice(end)).slice(0, 2000);
+    setText(next);
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      const pos = Math.min(start + emoji.length, next.length);
+      el.setSelectionRange(pos, pos);
+    });
   }
 
   async function unsend(m: Msg) {
@@ -381,6 +428,19 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
     return { all: known.length > 0 && readers.length === known.length && known.length === readState.length, names };
   }
   const otherBlocked = !!active?.other_id && blockedIds.has(active.other_id);
+  // Mesajdaki tepkiler: emojiye göre gruplanır, ilk bırakılan önce
+  function reactionGroups(id: string) {
+    const groups: { emoji: string; count: number; mine: boolean; names: string[] }[] = [];
+    for (const x of reactions) {
+      if (x.message_id !== id) continue;
+      let g = groups.find((y) => y.emoji === x.emoji);
+      if (!g) { g = { emoji: x.emoji, count: 0, mine: false, names: [] }; groups.push(g); }
+      g.count += 1;
+      if (x.profile_id === meId) g.mine = true;
+      g.names.push(x.profile_id === meId ? 'Sen' : memberMap.get(x.profile_id)?.full_name ?? active?.title ?? '');
+    }
+    return groups;
+  }
 
   return (
     <div className="flex h-[calc(100vh-11rem)] min-h-[420px] gap-4 md:h-[calc(100vh-9rem)]">
@@ -577,9 +637,11 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
                 const canEdit = open && mine && !deleted && actionAt - new Date(m.created_at).getTime() < EDIT_WINDOW_MS;
                 const canUnsend = open && !deleted && (canEdit || isOwner);
                 const read = mine && !deleted ? readInfo(m) : null;
+                const msgReactions = reactionGroups(m.id);
+                const myReaction = reactions.find((x) => x.message_id === m.id && x.profile_id === meId)?.emoji;
                 return (
                   <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
-                    <button type="button" disabled={!extras} onClick={() => { setActionAt(Date.now()); setActionFor(open ? null : m.id); }}
+                    <button type="button" disabled={!extras && !reactionsReady} onClick={() => { setActionAt(Date.now()); setReactPickerFor(null); setActionFor(open ? null : m.id); }}
                       className={`max-w-[80%] px-3.5 py-2 text-left text-[14px] leading-snug shadow-sm ${open ? 'ring-2 ring-[var(--accent-dark)]/40' : ''} ${
                       mine
                         ? `${student ? 'rounded-[20px] rounded-br-md' : 'rounded-2xl rounded-br-sm'} ${deleted ? 'bg-[var(--accent)]/60' : 'bg-[var(--accent)]'} text-white`
@@ -596,7 +658,39 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
                           : <span title={read.names ? `Okuyanlar: ${read.names}` : 'Gönderildi'}><IconCheck size={14} /></span>)}
                       </span>
                     </button>
-                    {open && (
+                    {msgReactions.length > 0 && !deleted && (
+                      <div className={`-mt-1.5 flex max-w-[80%] flex-wrap gap-1 ${mine ? 'justify-end pr-2' : 'pl-2'}`}>
+                        {msgReactions.map((g) => (
+                          <button key={g.emoji} type="button" onClick={() => react(m, g.emoji)}
+                            title={g.names.join(', ')}
+                            className={`flex items-center gap-1 rounded-full border px-1.5 py-px text-[13px] leading-5 shadow-sm transition-colors ${
+                              g.mine ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-[var(--border)] bg-[var(--card)] hover:bg-[var(--paper)]'}`}>
+                            <span>{g.emoji}</span>
+                            {g.count > 1 && <span className="text-[11px] font-semibold text-[var(--ink-muted)]">{g.count}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {open && reactionsReady && !deleted && (
+                      <div className="relative mt-1 flex items-center gap-0.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-1 py-0.5 shadow-md">
+                        {QUICK_REACTIONS.map((e) => (
+                          <button key={e} type="button" onClick={() => react(m, e)} aria-label={`${e} tepkisi`}
+                            className={`flex h-8 w-8 items-center justify-center rounded-full text-[19px] transition-transform hover:scale-125 ${myReaction === e ? 'bg-[var(--accent-soft)]' : ''}`}>
+                            {e}
+                          </button>
+                        ))}
+                        <button type="button" onClick={() => setReactPickerFor(reactPickerFor === m.id ? null : m.id)} aria-label="Başka emoji"
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--ink-muted)] hover:bg-[var(--paper)]">
+                          <IconPlus size={16} />
+                        </button>
+                        {reactPickerFor === m.id && (
+                          <div className={`absolute top-full z-30 mt-1 ${mine ? 'right-0' : 'left-0'}`}>
+                            <EmojiPicker onPick={(e) => react(m, e)} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {open && extras && (
                       <div id={`msg-actions-${m.id}`} className="mt-1 flex scroll-mb-3 flex-wrap gap-1 text-[12px]">
                         {canEdit && <button type="button" onClick={() => startEdit(m)} className="flex items-center gap-1 rounded-full bg-[var(--card)] px-2.5 py-1 font-semibold text-[var(--ink)] shadow-sm"><IconPencil size={13} /> Düzenle</button>}
                         {canUnsend && <button type="button" onClick={() => unsend(m)} className="flex items-center gap-1 rounded-full bg-[var(--card)] px-2.5 py-1 font-semibold text-[var(--danger)] shadow-sm"><IconArrowBackUp size={13} /> {mine ? 'Herkesten geri al' : 'Gruptan kaldır'}</button>}
@@ -623,8 +717,20 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
                   <button type="button" onClick={() => { setEditing(null); setText(''); }} aria-label="Düzenlemeyi bırak"><IconX size={15} /></button>
                 </div>
               )}
-              <form onSubmit={send} className="flex items-end gap-2 border-t border-[var(--border)] p-2.5">
-                <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={2000}
+              <form onSubmit={send} className="relative flex items-end gap-2 border-t border-[var(--border)] p-2.5">
+                {composerEmoji && (
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setComposerEmoji(false)} />
+                    <div className="absolute bottom-full left-2.5 z-30 mb-2">
+                      <EmojiPicker onPick={insertEmoji} />
+                    </div>
+                  </>
+                )}
+                <button type="button" onClick={() => setComposerEmoji((v) => !v)} aria-label="Emoji ekle" title="Emoji ekle"
+                  className={`flex h-[42px] w-[42px] flex-shrink-0 items-center justify-center rounded-full transition-colors ${composerEmoji ? 'bg-[var(--accent-soft)] text-[var(--accent-dark)]' : 'text-[var(--ink-muted)] hover:bg-[var(--paper)] hover:text-[var(--ink)]'}`}>
+                  <IconMoodSmile size={22} />
+                </button>
+                <textarea ref={textRef} value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={2000}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(e as any); } }}
                   placeholder={student ? 'Mesajını yaz… 😊' : 'Mesaj yazın…'}
                   className={`max-h-32 min-h-[42px] flex-1 resize-none border border-[var(--border)] bg-[var(--paper)] px-3.5 py-2.5 text-[14px] outline-none focus:border-[var(--accent)] ${student ? 'rounded-[20px]' : 'rounded-xl'}`} />
