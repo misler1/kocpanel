@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { IconCalendar, IconEdit, IconTrash, IconX, IconMessages, IconUser } from '@tabler/icons-react';
 import { PageHero } from '@/components/ui/PageHero';
+import { Highlight, MeetingSearchBox, meetingMatches, searchTerms } from '@/components/MeetingSearch';
 import { NotesEditor } from '@/components/NotesEditor';
 import {
   draftKey, readDraft, writeDraft, removeDraft, hasText, DURATION_RESUME_MS, type MeetingDraft,
@@ -226,6 +227,10 @@ export function GorusmeOgrenciClient({
   );
   const latest = sortedMeetings[0] ?? null;
   const previous = sortedMeetings.slice(1);
+  // Bu öğrencinin görüşmelerinde içerik araması (konu, notlar, görüşmeyi yapan)
+  const [search, setSearch] = useState('');
+  const terms = useMemo(() => searchTerms(search), [search]);
+  const hits = terms.length ? sortedMeetings.filter((m: any) => meetingMatches(m, terms)) : [];
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -424,6 +429,29 @@ export function GorusmeOgrenciClient({
         </div>
       ) : (
         <div className="space-y-6">
+          <div className="flex flex-col gap-1.5">
+            <MeetingSearchBox value={search} onChange={setSearch} placeholder={`${student.full_name.split(' ')[0]} ile görüşmelerde ara…`} />
+            {terms.length > 0 && (
+              <p className="px-1 text-[12px] text-[var(--ink-muted)]">
+                {hits.length ? `${hits.length} görüşmede geçiyor` : `“${search.trim()}” geçen görüşme yok.`}
+              </p>
+            )}
+          </div>
+          {terms.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {hits.map((m: any) => (
+                <MeetingCard
+                  key={m.id}
+                  meeting={m}
+                  student={student}
+                  topicOptions={topicOptions}
+                  terms={terms}
+                  onSaved={(u) => setMeetings((prev) => prev.map((x) => (x.id === u.id ? u : x)))}
+                  onDeleted={(id) => setMeetings((prev) => prev.filter((x) => x.id !== id))}
+                />
+              ))}
+            </div>
+          ) : (<>
           {latest && (
             <section>
               <h2 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Son görüşme</h2>
@@ -455,6 +483,7 @@ export function GorusmeOgrenciClient({
               </div>
             </section>
           )}
+          </>)}
         </div>
       )}
     </div>
@@ -462,8 +491,10 @@ export function GorusmeOgrenciClient({
 }
 
 function MeetingCard({
-  meeting, student, topicOptions, onSaved, onDeleted,
+  meeting, student, topicOptions, onSaved, onDeleted, terms = [],
 }: {
+  /** İçerik aramasında vurgulanacak kelimeler */
+  terms?: string[];
   meeting: any;
   student: { id: string; full_name: string; kurum?: string | null };
   topicOptions: string[];
@@ -631,14 +662,14 @@ function MeetingCard({
       {meeting.topic && (
         <div className="mb-3">
           <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Konu</p>
-          <p className="text-[14px] text-[var(--ink)]">{meeting.topic}</p>
+          <p className="text-[14px] text-[var(--ink)]"><Highlight text={meeting.topic} terms={terms} /></p>
         </div>
       )}
 
       {meeting.notes && (
         <div className="mb-3">
           <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]">Notlar</p>
-          <p className="whitespace-pre-wrap rounded-lg bg-[var(--paper)] p-3 text-[13px] text-[var(--ink)]">{meeting.notes}</p>
+          <p className="whitespace-pre-wrap rounded-lg bg-[var(--paper)] p-3 text-[13px] text-[var(--ink)]"><Highlight text={meeting.notes} terms={terms} /></p>
         </div>
       )}
 

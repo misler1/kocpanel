@@ -4,7 +4,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { createClient } from '@/lib/supabase/client';
-import { IconCalendar, IconNotes, IconAlertCircle, IconCircleCheck, IconArchive, IconClock, IconChevronRight } from '@tabler/icons-react';
+import { IconCalendar, IconNotes, IconAlertCircle, IconCircleCheck, IconArchive, IconClock, IconChevronRight, IconSearch } from '@tabler/icons-react';
+import { MeetingHit, MeetingSearchBox, meetingMatches, searchTerms } from '@/components/MeetingSearch';
 import { MeetingDetailModal } from './MeetingDetailModal';
 import { PageHero } from '@/components/ui/PageHero';
 import {
@@ -49,7 +50,8 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
   const { matchesFilter } = useExamFilter();
   const [sinifFilter, setSinifFilter] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('gorusme_eski');
-  const [viewMode, setViewMode] = useState<'ogrenciler' | 'tumu'>('ogrenciler');
+  const [viewMode, setViewMode] = useState<'ogrenciler' | 'tumu' | 'ara'>('ogrenciler');
+  const [contentQuery, setContentQuery] = useState('');
   const [query, setQuery] = useState('');
   const [quick, setQuick] = useState<'tumu' | 'hafta' | 'iki_hafta'>('tumu');
 
@@ -67,7 +69,7 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
   const studentsById = useMemo(() => new Map(students.map((s: any) => [s.id, s])), [students]);
 
   useEffect(() => {
-    if (viewMode !== 'tumu' || allMeetings !== null) return;
+    if (viewMode === 'ogrenciler' || allMeetings !== null) return;
     async function loadAllMeetings() {
       setLoadingAll(true);
       const studentIds = students.map((s: any) => s.id).filter(Boolean);
@@ -211,6 +213,15 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
     setEditing(null);
   }
 
+  // İçerik araması: tüm görüşmelerin konusu, notları ve görüşmeyi yapan
+  const terms = useMemo(() => searchTerms(contentQuery), [contentQuery]);
+  const contentHits = useMemo(() => {
+    if (!allMeetings || terms.length === 0) return [];
+    return allMeetings
+      .filter((m) => matchesFilter(m.students) && meetingMatches(m, terms))
+      .sort((a, b) => (b.scheduled_at ?? '').localeCompare(a.scheduled_at ?? ''));
+  }, [allMeetings, terms, matchesFilter]);
+
   async function handleDelete(id: string) {
     await (supabase.from('meetings') as any).delete().eq('id', id);
     setAllMeetings((prev) => (prev ?? []).filter((m) => m.id !== id));
@@ -223,18 +234,59 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
         theme="teal"
         icon={<IconNotes size={22} />}
         title="Görüşme kayıtları"
-        subtitle={<>{viewMode === 'ogrenciler' ? 'Görüşme eklemek/görmek için bir öğrenci seçin' : `${allMeetingsFilteredSorted.length} görüşme`}</>}
+        subtitle={<>{viewMode === 'ogrenciler' ? 'Görüşme eklemek/görmek için bir öğrenci seçin' : viewMode === 'ara' ? 'Görüşme notlarında ve konularında arayın' : `${allMeetingsFilteredSorted.length} görüşme`}</>}
         actions={<>
 <button
-          onClick={() => setViewMode((v) => (v === 'ogrenciler' ? 'tumu' : 'ogrenciler'))}
+          onClick={() => setViewMode((v) => (v === 'ara' ? 'ogrenciler' : 'ara'))}
+          className={`flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[13px] font-semibold transition-colors ${viewMode === 'ara' ? 'border-teal-500 bg-teal-600 text-white hover:bg-teal-700' : 'border-[var(--border)] bg-[var(--card)] text-[var(--ink)] hover:bg-[var(--paper)]'}`}
+        >
+          <IconSearch size={15} /> {viewMode === 'ara' ? 'Aramayı kapat' : 'Görüşmelerde ara'}
+        </button>
+<button
+          onClick={() => setViewMode((v) => (v === 'tumu' ? 'ogrenciler' : 'tumu'))}
           className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--paper)]"
         >
-          {viewMode === 'ogrenciler' ? <><IconCalendar size={15} /> Tüm görüşmeler</> : <><IconNotes size={15} /> Öğrenciler</>}
+          {viewMode === 'tumu' ? <><IconNotes size={15} /> Öğrenciler</> : <><IconCalendar size={15} /> Tüm görüşmeler</>}
         </button>
       </>}
       />
 
-      {viewMode === 'ogrenciler' ? (
+      {viewMode === 'ara' ? (
+        <>
+          <div className="mb-3 flex">
+            <MeetingSearchBox value={contentQuery} onChange={setContentQuery} autoFocus />
+          </div>
+          {loadingAll || allMeetings === null ? (
+            <p className="py-10 text-center text-[13px] text-[var(--ink-muted)]">Görüşmeler yükleniyor...</p>
+          ) : terms.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] px-4 py-10 text-center text-[13px] text-[var(--ink-muted)]">
+              Aramak istediğiniz kelimeyi yazın (ör. <i>motivasyon</i>, <i>paragraf</i>, <i>uyku</i>). {allMeetings.length} görüşmenin konusu ve notları taranır;
+              birden çok kelime yazarsanız hepsinin geçtiği görüşmeler gelir.
+            </p>
+          ) : contentHits.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] px-4 py-10 text-center text-[13px] text-[var(--ink-muted)]">
+              “{contentQuery.trim()}” geçen görüşme bulunamadı.
+            </p>
+          ) : (
+            <>
+              <p className="mb-2 text-[12.5px] text-[var(--ink-muted)]">
+                {contentHits.length} görüşmede geçiyor · {new Set(contentHits.map((m) => m.student_id)).size} öğrenci
+              </p>
+              <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
+                <ul className="divide-y divide-[var(--border)]">
+                  {contentHits.slice(0, 300).map((m) => (
+                    <li key={m.id}>
+                      <MeetingHit m={m} terms={terms} onOpen={() => setViewing(m)}
+                        studentName={(studentsById.get(m.student_id) ?? m.students)?.full_name ?? 'Bilinmeyen öğrenci'} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {contentHits.length > 300 && <p className="mt-2 text-center text-[12px] text-[var(--ink-muted)]">İlk 300 sonuç gösteriliyor; aramayı daraltın.</p>}
+            </>
+          )}
+        </>
+      ) : viewMode === 'ogrenciler' ? (
         <>
           <ListToolbar query={query} onQuery={setQuery}>
             {availableSiniflar.length > 0 && (

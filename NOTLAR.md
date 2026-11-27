@@ -48,6 +48,11 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 2. Tamamlananlar (yayında)
 
+### Görüşmelerde içerik araması (27 Kasım)
+- **Görüşme kayıtları** sayfasında üstte **"Görüşmelerde ara"** düğmesi: bütün öğrencilerin görüşmelerinin konusu, notları ve görüşmeyi yapan kişi aranır. Sonuçta tarih, öğrenci, konu ve notun aranan kelimenin geçtiği kısmı (vurgulu) görünür; tıklayınca görüşme açılır (düzenle/sil oradan). Üstteki sınav/kurum filtresine uyar.
+- **Bir öğrencinin görüşme kayıtları** sayfasında (ve öğrenci detayındaki görüşme panelinde) liste üstünde arama kutusu: yalnızca o öğrencinin görüşmelerinde arar; eşleşen görüşmeler kelimeler vurgulu, tam haliyle (düzenlenebilir) listelenir.
+- Arama Türkçe harf ve büyük/küçük harf duyarsız ("ogrenci" → "Öğrenci"); birden çok kelime yazılırsa hepsinin geçtiği görüşmeler gelir. SQL gerekmez. Kod: `src/components/MeetingSearch.tsx`.
+
 ### Sesli dikte düzeltmesi (25 Kasım)
 - Görüşme notundaki **Sesli dikte** sessizce çalışmıyormuş gibi kalıyordu: tarayıcının konuşma tanıma hataları (servise ulaşılamadı, tarayıcı izin vermiyor, Türkçe desteklenmiyor) yok sayılıp dikte boşuna yeniden başlatılıyordu.
 - Artık her hata açık bir mesajla gösterilir ve dikte durur; hiç yazı gelmeden art arda kapanırsa sonsuz yeniden başlatma yapılmaz. 10 sn içinde yazı gelmezse ne yapılacağını söyleyen uyarı çıkar.
