@@ -3,11 +3,12 @@ import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPushSecret } from '@/lib/push-server';
-import { todayTr } from '@/lib/day-tasks';
-import { buildPeriodReport, lastWeekRange, type PeriodReportData } from '@/lib/period-report';
+import { todayTr, shiftDate, weekdayIndex } from '@/lib/day-tasks';
+import { buildPeriodReport, type PeriodReportData } from '@/lib/period-report';
 
-// Her pazartesi 08:00 (Türkiye): veritabanı zamanlayıcısı (supabase/student_reports.sql → trigger_weekly_reports) burayı
-// çağırır. Aktif ve koçu olan her öğrenci için geçen haftanın (pazartesi–pazar) raporu üretilip kaydedilir; koça
+// Her sabah 08:00 (Türkiye): veritabanı zamanlayıcısı (supabase/student_reports.sql, otomasyonlar.sql → trigger_weekly_reports)
+// burayı çağırır. Koçun Ayarlar > Otomasyonlar'da seçtiği rapor gününde (varsayılan pazartesi; kapatılabilir) aktif her
+// öğrencisi için önceki 7 günün raporu üretilip kaydedilir; koça
 // "haftalık raporlar hazır" bildirimi gider. İstek app_settings.push_secret ile doğrulanır. Aynı hafta iki kez
 // çağrılırsa zaten kaydedilen raporlar tekrar üretilmez.
 export const maxDuration = 300;
@@ -28,11 +29,31 @@ export async function POST(request: Request) {
   if (!secret || !sameSecret(given, secret)) return NextResponse.json({ error: 'Yetkisiz' }, { status: 401 });
 
   const admin = createAdminClient() as any;
-  const { start, end } = lastWeekRange(todayTr());
+  const today = todayTr();
+  const dow = weekdayIndex(today); // pazartesi = 0
+  const start = shiftDate(today, -7);
+  const end = shiftDate(today, -1);
 
   const { data: students } = await admin.from('students')
     .select('id, full_name, coach_id, responsible_coach_id, platform_only, status').neq('status', 'pasif');
-  const list = ((students ?? []) as any[]).filter((s) => !s.platform_only && s.coach_id);
+  const all = ((students ?? []) as any[]).filter((s) => !s.platform_only && s.coach_id);
+
+  // Koçların otomasyon ayarları (supabase/otomasyonlar.sql); sütun yoksa varsayılan: pazartesi, açık
+  const ids = [...new Set(all.flatMap((s) => [s.coach_id, s.responsible_coach_id]).filter(Boolean))] as string[];
+  const prefs = new Map<string, any>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await admin.from('profiles').select('id, automation_prefs').in('id', ids.slice(i, i + 200));
+    if (error) break;
+    for (const p of (data ?? []) as any[]) prefs.set(p.id, p.automation_prefs ?? {});
+  }
+  const pref = (id: string) => prefs.get(id) ?? {};
+  const list = all.filter((s) => {
+    const p = pref(s.coach_id);
+    if (p.rapor_otomatik === false) return false;
+    const day = Number.isInteger(p.rapor_gunu) ? p.rapor_gunu : 0;
+    return day === dow;
+  });
+  if (list.length === 0) return NextResponse.json({ ok: true, start, end, created: 0, skipped: 0, failed: 0 });
 
   const { data: existing } = await admin.from('student_reports').select('student_id')
     .eq('kind', 'otomatik').eq('period_start', start).eq('period_end', end);
@@ -58,9 +79,9 @@ export async function POST(request: Request) {
   }
 
   // Koça tek bildirim
-  const rows = Array.from(perCoach, ([coach, n]) => ({
+  const rows = Array.from(perCoach).filter(([coach]) => pref(coach).koc_rapor !== false).map(([coach, n]) => ({
     recipient_id: coach, kind: 'rapor', title: 'Haftalık raporlar hazır 📊',
-    body: `${n} öğrencinin geçen hafta raporu oluşturuldu. Öğrenci sayfasındaki "Raporlar" sekmesinden bakabilirsiniz.`,
+    body: `${n} öğrencinin son 7 günlük raporu oluşturuldu. Öğrenci sayfasındaki "Raporlar" sekmesinden bakabilirsiniz.`,
     link: '/ogrenciler',
   }));
   if (rows.length) await admin.from('notifications').insert(rows);

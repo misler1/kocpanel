@@ -74,9 +74,9 @@ const profile = profileData as { is_admin: boolean } | null;
       ],
     },
     {
-      title: 'Bildirimler',
+      title: 'Bildirimler ve otomasyonlar',
       items: [
-        { label: 'Bildirim tercihleri', desc: 'Yakında', icon: IconBell, href: '#' },
+        { label: 'Otomasyonlar', desc: 'Otomatik bildirimleri aç/kapat, sabah listesi saati, rapor günü, hatırlatmalar', icon: IconBell, href: '/ayarlar/otomasyonlar' },
       ],
     },
   ];
