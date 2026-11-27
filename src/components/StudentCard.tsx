@@ -146,7 +146,7 @@ export function StudentMeetingList({ students, hrefFor }: {
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
-      <div className="hidden grid-cols-[minmax(0,2fr)_70px_minmax(0,1.2fr)_minmax(0,1.5fr)_minmax(0,1.3fr)_120px_24px] gap-3 border-b border-[var(--border)] bg-[var(--paper)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)] md:grid">
+      <div className="hidden xl:grid-cols-[minmax(0,2fr)_64px_minmax(0,1fr)_176px_156px_172px_20px] gap-3 border-b border-[var(--border)] bg-[var(--paper)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)] xl:grid">
         <span>Öğrenci</span><span>Sınıf</span><span>Kurum</span><span>Son görüşme</span><span>Son deneme</span><span>Son 7 gün program</span><span />
       </div>
       <ul className="divide-y divide-[var(--border)]">
@@ -159,38 +159,38 @@ export function StudentMeetingList({ students, hrefFor }: {
           return (
             <li key={s.id}>
               <Link href={hrefFor(s)}
-                className={`group grid grid-cols-[minmax(0,1fr)_20px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--accent-soft)]/50 md:grid-cols-[minmax(0,2fr)_70px_minmax(0,1.2fr)_minmax(0,1.5fr)_minmax(0,1.3fr)_120px_24px] ${s.status === 'pasif' ? 'opacity-70' : ''}`}>
+                className={`group grid grid-cols-[minmax(0,1fr)_20px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--accent-soft)]/50 xl:grid-cols-[minmax(0,2fr)_64px_minmax(0,1fr)_176px_156px_172px_20px] ${s.status === 'pasif' ? 'opacity-70' : ''}`}>
                 <span className="flex min-w-0 items-center gap-3">
                   <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[12.5px] font-bold ${avatarColor(s.id)}`}>{initials(s.full_name)}</span>
                   <span className="min-w-0">
-                    <span className="block truncate text-[14px] font-semibold text-[var(--ink)]">{s.full_name}</span>
+                    <span title={s.full_name} className="block truncate text-[14px] font-semibold text-[var(--ink)]">{s.full_name}</span>
                     <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[var(--ink-muted)]">
                       {tp && <span className={`rounded-md px-1.5 py-px text-[10.5px] font-semibold ${tp.cls}`}>{tp.label}</span>}
-                      <span className="md:hidden">{[s.sinif_sube, s.kurum].filter(Boolean).join(' · ')}</span>
+                      <span className="xl:hidden">{[s.sinif_sube, s.kurum].filter(Boolean).join(' · ')}</span>
                       {s.is_intern_student && (
                         <span className="rounded-full bg-amber-100 px-2 py-px text-[10.5px] font-medium text-amber-700">
                           Stajyer{s.responsible_coach_other_name ? `: ${s.responsible_coach_other_name}` : ''}
                         </span>
                       )}
-                      <span className={`rounded-full px-2 py-px text-[10.5px] font-semibold md:hidden ${rec.cls}`}>{rec.text}</span>
+                      <span className={`whitespace-nowrap rounded-full px-2 py-px text-[10.5px] font-semibold xl:hidden ${rec.cls}`}>{rec.text}</span>
                     </span>
                     {s.summary && (
-                      <span className="mt-1 flex flex-wrap items-center gap-2 md:hidden">
+                      <span className="mt-1 flex flex-wrap items-center gap-2 xl:hidden">
                         <LastExam sum={s.summary} /><WeekProgram sum={s.summary} />
                       </span>
                     )}
                   </span>
                 </span>
-                <span className="hidden truncate text-[13px] text-[var(--ink)] md:block">{s.sinif_sube || '–'}</span>
-                <span className="hidden truncate text-[13px] text-[var(--ink-muted)] md:block">{s.kurum || '–'}</span>
-                <span className="hidden min-w-0 items-center gap-2 md:flex">
-                  <span className={`flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${rec.cls}`}
+                <span className="hidden truncate text-[13px] text-[var(--ink)] xl:block">{s.sinif_sube || '–'}</span>
+                <span title={s.kurum ?? undefined} className="hidden truncate text-[13px] text-[var(--ink-muted)] xl:block">{s.kurum || '–'}</span>
+                <span className="hidden min-w-0 items-center gap-2 xl:flex">
+                  <span className={`flex min-w-0 items-center gap-1 truncate whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${rec.cls}`}
                     title={lastDate ? `Son görüşme: ${lastDate}` : undefined}>
                     <IconCalendarEvent size={13} /> {rec.text}
                   </span>
                 </span>
-                <span className="hidden min-w-0 md:block"><LastExam sum={s.summary} /></span>
-                <span className="hidden md:block"><WeekProgram sum={s.summary} /></span>
+                <span className="hidden min-w-0 xl:block"><LastExam sum={s.summary} /></span>
+                <span className="hidden min-w-0 xl:block"><WeekProgram sum={s.summary} /></span>
                 <IconChevronRight size={17} className="text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
               </Link>
             </li>

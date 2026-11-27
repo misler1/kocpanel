@@ -48,6 +48,9 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 2. Tamamlananlar (yayında)
 
+### Görüşme listesi tablette (27 Kasım)
+- Görüşme kayıtları → öğrenci listesi tablet genişliğinde (yan menüyle birlikte) sütunlar dar kalıp iç içe geçiyordu (son görüşme, son deneme ve program uyumu üst üste biniyordu). Tablo düzeni artık yalnızca geniş ekranda (xl, ≥1280 px) ve sabit genişlikli sütunlarla; daha dar ekranlarda (tablet, telefon) her öğrenci iki satırlık kart: ad, sınıf · kurum, son görüşme; altında son deneme ve program uyumu. Kesilen ad ve kurumun tamamı üzerine gelince görünür. Kod: `StudentMeetingList` (`src/components/StudentCard.tsx`).
+
 ### Görüşme listesinde program uyumu düzeltmesi (27 Kasım)
 - Görüşme kayıtları → öğrenci listesindeki "son 7 gün program uyumu" yanlış çıkıyordu (ör. %90 yerine %33). Neden: görevler 25 öğrencilik gruplar halinde tek istekte çekiliyordu; Supabase bir istekte en fazla 1000 satır döndürdüğü için fazlası kesiliyor, bazı günlerin görevleri eksik ya da yanlış programdan sayılıyordu.
 - Artık sayfa sayfa hepsi alınır (denemeler de). Ayrıca ertelenen görev, ertelendiği gün yapıldıysa yapılmış sayılır (dönem raporuyla aynı kural).
