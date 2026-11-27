@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useExamFilter } from '@/lib/exam-filter-context';
+import { isInternStudent } from '@/lib/effective-coach';
 
 const COOKIE = 'show_interns';
 
@@ -43,12 +44,20 @@ export function InternToggle() {
         .eq('mentor_id', user.id)
         .neq('status', 'coach');
       const ids: string[] = (interns ?? []).map((i: { teacher_id: string }) => i.teacher_id);
-      let kurumlar: string[] = [];
-      if (ids.length) {
-        const { data: st } = await sb.from('students').select('kurum').in('coach_id', ids).not('kurum', 'is', null);
-        kurumlar = [...new Set<string>((st ?? []).map((s: { kurum: string }) => s.kurum.trim()).filter(Boolean))];
-      }
-      if (!cancelled) setInternKurumlar(ids.length ? kurumlar : []);
+      // Stajyer öğrencisi: stajyerin hesabındaki öğrenci ya da koçun hesabında olup sorumlusu stajyer olan öğrenci
+      const { data: st } = await sb
+        .from('students')
+        .select('kurum, coach_id, responsible_coach_id, responsible_coach_other_name')
+        .in('coach_id', [user.id, ...ids])
+        .not('kurum', 'is', null);
+      const kurumlar = [...new Set<string>(
+        (st ?? [])
+          .filter((s: { coach_id: string; responsible_coach_id: string | null; responsible_coach_other_name: string | null }) =>
+            isInternStudent(s, user.id))
+          .map((s: { kurum: string }) => s.kurum.trim())
+          .filter(Boolean),
+      )];
+      if (!cancelled) setInternKurumlar(kurumlar);
     })();
     return () => { cancelled = true; };
   }, []);
