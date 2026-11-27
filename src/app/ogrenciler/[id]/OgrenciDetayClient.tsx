@@ -143,6 +143,8 @@ export function InfoRow({ label, value }: { label: string; value?: string | null
 
 export type DetayStats = {
   week: { total: number; done: number } | null;
+  /** Son 7 gün (dünden geriye) program uyumu: Görüşme kayıtları listesindeki hesapla aynı */
+  uyum?: { done: number; planned: number } | null;
   questions7: number;
   lastExam: { name: string; type: string; net: number; delta: number | null } | null;
   lastMeetingDays: number | null;
@@ -235,7 +237,7 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
   const hasGuardian = student.guardian_name;
   const hasTarget = student.target_university || student.target_department || student.target_rank;
 
-  const weekPct = stats.week ? Math.round((stats.week.done / Math.max(1, stats.week.total)) * 100) : null;
+  const weekPct = stats.uyum ? Math.round((stats.uyum.done / Math.max(1, stats.uyum.planned)) * 100) : null;
   const meetingTone = stats.lastMeetingDays === null || stats.lastMeetingDays > 14
     ? 'bg-rose-50 text-rose-900' : stats.lastMeetingDays > 7 ? 'bg-amber-50 text-amber-900' : 'bg-teal-50 text-teal-900';
 
@@ -310,9 +312,11 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
 
       {/* ── Özet ── */}
       <div className="mb-4 grid grid-cols-2 gap-2.5 md:grid-cols-4">
-        <StatCard tone="bg-indigo-50 text-indigo-900" label="Bu hafta program"
+        <StatCard tone="bg-indigo-50 text-indigo-900" label="Son 7 gün program"
           value={weekPct === null ? '—' : `%${weekPct}`}
-          sub={stats.week ? `${stats.week.done}/${stats.week.total} görev` : 'Program yazılmamış'} />
+          sub={stats.uyum
+            ? `${stats.uyum.done}/${stats.uyum.planned} görev${stats.week ? ` · bu hafta ${stats.week.done}/${stats.week.total}` : ''}`
+            : stats.week ? `Bu hafta ${stats.week.done}/${stats.week.total} görev` : 'Program yazılmamış'} />
         <StatCard tone="bg-violet-50 text-violet-900" label="Son 7 gün"
           value={`${stats.questions7.toLocaleString('tr-TR')} soru`} />
         <StatCard tone="bg-fuchsia-50 text-fuchsia-900" label="Son deneme"

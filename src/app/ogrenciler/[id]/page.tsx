@@ -11,6 +11,7 @@ import { HatirlatmaPanel } from './HatirlatmaPanel';
 import { shiftDay, targetRows, trDate } from '@/lib/student-motivation';
 import { getStaffAccess } from '@/lib/staff-access';
 import { AnalizListesi, type AnalizOzet } from './AnalizListesi';
+import { computeStudentSummaries } from '@/lib/student-summary';
 
 const daysBetween = (from: string, to: string) =>
   Math.round((new Date(`${to}T12:00:00Z`).getTime() - new Date(`${from}T12:00:00Z`).getTime()) / 86_400_000);
@@ -41,7 +42,7 @@ export default async function OgrenciDetayPage({ params, searchParams }: {
 
   const [
     { data: rawMeetings }, { data: nextMeetings }, { data: rawExams }, { data: rawTasks }, { data: rawExamNets },
-    { data: weekRows }, { data: dailyRows }, pushRes, { data: analizler },
+    { data: weekRows }, { data: dailyRows }, pushRes, { data: analizler }, summaries,
   ] = await Promise.all([
     db.from('meetings').select('*, created_by_profile:created_by(id, full_name)').eq('student_id', id)
       .order('scheduled_at', { ascending: false }).limit(5),
@@ -64,6 +65,8 @@ export default async function OgrenciDetayPage({ params, searchParams }: {
     // Bu öğrenci için yapılan deneme analizleri (yalnızca analizi yapan görür; tablo yoksa boş)
     db.from('exam_analyses').select('id, exam_names, created_at, shared_at').eq('student_id', id)
       .order('created_at', { ascending: false }).limit(20),
+    // Program uyumu: Görüşme kayıtları listesiyle aynı hesap (dünden geriye son 7 gün)
+    computeStudentSummaries(supabase, [id]).catch(() => ({} as Record<string, any>)),
   ]);
 
   const meetings: any[] = rawMeetings ?? [];
@@ -84,6 +87,7 @@ export default async function OgrenciDetayPage({ params, searchParams }: {
 
   const stats: DetayStats = {
     week: week.length ? { total: week.length, done: week.filter((t) => t.student_done).length } : null,
+    uyum: summaries[id]?.weekPlanned ? { done: summaries[id].weekDone, planned: summaries[id].weekPlanned } : null,
     questions7,
     lastExam: last ? {
       name: last.exam_name ?? 'Deneme', type: last.exam_type ?? 'TYT', net: Number(last.net_score) || 0,

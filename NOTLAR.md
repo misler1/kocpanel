@@ -48,6 +48,10 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 2. Tamamlananlar (yayında)
 
+### Program uyumu her yerde aynı hesap (27 Kasım)
+- Öğrenci detayındaki özet kartı "Bu hafta program" (bugünü kapsayan programın bütün görevleri, bugünkü ve ileri günler dahil) ile Görüşme kayıtları listesindeki "Son 7 gün program" (dünden geriye 7 gün) farklı şeyler ölçtüğü için farklı yüzde çıkıyordu (ör. %62 / %54).
+- Artık detay kartı da **"Son 7 gün program"** gösterir ve aynı fonksiyonla hesaplanır (`computeStudentSummaries`): yüzde ve "19/35 görev" listedekiyle aynıdır. Kartın alt satırında ayrıca "bu hafta 23/37" (o anki programın ilerlemesi) yazar.
+
 ### Görüşme listesi tablette (27 Kasım)
 - Görüşme kayıtları → öğrenci listesi tablet genişliğinde (yan menüyle birlikte) sütunlar dar kalıp iç içe geçiyordu (son görüşme, son deneme ve program uyumu üst üste biniyordu). Tablo düzeni artık yalnızca geniş ekranda (xl, ≥1280 px) ve sabit genişlikli sütunlarla; daha dar ekranlarda (tablet, telefon) her öğrenci iki satırlık kart: ad, sınıf · kurum, son görüşme; altında son deneme ve program uyumu. Kesilen ad ve kurumun tamamı üzerine gelince görünür. Kod: `StudentMeetingList` (`src/components/StudentCard.tsx`).
 
