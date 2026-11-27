@@ -47,6 +47,6 @@ export function navAllowed(kind: StaffKind, href: string): boolean {
 /** Öğrenci detayında görünen sekmeler */
 export function allowedStudentTabs(kind: StaffKind): string[] | null {
   if (kind === 'belletmen') return ['program', 'denemeler'];
-  if (kind === 'manager') return ['genel', 'bilgiler', 'program', 'denemeler'];
+  if (kind === 'manager') return ['genel', 'bilgiler', 'program', 'denemeler', 'kaynaklar'];
   return null; // hepsi
 }

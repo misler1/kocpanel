@@ -4,6 +4,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { RaporlarPanel } from './RaporlarPanel';
+import { KaynaklarPanel } from './KaynaklarPanel';
 import { createClient } from '@/lib/supabase/client';
 import { formatTurkishNumber } from '@/lib/format';
 import {
@@ -152,6 +153,7 @@ const TABS = [
   { id: 'bilgiler', label: 'Bilgiler' },
   { id: 'program', label: 'Program ve günlük' },
   { id: 'denemeler', label: 'Denemeler' },
+  { id: 'kaynaklar', label: 'Kaynaklar' },
   { id: 'gorusmeler', label: 'Görüşmeler' },
   { id: 'raporlar', label: 'Raporlar' },
   { id: 'ayarlar', label: 'Ayarlar' },
@@ -429,6 +431,10 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
           </div>
         )}
 
+        {tab === 'kaynaklar' && (
+          <KaynaklarPanel studentId={id} resources={resources} subjectOrder={TRACK_RESOURCES[student.track] ?? null} canEdit={access === 'coach'} />
+        )}
+
         {tab === 'raporlar' && <RaporlarPanel studentId={id} canCreate={access === 'coach'} />}
 
         {tab === 'gorusmeler' && (
@@ -499,24 +505,9 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
             )}
             {hasResources && (
               <Accordion icon={<IconSchool size={16} />} title="Kullanılan kaynaklar" theme="indigo">
-                <div className="space-y-3">
-                  {(TRACK_RESOURCES[student.track] ?? Object.keys(resources)).map((subject) => {
-                    const books = resources[subject];
-                    if (!books) return null;
-                    const filled = books.filter(Boolean);
-                    if (!filled.length) return null;
-                    return (
-                      <div key={subject}>
-                        <p className="mb-1 text-[12px] font-medium text-gray-700">{subject}</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {filled.map((b, i) => (
-                            <span key={i} className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[12px] text-indigo-700">{b}</span>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <p className="text-[13px] text-gray-600">
+                  Kaynaklar ve her kaynağın ilerlemesi <button type="button" onClick={() => changeTab('kaynaklar')} className="font-semibold text-[var(--accent-dark)] hover:underline">Kaynaklar sekmesinde</button>.
+                </p>
               </Accordion>
             )}
           </div>
