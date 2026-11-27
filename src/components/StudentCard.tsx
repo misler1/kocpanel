@@ -1,5 +1,6 @@
 'use client';
 
+import type { StudentSummary } from '@/lib/student-summary';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { IconCalendarEvent, IconChevronRight, IconSearch, IconX } from '@tabler/icons-react';
@@ -17,6 +18,7 @@ export type StudentCardData = {
   last_meeting_at?: string | null;
   is_intern_student?: boolean;
   responsible_coach_other_name?: string | null;
+  summary?: StudentSummary | null;
 };
 
 /** Son öğrenci görüşmesinden bu yana geçen gün (görüşme yoksa null) */
@@ -104,14 +106,48 @@ export function StudentCard({ student: s, href, statusLabel, showMeeting = true 
 }
 
 /** Görüşme kayıtları için satır satır öğrenci listesi (Öğrenciler sayfasındaki liste düzeni) */
+const fmtNet = (n: number) => n.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+
+/** Son deneme: tür, net ve aynı türdeki bir önceki denemeye göre fark */
+function LastExam({ sum }: { sum?: StudentSummary | null }) {
+  if (!sum || sum.lastNet === null) return <span className="text-[12px] text-[var(--ink-muted)]">Deneme yok</span>;
+  const date = sum.examDate ? new Date(`${sum.examDate}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }) : null;
+  return (
+    <span className="flex items-center gap-1.5 text-[12.5px]" title={date ? `Son deneme: ${date}` : 'Son deneme'}>
+      <span className="whitespace-nowrap text-[var(--ink)]">
+        {sum.examType && <span className="text-[11px] font-semibold text-[var(--ink-muted)]">{sum.examType} </span>}
+        <b>{fmtNet(sum.lastNet)}</b> net
+      </span>
+      {sum.netDiff !== null && sum.netDiff !== 0 && (
+        <span className={`whitespace-nowrap rounded-full px-1.5 py-px text-[11px] font-semibold ${sum.netDiff > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
+          {sum.netDiff > 0 ? '▲' : '▼'} {fmtNet(Math.abs(sum.netDiff))}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** Bu hafta (Pazartesi–bugün) programdaki görevlerin yapılma oranı */
+function WeekProgram({ sum }: { sum?: StudentSummary | null }) {
+  if (!sum || sum.weekPlanned === 0) return <span className="text-[12px] text-[var(--ink-muted)]">Program yok</span>;
+  const pct = Math.round((sum.weekDone / sum.weekPlanned) * 100);
+  const cls = pct >= 70 ? 'bg-emerald-50 text-emerald-700' : pct >= 40 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-600';
+  return (
+    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${cls}`}
+      title={`Bu hafta ${sum.weekDone}/${sum.weekPlanned} görev yapıldı`}>
+      %{pct} <span className="font-normal opacity-80">· {sum.weekDone}/{sum.weekPlanned} görev</span>
+    </span>
+  );
+}
+
 export function StudentMeetingList({ students, hrefFor }: {
   students: StudentCardData[];
   hrefFor: (s: StudentCardData) => string;
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
-      <div className="hidden grid-cols-[minmax(0,2.2fr)_90px_minmax(0,1.4fr)_minmax(0,1.5fr)_24px] gap-3 border-b border-[var(--border)] bg-[var(--paper)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)] md:grid">
-        <span>Öğrenci</span><span>Sınıf</span><span>Kurum</span><span>Son görüşme</span><span />
+      <div className="hidden grid-cols-[minmax(0,2fr)_70px_minmax(0,1.2fr)_minmax(0,1.5fr)_minmax(0,1.3fr)_120px_24px] gap-3 border-b border-[var(--border)] bg-[var(--paper)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)] md:grid">
+        <span>Öğrenci</span><span>Sınıf</span><span>Kurum</span><span>Son görüşme</span><span>Son deneme</span><span>Bu hafta program</span><span />
       </div>
       <ul className="divide-y divide-[var(--border)]">
         {students.map((s) => {
@@ -123,7 +159,7 @@ export function StudentMeetingList({ students, hrefFor }: {
           return (
             <li key={s.id}>
               <Link href={hrefFor(s)}
-                className={`group grid grid-cols-[minmax(0,1fr)_20px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--accent-soft)]/50 md:grid-cols-[minmax(0,2.2fr)_90px_minmax(0,1.4fr)_minmax(0,1.5fr)_24px] ${s.status === 'pasif' ? 'opacity-70' : ''}`}>
+                className={`group grid grid-cols-[minmax(0,1fr)_20px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--accent-soft)]/50 md:grid-cols-[minmax(0,2fr)_70px_minmax(0,1.2fr)_minmax(0,1.5fr)_minmax(0,1.3fr)_120px_24px] ${s.status === 'pasif' ? 'opacity-70' : ''}`}>
                 <span className="flex min-w-0 items-center gap-3">
                   <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[12.5px] font-bold ${avatarColor(s.id)}`}>{initials(s.full_name)}</span>
                   <span className="min-w-0">
@@ -138,6 +174,11 @@ export function StudentMeetingList({ students, hrefFor }: {
                       )}
                       <span className={`rounded-full px-2 py-px text-[10.5px] font-semibold md:hidden ${rec.cls}`}>{rec.text}</span>
                     </span>
+                    {s.summary && (
+                      <span className="mt-1 flex flex-wrap items-center gap-2 md:hidden">
+                        <LastExam sum={s.summary} /><WeekProgram sum={s.summary} />
+                      </span>
+                    )}
                   </span>
                 </span>
                 <span className="hidden truncate text-[13px] text-[var(--ink)] md:block">{s.sinif_sube || '–'}</span>
@@ -148,6 +189,8 @@ export function StudentMeetingList({ students, hrefFor }: {
                   </span>
                   {lastDate && <span className="truncate text-[11.5px] text-[var(--ink-muted)]">{lastDate}</span>}
                 </span>
+                <span className="hidden min-w-0 md:block"><LastExam sum={s.summary} /></span>
+                <span className="hidden md:block"><WeekProgram sum={s.summary} /></span>
                 <IconChevronRight size={17} className="text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--accent)]" />
               </Link>
             </li>

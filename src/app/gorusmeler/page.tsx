@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getRequestUser, getRequestScope } from '@/lib/supabase/request-cache';
 import { applyStudentScope, isInternStudent } from '@/lib/effective-coach';
 import { fetchChunkedByIds } from '@/lib/chunked-in';
+import { computeStudentSummaries } from '@/lib/student-summary';
 import { GorusmelerOgrenciListClient } from './GorusmelerOgrenciListClient';
 
 export default async function GorusmelerPage() {
@@ -26,6 +27,8 @@ export default async function GorusmelerPage() {
   const studentIds = (students ?? []).map((s: any) => s.id);
 
   const lastMeetingMap: Record<string, string> = {};
+  // Son deneme ve bu haftaki program (görüşme sorgusuyla aynı anda)
+  const summaryPromise = computeStudentSummaries(supabase, studentIds).catch(() => ({} as Record<string, any>));
   if (studentIds.length > 0) {
     const meetings = await fetchChunkedByIds<any>(studentIds, (chunk) =>
       (supabase as any)
@@ -44,10 +47,12 @@ export default async function GorusmelerPage() {
     });
   }
 
+  const summaryMap = await summaryPromise;
   const studentsWithMeeting = (students ?? []).map((s: any) => ({
     ...s,
     is_intern_student: scope.isMentor && isInternStudent(s, user.id),
     last_meeting_at: lastMeetingMap[s.id] ?? null,
+    summary: summaryMap[s.id] ?? null,
   }));
 
   return <GorusmelerOgrenciListClient students={studentsWithMeeting} />;

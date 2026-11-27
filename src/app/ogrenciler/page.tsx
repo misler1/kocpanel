@@ -6,17 +6,13 @@ import type { Student } from '@/types/database';
 import { cookies } from 'next/headers';
 import { BasvuruListesi, type Basvuru } from '@/components/BasvuruListesi';
 import { applyStudentScope, isInternStudent } from '@/lib/effective-coach';
-import { fetchChunkedByIds } from '@/lib/chunked-in';
-import { tasksForDay, todayTr, shiftDate, weekdayIndex, type TaskRow } from '@/lib/day-tasks';
 
-import type { StudentSummary } from '@/lib/student-summary';
 
 type OgrenciListStudent = Student & {
   birth_date?: string | null;
   last_meeting_at?: string | null;
   sinif_sube?: string | null;
   is_intern_student?: boolean;
-  summary?: StudentSummary | null;
 };
 
 export default async function OgrencilerPage({
@@ -73,53 +69,9 @@ export default async function OgrencilerPage({
     });
   }
 
-  // Özet: son deneme (aynı türdeki bir öncekiyle fark) ve bu hafta (Pazartesi–bugün) programdaki görevlerin yapılma oranı
-  const today = todayTr();
-  const monday = shiftDate(today, -weekdayIndex(today));
-  const summaryMap: Record<string, StudentSummary> = {};
-  if (studentIds.length > 0) {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    const [exams, logs] = await Promise.all([
-      fetchChunkedByIds<any>(studentIds, (chunk) => (supabase as any).from('exams')
-        .select('student_id, exam_type, exam_date, net_score').in('student_id', chunk)
-        .gte('exam_date', shiftDate(today, -365)).order('exam_date', { ascending: false }).limit(5000), 25).catch(() => [] as any[]),
-      fetchChunkedByIds<any>(studentIds, (chunk) => (supabase as any).from('question_logs')
-        .select('id, student_id, week_start, week_end, plan_day, student_done, appointment_id, postponed_from_id, postponed_to_id').in('student_id', chunk)
-        .lte('week_start', today).gte('week_start', shiftDate(monday, -35)).limit(5000), 25)
-        .catch(() => fetchChunkedByIds<any>(studentIds, (chunk) => (supabase as any).from('question_logs')
-          .select('id, student_id, week_start, week_end, plan_day, student_done, appointment_id').in('student_id', chunk)
-          .lte('week_start', today).gte('week_start', shiftDate(monday, -35)).limit(5000), 25))
-        .catch(() => [] as any[]),
-    ]);
-    const examsBy = new Map<string, any[]>();
-    for (const e of exams) { if (!examsBy.has(e.student_id)) examsBy.set(e.student_id, []); examsBy.get(e.student_id)!.push(e); }
-    const logsBy = new Map<string, TaskRow[]>();
-    for (const l of logs) { if (!logsBy.has(l.student_id)) logsBy.set(l.student_id, []); logsBy.get(l.student_id)!.push(l); }
-    for (const id of studentIds) {
-      const list = examsBy.get(id) ?? []; // yeniden eskiye
-      const last = list[0];
-      const prev = last ? list.slice(1).find((e) => (e.exam_type ?? '') === (last.exam_type ?? '')) : undefined;
-      const lastNet = last ? Math.round((Number(last.net_score) || 0) * 100) / 100 : null;
-      let weekDone = 0, weekPlanned = 0;
-      const rows = logsBy.get(id) ?? [];
-      for (let d = monday; d <= today; d = shiftDate(d, 1)) {
-        const day = tasksForDay(rows, d).filter((t) => !t.postponed_from_id);
-        weekPlanned += day.length;
-        weekDone += day.filter((t) => t.student_done).length;
-      }
-      summaryMap[id] = {
-        examType: last?.exam_type ?? null, lastNet, examDate: last?.exam_date ?? null,
-        netDiff: last && prev ? Math.round(((Number(last.net_score) || 0) - (Number(prev.net_score) || 0)) * 100) / 100 : null,
-        weekDone, weekPlanned,
-      };
-    }
-    /* eslint-enable @typescript-eslint/no-explicit-any */
-  }
-
     const studentsWithMeeting = ((students ?? []) as OgrenciListStudent[]).map((s) => ({
     ...s,
     last_meeting_at: lastMeetingMap[s.id] ?? null,
-    summary: summaryMap[s.id] ?? null,
         is_intern_student: scope.isMentor && isInternStudent(s as never, user.id),
   }));
 
@@ -129,7 +81,7 @@ export default async function OgrencilerPage({
     ? studentsWithMeeting.map((s) => ({
       id: s.id, full_name: s.full_name, sinif_sube: s.sinif_sube ?? null, kurum: (s as { kurum?: string | null }).kurum ?? null,
       track: s.track, grade_level: (s as { grade_level?: string | null }).grade_level ?? null, status: s.status,
-      coach_id: s.coach_id, last_meeting_at: null, is_intern_student: false, summary: null,
+      coach_id: s.coach_id, last_meeting_at: null, is_intern_student: false,
     }) as unknown as OgrenciListStudent)
     : studentsWithMeeting;
 
