@@ -351,6 +351,7 @@ export function DenemelerClient({ initialExams, students, initialFilter, readOnl
       // yeni kayıtlar da bu denemenin grubuna girer (sonraki yüklemede güncellenebilsin)
       if (created.length) setRenameTarget((t) => (t ? { ...t, ids: [...t.ids, ...created.map((c) => c.id)] } : t));
       const parts = [`${data.updated} öğrencinin eksik bilgileri eklendi`];
+      if (data.kazanimAdded) parts.push(`${data.kazanimAdded} öğrenciye kazanım analizi eklendi`);
       if (created.length) parts.push(`${created.length} öğrenciye deneme kaydı eklendi`);
       if (data.alreadyComplete) parts.push(`${data.alreadyComplete} öğrencide zaten tamdı`);
       const um: { rawName: string; suggestId: string | null }[] = data.unmatched ?? [];

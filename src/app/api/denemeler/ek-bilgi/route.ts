@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
   const unmatched: { rawName: string; suggestId: string | null }[] = [];
   const matchedStudents = new Set<string>();
   let alreadyComplete = 0;
+  let kazanimAdded = 0;
 
   for (const rec of parsed.result.records) {
     const recType = rec.examType ?? parsed.examType;
@@ -104,15 +105,19 @@ export async function POST(req: NextRequest) {
     }
 
     const patch: Record<string, unknown> = {};
-    if (isEmpty(row.question_results) && rec.questions?.length) patch.question_results = rec.questions;
+    if (isEmpty(row.question_results) && rec.questions?.length) {
+      patch.question_results = rec.questions;
+      if (rec.questions.some((q) => q.ks)) kazanimAdded++;
+    }
     else if (Array.isArray(row.question_results)) {
-      // Eksik olan kısım eklenir: kazanım özeti (ks) yoksa ks, soru soru cevaplar yoksa cevaplar
+      // Eksik olan kısım ders ders eklenir: o derste kazanım özeti (ks) yoksa ks, soru soru cevap yoksa cevaplar
       const cur: any[] = row.question_results;
-      const hasKs = cur.some((q) => q?.ks);
-      const hasAns = cur.some((q) => q && !q.ks);
-      const addKs = hasKs ? [] : (rec.questions ?? []).filter((q) => q.ks);
-      const addAns = hasAns ? [] : (rec.questions ?? []).filter((q) => !q.ks);
+      const ksSubj = new Set(cur.filter((q) => q?.ks).map((q) => q.s));
+      const ansSubj = new Set(cur.filter((q) => q && !q.ks).map((q) => q.s));
+      const addKs = (rec.questions ?? []).filter((q) => q.ks && !ksSubj.has(q.s));
+      const addAns = (rec.questions ?? []).filter((q) => !q.ks && !ansSubj.has(q.s));
       if (addKs.length || addAns.length) patch.question_results = [...addAns, ...cur, ...addKs];
+      if (addKs.length) kazanimAdded++;
     }
     if (isEmpty(row.subject_averages) && rec.averages && Object.keys(rec.averages).length) patch.subject_averages = rec.averages;
     if (rec.rankings && Object.keys(rec.rankings).length) {
@@ -157,6 +162,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     updated: updates.length,
+    kazanimAdded,
     created,
     alreadyComplete,
     unmatched,
