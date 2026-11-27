@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import type { Student } from '@/types/database';
-import { IconArchive, IconPlus, IconUsers, IconX } from '@tabler/icons-react';
+import { IconArchive, IconPlus, IconUsers, IconX, IconSparkles, IconTrash } from '@tabler/icons-react';
+import { createClient } from '@/lib/supabase/client';
 import { PageHero } from '@/components/ui/PageHero';
 import {
   ListToolbar, matchesQuery, toolbarSelectCls, daysSinceMeeting,
@@ -34,6 +35,7 @@ type ListedStudent = Student & {
   is_intern_student?: boolean;
   responsible_coach_other_name?: string | null;
   summary?: StudentSummary | null;
+  is_sample?: boolean;
 };
 
 // Satır özeti: son görüşme, son deneme neti (bir öncekine göre), bu haftaki program uyumu
@@ -263,6 +265,8 @@ export function OgrencilerClient({ students, archiveMode, staffMode = false }: {
         </div>
       )}
 
+      {!staffMode && !archiveMode && <SampleStudentBox hasSample={students.some((s) => s.is_sample)} empty={students.length === 0} />}
+
       <ListToolbar query={query} onQuery={setQuery}>
         {availableSiniflar.length > 0 && (
           <select value={sinifFilter} onChange={(e) => setSinifFilter(e.target.value)} className={toolbarSelectCls}>
@@ -313,6 +317,7 @@ export function OgrencilerClient({ students, archiveMode, staffMode = false }: {
                         <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[var(--ink-muted)]">
                           {tp && <span className={`rounded-md px-1.5 py-px text-[10.5px] font-semibold ${tp.cls}`}>{tp.label}</span>}
                           <span className="md:hidden">{[s.sinif_sube, s.kurum].filter(Boolean).join(' · ')}</span>
+                          {s.is_sample && <span className="rounded-full bg-[#E6F7F7] px-2 py-px text-[10.5px] font-semibold text-[#0B7076]">Örnek</span>}
                           {s.is_intern_student && (
                             <span className="rounded-full bg-amber-100 px-2 py-px text-[10.5px] font-medium text-amber-700">
                               Stajyer{s.responsible_coach_other_name ? `: ${s.responsible_coach_other_name}` : ''}
@@ -345,6 +350,71 @@ export function OgrencilerClient({ students, archiveMode, staffMode = false }: {
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+// Örnek öğrenci (supabase/ornek_ogrenci.sql): sistemi tanımak için dolu verili bir öğrenci ekle / kaldır
+function SampleStudentBox({ hasSample, empty }: { hasSample: boolean; empty: boolean }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  // Sunucuda da aynı görünsün diye başta gösterilir; tarayıcıda "gizle" seçildiyse hemen kapanır
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    try { if (localStorage.getItem('kd:sample-hint-hidden') === '1') setHidden(true); } catch {}
+  }, []);
+
+  async function create() {
+    setBusy(true); setErr(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (createClient() as any).rpc('create_sample_student');
+    setBusy(false);
+    if (error) { setErr(/create_sample_student/i.test(error.message) ? 'Örnek öğrenci henüz etkin değil (supabase/ornek_ogrenci.sql çalıştırılmalı).' : error.message); return; }
+    router.push(`/ogrenciler/${data}`);
+  }
+  async function remove() {
+    if (!confirm('Örnek öğrenci ve tüm örnek kayıtları silinsin mi?')) return;
+    setBusy(true); setErr(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (createClient() as any).rpc('delete_sample_student');
+    setBusy(false);
+    if (error) { setErr(error.message); return; }
+    router.refresh();
+  }
+
+  if (hasSample) {
+    return (
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#C5EEEE] bg-[#E6F7F7] px-4 py-3 text-[13px] text-[#0B595E]">
+        <IconSparkles size={18} className="flex-shrink-0" />
+        <span className="min-w-0 flex-1">Listede bir <b>örnek öğrenci</b> var. Sistemi tanıdıktan sonra silebilirsiniz.</span>
+        <button type="button" disabled={busy} onClick={remove}
+          className="flex items-center gap-1 rounded-lg border border-[#94DEDE] bg-white px-3 py-1.5 text-[12.5px] font-semibold text-[#0B7076] hover:bg-[#F3FBFB] disabled:opacity-50">
+          <IconTrash size={14} /> {busy ? 'Siliniyor…' : 'Örnek öğrenciyi sil'}
+        </button>
+        {err && <p className="w-full text-[12px] text-[var(--danger)]">{err}</p>}
+      </div>
+    );
+  }
+  if (hidden && !empty) return null;
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-[13px] text-[var(--ink)]">
+      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#1B4A8A] to-[#0FA3A8] text-white"><IconSparkles size={18} /></span>
+      <span className="min-w-0 flex-1">
+        <b>Sistemi örnek bir öğrenciyle tanıyın.</b>
+        <span className="block text-[12px] text-[var(--ink-muted)]">Görüşmeler, denemeler, haftalık program, günlükler ve konu ilerleyişi dolu bir öğrenci eklenir; istediğinizde silersiniz.</span>
+      </span>
+      <button type="button" disabled={busy} onClick={create}
+        className="rounded-lg bg-[var(--accent)] px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-[var(--accent-dark)] disabled:opacity-50">
+        {busy ? 'Ekleniyor…' : 'Örnek öğrenci ekle'}
+      </button>
+      {!empty && (
+        <button type="button" aria-label="Gizle" title="Bir daha gösterme"
+          onClick={() => { setHidden(true); try { localStorage.setItem('kd:sample-hint-hidden', '1'); } catch {} }}
+          className="text-[var(--ink-muted)] hover:text-[var(--ink)]"><IconX size={16} /></button>
+      )}
+      {err && <p className="w-full text-[12px] text-[var(--danger)]">{err}</p>}
     </div>
   );
 }
