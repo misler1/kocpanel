@@ -3,6 +3,7 @@
 
 import { IconUsers, IconSchool } from '@tabler/icons-react';
 import { PushToggle } from '@/components/PushToggle';
+import { DeleteAccount } from '@/components/DeleteAccount';
 import {
   Accordion, InfoRow, GunlukAccordion, TRACK_LABELS, TRACK_RESOURCES,
 } from '../../ogrenciler/[id]/OgrenciDetayClient';
@@ -84,6 +85,8 @@ export function OgrenciBilgilerClient({ student }: { student: any }) {
       <PushToggle />
 
       <GunlukAccordion studentId={student.id} />
+
+      <DeleteAccount kind="student" className="pt-4" />
     </div>
   );
 }

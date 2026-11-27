@@ -6,6 +6,7 @@ import { IconUser, IconPhone, IconUserCircle, IconMail } from '@tabler/icons-rea
 import { isPlaceholderEmail } from '@/lib/student-account';
 import { PageHero } from '@/components/ui/PageHero';
 import { PushToggle } from '@/components/PushToggle';
+import { DeleteAccount } from '@/components/DeleteAccount';
 
 const ROLE_LABELS: Record<string, string> = {
   koc: 'Koç',
@@ -98,6 +99,10 @@ export function HesabimClient({ profile, userId }: { profile: any; userId: strin
       <div className="mt-4">
         <PushToggle />
       </div>
+
+      {!profile?.is_admin && (
+        <DeleteAccount className="mt-8" kind={profile?.role === 'ogrenci' ? 'student' : profile?.role === 'veli' ? 'parent' : 'staff'} />
+      )}
     </div>
   );
 }

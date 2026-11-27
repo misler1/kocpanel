@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { DeleteAccount } from '@/components/DeleteAccount';
 
 export default function VeliSifreDegistirPage() {
   const router = useRouter();
@@ -42,6 +43,7 @@ export default function VeliSifreDegistirPage() {
           {loading ? 'Kaydediliyor…' : 'Şifreyi kaydet'}
         </button>
       </form>
+      <DeleteAccount kind="parent" className="mt-8" />
     </div>
   );
 }

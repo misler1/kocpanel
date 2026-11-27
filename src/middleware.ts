@@ -121,7 +121,8 @@ export async function middleware(request: NextRequest) {
     // '/veli-gorusmeleri' koç sayfasıdır; veli alanı yalnızca '/veli' ve '/veli/...'
     const isParentArea = pathname === '/veli' || pathname.startsWith('/veli/');
     // Her rolün kullandığı ortak API (telefon bildirimi aboneliği)
-    const isSharedApi = pathname.startsWith('/api/push/');
+    // Hesap silme de her rolün kendi hesabı için (öğrenci / veli dahil)
+    const isSharedApi = pathname.startsWith('/api/push/') || pathname === '/api/hesap/sil';
 
     // Giriş yapmış kullanıcı giriş/kayıt sayfasına gelirse rolüne göre yönlendir
     if (isAuthPage && !isResetPage) {
