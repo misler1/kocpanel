@@ -53,6 +53,26 @@ end $$;
 revoke all on function react_message(uuid, text) from public, anon;
 grant execute on function react_message(uuid, text) to authenticated;
 
+-- Görülmemiş tepkiler: başkalarının benim mesajlarıma, sohbeti en son açmamdan sonra bıraktığı tepkiler.
+-- Bildirim üretmez; yalnızca Mesajlar rozeti ve sohbet listesindeki işaret için. Sohbet açılınca
+-- (mark_conversation_read son okuma zamanını günceller) sıfırlanır.
+create or replace function my_reaction_alerts()
+returns table (conversation_id uuid, cnt int, last_emoji text, last_by text)
+language sql stable security definer set search_path = public as $$
+  select r.conversation_id, count(*)::int,
+    (array_agg(r.emoji order by r.created_at desc))[1],
+    (array_agg(p.full_name order by r.created_at desc))[1]
+  from message_reactions r
+  join messages m on m.id = r.message_id and m.sender_id = auth.uid() and m.deleted_at is null
+  join conversation_participants cp on cp.conversation_id = r.conversation_id and cp.profile_id = auth.uid()
+  left join profiles p on p.id = r.profile_id
+  where r.profile_id <> auth.uid()
+    and (cp.last_read_at is null or r.created_at > cp.last_read_at)
+  group by r.conversation_id;
+$$;
+revoke all on function my_reaction_alerts() from public, anon;
+grant execute on function my_reaction_alerts() to authenticated;
+
 -- Canlı: tepkiler açık sohbette anında görünsün (silmede eski satır da gelsin)
 alter table message_reactions replica identity full;
 do $$ begin

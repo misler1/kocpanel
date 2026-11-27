@@ -86,6 +86,16 @@ export function NotificationBell({ variant = 'coach' }: { variant?: 'coach' | 's
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Zil açıkken görülen mesaj bildirimleri, zil kapanınca kaldırılır (yalnızca 'mesaj' türü; diğerleri kalır)
+  const seenMessages = useRef(false);
+  useEffect(() => {
+    if (open || !seenMessages.current || !userId) return;
+    seenMessages.current = false;
+    setItems((p) => p.filter((x) => x.kind !== 'mesaj'));
+    (supabase as any).from('notifications').delete().eq('recipient_id', userId).eq('kind', 'mesaj').then(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, userId]);
+
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => { if (!boxRef.current?.contains(e.target as Node)) setOpen(false); };
@@ -112,6 +122,7 @@ export function NotificationBell({ variant = 'coach' }: { variant?: 'coach' | 's
     const next = !open;
     setOpen(next);
     if (!next) return;
+    seenMessages.current = items.some((x) => x.kind === 'mesaj');
     setFresh(new Set(items.filter((x) => !x.read_at).map((x) => x.id)));
     if (!userId || unread === 0) return;
     const now = new Date().toISOString();

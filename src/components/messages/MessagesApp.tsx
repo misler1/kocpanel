@@ -40,6 +40,7 @@ const EDIT_WINDOW_MS = 24 * 3600 * 1000; // supabase/mesaj_okundu_duzenleme.sql 
 type Member = { id: string; full_name: string; role: string; blocked: boolean };
 // supabase/mesaj_tepkileri.sql çalıştırıldıysa gelir
 type Reaction = { message_id: string; conversation_id: string; profile_id: string; emoji: string };
+type ReactionAlert = { conversation_id: string; cnt: number; last_emoji: string; last_by: string | null };
 type Contact = { id: string; full_name: string; role: string; kurum: string | null; sinif: string | null; is_my_student: boolean };
 
 const ROLE_LABEL: Record<string, string> = { koc: 'Koç', ogretmen: 'Öğretmen', ogrenci: 'Öğrenci', veli: 'Veli' };
@@ -91,6 +92,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   const [editing, setEditing] = useState<Msg | null>(null);
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [reactionsReady, setReactionsReady] = useState(false);
+  const [alerts, setAlerts] = useState<Map<string, ReactionAlert>>(new Map());
   const [composerEmoji, setComposerEmoji] = useState(false);
   const [reactPickerFor, setReactPickerFor] = useState<string | null>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -104,9 +106,14 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
   const blockedIds = useMemo(() => new Set(members.filter((m) => m.blocked).map((m) => m.id)), [members]);
 
   const loadConvs = useCallback(async () => {
-    const { data, error: err } = await (supabase as any).rpc('my_conversations');
+    const [{ data, error: err }, al] = await Promise.all([
+      (supabase as any).rpc('my_conversations'),
+      (supabase as any).rpc('my_reaction_alerts'),
+    ]);
     if (err) { if (missingSetup(err)) setSetupError(true); setLoaded(true); return; }
     setConvs(data ?? []);
+    // Açık sohbet zaten görülüyor: onun tepki işareti gösterilmez
+    if (!al.error) setAlerts(new Map(((al.data ?? []) as ReactionAlert[]).filter((a) => a.conversation_id !== activeRef.current).map((a) => [a.conversation_id, a])));
     setLoaded(true);
   }, [supabase]);
 
@@ -139,6 +146,7 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
     await (supabase as any).rpc('mark_conversation_read', { p_conv: id });
     markMessagesRead();
     setConvs((p) => p.map((c) => (c.id === id ? { ...c, unread: 0 } : c)));
+    setAlerts((p) => { if (!p.has(id)) return p; const n = new Map(p); n.delete(id); return n; });
   }, [supabase, loadReadState]);
 
   // İlk yükleme: veriler sunucudan (RPC) geldiği için effect içinde çekilir
@@ -155,13 +163,14 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
     return () => clearInterval(t);
   }, [activeId, extras, convReceipts, loadReadState]);
 
-  // Mesajlar bölümüne girmek mesaj bildirimlerini görmek sayılır: zildeki ışık söner (sohbeti açmak gerekmez)
+  // Mesajlar bölümüne girmek mesaj bildirimlerini görmek sayılır: zilden kaldırılır (sohbeti açmak gerekmez).
+  // Yalnızca 'mesaj' türü silinir; diğer bildirimler zilde kalır.
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      await (supabase as any).from('notifications').update({ read_at: new Date().toISOString() })
-        .eq('recipient_id', user.id).eq('kind', 'mesaj').is('read_at', null);
+      await (supabase as any).from('notifications').delete()
+        .eq('recipient_id', user.id).eq('kind', 'mesaj');
       window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
     })();
   }, [supabase]);
@@ -203,6 +212,9 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
           const rest = p.filter((x) => !(x.message_id === row.message_id && x.profile_id === row.profile_id));
           return payload.eventType === 'DELETE' ? rest : [...rest, row];
         });
+        if (payload.eventType !== 'DELETE' && row.profile_id !== meId) {
+          (supabase as any).rpc('mark_conversation_read', { p_conv: row.conversation_id }).then(markMessagesRead);
+        }
       })
       .subscribe();
     const timer = setInterval(() => {
@@ -503,12 +515,29 @@ export function MessagesApp({ variant, meId, isStaff }: { variant: 'coach' | 'st
                   </span>
                 </span>
                 <span className="flex items-center justify-between gap-2">
-                  <span className={`truncate text-[12.5px] ${c.unread ? 'font-semibold text-[var(--ink)]' : 'text-[var(--ink-muted)]'}`}>
-                    {c.last_message ? `${c.last_sender === meId ? 'Sen: ' : ''}${c.last_message}` : c.kind === 'group' ? `${c.member_count} üye` : 'Yeni sohbet'}
+                  {(() => {
+                    const al = !c.unread && c.id !== activeId ? alerts.get(c.id) : undefined;
+                    return al ? (
+                      <span className="truncate text-[12.5px] font-semibold text-[var(--ink)]">
+                        {c.kind === 'group' && al.last_by ? `${al.last_by.split(' ')[0]} ` : ''}mesajına {al.last_emoji} bıraktı
+                      </span>
+                    ) : (
+                      <span className={`truncate text-[12.5px] ${c.unread ? 'font-semibold text-[var(--ink)]' : 'text-[var(--ink-muted)]'}`}>
+                        {c.last_message ? `${c.last_sender === meId ? 'Sen: ' : ''}${c.last_message}` : c.kind === 'group' ? `${c.member_count} üye` : 'Yeni sohbet'}
+                      </span>
+                    );
+                  })()}
+                  <span className="flex flex-shrink-0 items-center gap-1">
+                    {c.id !== activeId && (alerts.get(c.id)?.cnt ?? 0) > 0 && (
+                      <span title="Mesajlarına yeni tepki" aria-label={`${alerts.get(c.id)!.cnt} yeni tepki`}
+                        className="flex h-5 min-w-5 items-center justify-center gap-0.5 rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white">
+                        <IconMoodSmile size={12} strokeWidth={2.5} />{alerts.get(c.id)!.cnt}
+                      </span>
+                    )}
+                    {c.unread > 0 && (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 text-[11px] font-bold text-white">{c.unread}</span>
+                    )}
                   </span>
-                  {c.unread > 0 && (
-                    <span className="flex h-5 min-w-5 flex-shrink-0 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 text-[11px] font-bold text-white">{c.unread}</span>
-                  )}
                 </span>
               </span>
             </button>

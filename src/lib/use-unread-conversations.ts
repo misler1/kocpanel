@@ -5,7 +5,8 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-// Menüdeki "Mesajlar" rozeti: okunmamış mesajı olan sohbet (kişi/grup) sayısı.
+// Menüdeki "Mesajlar" rozeti: okunmamış mesajı ya da mesajlarına görülmemiş tepkisi olan sohbet (kişi/grup) sayısı.
+// Tepkiler bildirim üretmez; message_reactions tablosu ayrıca dinlenir.
 // Sayfadaki bütün menüler (masaüstü, telefon, öğrenci) aynı sayacı paylaşır; tek bir canlı kanal açılır.
 // Yeni mesaj send_message'da alıcıya 'mesaj' bildirimi ürettiği için bildirim tablosu dinlenir;
 // sohbet açılınca MessagesApp markMessagesRead() ile sayacı hemen tazeler.
@@ -36,11 +37,17 @@ async function doRefresh() {
     channel = supabase
       .channel(`unread-conv:${user.id}:${crypto.randomUUID()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${user.id}` }, () => refreshUnread())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, () => refreshUnread())
       .subscribe();
   }
-  const { data, error } = await (supabase as any).rpc('my_conversations');
+  const [{ data, error }, alerts] = await Promise.all([
+    (supabase as any).rpc('my_conversations'),
+    (supabase as any).rpc('my_reaction_alerts'), // supabase/mesaj_tepkileri.sql çalıştırılmadıysa hata verir, yok sayılır
+  ]);
   if (error) return;
-  emit((data ?? []).filter((c: any) => (c.unread ?? 0) > 0).length);
+  const ids = new Set<string>((data ?? []).filter((c: any) => (c.unread ?? 0) > 0).map((c: any) => c.id));
+  if (!alerts.error) (alerts.data ?? []).forEach((a: any) => { if (a.cnt > 0) ids.add(a.conversation_id); });
+  emit(ids.size);
 }
 
 export function refreshUnread() {
