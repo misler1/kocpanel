@@ -3,7 +3,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { IconMinus, IconX, IconMessages } from '@tabler/icons-react';
+import { IconMinus, IconX, IconMessages, IconSparkles } from '@tabler/icons-react';
+import { YapayZekaAsistani } from './YapayZekaAsistani';
 import { createClient } from '@/lib/supabase/client';
 import { GorusmeOgrenciClient } from '@/app/gorusmeler/[id]/GorusmeOgrenciClient';
 
@@ -52,6 +53,15 @@ export function GorusmePaneli({ student, minimized, onMinimize, onClose }: {
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <details className="group mb-3 rounded-xl border border-violet-100 bg-white">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-[13px] font-semibold text-violet-800">
+            <IconSparkles size={16} /> Görüşme hazırlığı (yapay zeka)
+            <span className="ml-auto text-[11px] font-normal text-gray-400 group-open:hidden">Aç</span>
+          </summary>
+          <div className="border-t border-violet-50 p-3">
+            <YapayZekaAsistani studentId={student.id} only="gorusme" />
+          </div>
+        </details>
         {meetings === null ? (
           <p className="p-4 text-[13px] text-[var(--ink-muted)]">Yükleniyor…</p>
         ) : (

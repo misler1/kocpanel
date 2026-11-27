@@ -11,8 +11,9 @@ import {
   IconChevronDown, IconChevronUp,
   IconCalendar, IconChartBar, IconCheckbox, IconBooks,
   IconUsers, IconSchool, IconTrophy,
-  IconEdit, IconTrash, IconNotebook, IconTarget, IconArrowLeft, IconCalendarPlus, IconUser,
+  IconEdit, IconTrash, IconNotebook, IconTarget, IconArrowLeft, IconCalendarPlus, IconUser, IconSparkles,
 } from '@tabler/icons-react';
+import { YapayZekaAsistani } from './YapayZekaAsistani';
 import { avatarColor, initials, trackPill } from '@/lib/ui-colors';
 import { OgrenciProgramlari } from './OgrenciProgramlari';
 import { CalisilanKonular } from './CalisilanKonular';
@@ -349,6 +350,13 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
       <AccordionCardMode.Provider value={true}>
         {tab === 'genel' && (
           <div className="grid gap-3 lg:grid-cols-2">
+            {access === 'coach' && (
+              <div className="lg:col-span-2">
+                <Accordion icon={<IconSparkles size={16} />} title="Yapay zeka asistanı" theme="violet">
+                  <YapayZekaAsistani studentId={id} />
+                </Accordion>
+              </div>
+            )}
             <Accordion icon={<IconCalendar size={16} />} title="Son görüşmeler" theme="teal"
               right={canMeet ? <button type="button" onClick={openPanel} className="text-teal-700 hover:underline">+ Ekle</button> : null}>
               <MeetingList meetings={meetings.slice(0, 3)} studentId={id} />
