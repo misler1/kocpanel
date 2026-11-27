@@ -7,6 +7,16 @@ import { useExamFilter } from '@/lib/exam-filter-context';
 import { isInternStudent } from '@/lib/effective-coach';
 
 const COOKIE = 'show_interns';
+// Son bilinen durum (kullanıcıya göre): anahtar sayfa açılır açılmaz görünsün, ağdan gelen bilgi arkadan tazelesin
+const CACHE_KEY = 'kd:intern-toggle:v1';
+type Cached = { userId: string; hasInterns: boolean; kurumlar: string[] };
+
+function readCache(): Cached | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Cached) : null;
+  } catch { return null; }
+}
 
 function cookieOn() {
   return typeof document !== 'undefined' && document.cookie.split('; ').includes(`${COOKIE}=1`);
@@ -37,8 +47,15 @@ export function InternToggle() {
     let cancelled = false;
     (async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // getSession tarayıcıdaki oturumu okur (ağ beklemez); kimlik doğrulaması sorgularda RLS ile yapılır
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user || cancelled) return;
+      const cached = readCache();
+      if (cached?.userId === user.id) {
+        setHasInterns(cached.hasInterns);
+        setInternKurumlar(cached.kurumlar);
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sb = supabase as any;
       const { data: interns } = await sb
@@ -47,12 +64,14 @@ export function InternToggle() {
         .eq('mentor_id', user.id)
         .neq('status', 'coach');
       const ids: string[] = (interns ?? []).map((i: { teacher_id: string }) => i.teacher_id);
-      if (!cancelled) setHasInterns(ids.length > 0);
+      const save = (kurumlar: string[]) => {
+        if (cancelled) return;
+        setHasInterns(ids.length > 0);
+        setInternKurumlar(kurumlar);
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ userId: user.id, hasInterns: ids.length > 0, kurumlar })); } catch {}
+      };
       // Stajyer öğrencisi: stajyerin hesabındaki öğrenci ya da koçun hesabında olup sorumlusu stajyer olan öğrenci
-      if (ids.length === 0) {
-        if (!cancelled) setInternKurumlar([]);
-        return;
-      }
+      if (ids.length === 0) { save([]); return; }
       const { data: st } = await sb
         .from('students')
         .select('kurum, coach_id, responsible_coach_id, responsible_coach_other_name')
@@ -65,7 +84,7 @@ export function InternToggle() {
           .map((s: { kurum: string }) => s.kurum.trim())
           .filter(Boolean),
       )];
-      if (!cancelled) setInternKurumlar(kurumlar);
+      save(kurumlar);
     })();
     return () => { cancelled = true; };
   }, []);
