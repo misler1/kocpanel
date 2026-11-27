@@ -19,8 +19,10 @@ function writeCookie(on: boolean) {
 }
 
 /**
- * Stajyerlerin öğrencileri anahtarı yalnızca stajyerlerin çalıştığı kurum seçiliyken görünür
- * (ör. stajyer programı olan vakıf). Başka kurum ya da "Tüm kurumlar" seçilince gizlenir ve kapanır.
+ * Stajyerlerin öğrencileri anahtarı:
+ * - Rehber öğretmenin altında stajyer koç yoksa hiç görünmez.
+ * - Stajyer varsa "Tüm kurumlar" seçiliyken ve stajyer öğrencilerinin bulunduğu her kurumda görünür.
+ * - Stajyer öğrencisi olmayan bir kurum seçilince gizlenir ve kapanır.
  * Deneme sonuçlarında gösterilmez: orada stajyerlerin öğrencileri her zaman listededir.
  */
 export function InternToggle() {
@@ -28,6 +30,7 @@ export function InternToggle() {
   const { kurum } = useExamFilter();
   // null: henüz yüklenmedi; [] : stajyer yok
   const [internKurumlar, setInternKurumlar] = useState<string[] | null>(null);
+  const [hasInterns, setHasInterns] = useState(false);
   const [on, setOn] = useState(cookieOn);
 
   useEffect(() => {
@@ -44,7 +47,12 @@ export function InternToggle() {
         .eq('mentor_id', user.id)
         .neq('status', 'coach');
       const ids: string[] = (interns ?? []).map((i: { teacher_id: string }) => i.teacher_id);
+      if (!cancelled) setHasInterns(ids.length > 0);
       // Stajyer öğrencisi: stajyerin hesabındaki öğrenci ya da koçun hesabında olup sorumlusu stajyer olan öğrenci
+      if (ids.length === 0) {
+        if (!cancelled) setInternKurumlar([]);
+        return;
+      }
       const { data: st } = await sb
         .from('students')
         .select('kurum, coach_id, responsible_coach_id, responsible_coach_other_name')
@@ -62,9 +70,9 @@ export function InternToggle() {
     return () => { cancelled = true; };
   }, []);
 
-  const hasInterns = !!internKurumlar && internKurumlar.length > 0;
-  const kurumOk = !!kurum && !!internKurumlar?.includes(kurum.trim());
-  const visible = hasInterns && kurumOk && !pathname?.startsWith('/denemeler');
+  // Stajyer koçu olan rehber: "Tüm kurumlar" ya da stajyer öğrencisi bulunan bir kurum seçiliyken açık
+  const kurumOk = hasInterns && (!kurum || !!internKurumlar?.includes(kurum.trim()));
+  const visible = kurumOk && !pathname?.startsWith('/denemeler');
 
   // Anahtar açıkken stajyer kurumu dışına çıkılırsa kapat (deneme sayfası hariç; orada etkisi yok)
   useEffect(() => {
