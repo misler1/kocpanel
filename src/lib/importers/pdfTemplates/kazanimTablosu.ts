@@ -67,6 +67,8 @@ export function parseKazanimTable(pageItems: PdfItem[], sectionOf: (label: strin
       }
       if (sTok && dTok && yTok && isInt(sTok.str) && isInt(dTok.str) && isInt(yTok.str)) {
         const soru = +sTok.str; const d = +dTok.str; const y = +yTok.str;
+        // Ders başlığı sayılarla da verilebilir ("Türkçe 0 0 0 0"): soru 0 ve etiket bir ders adıysa bölüm başlar
+        if (soru === 0 && label) { const sec = sectionOf(label); if (sec) cur = sec; continue; }
         if (cur && label && soru > 0 && d + y <= soru) out.push({ s: cur, k: label, soru, d, y });
         continue;
       }

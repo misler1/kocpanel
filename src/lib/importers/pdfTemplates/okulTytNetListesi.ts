@@ -246,37 +246,116 @@ function parseSonucBelgesiAnswers(pi: PdfItem[], results: Record<string, { dogru
     if (!ans || !keyLab) continue;
     const keyStr = pi.filter((i) => Math.abs(i.y - keyLab.y) < 2.5 && /^[A-E]{5,}$/.test(i.str.trim())).sort((a, b) => b.str.length - a.str.length)[0]?.str.trim();
     if (!keyStr) continue;
-    const a = ans.str.replace(/\s+$/, '').padEnd(keyStr.length, ' ');
-    if (a.length !== keyStr.length) continue;
-    const at = (n: number) => { const c = a[n - 1]; return c && /[A-Ea-e]/.test(c) ? c : null; };
-
-    // Sosyal 25 soruluk: 21–25 Felsefe (Seçmeli), din yerine çözülmüşse din sayılır
-    let sections = GRID_SECTIONS[g];
-    if (g === 'SOSYAL' && keyStr.length === 25) {
-      const dinBlank = [16, 17, 18, 19, 20].every((n) => !at(n));
-      const secUsed = [21, 22, 23, 24, 25].some((n) => at(n));
-      if (dinBlank && secUsed) sections = [...sections.slice(0, 3), { from: 21, to: 25, key: 'din', k: 'Felsefe (Seçmeli)' }];
-    }
-    const qs: ExamQuestion[] = [];
-    for (const sec of sections) {
-      for (let n = sec.from; n <= sec.to; n++) {
-        const dc = keyStr[n - 1];
-        if (!dc) continue;
-        const raw = at(n);
-        const oc = raw ? raw.toUpperCase() : null;
-        qs.push({ s: sec.key, n: n - sec.from + 1, k: sec.k, dc, oc, r: !oc ? 'B' : raw === oc && oc === dc ? 'D' : 'Y' });
-      }
-    }
-    // Güvenlik: her ders için doğru/yanlış sayıları sonuç tablosuyla aynı olmalı
-    const ok = sections.every((sec) => {
-      const r = results[sec.key];
-      if (!r) return true;
-      const list = qs.filter((q) => q.s === sec.key);
-      return list.filter((q) => q.r === 'D').length === Number(r.dogru) && list.filter((q) => q.r === 'Y').length === Number(r.yanlis);
-    });
-    if (ok) out.push(...qs);
+    out.push(...answerString(g, ans.str, keyStr, results));
   }
   return out;
+}
+
+/**
+ * Tek metin parçası olarak verilen bir testin cevapları (karakter sırası = soru sırası; büyük harf doğru,
+ * küçük harf yanlış, boşluk boş) → soru kayıtları. Ders toplamlarıyla (doğru/yanlış) tutmazsa hiçbiri alınmaz.
+ */
+function answerString(g: string, ansStr: string, keyStr: string, results: Record<string, { dogru: string; yanlis: string }>): ExamQuestion[] {
+  const a = ansStr.replace(/\s+$/, '').padEnd(keyStr.length, ' ');
+  if (a.length !== keyStr.length) return [];
+  const at = (n: number) => { const c = a[n - 1]; return c && /[A-Ea-e]/.test(c) ? c : null; };
+
+  // Sosyal 25 soruluk: 21–25 Felsefe (Seçmeli), din yerine çözülmüşse din sayılır
+  let sections = GRID_SECTIONS[g];
+  if (g === 'SOSYAL' && keyStr.length === 25) {
+    const dinBlank = [16, 17, 18, 19, 20].every((n) => !at(n));
+    const secUsed = [21, 22, 23, 24, 25].some((n) => at(n));
+    if (dinBlank && secUsed) sections = [...sections.slice(0, 3), { from: 21, to: 25, key: 'din', k: 'Felsefe (Seçmeli)' }];
+  }
+  const qs: ExamQuestion[] = [];
+  for (const sec of sections) {
+    for (let n = sec.from; n <= sec.to; n++) {
+      const dc = keyStr[n - 1];
+      if (!dc) continue;
+      const raw = at(n);
+      const oc = raw ? raw.toUpperCase() : null;
+      qs.push({ s: sec.key, n: n - sec.from + 1, k: sec.k, dc, oc, r: !oc ? 'B' : raw === oc && oc === dc ? 'D' : 'Y' });
+    }
+  }
+  // Güvenlik: her ders için doğru/yanlış sayıları sonuç tablosuyla aynı olmalı
+  const ok = sections.every((sec) => {
+    const r = results[sec.key];
+    if (!r) return true;
+    const list = qs.filter((q) => q.s === sec.key);
+    return list.filter((q) => q.r === 'D').length === Number(r.dogru) && list.filter((q) => q.r === 'Y').length === Number(r.yanlis);
+  });
+  return ok ? qs : [];
+}
+
+/**
+ * Karnenin bir başka düzeni (tek sayfa, öğrenci başına): üstte "Öğrenci Sıra No" / "Sınava Katılan Öğrenci Sayısı"
+ * (Şube · Kurum · İlçe · İl · Genel), ortada her test için "Cevap Anahtarı" ve "Cevaplarınız" metinleri,
+ * altta kazanım tablosu ("S D Y B%", ders başlıkları "Türkçe 0 0 0 0" biçiminde).
+ * Netler/puan liste sayfasından okunur; buradan sıralamalar, soru soru cevaplar ve kazanım özeti eklenir.
+ */
+function attachSiraNoKarne(items: PdfItem[], records: ExtractedPdfRecord[]) {
+  const norm = (s: string) => trUpper(s).replace(/\s+/g, ' ').trim();
+  const pages = [...new Set(items.filter((i) => /^[ÖO]ğrenci S[ıi]ra No$/i.test(i.str.trim())).map((i) => i.page))];
+  if (!pages.length || !records.length) return;
+  const byName = new Map(records.map((r) => [norm(r.rawName), r]));
+  const cx = (i: PdfItem) => i.x + i.w / 2;
+  for (const page of pages) {
+    const pi = items.filter((i) => i.page === page && i.str.trim() !== '');
+    if (!pi.some((i) => /^Cevaplar[ıi]n[ıi]z$/.test(i.str.trim()))) continue;
+
+    // Ad: sol kenarda "12-Ü  -  0" (şube - numara) satırının hemen altı
+    const subeLine = pi.find((i) => i.x < 40 && /\S\s+-\s+\S+$/.test(i.str.trim()) && !i.str.includes('/'));
+    if (!subeLine) continue;
+    const below = pi.filter((i) => i.x < 40 && i.y < subeLine.y - 2 && i.y > subeLine.y - 25).sort((a, b) => b.y - a.y);
+    if (!below.length) continue;
+    const name = norm(below.filter((i) => Math.abs(i.y - below[0].y) < 2).map((i) => i.str).join(' '));
+    const rec = byName.get(name)
+      ?? records.find((r) => { const n = norm(r.rawName); return n.length >= 5 && (name.startsWith(n) || n.startsWith(name)); });
+    if (!rec || rec.questions?.length) continue;
+
+    // Sıralamalar
+    const sira = pi.find((i) => /^[ÖO]ğrenci S[ıi]ra No$/i.test(i.str.trim()));
+    const kat = pi.find((i) => /^S[ıi]nava Kat[ıi]lan/i.test(i.str.trim()));
+    const hdr = pi
+      .filter((i) => sira && i.y > sira.y && i.y - sira.y < 25)
+      .map((i) => ({ x: cx(i), key: RANK_LABELS.find(([re]) => re.test(trUpper(i.str.trim())))?.[1] ?? (/^[ŞS]UBE$/.test(trUpper(i.str.trim())) ? 'sube' : undefined) }))
+      .filter((c): c is { x: number; key: string } => !!c.key);
+    const rowVals = (lab?: PdfItem) => {
+      const o: Record<string, number> = {};
+      if (!lab) return o;
+      for (const it of pi.filter((i) => Math.abs(i.y - lab.y) < 2 && i.x > lab.x + lab.w)) {
+        const v = num(it.str.trim());
+        const c = nearest(hdr, cx(it), 15);
+        if (v !== null && Number.isInteger(v) && c && o[c.key] === undefined) o[c.key] = v;
+      }
+      return o;
+    };
+    const rk = rowVals(sira);
+    if (Object.keys(rk).length) {
+      const katilimci = rowVals(kat);
+      rec.rankings = { ...(rec.rankings ?? {}), ...rk, ...(Object.keys(katilimci).length ? { katilimci } : {}) };
+    }
+
+    // Soru soru cevaplar: her "Cevap Anahtarı" etiketinin hemen altında "Cevaplarınız"; test, aynı yarıdaki en yakın
+    // üstteki "TYT <Test>" satırından anlaşılır
+    const results = rec.results as Record<string, { dogru: string; yanlis: string }>;
+    const answers: ExamQuestion[] = [];
+    const half = (x: number) => (x < 300 ? 0 : 1);
+    for (const kl of pi.filter((i) => /^Cevap Anahtar/.test(i.str.trim()))) {
+      const keyStr = pi.filter((i) => Math.abs(i.y - kl.y) < 2.5 && /^[A-E]{5,}$/.test(i.str.trim())).sort((a, b) => b.str.length - a.str.length)[0];
+      const al = pi.find((i) => /^Cevaplar[ıi]n[ıi]z$/.test(i.str.trim()) && half(i.x) === half(kl.x) && kl.y - i.y > 5 && kl.y - i.y < 25);
+      if (!keyStr || !al) continue;
+      const ans = items.find((i) => i.page === page && Math.abs(i.y - al.y) < 2.5 && i.x > al.x + 30 && half(i.x) === half(al.x) && /[A-Ea-e]/.test(i.str));
+      if (!ans) continue;
+      const lab = pi.filter((i) => /^TYT\s+\S+$/.test(i.str.trim()) && half(i.x) === half(kl.x) && i.y > kl.y && i.y - kl.y < 120)
+        .sort((a, b) => a.y - b.y)[0];
+      const g = lab ? gridName(lab.str.trim().replace(/^TYT\s+/, '')) : null;
+      if (!g) continue;
+      answers.push(...answerString(g, ans.str, keyStr.str.trim(), results));
+    }
+    const kz = parseKazanimPage(pi);
+    if (answers.length || kz.length) rec.questions = [...answers, ...kz];
+  }
 }
 
 /**
@@ -449,6 +528,7 @@ export const okulTytNetListesiTemplate: PdfTemplate = {
     // Yalnızca liste sayfaları varsa
     const list = parseListPages(items);
     attachSonucBelgesiKazanim(items, list.records);
+    attachSiraNoKarne(items, list.records);
     return { examName: list.examName, examDate: null, records: list.records };
   },
 };
