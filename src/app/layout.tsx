@@ -44,13 +44,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" className="h-full antialiased">
+    <html lang="tr" className="h-full antialiased" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/apple-icon.png" />
         <link rel="icon" href="/icon.png" type="image/png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="KoçDefterim" />
+        {/* Koyu tema tercihi sayfa çizilmeden uygulanır (src/components/ThemeToggle.tsx) */}
+        <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('kd:theme')==='dark')document.documentElement.classList.add('dark')}catch(e){}" }} />
       </head>
       <body className="min-h-full flex flex-col bg-gray-50">
         <PwaRegister />

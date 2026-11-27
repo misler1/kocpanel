@@ -15,7 +15,7 @@ export default async function OgrenciLayout({ children }: { children: React.Reac
   const { data: profile } = await (supabase as any).from('profiles').select('full_name').eq('id', user.id).single();
 
   return (
-    <div className={`student-theme ${nunito.variable} flex h-screen flex-col overflow-hidden`}>
+    <div className={`app-shell student-theme ${nunito.variable} flex h-screen flex-col overflow-hidden`}>
       <StudentTopbar fullName={profile?.full_name ?? 'Öğrenci'} />
       <div className="flex flex-1 overflow-hidden">
         <StudentSidebar />

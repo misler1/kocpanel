@@ -166,3 +166,313 @@ body {
   body { background: #fff !important; }
   .report-root * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ═══ Karanlık mod (koç ve öğrenci paneli) ═══════════════════════════════════
+   Tema: localStorage 'kd:theme' = 'dark' → <html class="dark"> (src/app/layout.tsx içindeki küçük betik).
+   Yalnızca panel sayfalarında (.app-shell) geçerli; tanıtım sayfaları açık kalır.
+   Sabit açık renk sınıfları (bg-white, gray, renklerin 50/100 tonları, açık hex zeminler) burada koyu karşılıklarına
+   çevrilir. Bu blok scripts ile üretildi; yeni bir açık hex zemin eklenirse aşağıya eklenmelidir. */
+@media screen {
+html.dark body:has(.app-shell) {
+  color-scheme: dark;
+  --paper: #0E1524;
+  --card: #162033;
+  --border: #27324A;
+  --ink: #E5EAF3;
+  --ink-muted: #96A2BA;
+  --accent: #3D73C7;
+  --accent-dark: #6F9BE0;
+  --accent-soft: #1B2B47;
+  --track-yks: #8EA2F0;
+  --track-yks-soft: #1F2747;
+  --track-lgs: #5FD1CF;
+  --track-lgs-soft: #12333A;
+  --track-ara: #5FD1C4;
+  --track-ara-soft: #12332F;
+  --success: #45B985;
+  --success-soft: #133024;
+  --danger: #F07A6E;
+  --danger-soft: #3A1D1F;
+  --sun-soft: #3A2E12;
+  --sky-soft: #142B42;
+  --pink-soft: #3A1830;
+  --color-gray-50: #131B2C;
+  --color-gray-100: #1B2538;
+  --color-gray-200: #27324A;
+  --color-gray-300: #36435E;
+  --color-gray-400: #7A88A5;
+  --color-gray-500: #95A1BA;
+  --color-gray-600: #AEB8CC;
+  --color-gray-700: #C4CCDB;
+  --color-gray-800: #D8DEE8;
+  --color-gray-900: #E8ECF3;
+  --color-gray-950: #F3F5F9;
+  --color-slate-50: #131B2C;
+  --color-slate-100: #1B2538;
+  --color-slate-200: #27324A;
+  --color-slate-300: #36435E;
+  --color-slate-400: #7A88A5;
+  --color-slate-500: #95A1BA;
+  --color-slate-600: #AEB8CC;
+  --color-slate-700: #C4CCDB;
+  --color-slate-800: #D8DEE8;
+  --color-slate-900: #E8ECF3;
+  --color-zinc-900: #E8ECF3;
+  background-color: var(--paper);
+  color: var(--ink);
+}
+html.dark .app-shell.student-theme { background-image: radial-gradient(#1E2A40 1px, transparent 1px); }
+html.dark .app-shell { background-color: var(--paper); }
+html.dark body:has(.app-shell) .bg-white, html.dark body:has(.app-shell) .hover\:bg-white:hover { background-color: var(--card); }
+html.dark body:has(.app-shell) .from-white { --tw-gradient-from: var(--card); }
+html.dark body:has(.app-shell) .to-white { --tw-gradient-to: var(--card); }
+html.dark body:has(.app-shell) .via-white { --tw-gradient-via: var(--card); }
+html.dark body:has(.app-shell) .bg-white\/70 { background-color: color-mix(in oklab, var(--card) 70%, transparent); }
+html.dark body:has(.app-shell) .bg-white\/80 { background-color: color-mix(in oklab, var(--card) 80%, transparent); }
+html.dark body:has(.app-shell) .bg-white\/90 { background-color: color-mix(in oklab, var(--card) 90%, transparent); }
+html.dark body:has(.app-shell) .bg-white\/95 { background-color: color-mix(in oklab, var(--card) 95%, transparent); }
+html.dark body:has(.app-shell) .border-white { border-color: var(--card); }
+html.dark body:has(.app-shell) .bg-gray-900, html.dark body:has(.app-shell) .bg-gray-800, html.dark body:has(.app-shell) .bg-slate-900, html.dark body:has(.app-shell) .bg-slate-800 { background-color: #0A101C; }
+html.dark body:has(.app-shell) .hover\:bg-gray-800:hover, html.dark body:has(.app-shell) .hover\:bg-gray-700:hover { background-color: #1F2A40; }
+html.dark body:has(.app-shell) .bg-gray-900.text-white, html.dark body:has(.app-shell) .bg-gray-800.text-white { color: #fff; }
+html.dark body:has(.app-shell) .bg-red-50, html.dark body:has(.app-shell) .hover\:bg-red-50:hover { background-color: color-mix(in oklab, var(--color-red-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-red-100, html.dark body:has(.app-shell) .hover\:bg-red-100:hover { background-color: color-mix(in oklab, var(--color-red-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-red-200, html.dark body:has(.app-shell) .hover\:bg-red-200:hover { background-color: color-mix(in oklab, var(--color-red-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-red-50 { --tw-gradient-from: color-mix(in oklab, var(--color-red-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-red-50 { --tw-gradient-to: color-mix(in oklab, var(--color-red-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-red-50 { --tw-gradient-via: color-mix(in oklab, var(--color-red-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-red-100 { --tw-gradient-from: color-mix(in oklab, var(--color-red-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-red-100 { --tw-gradient-to: color-mix(in oklab, var(--color-red-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-red-600, html.dark body:has(.app-shell) .hover\:text-red-600:hover { color: var(--color-red-400); }
+html.dark body:has(.app-shell) .text-red-700, html.dark body:has(.app-shell) .text-red-800, html.dark body:has(.app-shell) .hover\:text-red-700:hover, html.dark body:has(.app-shell) .hover\:text-red-800:hover { color: var(--color-red-300); }
+html.dark body:has(.app-shell) .text-red-900, html.dark body:has(.app-shell) .text-red-950 { color: var(--color-red-200); }
+html.dark body:has(.app-shell) .border-red-100, html.dark body:has(.app-shell) .border-red-200, html.dark body:has(.app-shell) .border-red-300 { border-color: color-mix(in oklab, var(--color-red-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-red-100, html.dark body:has(.app-shell) .ring-red-200 { --tw-ring-color: color-mix(in oklab, var(--color-red-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-rose-50, html.dark body:has(.app-shell) .hover\:bg-rose-50:hover { background-color: color-mix(in oklab, var(--color-rose-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-rose-100, html.dark body:has(.app-shell) .hover\:bg-rose-100:hover { background-color: color-mix(in oklab, var(--color-rose-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-rose-200, html.dark body:has(.app-shell) .hover\:bg-rose-200:hover { background-color: color-mix(in oklab, var(--color-rose-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-rose-50 { --tw-gradient-from: color-mix(in oklab, var(--color-rose-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-rose-50 { --tw-gradient-to: color-mix(in oklab, var(--color-rose-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-rose-50 { --tw-gradient-via: color-mix(in oklab, var(--color-rose-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-rose-100 { --tw-gradient-from: color-mix(in oklab, var(--color-rose-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-rose-100 { --tw-gradient-to: color-mix(in oklab, var(--color-rose-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-rose-600, html.dark body:has(.app-shell) .hover\:text-rose-600:hover { color: var(--color-rose-400); }
+html.dark body:has(.app-shell) .text-rose-700, html.dark body:has(.app-shell) .text-rose-800, html.dark body:has(.app-shell) .hover\:text-rose-700:hover, html.dark body:has(.app-shell) .hover\:text-rose-800:hover { color: var(--color-rose-300); }
+html.dark body:has(.app-shell) .text-rose-900, html.dark body:has(.app-shell) .text-rose-950 { color: var(--color-rose-200); }
+html.dark body:has(.app-shell) .border-rose-100, html.dark body:has(.app-shell) .border-rose-200, html.dark body:has(.app-shell) .border-rose-300 { border-color: color-mix(in oklab, var(--color-rose-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-rose-100, html.dark body:has(.app-shell) .ring-rose-200 { --tw-ring-color: color-mix(in oklab, var(--color-rose-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-amber-50, html.dark body:has(.app-shell) .hover\:bg-amber-50:hover { background-color: color-mix(in oklab, var(--color-amber-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-amber-100, html.dark body:has(.app-shell) .hover\:bg-amber-100:hover { background-color: color-mix(in oklab, var(--color-amber-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-amber-200, html.dark body:has(.app-shell) .hover\:bg-amber-200:hover { background-color: color-mix(in oklab, var(--color-amber-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-amber-50 { --tw-gradient-from: color-mix(in oklab, var(--color-amber-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-amber-50 { --tw-gradient-to: color-mix(in oklab, var(--color-amber-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-amber-50 { --tw-gradient-via: color-mix(in oklab, var(--color-amber-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-amber-100 { --tw-gradient-from: color-mix(in oklab, var(--color-amber-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-amber-100 { --tw-gradient-to: color-mix(in oklab, var(--color-amber-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-amber-600, html.dark body:has(.app-shell) .hover\:text-amber-600:hover { color: var(--color-amber-400); }
+html.dark body:has(.app-shell) .text-amber-700, html.dark body:has(.app-shell) .text-amber-800, html.dark body:has(.app-shell) .hover\:text-amber-700:hover, html.dark body:has(.app-shell) .hover\:text-amber-800:hover { color: var(--color-amber-300); }
+html.dark body:has(.app-shell) .text-amber-900, html.dark body:has(.app-shell) .text-amber-950 { color: var(--color-amber-200); }
+html.dark body:has(.app-shell) .border-amber-100, html.dark body:has(.app-shell) .border-amber-200, html.dark body:has(.app-shell) .border-amber-300 { border-color: color-mix(in oklab, var(--color-amber-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-amber-100, html.dark body:has(.app-shell) .ring-amber-200 { --tw-ring-color: color-mix(in oklab, var(--color-amber-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-orange-50, html.dark body:has(.app-shell) .hover\:bg-orange-50:hover { background-color: color-mix(in oklab, var(--color-orange-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-orange-100, html.dark body:has(.app-shell) .hover\:bg-orange-100:hover { background-color: color-mix(in oklab, var(--color-orange-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-orange-200, html.dark body:has(.app-shell) .hover\:bg-orange-200:hover { background-color: color-mix(in oklab, var(--color-orange-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-orange-50 { --tw-gradient-from: color-mix(in oklab, var(--color-orange-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-orange-50 { --tw-gradient-to: color-mix(in oklab, var(--color-orange-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-orange-50 { --tw-gradient-via: color-mix(in oklab, var(--color-orange-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-orange-100 { --tw-gradient-from: color-mix(in oklab, var(--color-orange-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-orange-100 { --tw-gradient-to: color-mix(in oklab, var(--color-orange-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-orange-600, html.dark body:has(.app-shell) .hover\:text-orange-600:hover { color: var(--color-orange-400); }
+html.dark body:has(.app-shell) .text-orange-700, html.dark body:has(.app-shell) .text-orange-800, html.dark body:has(.app-shell) .hover\:text-orange-700:hover, html.dark body:has(.app-shell) .hover\:text-orange-800:hover { color: var(--color-orange-300); }
+html.dark body:has(.app-shell) .text-orange-900, html.dark body:has(.app-shell) .text-orange-950 { color: var(--color-orange-200); }
+html.dark body:has(.app-shell) .border-orange-100, html.dark body:has(.app-shell) .border-orange-200, html.dark body:has(.app-shell) .border-orange-300 { border-color: color-mix(in oklab, var(--color-orange-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-orange-100, html.dark body:has(.app-shell) .ring-orange-200 { --tw-ring-color: color-mix(in oklab, var(--color-orange-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-yellow-50, html.dark body:has(.app-shell) .hover\:bg-yellow-50:hover { background-color: color-mix(in oklab, var(--color-yellow-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-yellow-100, html.dark body:has(.app-shell) .hover\:bg-yellow-100:hover { background-color: color-mix(in oklab, var(--color-yellow-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-yellow-200, html.dark body:has(.app-shell) .hover\:bg-yellow-200:hover { background-color: color-mix(in oklab, var(--color-yellow-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-yellow-50 { --tw-gradient-from: color-mix(in oklab, var(--color-yellow-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-yellow-50 { --tw-gradient-to: color-mix(in oklab, var(--color-yellow-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-yellow-50 { --tw-gradient-via: color-mix(in oklab, var(--color-yellow-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-yellow-100 { --tw-gradient-from: color-mix(in oklab, var(--color-yellow-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-yellow-100 { --tw-gradient-to: color-mix(in oklab, var(--color-yellow-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-yellow-600, html.dark body:has(.app-shell) .hover\:text-yellow-600:hover { color: var(--color-yellow-400); }
+html.dark body:has(.app-shell) .text-yellow-700, html.dark body:has(.app-shell) .text-yellow-800, html.dark body:has(.app-shell) .hover\:text-yellow-700:hover, html.dark body:has(.app-shell) .hover\:text-yellow-800:hover { color: var(--color-yellow-300); }
+html.dark body:has(.app-shell) .text-yellow-900, html.dark body:has(.app-shell) .text-yellow-950 { color: var(--color-yellow-200); }
+html.dark body:has(.app-shell) .border-yellow-100, html.dark body:has(.app-shell) .border-yellow-200, html.dark body:has(.app-shell) .border-yellow-300 { border-color: color-mix(in oklab, var(--color-yellow-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-yellow-100, html.dark body:has(.app-shell) .ring-yellow-200 { --tw-ring-color: color-mix(in oklab, var(--color-yellow-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-emerald-50, html.dark body:has(.app-shell) .hover\:bg-emerald-50:hover { background-color: color-mix(in oklab, var(--color-emerald-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-emerald-100, html.dark body:has(.app-shell) .hover\:bg-emerald-100:hover { background-color: color-mix(in oklab, var(--color-emerald-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-emerald-200, html.dark body:has(.app-shell) .hover\:bg-emerald-200:hover { background-color: color-mix(in oklab, var(--color-emerald-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-emerald-50 { --tw-gradient-from: color-mix(in oklab, var(--color-emerald-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-emerald-50 { --tw-gradient-to: color-mix(in oklab, var(--color-emerald-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-emerald-50 { --tw-gradient-via: color-mix(in oklab, var(--color-emerald-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-emerald-100 { --tw-gradient-from: color-mix(in oklab, var(--color-emerald-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-emerald-100 { --tw-gradient-to: color-mix(in oklab, var(--color-emerald-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-emerald-600, html.dark body:has(.app-shell) .hover\:text-emerald-600:hover { color: var(--color-emerald-400); }
+html.dark body:has(.app-shell) .text-emerald-700, html.dark body:has(.app-shell) .text-emerald-800, html.dark body:has(.app-shell) .hover\:text-emerald-700:hover, html.dark body:has(.app-shell) .hover\:text-emerald-800:hover { color: var(--color-emerald-300); }
+html.dark body:has(.app-shell) .text-emerald-900, html.dark body:has(.app-shell) .text-emerald-950 { color: var(--color-emerald-200); }
+html.dark body:has(.app-shell) .border-emerald-100, html.dark body:has(.app-shell) .border-emerald-200, html.dark body:has(.app-shell) .border-emerald-300 { border-color: color-mix(in oklab, var(--color-emerald-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-emerald-100, html.dark body:has(.app-shell) .ring-emerald-200 { --tw-ring-color: color-mix(in oklab, var(--color-emerald-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-green-50, html.dark body:has(.app-shell) .hover\:bg-green-50:hover { background-color: color-mix(in oklab, var(--color-green-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-green-100, html.dark body:has(.app-shell) .hover\:bg-green-100:hover { background-color: color-mix(in oklab, var(--color-green-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-green-200, html.dark body:has(.app-shell) .hover\:bg-green-200:hover { background-color: color-mix(in oklab, var(--color-green-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-green-50 { --tw-gradient-from: color-mix(in oklab, var(--color-green-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-green-50 { --tw-gradient-to: color-mix(in oklab, var(--color-green-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-green-50 { --tw-gradient-via: color-mix(in oklab, var(--color-green-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-green-100 { --tw-gradient-from: color-mix(in oklab, var(--color-green-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-green-100 { --tw-gradient-to: color-mix(in oklab, var(--color-green-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-green-600, html.dark body:has(.app-shell) .hover\:text-green-600:hover { color: var(--color-green-400); }
+html.dark body:has(.app-shell) .text-green-700, html.dark body:has(.app-shell) .text-green-800, html.dark body:has(.app-shell) .hover\:text-green-700:hover, html.dark body:has(.app-shell) .hover\:text-green-800:hover { color: var(--color-green-300); }
+html.dark body:has(.app-shell) .text-green-900, html.dark body:has(.app-shell) .text-green-950 { color: var(--color-green-200); }
+html.dark body:has(.app-shell) .border-green-100, html.dark body:has(.app-shell) .border-green-200, html.dark body:has(.app-shell) .border-green-300 { border-color: color-mix(in oklab, var(--color-green-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-green-100, html.dark body:has(.app-shell) .ring-green-200 { --tw-ring-color: color-mix(in oklab, var(--color-green-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-teal-50, html.dark body:has(.app-shell) .hover\:bg-teal-50:hover { background-color: color-mix(in oklab, var(--color-teal-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-teal-100, html.dark body:has(.app-shell) .hover\:bg-teal-100:hover { background-color: color-mix(in oklab, var(--color-teal-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-teal-200, html.dark body:has(.app-shell) .hover\:bg-teal-200:hover { background-color: color-mix(in oklab, var(--color-teal-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-teal-50 { --tw-gradient-from: color-mix(in oklab, var(--color-teal-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-teal-50 { --tw-gradient-to: color-mix(in oklab, var(--color-teal-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-teal-50 { --tw-gradient-via: color-mix(in oklab, var(--color-teal-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-teal-100 { --tw-gradient-from: color-mix(in oklab, var(--color-teal-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-teal-100 { --tw-gradient-to: color-mix(in oklab, var(--color-teal-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-teal-600, html.dark body:has(.app-shell) .hover\:text-teal-600:hover { color: var(--color-teal-400); }
+html.dark body:has(.app-shell) .text-teal-700, html.dark body:has(.app-shell) .text-teal-800, html.dark body:has(.app-shell) .hover\:text-teal-700:hover, html.dark body:has(.app-shell) .hover\:text-teal-800:hover { color: var(--color-teal-300); }
+html.dark body:has(.app-shell) .text-teal-900, html.dark body:has(.app-shell) .text-teal-950 { color: var(--color-teal-200); }
+html.dark body:has(.app-shell) .border-teal-100, html.dark body:has(.app-shell) .border-teal-200, html.dark body:has(.app-shell) .border-teal-300 { border-color: color-mix(in oklab, var(--color-teal-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-teal-100, html.dark body:has(.app-shell) .ring-teal-200 { --tw-ring-color: color-mix(in oklab, var(--color-teal-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-sky-50, html.dark body:has(.app-shell) .hover\:bg-sky-50:hover { background-color: color-mix(in oklab, var(--color-sky-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-sky-100, html.dark body:has(.app-shell) .hover\:bg-sky-100:hover { background-color: color-mix(in oklab, var(--color-sky-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-sky-200, html.dark body:has(.app-shell) .hover\:bg-sky-200:hover { background-color: color-mix(in oklab, var(--color-sky-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-sky-50 { --tw-gradient-from: color-mix(in oklab, var(--color-sky-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-sky-50 { --tw-gradient-to: color-mix(in oklab, var(--color-sky-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-sky-50 { --tw-gradient-via: color-mix(in oklab, var(--color-sky-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-sky-100 { --tw-gradient-from: color-mix(in oklab, var(--color-sky-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-sky-100 { --tw-gradient-to: color-mix(in oklab, var(--color-sky-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-sky-600, html.dark body:has(.app-shell) .hover\:text-sky-600:hover { color: var(--color-sky-400); }
+html.dark body:has(.app-shell) .text-sky-700, html.dark body:has(.app-shell) .text-sky-800, html.dark body:has(.app-shell) .hover\:text-sky-700:hover, html.dark body:has(.app-shell) .hover\:text-sky-800:hover { color: var(--color-sky-300); }
+html.dark body:has(.app-shell) .text-sky-900, html.dark body:has(.app-shell) .text-sky-950 { color: var(--color-sky-200); }
+html.dark body:has(.app-shell) .border-sky-100, html.dark body:has(.app-shell) .border-sky-200, html.dark body:has(.app-shell) .border-sky-300 { border-color: color-mix(in oklab, var(--color-sky-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-sky-100, html.dark body:has(.app-shell) .ring-sky-200 { --tw-ring-color: color-mix(in oklab, var(--color-sky-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-blue-50, html.dark body:has(.app-shell) .hover\:bg-blue-50:hover { background-color: color-mix(in oklab, var(--color-blue-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-blue-100, html.dark body:has(.app-shell) .hover\:bg-blue-100:hover { background-color: color-mix(in oklab, var(--color-blue-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-blue-200, html.dark body:has(.app-shell) .hover\:bg-blue-200:hover { background-color: color-mix(in oklab, var(--color-blue-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-blue-50 { --tw-gradient-from: color-mix(in oklab, var(--color-blue-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-blue-50 { --tw-gradient-to: color-mix(in oklab, var(--color-blue-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-blue-50 { --tw-gradient-via: color-mix(in oklab, var(--color-blue-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-blue-100 { --tw-gradient-from: color-mix(in oklab, var(--color-blue-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-blue-100 { --tw-gradient-to: color-mix(in oklab, var(--color-blue-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-blue-600, html.dark body:has(.app-shell) .hover\:text-blue-600:hover { color: var(--color-blue-400); }
+html.dark body:has(.app-shell) .text-blue-700, html.dark body:has(.app-shell) .text-blue-800, html.dark body:has(.app-shell) .hover\:text-blue-700:hover, html.dark body:has(.app-shell) .hover\:text-blue-800:hover { color: var(--color-blue-300); }
+html.dark body:has(.app-shell) .text-blue-900, html.dark body:has(.app-shell) .text-blue-950 { color: var(--color-blue-200); }
+html.dark body:has(.app-shell) .border-blue-100, html.dark body:has(.app-shell) .border-blue-200, html.dark body:has(.app-shell) .border-blue-300 { border-color: color-mix(in oklab, var(--color-blue-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-blue-100, html.dark body:has(.app-shell) .ring-blue-200 { --tw-ring-color: color-mix(in oklab, var(--color-blue-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-indigo-50, html.dark body:has(.app-shell) .hover\:bg-indigo-50:hover { background-color: color-mix(in oklab, var(--color-indigo-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-indigo-100, html.dark body:has(.app-shell) .hover\:bg-indigo-100:hover { background-color: color-mix(in oklab, var(--color-indigo-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-indigo-200, html.dark body:has(.app-shell) .hover\:bg-indigo-200:hover { background-color: color-mix(in oklab, var(--color-indigo-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-indigo-50 { --tw-gradient-from: color-mix(in oklab, var(--color-indigo-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-indigo-50 { --tw-gradient-to: color-mix(in oklab, var(--color-indigo-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-indigo-50 { --tw-gradient-via: color-mix(in oklab, var(--color-indigo-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-indigo-100 { --tw-gradient-from: color-mix(in oklab, var(--color-indigo-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-indigo-100 { --tw-gradient-to: color-mix(in oklab, var(--color-indigo-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-indigo-600, html.dark body:has(.app-shell) .hover\:text-indigo-600:hover { color: var(--color-indigo-400); }
+html.dark body:has(.app-shell) .text-indigo-700, html.dark body:has(.app-shell) .text-indigo-800, html.dark body:has(.app-shell) .hover\:text-indigo-700:hover, html.dark body:has(.app-shell) .hover\:text-indigo-800:hover { color: var(--color-indigo-300); }
+html.dark body:has(.app-shell) .text-indigo-900, html.dark body:has(.app-shell) .text-indigo-950 { color: var(--color-indigo-200); }
+html.dark body:has(.app-shell) .border-indigo-100, html.dark body:has(.app-shell) .border-indigo-200, html.dark body:has(.app-shell) .border-indigo-300 { border-color: color-mix(in oklab, var(--color-indigo-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-indigo-100, html.dark body:has(.app-shell) .ring-indigo-200 { --tw-ring-color: color-mix(in oklab, var(--color-indigo-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-violet-50, html.dark body:has(.app-shell) .hover\:bg-violet-50:hover { background-color: color-mix(in oklab, var(--color-violet-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-violet-100, html.dark body:has(.app-shell) .hover\:bg-violet-100:hover { background-color: color-mix(in oklab, var(--color-violet-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-violet-200, html.dark body:has(.app-shell) .hover\:bg-violet-200:hover { background-color: color-mix(in oklab, var(--color-violet-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-violet-50 { --tw-gradient-from: color-mix(in oklab, var(--color-violet-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-violet-50 { --tw-gradient-to: color-mix(in oklab, var(--color-violet-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-violet-50 { --tw-gradient-via: color-mix(in oklab, var(--color-violet-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-violet-100 { --tw-gradient-from: color-mix(in oklab, var(--color-violet-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-violet-100 { --tw-gradient-to: color-mix(in oklab, var(--color-violet-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-violet-600, html.dark body:has(.app-shell) .hover\:text-violet-600:hover { color: var(--color-violet-400); }
+html.dark body:has(.app-shell) .text-violet-700, html.dark body:has(.app-shell) .text-violet-800, html.dark body:has(.app-shell) .hover\:text-violet-700:hover, html.dark body:has(.app-shell) .hover\:text-violet-800:hover { color: var(--color-violet-300); }
+html.dark body:has(.app-shell) .text-violet-900, html.dark body:has(.app-shell) .text-violet-950 { color: var(--color-violet-200); }
+html.dark body:has(.app-shell) .border-violet-100, html.dark body:has(.app-shell) .border-violet-200, html.dark body:has(.app-shell) .border-violet-300 { border-color: color-mix(in oklab, var(--color-violet-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-violet-100, html.dark body:has(.app-shell) .ring-violet-200 { --tw-ring-color: color-mix(in oklab, var(--color-violet-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-purple-50, html.dark body:has(.app-shell) .hover\:bg-purple-50:hover { background-color: color-mix(in oklab, var(--color-purple-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-purple-100, html.dark body:has(.app-shell) .hover\:bg-purple-100:hover { background-color: color-mix(in oklab, var(--color-purple-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-purple-200, html.dark body:has(.app-shell) .hover\:bg-purple-200:hover { background-color: color-mix(in oklab, var(--color-purple-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-purple-50 { --tw-gradient-from: color-mix(in oklab, var(--color-purple-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-purple-50 { --tw-gradient-to: color-mix(in oklab, var(--color-purple-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-purple-50 { --tw-gradient-via: color-mix(in oklab, var(--color-purple-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-purple-100 { --tw-gradient-from: color-mix(in oklab, var(--color-purple-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-purple-100 { --tw-gradient-to: color-mix(in oklab, var(--color-purple-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-purple-600, html.dark body:has(.app-shell) .hover\:text-purple-600:hover { color: var(--color-purple-400); }
+html.dark body:has(.app-shell) .text-purple-700, html.dark body:has(.app-shell) .text-purple-800, html.dark body:has(.app-shell) .hover\:text-purple-700:hover, html.dark body:has(.app-shell) .hover\:text-purple-800:hover { color: var(--color-purple-300); }
+html.dark body:has(.app-shell) .text-purple-900, html.dark body:has(.app-shell) .text-purple-950 { color: var(--color-purple-200); }
+html.dark body:has(.app-shell) .border-purple-100, html.dark body:has(.app-shell) .border-purple-200, html.dark body:has(.app-shell) .border-purple-300 { border-color: color-mix(in oklab, var(--color-purple-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-purple-100, html.dark body:has(.app-shell) .ring-purple-200 { --tw-ring-color: color-mix(in oklab, var(--color-purple-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-pink-50, html.dark body:has(.app-shell) .hover\:bg-pink-50:hover { background-color: color-mix(in oklab, var(--color-pink-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-pink-100, html.dark body:has(.app-shell) .hover\:bg-pink-100:hover { background-color: color-mix(in oklab, var(--color-pink-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-pink-200, html.dark body:has(.app-shell) .hover\:bg-pink-200:hover { background-color: color-mix(in oklab, var(--color-pink-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-pink-50 { --tw-gradient-from: color-mix(in oklab, var(--color-pink-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-pink-50 { --tw-gradient-to: color-mix(in oklab, var(--color-pink-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-pink-50 { --tw-gradient-via: color-mix(in oklab, var(--color-pink-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-pink-100 { --tw-gradient-from: color-mix(in oklab, var(--color-pink-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-pink-100 { --tw-gradient-to: color-mix(in oklab, var(--color-pink-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-pink-600, html.dark body:has(.app-shell) .hover\:text-pink-600:hover { color: var(--color-pink-400); }
+html.dark body:has(.app-shell) .text-pink-700, html.dark body:has(.app-shell) .text-pink-800, html.dark body:has(.app-shell) .hover\:text-pink-700:hover, html.dark body:has(.app-shell) .hover\:text-pink-800:hover { color: var(--color-pink-300); }
+html.dark body:has(.app-shell) .text-pink-900, html.dark body:has(.app-shell) .text-pink-950 { color: var(--color-pink-200); }
+html.dark body:has(.app-shell) .border-pink-100, html.dark body:has(.app-shell) .border-pink-200, html.dark body:has(.app-shell) .border-pink-300 { border-color: color-mix(in oklab, var(--color-pink-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-pink-100, html.dark body:has(.app-shell) .ring-pink-200 { --tw-ring-color: color-mix(in oklab, var(--color-pink-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-cyan-50, html.dark body:has(.app-shell) .hover\:bg-cyan-50:hover { background-color: color-mix(in oklab, var(--color-cyan-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-cyan-100, html.dark body:has(.app-shell) .hover\:bg-cyan-100:hover { background-color: color-mix(in oklab, var(--color-cyan-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-cyan-200, html.dark body:has(.app-shell) .hover\:bg-cyan-200:hover { background-color: color-mix(in oklab, var(--color-cyan-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-cyan-50 { --tw-gradient-from: color-mix(in oklab, var(--color-cyan-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-cyan-50 { --tw-gradient-to: color-mix(in oklab, var(--color-cyan-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-cyan-50 { --tw-gradient-via: color-mix(in oklab, var(--color-cyan-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-cyan-100 { --tw-gradient-from: color-mix(in oklab, var(--color-cyan-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-cyan-100 { --tw-gradient-to: color-mix(in oklab, var(--color-cyan-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-cyan-600, html.dark body:has(.app-shell) .hover\:text-cyan-600:hover { color: var(--color-cyan-400); }
+html.dark body:has(.app-shell) .text-cyan-700, html.dark body:has(.app-shell) .text-cyan-800, html.dark body:has(.app-shell) .hover\:text-cyan-700:hover, html.dark body:has(.app-shell) .hover\:text-cyan-800:hover { color: var(--color-cyan-300); }
+html.dark body:has(.app-shell) .text-cyan-900, html.dark body:has(.app-shell) .text-cyan-950 { color: var(--color-cyan-200); }
+html.dark body:has(.app-shell) .border-cyan-100, html.dark body:has(.app-shell) .border-cyan-200, html.dark body:has(.app-shell) .border-cyan-300 { border-color: color-mix(in oklab, var(--color-cyan-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-cyan-100, html.dark body:has(.app-shell) .ring-cyan-200 { --tw-ring-color: color-mix(in oklab, var(--color-cyan-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-lime-50, html.dark body:has(.app-shell) .hover\:bg-lime-50:hover { background-color: color-mix(in oklab, var(--color-lime-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-lime-100, html.dark body:has(.app-shell) .hover\:bg-lime-100:hover { background-color: color-mix(in oklab, var(--color-lime-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-lime-200, html.dark body:has(.app-shell) .hover\:bg-lime-200:hover { background-color: color-mix(in oklab, var(--color-lime-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-lime-50 { --tw-gradient-from: color-mix(in oklab, var(--color-lime-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-lime-50 { --tw-gradient-to: color-mix(in oklab, var(--color-lime-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-lime-50 { --tw-gradient-via: color-mix(in oklab, var(--color-lime-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-lime-100 { --tw-gradient-from: color-mix(in oklab, var(--color-lime-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-lime-100 { --tw-gradient-to: color-mix(in oklab, var(--color-lime-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-lime-600, html.dark body:has(.app-shell) .hover\:text-lime-600:hover { color: var(--color-lime-400); }
+html.dark body:has(.app-shell) .text-lime-700, html.dark body:has(.app-shell) .text-lime-800, html.dark body:has(.app-shell) .hover\:text-lime-700:hover, html.dark body:has(.app-shell) .hover\:text-lime-800:hover { color: var(--color-lime-300); }
+html.dark body:has(.app-shell) .text-lime-900, html.dark body:has(.app-shell) .text-lime-950 { color: var(--color-lime-200); }
+html.dark body:has(.app-shell) .border-lime-100, html.dark body:has(.app-shell) .border-lime-200, html.dark body:has(.app-shell) .border-lime-300 { border-color: color-mix(in oklab, var(--color-lime-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-lime-100, html.dark body:has(.app-shell) .ring-lime-200 { --tw-ring-color: color-mix(in oklab, var(--color-lime-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-fuchsia-50, html.dark body:has(.app-shell) .hover\:bg-fuchsia-50:hover { background-color: color-mix(in oklab, var(--color-fuchsia-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .bg-fuchsia-100, html.dark body:has(.app-shell) .hover\:bg-fuchsia-100:hover { background-color: color-mix(in oklab, var(--color-fuchsia-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .bg-fuchsia-200, html.dark body:has(.app-shell) .hover\:bg-fuchsia-200:hover { background-color: color-mix(in oklab, var(--color-fuchsia-500) 30%, var(--card)); }
+html.dark body:has(.app-shell) .from-fuchsia-50 { --tw-gradient-from: color-mix(in oklab, var(--color-fuchsia-500) 13%, var(--card)); } html.dark body:has(.app-shell) .to-fuchsia-50 { --tw-gradient-to: color-mix(in oklab, var(--color-fuchsia-500) 13%, var(--card)); } html.dark body:has(.app-shell) .via-fuchsia-50 { --tw-gradient-via: color-mix(in oklab, var(--color-fuchsia-500) 13%, var(--card)); }
+html.dark body:has(.app-shell) .from-fuchsia-100 { --tw-gradient-from: color-mix(in oklab, var(--color-fuchsia-500) 20%, var(--card)); } html.dark body:has(.app-shell) .to-fuchsia-100 { --tw-gradient-to: color-mix(in oklab, var(--color-fuchsia-500) 20%, var(--card)); }
+html.dark body:has(.app-shell) .text-fuchsia-600, html.dark body:has(.app-shell) .hover\:text-fuchsia-600:hover { color: var(--color-fuchsia-400); }
+html.dark body:has(.app-shell) .text-fuchsia-700, html.dark body:has(.app-shell) .text-fuchsia-800, html.dark body:has(.app-shell) .hover\:text-fuchsia-700:hover, html.dark body:has(.app-shell) .hover\:text-fuchsia-800:hover { color: var(--color-fuchsia-300); }
+html.dark body:has(.app-shell) .text-fuchsia-900, html.dark body:has(.app-shell) .text-fuchsia-950 { color: var(--color-fuchsia-200); }
+html.dark body:has(.app-shell) .border-fuchsia-100, html.dark body:has(.app-shell) .border-fuchsia-200, html.dark body:has(.app-shell) .border-fuchsia-300 { border-color: color-mix(in oklab, var(--color-fuchsia-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .ring-fuchsia-100, html.dark body:has(.app-shell) .ring-fuchsia-200 { --tw-ring-color: color-mix(in oklab, var(--color-fuchsia-500) 38%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#E1F5EE\] { background-color: color-mix(in oklab, #E1F5EE 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#E2F8EE\] { background-color: color-mix(in oklab, #E2F8EE 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#E3F2FE\] { background-color: color-mix(in oklab, #E3F2FE 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#E6F1FB\] { background-color: color-mix(in oklab, #E6F1FB 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#E6F7F7\] { background-color: color-mix(in oklab, #E6F7F7 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#E8E5F1\] { background-color: color-mix(in oklab, #E8E5F1 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#E8F7F5\] { background-color: color-mix(in oklab, #E8F7F5 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#E9EAFE\] { background-color: color-mix(in oklab, #E9EAFE 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#E9EBEE\] { background-color: color-mix(in oklab, #E9EBEE 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#EAF3DE\] { background-color: color-mix(in oklab, #EAF3DE 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#EEEDFE\] { background-color: color-mix(in oklab, #EEEDFE 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#F1EBFF\] { background-color: color-mix(in oklab, #F1EBFF 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#F1F3F4\] { background-color: color-mix(in oklab, #F1F3F4 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#F2F2F7\] { background-color: color-mix(in oklab, #F2F2F7 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#F3EEFF\] { background-color: color-mix(in oklab, #F3EEFF 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#F3EFE6\] { background-color: color-mix(in oklab, #F3EFE6 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#F6F6F8\] { background-color: color-mix(in oklab, #F6F6F8 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#F7F5FF\] { background-color: color-mix(in oklab, #F7F5FF 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#F7F6FC\] { background-color: color-mix(in oklab, #F7F6FC 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#F7F7FB\] { background-color: color-mix(in oklab, #F7F7FB 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#FAECE7\] { background-color: color-mix(in oklab, #FAECE7 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#FAEEDA\] { background-color: color-mix(in oklab, #FAEEDA 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#FBEEF1\] { background-color: color-mix(in oklab, #FBEEF1 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#FBF9F4\] { background-color: var(--card); }
+html.dark body:has(.app-shell) .bg-\[\#FCEBE5\] { background-color: color-mix(in oklab, #FCEBE5 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#FCEBEB\] { background-color: color-mix(in oklab, #FCEBEB 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#FDE7F3\] { background-color: color-mix(in oklab, #FDE7F3 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#FDFCF9\] { background-color: var(--card); }
+html.dark body:has(.app-shell) .bg-\[\#FFEDDF\] { background-color: color-mix(in oklab, #FFEDDF 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#FFF3D6\] { background-color: color-mix(in oklab, #FFF3D6 9%, var(--card)); }
+html.dark body:has(.app-shell) .bg-\[\#FFF7EB\] { background-color: var(--card); }
+html.dark body:has(.app-shell) .border-\[\#94DEDE\] { border-color: color-mix(in oklab, #94DEDE 18%, var(--border)); }
+html.dark body:has(.app-shell) .border-\[\#C5EEEE\] { border-color: color-mix(in oklab, #C5EEEE 18%, var(--border)); }
+html.dark body:has(.app-shell) .border-\[\#D9D2C2\] { border-color: color-mix(in oklab, #D9D2C2 18%, var(--border)); }
+html.dark body:has(.app-shell) .border-\[\#DCE6F5\] { border-color: color-mix(in oklab, #DCE6F5 18%, var(--border)); }
+html.dark body:has(.app-shell) .border-\[\#EAE4D6\] { border-color: color-mix(in oklab, #EAE4D6 18%, var(--border)); }
+html.dark body:has(.app-shell) .border-\[\#F3D5DC\] { border-color: color-mix(in oklab, #F3D5DC 18%, var(--border)); }
+html.dark body:has(.app-shell) .border-\[\#F6DCC8\] { border-color: color-mix(in oklab, #F6DCC8 18%, var(--border)); }
+html.dark body:has(.app-shell) .from-\[\#E6F7F7\] { --tw-gradient-from: color-mix(in oklab, #E6F7F7 9%, var(--card)); }
+html.dark body:has(.app-shell) .from-\[\#EEF3FA\] { --tw-gradient-from: color-mix(in oklab, #EEF3FA 9%, var(--card)); }
+html.dark body:has(.app-shell) .from-\[\#FBEEF1\] { --tw-gradient-from: color-mix(in oklab, #FBEEF1 9%, var(--card)); }
+html.dark body:has(.app-shell) .from-\[\#FDF1E8\] { --tw-gradient-from: color-mix(in oklab, #FDF1E8 9%, var(--card)); }
+html.dark body:has(.app-shell) .from-\[\#FFE7A3\] { --tw-gradient-from: color-mix(in oklab, #FFE7A3 9%, var(--card)); }
+html.dark body:has(.app-shell) .hover\:bg-\[\#F3EFE6\]:hover { background-color: color-mix(in oklab, #F3EFE6 9%, var(--card)); }
+html.dark body:has(.app-shell) .hover\:bg-\[\#F3FBFB\]:hover { background-color: var(--card); }
+html.dark body:has(.app-shell) .hover\:bg-\[\#FBF9F4\]:hover { background-color: var(--card); }
+html.dark body:has(.app-shell) .ring-\[\#DCE6F5\] { --tw-ring-color: color-mix(in oklab, #DCE6F5 18%, var(--border)); }
+html.dark body:has(.app-shell) .to-\[\#E6F7F7\] { --tw-gradient-to: color-mix(in oklab, #E6F7F7 9%, var(--card)); }
+html.dark body:has(.app-shell) .to-\[\#FFC8DD\] { --tw-gradient-to: color-mix(in oklab, #FFC8DD 9%, var(--card)); }
+html.dark body:has(.app-shell) .hover\:text-\[\#1D2B3A\]:hover { color: color-mix(in oklab, #1D2B3A 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#0B595E\] { color: color-mix(in oklab, #0B595E 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#0F6E56\] { color: color-mix(in oklab, #0F6E56 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#185FA5\] { color: color-mix(in oklab, #185FA5 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#1B4A8A\] { color: color-mix(in oklab, #1B4A8A 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#1D2B3A\] { color: color-mix(in oklab, #1D2B3A 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#1F1B2E\] { color: color-mix(in oklab, #1F1B2E 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#4648C9\] { color: color-mix(in oklab, #4648C9 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#4A4438\] { color: color-mix(in oklab, #4A4438 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#4A4538\] { color: color-mix(in oklab, #4A4538 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#534AB7\] { color: color-mix(in oklab, #534AB7 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#5A3E2B\] { color: color-mix(in oklab, #5A3E2B 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#6D28D9\] { color: color-mix(in oklab, #6D28D9 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#6D3FE0\] { color: color-mix(in oklab, #6D3FE0 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#7A4A12\] { color: color-mix(in oklab, #7A4A12 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#854F0B\] { color: color-mix(in oklab, #854F0B 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#8A5300\] { color: color-mix(in oklab, #8A5300 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#993C1D\] { color: color-mix(in oklab, #993C1D 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#A32D2D\] { color: color-mix(in oklab, #A32D2D 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#B4381F\] { color: color-mix(in oklab, #B4381F 35%, #ffffff); }
+html.dark body:has(.app-shell) .text-\[\#C0307A\] { color: color-mix(in oklab, #C0307A 35%, #ffffff); }
+}

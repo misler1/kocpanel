@@ -29,7 +29,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gray-50">
+    <div className="app-shell flex h-screen flex-col overflow-hidden bg-gray-50">
       <Topbar profile={profile as Profile | null} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar studentCount={studentCount} />

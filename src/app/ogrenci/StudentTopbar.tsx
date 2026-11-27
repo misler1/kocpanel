@@ -7,6 +7,7 @@ import { IconLogout } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { forgetPushOnThisDevice } from '@/lib/push-client';
 import { NotificationBell } from '@/components/NotificationBell';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export function StudentTopbar({ fullName }: { fullName: string }) {
   const router = useRouter();
@@ -29,6 +30,7 @@ export function StudentTopbar({ fullName }: { fullName: string }) {
         </Link>
 
         <div className="ml-auto flex items-center gap-2.5">
+          <ThemeToggle />
           <NotificationBell variant="student" />
           <span className="hidden text-[15px] font-bold text-[var(--ink)] md:block">{fullName}</span>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#2A5CA8] to-[#0FA3A8] text-[13px] font-extrabold text-white ring-4 ring-[var(--accent-soft)]">

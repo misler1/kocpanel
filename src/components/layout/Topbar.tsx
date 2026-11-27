@@ -6,6 +6,7 @@ import { IconLogout } from '@tabler/icons-react';
 import { createClient } from '@/lib/supabase/client';
 import { forgetPushOnThisDevice } from '@/lib/push-client';
 import { NotificationBell } from '@/components/NotificationBell';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import type { Profile } from '@/types/database';
 
 
@@ -39,6 +40,7 @@ export function Topbar({ profile }: { profile: Profile | null }) {
 
         {/* Sağ: arama, bildirim, çıkış */}
         <div className="ml-auto flex items-center gap-1">
+          <ThemeToggle />
           <NotificationBell />
           <div className="flex items-center gap-2.5 pl-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[12px] font-semibold text-[var(--accent-dark)]">
