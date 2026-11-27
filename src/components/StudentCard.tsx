@@ -184,10 +184,10 @@ export function StudentMeetingList({ students, hrefFor }: {
                 <span className="hidden truncate text-[13px] text-[var(--ink)] md:block">{s.sinif_sube || '–'}</span>
                 <span className="hidden truncate text-[13px] text-[var(--ink-muted)] md:block">{s.kurum || '–'}</span>
                 <span className="hidden min-w-0 items-center gap-2 md:flex">
-                  <span className={`flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${rec.cls}`}>
+                  <span className={`flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${rec.cls}`}
+                    title={lastDate ? `Son görüşme: ${lastDate}` : undefined}>
                     <IconCalendarEvent size={13} /> {rec.text}
                   </span>
-                  {lastDate && <span className="truncate text-[11.5px] text-[var(--ink-muted)]">{lastDate}</span>}
                 </span>
                 <span className="hidden min-w-0 md:block"><LastExam sum={s.summary} /></span>
                 <span className="hidden md:block"><WeekProgram sum={s.summary} /></span>
