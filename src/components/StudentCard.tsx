@@ -127,14 +127,14 @@ function LastExam({ sum }: { sum?: StudentSummary | null }) {
   );
 }
 
-/** Bu hafta (Pazartesi–bugün) programdaki görevlerin yapılma oranı */
+/** Son 7 günde (dünden geriye) programdaki görevlerin yapılma oranı */
 function WeekProgram({ sum }: { sum?: StudentSummary | null }) {
   if (!sum || sum.weekPlanned === 0) return <span className="text-[12px] text-[var(--ink-muted)]">Program yok</span>;
   const pct = Math.round((sum.weekDone / sum.weekPlanned) * 100);
   const cls = pct >= 70 ? 'bg-emerald-50 text-emerald-700' : pct >= 40 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-600';
   return (
     <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${cls}`}
-      title={`Bu hafta ${sum.weekDone}/${sum.weekPlanned} görev yapıldı`}>
+      title={`Son 7 günde ${sum.weekDone}/${sum.weekPlanned} görev yapıldı`}>
       %{pct} <span className="font-normal opacity-80">· {sum.weekDone}/{sum.weekPlanned} görev</span>
     </span>
   );
@@ -147,7 +147,7 @@ export function StudentMeetingList({ students, hrefFor }: {
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
       <div className="hidden grid-cols-[minmax(0,2fr)_70px_minmax(0,1.2fr)_minmax(0,1.5fr)_minmax(0,1.3fr)_120px_24px] gap-3 border-b border-[var(--border)] bg-[var(--paper)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)] md:grid">
-        <span>Öğrenci</span><span>Sınıf</span><span>Kurum</span><span>Son görüşme</span><span>Son deneme</span><span>Bu hafta program</span><span />
+        <span>Öğrenci</span><span>Sınıf</span><span>Kurum</span><span>Son görüşme</span><span>Son deneme</span><span>Son 7 gün program</span><span />
       </div>
       <ul className="divide-y divide-[var(--border)]">
         {students.map((s) => {
