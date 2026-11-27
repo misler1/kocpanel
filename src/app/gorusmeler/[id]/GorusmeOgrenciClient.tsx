@@ -285,7 +285,7 @@ export function GorusmeOgrenciClient({
 
       {/* ── Yeni görüşme formu (her zaman açık) ── */}
       <section className={`overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm ${isPanel ? 'mb-4' : 'mb-6'}`}>
-        <div className="flex items-center gap-2 border-b border-teal-100 bg-gradient-to-r from-teal-50 to-white px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-[#C5EEEE] bg-gradient-to-r from-[#E6F7F7] to-white px-4 py-3">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500 text-white"><IconMessages size={16} /></span>
           <h2 className="text-[15px] font-semibold text-[var(--ink)]">Yeni görüşme</h2>
         </div>

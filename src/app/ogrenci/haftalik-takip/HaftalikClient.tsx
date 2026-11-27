@@ -293,7 +293,7 @@ export function HaftalikClient({ studentId, coachId, resources = {}, initialLogs
               <span className="flex-shrink-0 text-[var(--accent-dark)]">{doneCount}/{weekLogs.length} görev</span>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-[var(--accent-soft)]">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#2F9BEA] via-[#8B5CF6] to-[#EC4899] transition-all duration-500" style={{ width: `${weekPct}%` }} />
+              <div className="h-full rounded-full bg-gradient-to-r from-[#2A5CA8] via-[#14709C] to-[#0FA3A8] transition-all duration-500" style={{ width: `${weekPct}%` }} />
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {!platformOnly && !ownWeek && !editMode && !openEdit && (

@@ -60,8 +60,8 @@ function relDay(days: number | null, empty: string) {
 // Dikkat kartlarının renk temaları
 const THEMES = {
   indigo: { card: 'from-indigo-50 to-white border-indigo-100', chip: 'bg-indigo-500', text: 'text-indigo-700', ring: 'ring-indigo-400' },
-  amber: { card: 'from-amber-50 to-white border-amber-100', chip: 'bg-amber-500', text: 'text-amber-700', ring: 'ring-amber-400' },
-  rose: { card: 'from-rose-50 to-white border-rose-100', chip: 'bg-rose-500', text: 'text-rose-700', ring: 'ring-rose-400' },
+  amber: { card: 'from-[#FDF1E8] to-white border-[#F6DCC8]', chip: 'bg-[#E38D5C]', text: 'text-[#B8613A]', ring: 'ring-[#EBAA72]' },
+  rose: { card: 'from-[#FBEEF1] to-white border-[#F3D5DC]', chip: 'bg-[#C96F85]', text: 'text-[#A4506A]', ring: 'ring-[#D99A8E]' },
   violet: { card: 'from-violet-50 to-white border-violet-100', chip: 'bg-violet-500', text: 'text-violet-700', ring: 'ring-violet-400' },
 } as const;
 
@@ -176,7 +176,7 @@ export function AnasayfaClient({ firstName, today, students, weekMeetings, pendi
       <div className="grid gap-4 lg:grid-cols-[1fr_330px]">
         {/* Öğrenci listesi */}
         <section className="min-w-0 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] bg-gradient-to-r from-sky-50 to-white px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] bg-gradient-to-r from-[#EEF3FA] to-white px-4 py-3">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500 text-white"><IconClipboardText size={17} /></span>
             <h2 className="mr-auto text-[15px] font-semibold text-[var(--ink)]">Öğrencilerim · bu hafta</h2>
             <div className="relative">
@@ -330,7 +330,7 @@ export function AnasayfaClient({ firstName, today, students, weekMeetings, pendi
         {/* Sağ sütun */}
         <div className="flex flex-col gap-4">
           <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-            <div className="flex items-center gap-2 border-b border-teal-100 bg-gradient-to-r from-teal-50 to-white px-4 py-3">
+            <div className="flex items-center gap-2 border-b border-[#C5EEEE] bg-gradient-to-r from-[#E6F7F7] to-white px-4 py-3">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500 text-white"><IconCalendarWeek size={17} /></span>
               <h2 className="mr-auto text-[15px] font-semibold text-[var(--ink)]">Bu haftaki görüşmeler</h2>
               <Link href="/ajanda" className="text-[12.5px] font-medium text-teal-700 hover:underline">Ajanda</Link>
@@ -405,7 +405,7 @@ function AlertCard({ theme, icon: Icon, count, label, hint, active, onClick, hre
   const ok = count === 0;
   const t = THEMES[theme];
   const cls = `flex w-full items-start gap-3 rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
-    ok ? 'border-emerald-100 from-emerald-50 to-white' : t.card
+    ok ? 'border-[#C5EEEE] from-[#E6F7F7] to-white' : t.card
   } ${active ? `ring-2 ${t.ring}` : ''}`;
   const body = (
     <>
@@ -432,7 +432,7 @@ function ActivityPill({ days }: { days: number | null }) {
 
 function ProgressBar({ done, total }: { done: number; total: number }) {
   const pct = total ? Math.round((done / total) * 100) : 0;
-  const color = pct >= 70 ? 'from-emerald-400 to-emerald-500' : pct >= 35 ? 'from-sky-400 to-indigo-500' : 'from-amber-400 to-rose-500';
+  const color = pct >= 70 ? 'from-emerald-400 to-emerald-500' : pct >= 35 ? 'from-[#2A5CA8] to-[#14709C]' : 'from-amber-400 to-rose-500';
   return (
     <div>
       <div className="flex justify-between text-[11px] text-[var(--ink-muted)]">

@@ -111,15 +111,15 @@ body {
 
 /* ─── Öğrenci paneli teması (10-18 yaş) ───────────────────────── */
 .student-theme {
-  --paper: #FBF7FF;
+  --paper: #F6F9FD;
   --card: #FFFFFF;
-  --border: #ECE4F7;
-  --ink: #2B2745;
-  --ink-muted: #7D7899;
+  --border: #E1E8F3;
+  --ink: #1E2A44;
+  --ink-muted: #6E7A93;
 
-  --accent: #8B5CF6;
-  --accent-dark: #6D3FE0;
-  --accent-soft: #F1EBFF;
+  --accent: #2A5CA8;
+  --accent-dark: #1B4A8A;
+  --accent-soft: #EAF1FB;
 
   --success: #16A36F;
   --success-soft: #E2F8EE;
@@ -135,7 +135,7 @@ body {
 
   font-family: var(--font-student), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: var(--paper);
-  background-image: radial-gradient(#E9DFFA 1px, transparent 1px);
+  background-image: radial-gradient(#DCE6F3 1px, transparent 1px);
   background-size: 22px 22px;
 }
 

@@ -116,7 +116,7 @@ function Karne({ exam, rank, prev }: { exam: any; rank?: Rank; prev?: any }) {
                 </span>
               </div>
               <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white">
-                <div className="h-full rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899]" style={{ width: `${pct}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-[#1B4A8A] to-[#0FA3A8]" style={{ width: `${pct}%` }} />
               </div>
             </div>
           );
@@ -173,7 +173,7 @@ function ExamList({ exams, list, rankMap }: { exams: any[]; list: any[]; rankMap
               </div>
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--paper)]">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899]" style={{ width: `${pct}%` }} />
+              <div className="h-full rounded-full bg-gradient-to-r from-[#1B4A8A] to-[#0FA3A8]" style={{ width: `${pct}%` }} />
             </div>
           </div>
         );

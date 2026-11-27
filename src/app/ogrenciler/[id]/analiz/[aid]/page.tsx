@@ -26,7 +26,7 @@ export default async function AnalizDetayPage({ params }: { params: Promise<{ id
         <p className="text-[13px] text-gray-500">{(a.exam_names ?? []).length} deneme: {(a.exam_names ?? []).join(', ')}</p>
       </div>
       <AnalizIslemleri analizId={a.id} studentId={id} sharedAt={a.shared_at} />
-      <div className="rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50/60 to-purple-50/60 p-4">
+      <div className="rounded-xl border border-gray-100 bg-gradient-to-br from-[#EEF3FA] to-[#E6F7F7] p-4">
         <AnalysisView a={a.analysis} audience="coach" />
         {a.analysis?.kaynak && <p className="mt-2 text-right text-[11px] text-gray-400">Analiz: {a.analysis.kaynak}</p>}
       </div>

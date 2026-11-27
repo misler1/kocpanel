@@ -80,7 +80,7 @@ export function TargetNetCard({ rows: initialRows }: { rows: TargetRow[] }) {
                 )}
               </div>
               <div className="h-3 overflow-hidden rounded-full bg-[var(--accent-soft)]">
-                <div className={`h-full rounded-full transition-all duration-500 ${reached ? 'bg-[var(--success)]' : 'bg-gradient-to-r from-[#8B5CF6] to-[#EC4899]'}`} style={{ width: `${pct}%` }} />
+                <div className={`h-full rounded-full transition-all duration-500 ${reached ? 'bg-[var(--success)]' : 'bg-gradient-to-r from-[#1B4A8A] to-[#0FA3A8]'}`} style={{ width: `${pct}%` }} />
               </div>
               <p className="mt-1 text-[12px] font-semibold text-[var(--ink-muted)]">
                 {r.current === null

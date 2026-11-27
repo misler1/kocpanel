@@ -22,9 +22,9 @@ export function OgrenciBilgilerClient({ student }: { student: any }) {
   return (
     <div className="space-y-3">
       <div className="overflow-hidden rounded-[28px] border-2 border-[var(--border)] bg-[var(--card)]">
-        <div className="h-20 bg-gradient-to-r from-[#A78BFA] via-[#F472B6] to-[#FBBF24]" />
+        <div className="h-20 bg-gradient-to-r from-[#1B4A8A] via-[#14709C] to-[#0FA3A8]" />
         <div className="px-5 pb-5">
-          <div className="-mt-10 mb-2 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#8B5CF6] to-[#EC4899] text-[26px] font-extrabold text-white ring-[6px] ring-white">
+          <div className="-mt-10 mb-2 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#1B4A8A] to-[#0FA3A8] text-[26px] font-extrabold text-white ring-[6px] ring-white">
             {initials}
           </div>
           <h2 className="text-[22px] font-extrabold text-[var(--ink)]">{student.full_name}</h2>

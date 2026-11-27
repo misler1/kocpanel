@@ -108,7 +108,7 @@ export function DenemeAnalizClient({ exam }: { exam: any }) {
             : 'Bu denemede soru soru veri yok. Yanlışı/boşu olan her ders için en çok hangi sebepten kaçırdığını seç, notuna ayrıntıyı yaz (ör. "3 dikkat, 2 konu eksiği").'}
         </p>
         <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[var(--accent-soft)]">
-          <div className="h-full rounded-full bg-gradient-to-r from-[#2F9BEA] via-[#8B5CF6] to-[#EC4899] transition-all" style={{ width: `${rows.length ? (answered / rows.length) * 100 : 100}%` }} />
+          <div className="h-full rounded-full bg-gradient-to-r from-[#2A5CA8] via-[#14709C] to-[#0FA3A8] transition-all" style={{ width: `${rows.length ? (answered / rows.length) * 100 : 100}%` }} />
         </div>
         <p className="mt-1 text-[12px] font-bold text-[var(--ink-muted)]">{answered}/{rows.length} {byQuestion ? 'soru' : 'ders'} analiz edildi</p>
         {counts.length > 0 && (

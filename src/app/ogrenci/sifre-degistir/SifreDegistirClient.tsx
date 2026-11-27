@@ -42,7 +42,7 @@ export function SifreDegistirClient({ forced }: { forced: boolean }) {
         <input type="password" required autoComplete="new-password" placeholder="Yeni şifre (en az 8 karakter)" value={pw} onChange={(e) => setPw(e.target.value)} className={input} />
         <input type="password" required autoComplete="new-password" placeholder="Yeni şifre (tekrar)" value={pw2} onChange={(e) => setPw2(e.target.value)} className={input} />
         {error && <p className="rounded-2xl bg-[var(--danger-soft)] px-4 py-2.5 text-[13px] font-bold text-[var(--danger)]">😕 {error}</p>}
-        <button disabled={loading} className="w-full rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] px-4 py-3 text-[15px] font-extrabold text-white shadow-[0_6px_18px_rgba(139,92,246,0.3)] transition-transform hover:-translate-y-0.5 disabled:opacity-60">
+        <button disabled={loading} className="w-full rounded-full bg-gradient-to-r from-[#1B4A8A] to-[#0FA3A8] px-4 py-3 text-[15px] font-extrabold text-white shadow-[0_6px_18px_rgba(27,74,138,0.25)] transition-transform hover:-translate-y-0.5 disabled:opacity-60">
           {loading ? 'Kaydediliyor...' : 'Şifreyi kaydet ✨'}
         </button>
       </form>

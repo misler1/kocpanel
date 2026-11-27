@@ -310,7 +310,7 @@ export function AjandaClient({ meId, students, staff, defaultMeetingUrl = null }
 
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
         {/* Gün başlıkları (masaüstü) */}
-        <div className="hidden grid-cols-[56px_repeat(7,1fr)] border-b border-[var(--border)] bg-gradient-to-r from-teal-50 to-white md:grid">
+        <div className="hidden grid-cols-[56px_repeat(7,1fr)] border-b border-[var(--border)] bg-gradient-to-r from-[#E6F7F7] to-white md:grid">
           <div />
           {days.map((d, i) => {
             const isToday = ymd(d) === today;

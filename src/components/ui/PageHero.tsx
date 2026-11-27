@@ -5,16 +5,18 @@ import { IconArrowLeft } from '@tabler/icons-react';
 // Koç panelinin ortak sayfa başlığı: ana sayfadaki renkli karşılama kartının dili.
 // Her bölümün kendi renk teması var; böylece koç hangi sayfada olduğunu rengiyle de tanır.
 
-// Başlık bantları: lacivertten turkuaza (logo ile uyumlu); turuncu/pembe yalnızca yumuşak tonda
+// Başlık bantları: tüm sayfalarda aynı lacivert→turkuaz bant (sol menüyle aynı renk);
+// yalnızca Konu ilerleyişi (amber) yumuşak turuncu. Anahtarlar eski sayfalar bozulmasın diye duruyor.
+const BAND = 'from-[#1B4A8A] via-[#14709C] to-[#0FA3A8]';
 export const HERO_THEMES = {
-  violet: 'from-[#1B4A8A] via-[#14709C] to-[#0FA3A8]',
-  sky: 'from-[#1B4A8A] via-[#2A5CA8] to-[#3E86C9]',
-  teal: 'from-[#0B7076] via-[#0C8A90] to-[#0FA3A8]',
-  fuchsia: 'from-[#B85A78] via-[#C96F85] to-[#D99A8E]',
+  violet: BAND,
+  sky: BAND,
+  teal: BAND,
+  fuchsia: BAND,
   amber: 'from-[#D9774A] via-[#E38D5C] to-[#EBAA72]',
-  indigo: 'from-[#132F57] via-[#1B4A8A] to-[#14709C]',
-  rose: 'from-[#C0566A] via-[#CC6E7B] to-[#D99A8E]',
-  slate: 'from-slate-600 via-[#1B4A8A] to-[#14709C]',
+  indigo: BAND,
+  rose: BAND,
+  slate: BAND,
 } as const;
 
 export type HeroTheme = keyof typeof HERO_THEMES;
@@ -74,11 +76,11 @@ export const SECTION_THEMES = {
   sky: { head: 'from-[#EEF3FA] border-[#DCE6F5]', chip: 'bg-[#2A5CA8]', link: 'text-[#1B4A8A]' },
   teal: { head: 'from-[#E6F7F7] border-[#C5EEEE]', chip: 'bg-[#0C8A90]', link: 'text-[#0B7076]' },
   violet: { head: 'from-violet-50 border-violet-100', chip: 'bg-violet-500', link: 'text-violet-700' },
-  amber: { head: 'from-amber-50 border-amber-100', chip: 'bg-amber-500', link: 'text-amber-700' },
-  rose: { head: 'from-rose-50 border-rose-100', chip: 'bg-rose-500', link: 'text-rose-700' },
+  amber: { head: 'from-[#FDF1E8] border-[#F6DCC8]', chip: 'bg-[#E38D5C]', link: 'text-[#B8613A]' },
+  rose: { head: 'from-[#FBEEF1] border-[#F3D5DC]', chip: 'bg-[#C96F85]', link: 'text-[#A4506A]' },
   indigo: { head: 'from-indigo-50 border-indigo-100', chip: 'bg-indigo-500', link: 'text-indigo-700' },
   fuchsia: { head: 'from-fuchsia-50 border-fuchsia-100', chip: 'bg-fuchsia-500', link: 'text-fuchsia-700' },
-  emerald: { head: 'from-emerald-50 border-emerald-100', chip: 'bg-emerald-500', link: 'text-emerald-700' },
+  emerald: { head: 'from-[#E6F7F7] border-[#C5EEEE]', chip: 'bg-[#0FA3A8]', link: 'text-[#0B7076]' },
 } as const;
 
 export function SectionCard({ theme = 'violet', icon, title, right, children, className = '' }: {

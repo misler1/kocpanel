@@ -233,7 +233,7 @@ export function OgrenciAnasayfaClient({
       {/* Karşılama kartı */}
       <PushToggle variant="banner" />
 
-      <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#8B5CF6] via-[#A855F7] to-[#EC4899] p-5 text-white shadow-[0_10px_30px_rgba(139,92,246,0.3)] md:p-6">
+      <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#1B4A8A] via-[#14709C] to-[#0FA3A8] p-5 text-white shadow-[0_10px_30px_rgba(27,74,138,0.25)] md:p-6">
         <div className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-white/15" />
         <div className="pointer-events-none absolute -bottom-10 right-16 h-24 w-24 rounded-full bg-white/10" />
         <div className="student-float pointer-events-none absolute right-5 top-4 text-[44px] md:right-8 md:text-[56px]">🚀</div>
@@ -296,7 +296,7 @@ export function OgrenciAnasayfaClient({
               <span className="text-[var(--accent-dark)]">{todayDone}/{logs.length}</span>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-[var(--accent-soft)]">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] transition-all duration-500" style={{ width: `${todayPct}%` }} />
+              <div className="h-full rounded-full bg-gradient-to-r from-[#1B4A8A] to-[#0FA3A8] transition-all duration-500" style={{ width: `${todayPct}%` }} />
             </div>
           </div>
         )}

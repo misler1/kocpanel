@@ -78,10 +78,10 @@ const CARD_THEMES = {
   violet: 'border-violet-100 from-violet-50 bg-violet-500',
   sky: 'border-[#DCE6F5] from-[#EEF3FA] bg-[#2A5CA8]',
   teal: 'border-[#C5EEEE] from-[#E6F7F7] bg-[#0C8A90]',
-  amber: 'border-amber-100 from-amber-50 bg-amber-500',
-  rose: 'border-rose-100 from-rose-50 bg-rose-500',
+  amber: 'border-[#F6DCC8] from-[#FDF1E8] bg-[#E38D5C]',
+  rose: 'border-[#F3D5DC] from-[#FBEEF1] bg-[#C96F85]',
   indigo: 'border-indigo-100 from-indigo-50 bg-indigo-500',
-  emerald: 'border-emerald-100 from-emerald-50 bg-emerald-500',
+  emerald: 'border-[#C5EEEE] from-[#E6F7F7] bg-[#0FA3A8]',
   fuchsia: 'border-fuchsia-100 from-fuchsia-50 bg-fuchsia-500',
 } as const;
 export type CardTheme = keyof typeof CARD_THEMES;

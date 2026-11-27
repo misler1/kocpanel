@@ -11,7 +11,7 @@ import { avatarColor, initials } from '@/lib/ui-colors';
 export type BelletmenStudent = { id: string; full_name: string; sinif_sube: string | null; today_total: number; today_done: number };
 
 const QUICK = [
-  { href: '/gunluk-giris', title: 'Günlük takip', desc: 'Bugünkü görevleri işaretle', icon: IconChecklist, tone: 'from-emerald-500 to-teal-500' },
+  { href: '/gunluk-giris', title: 'Günlük takip', desc: 'Bugünkü görevleri işaretle', icon: IconChecklist, tone: 'from-[#0B7076] to-[#0FA3A8]' },
   { href: '/konu-ilerleyisi', title: 'Konu ilerleyişi', desc: 'Tamamlanan konuları gir', icon: IconBooks, tone: 'from-[#1B4A8A] to-[#2A5CA8]' },
   { href: '/denemeler', title: 'Deneme sonuçları', desc: 'Herkesin sonuçları', icon: IconChartBar, tone: 'from-fuchsia-500 to-violet-500' },
 ];

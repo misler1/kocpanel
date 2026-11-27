@@ -459,7 +459,7 @@ useEffect(() => {
 
         <FormActions>
           <Link href={backHref} className={formCancelCls}>İptal</Link>
-          <button type="submit" disabled={loading} className={formSubmitCls.replace('from-violet-600 to-indigo-600', 'from-teal-600 to-emerald-600')}>
+          <button type="submit" disabled={loading} className={formSubmitCls.replace('from-violet-600 to-indigo-600', 'from-[#0B7076] to-[#0FA3A8]')}>
             {loading ? 'Ekleniyor...' : 'Görüşmeyi kaydet'}
           </button>
         </FormActions>

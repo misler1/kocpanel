@@ -1376,7 +1376,7 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-3 backdrop-blur-[2px] sm:p-6" onClick={onClose}>
       <div className="relative w-full max-w-4xl overflow-hidden rounded-[28px] bg-[#F7F7FB] shadow-2xl ring-1 ring-black/5" onClick={(ev) => ev.stopPropagation()}>
         {/* Başlık */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-500 px-6 pb-20 pt-6 text-white sm:px-8">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#1B4A8A] via-[#14709C] to-[#0FA3A8] px-6 pb-20 pt-6 text-white sm:px-8">
           <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-white/10" />
           <div className="pointer-events-none absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-white/10" />
           <button onClick={onClose} className="absolute right-4 top-4 z-10 rounded-full bg-white/15 p-1.5 text-white/90 hover:bg-white/25" aria-label="Kapat">
@@ -1483,7 +1483,7 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
                   const n = c.katilimci && kat[c.katilimci] != null ? Number(kat[c.katilimci]) : null;
                   const top = n && n > 0 ? Math.max(1, Math.ceil((r / n) * 100)) : null;
                   return (
-                    <div key={c.key} className="rounded-2xl bg-gradient-to-br from-indigo-50/80 to-sky-50/60 p-3.5 ring-1 ring-indigo-100/70">
+                    <div key={c.key} className="rounded-2xl bg-gradient-to-br from-[#EEF3FA] to-[#E6F7F7]/70 p-3.5 ring-1 ring-[#DCE6F5]">
                       <div className="text-[11.5px] font-semibold text-indigo-500">{c.label}</div>
                       <div className="mt-0.5 flex items-baseline gap-1.5">
                         <span className="text-[22px] font-bold tracking-tight text-slate-900">{fmtNum(r)}.</span>
@@ -1492,7 +1492,7 @@ function ExamReportModal({ exam, onClose }: { exam: any; onClose: () => void }) 
                       {top != null && (
                         <>
                           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
-                            <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-sky-400" style={{ width: `${Math.max(4, 100 - top + 1)}%` }} />
+                            <div className="h-full rounded-full bg-gradient-to-r from-[#1B4A8A] to-[#0FA3A8]" style={{ width: `${Math.max(4, 100 - top + 1)}%` }} />
                           </div>
                           <div className="mt-1 text-[10.5px] font-medium text-slate-500">İlk %{top} içinde</div>
                         </>
@@ -2162,7 +2162,7 @@ function ExamCompareModal({ exams, onClose }: { exams: any[]; onClose: () => voi
         </div>
 
         {/* Yapay zeka analizi — sonuç varsa yazdırmaya dahil */}
-                <div className={`mt-3 rounded-xl border border-gray-100 bg-gradient-to-br from-blue-50/60 to-purple-50/60 p-4 ${analysisResult ? '' : 'no-print'}`}>
+                <div className={`mt-3 rounded-xl border border-gray-100 bg-gradient-to-br from-[#EEF3FA] to-[#E6F7F7] p-4 ${analysisResult ? '' : 'no-print'}`}>
           {!analysisResult && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">
