@@ -11,6 +11,7 @@ import {
 } from '@tabler/icons-react';
 import { useExamFilter } from '@/lib/exam-filter-context';
 import { CoachFeedCard } from '@/components/feed/CoachFeedCard';
+import { FeedbackButton } from '@/components/FeedbackButton';
 import { avatarColor, initials, trackPill } from '@/lib/ui-colors';
 
 export type DashStudent = {
@@ -139,6 +140,7 @@ export function AnasayfaClient({ firstName, today, students, weekMeetings, pendi
             <Link href="/ogrenciler/yeni" className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[13px] font-semibold text-violet-700 shadow-sm hover:bg-violet-50">
               <IconPlus size={15} strokeWidth={2.5} /> Yeni öğrenci
             </Link>
+            <FeedbackButton className="flex items-center gap-1.5 rounded-lg bg-amber-300 px-3 py-2 text-[13px] font-semibold text-amber-950 shadow-sm hover:bg-amber-200" />
           </div>
         </div>
       </div>

@@ -40,6 +40,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `mesaj_kisi_ayarlari.sql` | Mesajlarda sohbete (kişiye) özel okundu bilgisi ve sohbeti süreli/süresiz sessize alma (⋮ menüsü); sessizdeki sohbetten bildirim gelmez (mesaj_okundu_duzenleme.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
 | `gorusme_taslaklari.sql` | Kaydedilmemiş görüşme taslağı sunucuda da saklanır: bilgisayarda başlanan not telefonda da açılır (taslağı yalnızca yazan görür) | ✅ Çalıştırıldı (28 Kasım 2026) |
 | `abonelik.sql` | Abonelik ve havale/EFT ödemesi: paketler, deneme süresi, salt okunur dönem, kurumsal abonelik, yönetici onayı; mevcut bütün koçlar ücretsiz/süresiz işaretlenir (notifications.sql'den sonra) | ✅ Çalıştırıldı (28 Kasım 2026) |
+| `geri_bildirim.sql` | "Bize bildir": ana sayfadan sorun/öneri/mesaj; yöneticiye zil bildirimi, Ayarlar > Geri bildirimler listesi, "Çözüldü" deyince bildirene bildirim (notifications.sql'den sonra) | ⏳ Çalıştırılacak |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
@@ -49,6 +50,9 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 ---
 
 ## 2. Tamamlananlar (yayında)
+
+### Bize bildir (28 Kasım) — `geri_bildirim.sql`
+- Koç ana sayfasında karşılama kartında sarı **Bize bildir** düğmesi, öğrenci ana sayfasında karşılama kartında **Bize bildir: sorun ya da öneri**. Tür (Sorun / Öneri / Diğer) + metin; sayfa ve cihaz bilgisi kendiliğinden eklenir. Yöneticiye zil bildirimi; Ayarlar > Geri bildirimler'de liste (Yeni / İnceleniyor / Çözüldü, not, sil). Çözüldü denince bildirene notla bildirim gider. Kod: `src/components/FeedbackButton.tsx`, `src/app/ayarlar/geri-bildirimler`.
 
 ### Abonelik ve ödeme (28 Kasım) — `abonelik.sql`
 - **Kimler öder:** onaylı koç/öğretmen. Yönetici, sistem hesabı, yurt yöneticisi, belletmen, stajyer her zaman muaf. SQL çalıştırıldığında var olan bütün koçlar **ücretsiz, süresiz**; yönetici Ayarlar > Abonelikler'den değiştirir (ücretsiz süresiz / ücretsiz bitiş tarihli / deneme / ücretli, bitiş, paket, kurum, not).

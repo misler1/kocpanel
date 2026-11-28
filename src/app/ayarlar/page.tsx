@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getRequestUser } from '@/lib/supabase/request-cache';
 import {
-  IconUser, IconUsers, IconBell, IconLock, IconChevronRight, IconCalendar, IconShield, IconBuilding, IconSettings, IconCreditCard,
+  IconUser, IconUsers, IconBell, IconLock, IconChevronRight, IconCalendar, IconShield, IconBuilding, IconSettings, IconCreditCard, IconMessageReport,
 } from '@tabler/icons-react';
 import { PageHero } from '@/components/ui/PageHero';
 import { OgretmenYonetimiClient } from './OgretmenYonetimiClient';
@@ -70,6 +70,7 @@ const profile = profileData as { is_admin: boolean } | null;
       title: 'Yönetim',
       items: [
         { label: 'Abonelikler', desc: 'Ödeme onayları, ücretsiz hesaplar, kurumlar, fiyatlar ve banka bilgisi', icon: IconCreditCard, href: '/ayarlar/abonelikler' },
+        { label: 'Geri bildirimler', desc: '"Bize bildir" ile gelen sorunlar, öneriler ve mesajlar', icon: IconMessageReport, href: '/ayarlar/geri-bildirimler' },
       ],
     }] : []),
     {

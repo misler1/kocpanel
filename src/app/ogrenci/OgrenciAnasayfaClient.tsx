@@ -10,6 +10,7 @@ import type { Badge, TargetRow } from '@/lib/student-motivation';
 import { subjectEmoji, dailyQuote, cheer } from './studentUi';
 import { StudyLogSheet } from './StudyLogSheet';
 import { PushToggle } from '@/components/PushToggle';
+import { FeedbackButton } from '@/components/FeedbackButton';
 import { logExtraStudy, logStudy, setTaskDone, setTaskMissed, type ProgramDay, type StudyInput } from './studyApi';
 import { MissedSheet } from './MissedSheet';
 import { TaskEntryInfo, useTaskEntries } from './TaskEntryInfo';
@@ -253,6 +254,10 @@ export function OgrenciAnasayfaClient({
             <IconClock size={13} /> {pendingRequests} talebin koç onayı bekliyor
           </span>
         )}
+        <div className="mt-3">
+          <FeedbackButton label="Bize bildir: sorun ya da öneri"
+            className="relative inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-[12.5px] font-bold text-white ring-1 ring-white/40 backdrop-blur hover:bg-white/30" />
+        </div>
       </div>
 
       {/* Seri → pano → koçun paylaştığı içerik → hedef net */}
