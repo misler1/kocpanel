@@ -140,14 +140,34 @@ function WeekProgram({ sum }: { sum?: StudentSummary | null }) {
   );
 }
 
-export function StudentMeetingList({ students, hrefFor }: {
+/** Görüşme listesinde başlığa tıklayarak sıralanabilen sütunlar */
+export type MeetingListCol = 'ad' | 'sinif' | 'kurum' | 'gorusme' | 'deneme' | 'program';
+const LIST_COLS: { col: MeetingListCol; label: string }[] = [
+  { col: 'ad', label: 'Öğrenci' }, { col: 'sinif', label: 'Sınıf' }, { col: 'kurum', label: 'Kurum' },
+  { col: 'gorusme', label: 'Son görüşme' }, { col: 'deneme', label: 'Son deneme' }, { col: 'program', label: 'Son 7 gün program' },
+];
+
+export function StudentMeetingList({ students, hrefFor, sort, onSort }: {
   students: StudentCardData[];
   hrefFor: (s: StudentCardData) => string;
+  /** Etkin sıralama sütunu ve yönü (başlıkta ok gösterilir); onSort verilirse başlıklar tıklanabilir */
+  sort?: { col: MeetingListCol | null; dir: 'asc' | 'desc' };
+  onSort?: (col: MeetingListCol) => void;
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
       <div className="hidden xl:grid-cols-[minmax(0,2fr)_64px_minmax(0,1fr)_176px_156px_172px_20px] gap-3 border-b border-[var(--border)] bg-[var(--paper)] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)] xl:grid">
-        <span>Öğrenci</span><span>Sınıf</span><span>Kurum</span><span>Son görüşme</span><span>Son deneme</span><span>Son 7 gün program</span><span />
+        {LIST_COLS.map(({ col, label }) => {
+          const active = sort?.col === col;
+          return onSort ? (
+            <button key={col} type="button" onClick={() => onSort(col)} title="Sıralamak için tıklayın; tekrar tıklayınca yön değişir"
+              className={`flex min-w-0 items-center gap-1 text-left uppercase tracking-wide hover:text-[var(--ink)] ${active ? 'text-[var(--accent-dark)]' : ''}`}>
+              <span className="truncate">{label}</span>
+              <span className={`text-[10px] ${active ? '' : 'opacity-30'}`}>{active ? (sort?.dir === 'asc' ? '▲' : '▼') : '↕'}</span>
+            </button>
+          ) : <span key={col}>{label}</span>;
+        })}
+        <span />
       </div>
       <ul className="divide-y divide-[var(--border)]">
         {students.map((s) => {

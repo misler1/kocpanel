@@ -10,21 +10,48 @@ import { MeetingDetailModal } from './MeetingDetailModal';
 import { deleteMeetingWithPhotos } from '@/components/meeting/MeetingPhotos';
 import { PageHero } from '@/components/ui/PageHero';
 import {
-  StudentMeetingList, ListToolbar, SectionTitle, FilterChips, matchesQuery, lateBy, toolbarSelectCls,
+  StudentMeetingList, type MeetingListCol, ListToolbar, SectionTitle, FilterChips, matchesQuery, lateBy, toolbarSelectCls,
 } from '@/components/StudentCard';
 import { avatarColor, initials } from '@/lib/ui-colors';
 import { SuggestInput } from '@/components/SuggestInput';
 
-type SortKey = 'gorusme_eski' | 'gorusme_yeni' | 'ad' | 'soyad' | 'sinif' | 'dogum';
+type SortKey = 'gorusme_eski' | 'gorusme_yeni' | 'ad' | 'ad_desc' | 'soyad' | 'sinif' | 'sinif_desc' | 'kurum' | 'kurum_desc'
+  | 'deneme_yuksek' | 'deneme_dusuk' | 'program_yuksek' | 'program_dusuk' | 'dogum';
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'gorusme_eski', label: 'Görüşmesi en eski olan önce' },
   { value: 'gorusme_yeni', label: 'Görüşmesi en yeni olan önce' },
   { value: 'ad', label: 'Ada göre (A-Z)' },
+  { value: 'ad_desc', label: 'Ada göre (Z-A)' },
   { value: 'soyad', label: 'Soyada göre (A-Z)' },
   { value: 'sinif', label: 'Sınıfa göre' },
+  { value: 'sinif_desc', label: 'Sınıfa göre (tersten)' },
+  { value: 'kurum', label: 'Kuruma göre (A-Z)' },
+  { value: 'kurum_desc', label: 'Kuruma göre (Z-A)' },
+  { value: 'deneme_yuksek', label: 'Son deneme neti (yüksekten)' },
+  { value: 'deneme_dusuk', label: 'Son deneme neti (düşükten)' },
+  { value: 'program_yuksek', label: 'Program uyumu (yüksekten)' },
+  { value: 'program_dusuk', label: 'Program uyumu (düşükten)' },
   { value: 'dogum', label: 'Doğum tarihine göre' },
 ];
+
+// Liste başlığına tıklama: her sütunun [ilk tıklama, ikinci tıklama] sıralaması (yön: asc/desc oku için)
+const COL_SORTS: Record<MeetingListCol, [SortKey, SortKey]> = {
+  ad: ['ad', 'ad_desc'], sinif: ['sinif', 'sinif_desc'], kurum: ['kurum', 'kurum_desc'],
+  gorusme: ['gorusme_eski', 'gorusme_yeni'], deneme: ['deneme_yuksek', 'deneme_dusuk'], program: ['program_yuksek', 'program_dusuk'],
+};
+const DESC_KEYS: SortKey[] = ['ad_desc', 'sinif_desc', 'kurum_desc', 'gorusme_yeni', 'deneme_yuksek', 'program_yuksek'];
+/** Boş değerler her iki yönde de sona */
+const cmpText = (a: string | null | undefined, b: string | null | undefined, desc: boolean) => {
+  const x = (a ?? '').trim(); const y = (b ?? '').trim();
+  if (!x || !y) return x ? -1 : y ? 1 : 0;
+  return desc ? y.localeCompare(x, 'tr') : x.localeCompare(y, 'tr', { numeric: true });
+};
+const cmpNum = (a: number | null, b: number | null, desc: boolean) => {
+  if (a == null || b == null) return a != null ? -1 : b != null ? 1 : 0;
+  return desc ? b - a : a - b;
+};
+const programPct = (s: any) => (s.summary && s.summary.weekPlanned > 0 ? s.summary.weekDone / s.summary.weekPlanned : null);
 
 function getSoyad(fullName: string) {
   const parts = fullName.trim().split(/\s+/);
@@ -125,10 +152,23 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
       switch (sortKey) {
         case 'ad':
           return a.full_name.localeCompare(b.full_name, 'tr');
+        case 'ad_desc':
+          return b.full_name.localeCompare(a.full_name, 'tr');
+        case 'sinif_desc':
+          return cmpText(a.sinif_sube, b.sinif_sube, true);
+        case 'kurum':
+        case 'kurum_desc':
+          return cmpText(a.kurum, b.kurum, sortKey === 'kurum_desc') || a.full_name.localeCompare(b.full_name, 'tr');
+        case 'deneme_yuksek':
+        case 'deneme_dusuk':
+          return cmpNum(a.summary?.lastNet ?? null, b.summary?.lastNet ?? null, sortKey === 'deneme_yuksek');
+        case 'program_yuksek':
+        case 'program_dusuk':
+          return cmpNum(programPct(a), programPct(b), sortKey === 'program_yuksek');
         case 'soyad':
           return getSoyad(a.full_name).localeCompare(getSoyad(b.full_name), 'tr');
         case 'sinif':
-          return (a.sinif_sube ?? '').localeCompare(b.sinif_sube ?? '', 'tr');
+          return cmpText(a.sinif_sube, b.sinif_sube, false);
         case 'dogum':
           if (!a.birth_date && !b.birth_date) return 0;
           if (!a.birth_date) return 1;
@@ -151,6 +191,14 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
 
     return sorted;
   }, [examFiltered, sinifFilter, sortKey, query, quick]);
+
+  // Başlığa tıklama: aynı sütuna ikinci tıklamada yön değişir; açılır sıralama kutusu da aynı ayarı gösterir
+  const sortCol = (Object.keys(COL_SORTS) as MeetingListCol[]).find((c) => COL_SORTS[c].includes(sortKey)) ?? null;
+  const listSort = { col: sortCol, dir: (DESC_KEYS.includes(sortKey) ? 'desc' : 'asc') as 'asc' | 'desc' };
+  const onSort = (col: MeetingListCol) => {
+    const [first, second] = COL_SORTS[col];
+    setSortKey(sortKey === first ? second : first);
+  };
 
   const active = filtered.filter((s) => s.status !== 'pasif');
   const passive = filtered.filter((s) => s.status === 'pasif');
@@ -337,21 +385,21 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
                     Bu hafta herkesle görüşülmüş
                   </p>
                 ) : (
-                  <StudentMeetingList students={notMetThisWeek} hrefFor={(s) => `/gorusmeler/${s.id}`} />
+                  <StudentMeetingList students={notMetThisWeek} hrefFor={(s) => `/gorusmeler/${s.id}`} sort={listSort} onSort={onSort} />
                 )}
               </section>
 
               {metThisWeek.length > 0 && (
                 <section>
                   <SectionTitle tone="emerald" icon={<IconCircleCheck size={18} />} title="Bu hafta görüşülenler" count={metThisWeek.length} />
-                  <StudentMeetingList students={metThisWeek} hrefFor={(s) => `/gorusmeler/${s.id}`} />
+                  <StudentMeetingList students={metThisWeek} hrefFor={(s) => `/gorusmeler/${s.id}`} sort={listSort} onSort={onSort} />
                 </section>
               )}
 
               {passive.length > 0 && (
                 <section>
                   <SectionTitle tone="slate" icon={<IconArchive size={18} />} title="Pasif öğrenciler" count={passive.length} />
-                  <StudentMeetingList students={passive} hrefFor={(s) => `/gorusmeler/${s.id}`} />
+                  <StudentMeetingList students={passive} hrefFor={(s) => `/gorusmeler/${s.id}`} sort={listSort} onSort={onSort} />
                 </section>
               )}
             </div>
