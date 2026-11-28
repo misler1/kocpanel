@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { notificationHref, openInApp } from '@/lib/notification-link';
 import {
   IconBell, IconTrash, IconX, IconUserPlus, IconSchool, IconMailbox, IconClipboardList, IconChartBar,
   IconMessageCircle, IconCalendarEvent, IconAlarm, IconCircleCheck, IconBooks, IconFileText, IconUsers, IconPencil,
@@ -114,7 +115,8 @@ export function NotificationBell({ variant = 'coach' }: { variant?: 'coach' | 's
       setItems((p) => p.map((x) => (x.id === n.id ? { ...x, read_at: now } : x)));
       await (supabase as any).from('notifications').update({ read_at: now }).eq('id', n.id);
     }
-    if (n.link) router.push(n.link);
+    const href = notificationHref(n.kind, n.link);
+    if (href) openInApp((h) => router.push(h), href);
   }
 
   // Zili açmak bildirimleri görmek demektir: ışık söner, yeniler bu açılışta vurgulu kalır

@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { registerServiceWorker } from '@/lib/push-client';
+import { openInApp } from '@/lib/notification-link';
 
 /**
  * Service worker'ı kaydeder (telefon bildirimleri ve çevrimdışı sayfa için; geliştirme ortamında kaydedilmez).
@@ -18,7 +19,7 @@ export function PwaRegister() {
       if (e.data?.type !== 'open-url' || typeof e.data.url !== 'string') return;
       const url = new URL(e.data.url, window.location.origin);
       if (url.origin !== window.location.origin) return;
-      router.push(url.pathname + url.search);
+      openInApp((h) => router.push(h), url.pathname + url.search + url.hash); // #bölüm: aynı sayfadaysa kaydırır
     };
     navigator.serviceWorker.addEventListener('message', onMessage);
     return () => navigator.serviceWorker.removeEventListener('message', onMessage);

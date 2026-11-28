@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { scrollToHashIf } from '@/lib/notification-link';
 import { parseEmbed } from '@/lib/embed';
 import { EmbedView } from './EmbedView';
 
@@ -19,10 +20,11 @@ const when = (iso: string) => {
 export function StudentContentCard({ items }: { items: FeedItem[] }) {
   const contents = items.filter((i) => i.kind === 'icerik' && i.url).slice(0, 5);
   const [open, setOpen] = useState(contents[0]?.id ?? null);
+  useEffect(() => scrollToHashIf('icerik'), []); // içerik bildiriminden gelindiyse
   if (!contents.length) return null;
 
   return (
-    <div className="rounded-[28px] border-2 border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
+    <div id="icerik" className="scroll-mt-4 rounded-[28px] border-2 border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
       <h2 className="mb-3 text-[18px] font-extrabold text-[var(--ink)]">🎬 Koçundan sana</h2>
       <div className="space-y-3">
         {contents.map((c) => (
@@ -67,11 +69,12 @@ const initialsOf = (name: string | null) =>
 export function StudentBoard({ items }: { items: FeedItem[] }) {
   const notes = items.filter((i) => i.kind === 'duyuru').slice(0, 10);
   const [all, setAll] = useState(false);
+  useEffect(() => scrollToHashIf('pano'), []); // duyuru bildiriminden gelindiyse
   if (!notes.length) return null;
   const shown = all ? notes : notes.slice(0, 3);
 
   return (
-    <section className="overflow-hidden rounded-[24px] border-2 border-[var(--border)] bg-[var(--card)] shadow-sm">
+    <section id="pano" className="scroll-mt-4 overflow-hidden rounded-[24px] border-2 border-[var(--border)] bg-[var(--card)] shadow-sm">
       <div className="flex items-center gap-2 bg-gradient-to-r from-[#F59E0B] via-[#F97316] to-[#EC4899] px-4 py-2.5 text-white">
         <span className="text-[18px]">📌</span>
         <h2 className="text-[17px] font-extrabold">Pano</h2>

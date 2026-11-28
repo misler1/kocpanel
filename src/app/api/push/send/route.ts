@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPushSecret, sendPushToUser } from '@/lib/push-server';
+import { notificationHref } from '@/lib/notification-link';
 
 // Veritabanı tetikleyicisi (supabase/push_notifications.sql → _push_notification) yeni bildirimde burayı çağırır.
 // Oturum yoktur; istek app_settings'teki ortak parolayla doğrulanır. Gövdede yalnızca bildirim kimliği gelir,
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   const sent = await sendPushToUser(n.recipient_id, {
     title: n.title,
     body: n.body,
-    url: n.link || '/',
+    url: notificationHref(n.kind, n.link) || '/',
     // Aynı sohbetten gelen mesajlar telefonda tek bildirimde güncellenir
     tag: n.kind === 'mesaj' ? `mesaj:${n.link ?? ''}` : n.id,
   });
