@@ -3,7 +3,8 @@
 -- Yöneticilere zil bildirimi gider; Ayarlar > Geri bildirimler'de listelenir. Yönetici "Çözüldü" deyip not yazarsa
 -- bildiren kişiye bildirim gider. Kod: src/components/FeedbackButton.tsx, src/app/ayarlar/geri-bildirimler
 -- ÖNCE notifications.sql (notify_user) çalıştırılmış olmalı. Supabase SQL Editor'da BİR KEZ çalıştırın;
--- tekrar çalıştırmak zararsızdır.
+-- tekrar çalıştırmak zararsızdır. Not: geri_bildirim_foto.sql'den SONRA bu dosya yeniden çalıştırılırsa
+-- geri_bildirim_foto.sql de yeniden çalıştırılmalı (fotoğraf kuralı ve yönetici listesi onda).
 --
 -- Geri alma: drop table if exists public.feedback_reports cascade;
 -- ============================================================

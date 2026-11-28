@@ -41,7 +41,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `gorusme_taslaklari.sql` | Kaydedilmemiş görüşme taslağı sunucuda da saklanır: bilgisayarda başlanan not telefonda da açılır (taslağı yalnızca yazan görür) | ✅ Çalıştırıldı (28 Kasım 2026) |
 | `abonelik.sql` | Abonelik ve havale/EFT ödemesi: paketler, deneme süresi, salt okunur dönem, kurumsal abonelik, yönetici onayı; mevcut bütün koçlar ücretsiz/süresiz işaretlenir (notifications.sql'den sonra) | ✅ Çalıştırıldı (28 Kasım 2026) |
 | `geri_bildirim.sql` | "Bize bildir": ana sayfadan sorun/öneri/mesaj; yöneticiye zil bildirimi, Ayarlar > Geri bildirimler listesi, "Çözüldü" deyince bildirene bildirim (notifications.sql'den sonra) | ✅ Çalıştırıldı (28 Kasım 2026) |
-| `geri_bildirim_foto.sql` | "Bize bildir"e en fazla 3 fotoğraf / ekran görüntüsü (kapalı depo "geri-bildirim-fotolari", /api/geri-bildirim/foto; geri_bildirim.sql'den sonra) | ⏳ Çalıştırılacak |
+| `geri_bildirim_foto.sql` | "Bize bildir"e en fazla 3 fotoğraf / ekran görüntüsü (kapalı depo "geri-bildirim-fotolari", /api/geri-bildirim/foto; geri_bildirim.sql'den sonra) | ✅ Çalıştırıldı (28 Kasım 2026) |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
