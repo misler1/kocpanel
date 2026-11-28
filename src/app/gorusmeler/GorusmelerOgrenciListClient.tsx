@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { IconCalendar, IconNotes, IconAlertCircle, IconCircleCheck, IconArchive, IconClock, IconChevronRight, IconSearch } from '@tabler/icons-react';
 import { MeetingHit, MeetingSearchBox, meetingMatches, searchTerms } from '@/components/MeetingSearch';
 import { MeetingDetailModal } from './MeetingDetailModal';
+import { deleteMeetingWithPhotos } from '@/components/meeting/MeetingPhotos';
 import { PageHero } from '@/components/ui/PageHero';
 import {
   StudentMeetingList, ListToolbar, SectionTitle, FilterChips, matchesQuery, lateBy, toolbarSelectCls,
@@ -223,7 +224,8 @@ export function GorusmelerOgrenciListClient({ students }: { students: any[] }) {
   }, [allMeetings, terms, matchesFilter]);
 
   async function handleDelete(id: string) {
-    await (supabase.from('meetings') as any).delete().eq('id', id);
+    const err = await deleteMeetingWithPhotos(supabase, id); // defter fotoğrafları da silinir
+    if (err) { alert(`Görüşme silinemedi: ${err}`); setDeletingId(null); return; }
     setAllMeetings((prev) => (prev ?? []).filter((m) => m.id !== id));
     setDeletingId(null);
   }

@@ -12,7 +12,7 @@ import {
   draftKey, loadDraft, writeDraft, removeDraft, flushRemoteDrafts, hasText, DURATION_RESUME_MS, type MeetingDraft,
 } from '@/lib/meetingDraft';
 import { SuggestInput } from '@/components/SuggestInput';
-import { MeetingPhotos, MeetingPhotoStrip, appendReadText } from '@/components/meeting/MeetingPhotos';
+import { MeetingPhotos, MeetingPhotoStrip, appendReadText, removePhotoFiles, deleteMeetingWithPhotos } from '@/components/meeting/MeetingPhotos';
 
 const HAFTALIK_TAKIP_KURUMU = 'Hüdayi Vakfı Çekmeköy YKS Yurdu';
 const MEETING_SELECT = '*, created_by_profile:created_by(id, full_name)';
@@ -146,6 +146,7 @@ export function GorusmeOgrenciClient({
   function discardDraft() {
     if (!confirm('Kaydedilmemiş görüşme taslağı silinsin mi?')) return;
     if (draftStorageKey) removeDraft(draftStorageKey);
+    removePhotoFiles(photos); // taslağa yüklenmiş fotoğraflar
     resetForm();
   }
 
@@ -530,13 +531,26 @@ function MeetingCard({
       .eq('id', meeting.id)
       .select(MEETING_SELECT)
       .single();
-    if (data) onSaved(data);
+    if (data) {
+      // Kayıttan çıkarılan fotoğraflar depodan da silinir
+      const kept = new Set<string>(editing.photos ?? []);
+      removePhotoFiles((meeting.photos ?? []).filter((p: string) => !kept.has(p)));
+      onSaved(data);
+    }
     setSaving(false);
     setEditing(null);
   }
 
+  // Düzenlemeden vazgeçilirse bu sırada yüklenen (kayda girmemiş) fotoğraflar silinir
+  function cancelEdit() {
+    const saved = new Set<string>(meeting.photos ?? []);
+    removePhotoFiles((editing?.photos ?? []).filter((p: string) => !saved.has(p)));
+    setEditing(null);
+  }
+
   async function handleDelete() {
-    await (supabase.from('meetings') as any).delete().eq('id', meeting.id);
+    const err = await deleteMeetingWithPhotos(supabase, meeting.id);
+    if (err) { alert(`Görüşme silinemedi: ${err}`); return; }
     onDeleted(meeting.id);
   }
 
@@ -626,7 +640,7 @@ function MeetingCard({
           )}
 
           <div className="flex gap-3 pt-1">
-            <button type="button" onClick={() => setEditing(null)}
+            <button type="button" onClick={cancelEdit}
               className="flex-1 rounded-lg border border-[var(--border)] py-2 text-sm text-[var(--ink-muted)] hover:bg-[var(--paper)]">
               İptal
             </button>

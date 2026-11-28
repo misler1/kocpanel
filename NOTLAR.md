@@ -38,7 +38,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `gunluk_eksikler.sql` | Sabah 10:00 "günlük girmeyenler" bildirimi /gunluk-eksikler sayfasını açar (girmeyen + eksik girenler, mesaj/program/bildirimi kapat); ilk girişini yapmamış öğrenciler sayılmaz; öğrenci bazında süreli/süresiz sessize alma (bildirim_cakisma_duzeltme.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
 | `mesaj_okundu_duzenleme.sql` | Mesajlarda okundu bilgisi (⋮ menüsünden açılıp kapatılır, karşılıklı); mesajı 24 saat içinde düzenleme / herkesten geri alma, benden silme; grup yöneticisi mesaj kaldırabilir (messaging.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
 | `mesaj_kisi_ayarlari.sql` | Mesajlarda sohbete (kişiye) özel okundu bilgisi ve sohbeti süreli/süresiz sessize alma (⋮ menüsü); sessizdeki sohbetten bildirim gelmez (mesaj_okundu_duzenleme.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
-| `gorusme_taslaklari.sql` | Kaydedilmemiş görüşme taslağı sunucuda da saklanır: bilgisayarda başlanan not telefonda da açılır (taslağı yalnızca yazan görür) | ⏳ Çalıştırılacak |
+| `gorusme_taslaklari.sql` | Kaydedilmemiş görüşme taslağı sunucuda da saklanır: bilgisayarda başlanan not telefonda da açılır (taslağı yalnızca yazan görür) | ✅ Çalıştırıldı (28 Kasım 2026) |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
@@ -48,6 +48,9 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 ---
 
 ## 2. Tamamlananlar (yayında)
+
+### Görüşme fotoğrafları depoda kalmaz (28 Kasım)
+- Görüşme silinince (görüşme kayıtları, öğrenci detayı, öğrenci görüşmeleri) defter fotoğrafları depodan da silinir. Düzenlemede çıkarılan fotoğraf kaydedilince, düzenlemeden vazgeçilince o sırada yüklenenler, "Taslağı sil" ile taslağa yüklenenler silinir. Öğrenci tamamen silinirse fotoğrafları yine depoda kalır. Kod: `deleteMeetingWithPhotos` / `removePhotoFiles` (`src/components/meeting/MeetingPhotos.tsx`).
 
 ### Görüşme taslağı her cihazda, bildirimden içeriğe gitme (28 Kasım)
 - Görüşme taslağı tarayıcıya hemen, sunucuya (`meeting_drafts`) en geç 2 sn'de yazılır; form açılırken tarayıcıdaki ve sunucudaki taslaktan yeni olanı gelir. Başka cihazda kaydedilen/silinen taslağın eski kopyası geri gelmez. Başka cihazda taslak varsa öğrenci detayında panel küçültülmüş açılır. Kod: `src/lib/meetingDraft.ts`.
@@ -225,7 +228,6 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 - **Defter fotoğrafından yazı okuma** Gemini ile (GEMINI_API_KEY gerekli; isteğe bağlı GEMINI_VISION_MODEL). Fotoğraf yükleme anahtarsız da çalışır.
 - **Sesli dikte** tarayıcının konuşma tanımasıyla (Chrome/Edge/Safari; Firefox'ta düğme görünmez). Ses tarayıcı üreticisinin (Google/Apple) sunucusunda yazıya çevrilir; konuşmacıları ayırmaz.
-- **Silinen görüşmenin fotoğrafları** depoda kalır (yalnızca kayıttan önce kaldırılan fotoğraf hemen silinir).
 
 - **Ekranda denenmedi:**
   - Bu ve önceki turdaki değişiklikler tip, lint ve derleme kontrolünden geçti; tarayıcıda denenmedi.

@@ -16,6 +16,7 @@ import {
 import { YapayZekaAsistani } from './YapayZekaAsistani';
 import { IcerikIzleme } from './IcerikIzleme';
 import { hasRemoteDraftFor } from '@/lib/meetingDraft';
+import { deleteMeetingWithPhotos } from '@/components/meeting/MeetingPhotos';
 import { avatarColor, initials, trackPill } from '@/lib/ui-colors';
 import { OgrenciProgramlari } from './OgrenciProgramlari';
 import { CalisilanKonular } from './CalisilanKonular';
@@ -1063,7 +1064,8 @@ function MeetingList({ meetings, studentId }: { meetings: any[]; studentId: stri
   if (items.length === 0) return <p className="text-[13px] text-gray-400">Henüz görüşme yok.</p>;
 
   async function handleDelete(id: string) {
-    await (supabase.from('meetings') as any).delete().eq('id', id);
+    const err = await deleteMeetingWithPhotos(supabase, id); // defter fotoğrafları da silinir
+    if (err) { alert(`Görüşme silinemedi: ${err}`); setDeletingId(null); return; }
     setItems((prev) => prev.filter((m) => m.id !== id));
     setDeletingId(null);
   }

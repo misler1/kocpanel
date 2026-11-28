@@ -16,6 +16,21 @@ ${text}` : text;
 
 export const photoUrl = (path: string) => `/api/gorusme/foto?path=${encodeURIComponent(path)}`;
 
+/** Fotoğraf dosyalarını depodan siler (kayıttan çıkarılan, silinen görüşmeye ait ya da kaydedilmeden vazgeçilen) */
+export function removePhotoFiles(paths: (string | null | undefined)[]) {
+  for (const p of paths) if (p) fetch(photoUrl(p), { method: 'DELETE', keepalive: true }).catch(() => {});
+}
+
+/** Görüşmeyi siler; silinirse defter fotoğrafları da depodan silinir. Hata varsa mesajını döndürür. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function deleteMeetingWithPhotos(supabase: any, id: string): Promise<string | null> {
+  const { data: row } = await supabase.from('meetings').select('photos').eq('id', id).maybeSingle();
+  const { error } = await supabase.from('meetings').delete().eq('id', id);
+  if (error) return error.message;
+  removePhotoFiles(row?.photos ?? []);
+  return null;
+}
+
 /** Sunucuya giden en büyük dosya (Vercel isteği 4,5 MB'ta keser) */
 const MAX_UPLOAD = 4 * 1024 * 1024;
 

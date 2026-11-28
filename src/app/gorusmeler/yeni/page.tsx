@@ -10,7 +10,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { FORM_CARD_CLS, FormSectionTitle, FormActions, formInputCls, formCancelCls, formSubmitCls } from '@/components/ui/FormSection';
 import { Suspense } from 'react';
 import { NotesEditor } from '@/components/NotesEditor';
-import { MeetingPhotos, appendReadText } from '@/components/meeting/MeetingPhotos';
+import { MeetingPhotos, appendReadText, removePhotoFiles } from '@/components/meeting/MeetingPhotos';
 import {
   draftKey, loadDraft, writeDraft, removeDraft, hasText, DURATION_RESUME_MS, type MeetingDraft,
 } from '@/lib/meetingDraft';
@@ -104,6 +104,7 @@ function YeniGorusmeForm() {
   function discardDraft() {
     if (!confirm('Kaydedilmemiş görüşme taslağı silinsin mi?')) return;
     if (draftStorageKey) removeDraft(draftStorageKey);
+    removePhotoFiles(photos); // taslağa yüklenmiş fotoğraflar
     const now = new Date();
     setTopic('');
     setNotes('');
