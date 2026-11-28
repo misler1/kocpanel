@@ -51,6 +51,11 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 2. Tamamlananlar (yayında)
 
+### KVKK ve yasal metinler (28 Kasım)
+- Sayfalar (giriş gerektirmez, alt bilgide "Yasal"): /kvkk (aydınlatma metni), /acik-riza, /gizlilik (gizlilik ve çerez), /kullanim-kosullari (abonelik, deneme, salt okunur dönem, iade yer tutucusu).
+- Koç ve öğrenci kayıt formlarında zorunlu onay kutuları; öğrenci 18 yaşından küçükse ayrıca veli onayı. Kabul edilen sürüm ve tarih hesabın user_metadata'sına yazılır (legal_version, legal_accepted_at, explicit_consent, parent_consent). Koçun eklediği öğrencilerde veri sorumlusu koç/kurumdur (metinde yazıyor).
+- **Yapılacak:** şirket kurulunca `src/lib/legal.ts` içindeki köşeli parantezli bilgiler (ünvan, adres, e-posta, KEP, MERSİS) ile metinlerdeki [saklama süresi], [iade koşulları], [sorumluluk sınırı], [il] doldurulmalı; metinler hukukçuya kontrol ettirilmeli; metin değişince `LEGAL_VERSION` artırılmalı.
+
 ### Bize bildir (28 Kasım) — `geri_bildirim.sql`
 - Koç ana sayfasında karşılama kartında sarı **Bize bildir** düğmesi, öğrenci ana sayfasında karşılama kartında **Bize bildir: sorun ya da öneri**. Tür (Sorun / Öneri / Diğer) + metin; sayfa ve cihaz bilgisi kendiliğinden eklenir. Yöneticiye zil bildirimi; Ayarlar > Geri bildirimler'de liste (Yeni / İnceleniyor / Çözüldü, not, sil). Çözüldü denince bildirene notla bildirim gider. Kod: `src/components/FeedbackButton.tsx`, `src/app/ayarlar/geri-bildirimler`.
 

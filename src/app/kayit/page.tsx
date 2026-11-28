@@ -6,6 +6,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types/database';
+import { ConsentChecks } from '@/components/legal/ConsentChecks';
+import { LEGAL_VERSION } from '@/lib/legal';
 
 const ROLES: { value: UserRole; label: string }[] = [
   { value: 'koc', label: 'Koç' },
@@ -22,6 +24,8 @@ export default function KayitPage() {
   const [role, setRole] = useState<UserRole>('koc');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [terms, setTerms] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +35,8 @@ export default function KayitPage() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
+      // Kabul edilen yasal metin sürümü hesapta saklanır (src/lib/legal.ts)
+      options: { data: { legal_version: LEGAL_VERSION, legal_accepted_at: new Date().toISOString(), explicit_consent: consent } },
     });
 
     if (signUpError || !data.user) {
@@ -114,11 +120,13 @@ export default function KayitPage() {
             />
           </div>
 
+          <ConsentChecks terms={terms} setTerms={setTerms} consent={consent} setConsent={setConsent} />
+
           {error && <p className="text-sm font-medium text-[var(--danger)]">{error}</p>}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !terms || !consent}
             className="w-full rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-dark)] disabled:opacity-60"
           >
             {loading ? 'Oluşturuluyor...' : 'Hesap oluştur'}

@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { studentEmailFromPhone } from '@/lib/student-account';
 import { HONEYPOT_FIELD } from '@/lib/spam-guard';
+import { ConsentChecks } from '@/components/legal/ConsentChecks';
+import { isMinor } from '@/lib/legal';
 
 export default function OgrenciKayitPage() {
   const router = useRouter();
@@ -20,6 +22,10 @@ export default function OgrenciKayitPage() {
   const [loading, setLoading] = useState(false);
   const [honeypot, setHoneypot] = useState('');
   const [formStartedAt] = useState(() => Date.now());
+  const [terms, setTerms] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const [parentOk, setParentOk] = useState(false);
+  const minor = isMinor(birthDate);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,7 +36,7 @@ export default function OgrenciKayitPage() {
     const res = await fetch('/api/ogrenci/kayit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName, phone, birthDate, password, coachMode, [HONEYPOT_FIELD]: honeypot, formStartedAt }),
+      body: JSON.stringify({ fullName, phone, birthDate, password, coachMode, terms, consent, parentConsent: parentOk, [HONEYPOT_FIELD]: honeypot, formStartedAt }),
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -95,9 +101,11 @@ export default function OgrenciKayitPage() {
             </div>
           </fieldset>
 
+          <ConsentChecks terms={terms} setTerms={setTerms} consent={consent} setConsent={setConsent} minor={minor} parent={parentOk} setParent={setParentOk} />
+
           {error && <p className="text-sm font-medium text-[var(--danger)]">{error}</p>}
 
-          <button type="submit" disabled={loading}
+          <button type="submit" disabled={loading || !terms || !consent || (minor && !parentOk)}
             className="w-full rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-dark)] disabled:opacity-60">
             {loading ? 'Kaydediliyor...' : 'Kayıt ol'}
           </button>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { LANDING_PAGES } from '@/lib/landing-content';
+import { LEGAL_PAGES } from '@/lib/legal';
 
 export function MarketingFooter() {
   return (
@@ -29,6 +30,12 @@ export function MarketingFooter() {
             <Link href="/giris" className="text-[#6B6558] hover:text-[#1D2B3A]">Koç Girişi</Link>
             <Link href="/giris/ogrenci" className="text-[#6B6558] hover:text-[#1D2B3A]">Öğrenci Girişi</Link>
             <Link href="/uygulama" className="text-[#6B6558] hover:text-[#1D2B3A]">Uygulamayı Yükle</Link>
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="font-medium text-[#1D2B3A]">Yasal</span>
+            {LEGAL_PAGES.map((p) => (
+              <Link key={p.href} href={p.href} className="text-[#6B6558] hover:text-[#1D2B3A]">{p.label}</Link>
+            ))}
           </div>
         </div>
       </div>

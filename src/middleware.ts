@@ -17,6 +17,11 @@ const PUBLIC_MARKETING_PREFIXES = [
   '/ders-takibi',
   // Uygulama kurulum rehberi
   '/uygulama',
+  // Yasal metinler (src/lib/legal.ts): kayıt formundan giriş yapmadan da açılır
+  '/kvkk',
+  '/acik-riza',
+  '/gizlilik',
+  '/kullanim-kosullari',
 ];
 
 // /sifre-sifirla sayfasıyla aynı ad (orada tarayıcıda yazılıyor)

@@ -5,6 +5,7 @@ import { phoneKey, studentEmailFromPhone } from '@/lib/student-account';
 import { clientIp, looksLikeBot, rateLimit } from '@/lib/spam-guard';
 import { getPlatformCoachId } from '@/lib/platform-coach';
 import { notifyAdminsByEmail } from '@/lib/admin-email';
+import { LEGAL_VERSION, isMinor } from '@/lib/legal';
 
 // Sistem genelinde bu süre içinde en fazla bu kadar yeni başvuru kabul edilir (bot saldırısına karşı tavan)
 const GLOBAL_WINDOW_MIN = 10;
@@ -37,6 +38,10 @@ export async function POST(request: Request) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || year < 1960 || year > new Date().getFullYear() - 5) return bad('Doğum tarihi geçersiz.');
   if (password.length < 8) return bad('Şifre en az 8 karakter olmalı.');
   if (!coachMode && !coachId) return bad('Koç öğretmen tercihini seç.');
+  // Yasal onaylar (src/lib/legal.ts); 18 yaş altında veli onayı
+  const minor = isMinor(birthDate);
+  if (body.terms !== true || body.consent !== true) return bad('Kayıt için Kullanım Koşulları ve Açık Rıza Metni onaylanmalı.');
+  if (minor && body.parentConsent !== true) return bad('18 yaşından küçüksen velinin onayı gerekli.');
 
   const admin = createAdminClient();
 
@@ -66,7 +71,10 @@ export async function POST(request: Request) {
   }
 
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
-    email, password, email_confirm: true, user_metadata: { full_name: fullName, role: 'ogrenci' },
+    email, password, email_confirm: true, user_metadata: {
+      full_name: fullName, role: 'ogrenci',
+      legal_version: LEGAL_VERSION, legal_accepted_at: new Date().toISOString(), explicit_consent: true, parent_consent: minor ? true : null,
+    },
   });
   if (createErr || !created.user) {
     const dup = /already|registered|exists/i.test(createErr?.message ?? '');

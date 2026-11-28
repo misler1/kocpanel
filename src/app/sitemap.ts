@@ -17,6 +17,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/dil-sinav-koclugu', priority: 0.7 },
     { path: '/diger-sinavlar', priority: 0.6 },
     { path: '/uygulama', priority: 0.6 },
+  { path: '/kvkk', priority: 0.2 },
+  { path: '/gizlilik', priority: 0.2 },
+  { path: '/kullanim-kosullari', priority: 0.2 },
   ];
   const landings = LANDING_PAGES.map((p) => ({ path: `/${p.slug}`, priority: 0.9 }));
   const articles = ARTICLE_CATEGORIES.flatMap((c) =>
