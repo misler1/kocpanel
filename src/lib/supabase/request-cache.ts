@@ -12,6 +12,15 @@ export const getRequestUser = cache(async () => {
   return user;
 });
 
+/** Koçun abonelik durumu (supabase/abonelik.sql → my_billing; dosya çalıştırılmadıysa null) */
+export const getRequestBilling = cache(async () => {
+  const supabase = await createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc('my_billing');
+  if (error || !data) return null;
+  return data as import('@/lib/billing').MyBilling;
+});
+
 /** Koçun görebildiği öğrenci kapsamı (istek başına tek hesap) */
 export const getRequestScope = cache(async (userId: string, includeInterns: boolean) => {
   const supabase = await createClient();

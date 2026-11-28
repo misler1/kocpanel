@@ -39,6 +39,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `mesaj_okundu_duzenleme.sql` | Mesajlarda okundu bilgisi (⋮ menüsünden açılıp kapatılır, karşılıklı); mesajı 24 saat içinde düzenleme / herkesten geri alma, benden silme; grup yöneticisi mesaj kaldırabilir (messaging.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
 | `mesaj_kisi_ayarlari.sql` | Mesajlarda sohbete (kişiye) özel okundu bilgisi ve sohbeti süreli/süresiz sessize alma (⋮ menüsü); sessizdeki sohbetten bildirim gelmez (mesaj_okundu_duzenleme.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
 | `gorusme_taslaklari.sql` | Kaydedilmemiş görüşme taslağı sunucuda da saklanır: bilgisayarda başlanan not telefonda da açılır (taslağı yalnızca yazan görür) | ✅ Çalıştırıldı (28 Kasım 2026) |
+| `abonelik.sql` | Abonelik ve havale/EFT ödemesi: paketler, deneme süresi, salt okunur dönem, kurumsal abonelik, yönetici onayı; mevcut bütün koçlar ücretsiz/süresiz işaretlenir (notifications.sql'den sonra) | ⏳ Çalıştırılacak |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
@@ -48,6 +49,14 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 ---
 
 ## 2. Tamamlananlar (yayında)
+
+### Abonelik ve ödeme (28 Kasım) — `abonelik.sql`
+- **Kimler öder:** onaylı koç/öğretmen. Yönetici, sistem hesabı, yurt yöneticisi, belletmen, stajyer her zaman muaf. SQL çalıştırıldığında var olan bütün koçlar **ücretsiz, süresiz**; yönetici Ayarlar > Abonelikler'den değiştirir (ücretsiz süresiz / ücretsiz bitiş tarihli / deneme / ücretli, bitiş, paket, kurum, not).
+- **Yeni koç:** ilk girişte deneme (varsayılan 14 gün). **Süre bitince:** görüntüleme süresi (varsayılan 14 gün) salt okunur: görür ve Excel indirir, yeni kayıt/değişiklik/silme veritabanı tetikleyicisiyle engellenir (`_billing_guard`); öğrenciler etkilenmez. Sonra hesap kilitlenir: panelde yalnızca Abonelik ve Hesabım açılır. Ödeme onaylanınca hemen açılır.
+- **Fiyat:** bireysel paketler 10/30/60/sınırsız öğrenci: 49/99/159/199 TL/ay; yıllık %20 indirim. Kurumsal: koç başına ortalama öğrenciye göre paket × koç sayısı, koç sayısına göre indirim (2+ %10, 5+ %15, 10+ %20, 20+ %25); öğrenci sınırı paket sınırı × koç. Hepsi Ayarlar > Abonelikler > Fiyatlar ve banka'dan değişir. Tutar veritabanında hesaplanır (`billing_price`), ekran önizlemesi `src/lib/billing.ts`.
+- **Havale akışı:** koç /abonelik'te paket seçer, IBAN'a öder, açıklamaya kendi ödeme kodunu (KD…) yazar, "ödedim, onaya gönder" der → yöneticiye bildirim. Yönetici bankada kodu/tutarı görünce onaylar → süre 1 ay / 1 yıl uzar (bitmemişse bitiş tarihine eklenir), koça bildirim. Kurumsal onayda kurum kendiliğinden kurulur; diğer koçlar Koçlar sekmesinden kuruma eklenir.
+- **Öğrenci sınırı:** ücretli pakette koç sınırı aşacak yeni öğrenci ekleyemez. **Hatırlatma:** bitişe 7 ve 1 gün kala, salt okunur başlayınca ve kapanmadan 1 gün önce bildirim (her gün 09:00, `abonelik-hatirlatma`).
+- Kod: `src/app/abonelik`, `src/app/ayarlar/abonelikler`, `src/components/layout/DashboardShell.tsx` (uyarı şeridi + kilit), `src/app/api/abonelik/disa-aktar` (Excel).
 
 ### Görüşme fotoğrafları depoda kalmaz (28 Kasım)
 - Görüşme silinince (görüşme kayıtları, öğrenci detayı, öğrenci görüşmeleri) defter fotoğrafları depodan da silinir. Düzenlemede çıkarılan fotoğraf kaydedilince, düzenlemeden vazgeçilince o sırada yüklenenler, "Taslağı sil" ile taslağa yüklenenler silinir. Öğrenci tamamen silinirse fotoğrafları yine depoda kalır. Kod: `deleteMeetingWithPhotos` / `removePhotoFiles` (`src/components/meeting/MeetingPhotos.tsx`).

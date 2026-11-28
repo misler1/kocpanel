@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getRequestUser } from '@/lib/supabase/request-cache';
 import {
-  IconUser, IconUsers, IconBell, IconLock, IconChevronRight, IconCalendar, IconShield, IconBuilding, IconSettings,
+  IconUser, IconUsers, IconBell, IconLock, IconChevronRight, IconCalendar, IconShield, IconBuilding, IconSettings, IconCreditCard,
 } from '@tabler/icons-react';
 import { PageHero } from '@/components/ui/PageHero';
 import { OgretmenYonetimiClient } from './OgretmenYonetimiClient';
@@ -63,8 +63,15 @@ const profile = profileData as { is_admin: boolean } | null;
       items: [
         { label: 'Profil bilgileri', desc: 'Ad, telefon ve rol bilgileri', icon: IconUser, href: '/hesabim' },
         { label: 'Şifre değiştir', desc: 'Hesap güvenliği', icon: IconLock, href: '#' },
+        { label: 'Abonelik', desc: 'Paket, ödeme ve verilerini indirme', icon: IconCreditCard, href: '/abonelik' },
       ],
     },
+    ...(isAdmin ? [{
+      title: 'Yönetim',
+      items: [
+        { label: 'Abonelikler', desc: 'Ödeme onayları, ücretsiz hesaplar, kurumlar, fiyatlar ve banka bilgisi', icon: IconCreditCard, href: '/ayarlar/abonelikler' },
+      ],
+    }] : []),
     {
       title: 'Öğrenciler',
       items: [
