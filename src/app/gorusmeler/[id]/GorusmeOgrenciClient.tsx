@@ -9,7 +9,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Highlight, MeetingSearchBox, meetingMatches, searchTerms } from '@/components/MeetingSearch';
 import { NotesEditor } from '@/components/NotesEditor';
 import {
-  draftKey, readDraft, writeDraft, removeDraft, hasText, DURATION_RESUME_MS, type MeetingDraft,
+  draftKey, loadDraft, writeDraft, removeDraft, flushRemoteDrafts, hasText, DURATION_RESUME_MS, type MeetingDraft,
 } from '@/lib/meetingDraft';
 import { SuggestInput } from '@/components/SuggestInput';
 import { MeetingPhotos, MeetingPhotoStrip, appendReadText } from '@/components/meeting/MeetingPhotos';
@@ -114,6 +114,7 @@ export function GorusmeOgrenciClient({
     const flush = () => {
       const { key, data } = latestDraft.current;
       if (key && data) writeDraft(key, { ...data, savedAt: Date.now() });
+      flushRemoteDrafts(); // sunucuya da hemen
     };
     window.addEventListener('pagehide', flush);
     return () => { window.removeEventListener('pagehide', flush); flush(); };
@@ -167,9 +168,9 @@ export function GorusmeOgrenciClient({
       // Bu öğrenci için kaydedilmemiş taslak varsa geri yükle
       // (Görüşme ekle sayfasında bu öğrenci seçilerek başlanmış taslak da buraya taşınır)
       const key = draftKey(user.id, student.id);
-      let d = readDraft(key);
+      let d = await loadDraft(key); // tarayıcıdaki ya da (başka cihazda yazılmışsa) sunucudaki
       const generalKey = draftKey(user.id, '');
-      const g = d ? null : readDraft(generalKey);
+      const g = d ? null : await loadDraft(generalKey);
       if (g && g.studentId === student.id) {
         d = g;
         writeDraft(key, g);

@@ -38,6 +38,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `gunluk_eksikler.sql` | Sabah 10:00 "günlük girmeyenler" bildirimi /gunluk-eksikler sayfasını açar (girmeyen + eksik girenler, mesaj/program/bildirimi kapat); ilk girişini yapmamış öğrenciler sayılmaz; öğrenci bazında süreli/süresiz sessize alma (bildirim_cakisma_duzeltme.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
 | `mesaj_okundu_duzenleme.sql` | Mesajlarda okundu bilgisi (⋮ menüsünden açılıp kapatılır, karşılıklı); mesajı 24 saat içinde düzenleme / herkesten geri alma, benden silme; grup yöneticisi mesaj kaldırabilir (messaging.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
 | `mesaj_kisi_ayarlari.sql` | Mesajlarda sohbete (kişiye) özel okundu bilgisi ve sohbeti süreli/süresiz sessize alma (⋮ menüsü); sessizdeki sohbetten bildirim gelmez (mesaj_okundu_duzenleme.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
+| `gorusme_taslaklari.sql` | Kaydedilmemiş görüşme taslağı sunucuda da saklanır: bilgisayarda başlanan not telefonda da açılır (taslağı yalnızca yazan görür) | ⏳ Çalıştırılacak |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
@@ -47,6 +48,10 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 ---
 
 ## 2. Tamamlananlar (yayında)
+
+### Görüşme taslağı her cihazda, bildirimden içeriğe gitme (28 Kasım)
+- Görüşme taslağı tarayıcıya hemen, sunucuya (`meeting_drafts`) en geç 2 sn'de yazılır; form açılırken tarayıcıdaki ve sunucudaki taslaktan yeni olanı gelir. Başka cihazda kaydedilen/silinen taslağın eski kopyası geri gelmez. Başka cihazda taslak varsa öğrenci detayında panel küçültülmüş açılır. Kod: `src/lib/meetingDraft.ts`.
+- İçerik/duyuru bildirimine tıklayınca öğrenci ana sayfasında `#icerik` (Koçundan sana) / `#pano` bölümüne gidilir; zaten ana sayfadaysa kaydırılır. Kod: `src/lib/notification-link.ts`.
 
 ### Öğrenci detayında içerik izlenmesi (28 Kasım)
 - Öğrenci detayı → Genel bakış → **Paylaşılan içerikler (izlenme)**: son 7 / 30 / 90 günde öğrenciye gönderilen içerikler (koçu, sorumlu koçu, öğretmenleri), üstte "5 içerikten 3'ünü açtı · videolarda ort. %64 izledi" özeti. Her içerikte YouTube/Vimeo için izlenen yüzde ve süre, diğerlerinde "açtı (2 kez)" ya da "açmadı"; yerine yenisi gelen içerik "yayından kalktı" diye işaretlenir.
@@ -225,7 +230,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 - **Ekranda denenmedi:**
   - Bu ve önceki turdaki değişiklikler tip, lint ve derleme kontrolünden geçti; tarayıcıda denenmedi.
   - Video süresi YouTube/Vimeo oynatıcısının mesajlarıyla ölçülüyor; gerçek bir videoda telefonda ve bilgisayarda denenmeli.
-- **Görüşme taslağı yalnızca o tarayıcıda:** Başka cihazdan girilince taslak görünmez.
+- **Görüşme taslağı:** `gorusme_taslaklari.sql` çalıştırılınca her cihazda görünür (çalıştırılmadan yalnızca o tarayıcıda). İki cihazda aynı anda yazılırsa son yazılan geçerli olur.
 - **Önceki oturumlardan kalanlar:**
   - Mac'te görülen 404 sorunu
   - Bir öğrencinin denemelerini artık görebildiğinin teyidi

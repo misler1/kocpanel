@@ -12,7 +12,7 @@ import { Suspense } from 'react';
 import { NotesEditor } from '@/components/NotesEditor';
 import { MeetingPhotos, appendReadText } from '@/components/meeting/MeetingPhotos';
 import {
-  draftKey, readDraft, writeDraft, removeDraft, hasText, DURATION_RESUME_MS, type MeetingDraft,
+  draftKey, loadDraft, writeDraft, removeDraft, hasText, DURATION_RESUME_MS, type MeetingDraft,
 } from '@/lib/meetingDraft';
 import { SuggestInput } from '@/components/SuggestInput';
 
@@ -193,10 +193,10 @@ useEffect(() => {
           setStudentId(data.id);
         }
         const key = draftKey(user.id, lockedStudentId);
-        let d = readDraft(key);
+        let d = await loadDraft(key);
         // Genel "Görüşme ekle" sayfasında bu öğrenci için başlanmış taslak varsa buraya taşınır
         const generalKey = draftKey(user.id, '');
-        const g = d ? null : readDraft(generalKey);
+        const g = d ? null : await loadDraft(generalKey);
         if (g && g.studentId === lockedStudentId) {
           d = g;
           writeDraft(key, g);
@@ -224,7 +224,7 @@ useEffect(() => {
         setSelectedKurum(data[0].kurum ?? null);
       }
       const key = draftKey(user.id, '');
-      const d = readDraft(key);
+      const d = await loadDraft(key);
       if (d) {
         const st = (data ?? []).find((x: { id: string }) => x.id === d.studentId);
         applyDraft(d, !!st);

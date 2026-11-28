@@ -15,6 +15,7 @@ import {
 } from '@tabler/icons-react';
 import { YapayZekaAsistani } from './YapayZekaAsistani';
 import { IcerikIzleme } from './IcerikIzleme';
+import { hasRemoteDraftFor } from '@/lib/meetingDraft';
 import { avatarColor, initials, trackPill } from '@/lib/ui-colors';
 import { OgrenciProgramlari } from './OgrenciProgramlari';
 import { CalisilanKonular } from './CalisilanKonular';
@@ -215,6 +216,10 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
         }
       }
     } catch { /* depolama kapalı */ }
+    // Başka cihazda başlanmış taslak (supabase/gorusme_taslaklari.sql)
+    let alive = true;
+    hasRemoteDraftFor(id).then((yes) => { if (alive && yes) setPanel((p) => (p === 'closed' ? 'min' : p)); });
+    return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
