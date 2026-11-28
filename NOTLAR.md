@@ -40,7 +40,7 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 | `mesaj_kisi_ayarlari.sql` | Mesajlarda sohbete (kişiye) özel okundu bilgisi ve sohbeti süreli/süresiz sessize alma (⋮ menüsü); sessizdeki sohbetten bildirim gelmez (mesaj_okundu_duzenleme.sql'den sonra) | ✅ Çalıştırıldı (24 Kasım 2026) |
 | `gorusme_taslaklari.sql` | Kaydedilmemiş görüşme taslağı sunucuda da saklanır: bilgisayarda başlanan not telefonda da açılır (taslağı yalnızca yazan görür) | ✅ Çalıştırıldı (28 Kasım 2026) |
 | `abonelik.sql` | Abonelik ve havale/EFT ödemesi: paketler, deneme süresi, salt okunur dönem, kurumsal abonelik, yönetici onayı; mevcut bütün koçlar ücretsiz/süresiz işaretlenir (notifications.sql'den sonra) | ✅ Çalıştırıldı (28 Kasım 2026) |
-| `geri_bildirim.sql` | "Bize bildir": ana sayfadan sorun/öneri/mesaj; yöneticiye zil bildirimi, Ayarlar > Geri bildirimler listesi, "Çözüldü" deyince bildirene bildirim (notifications.sql'den sonra) | ⏳ Çalıştırılacak |
+| `geri_bildirim.sql` | "Bize bildir": ana sayfadan sorun/öneri/mesaj; yöneticiye zil bildirimi, Ayarlar > Geri bildirimler listesi, "Çözüldü" deyince bildirene bildirim (notifications.sql'den sonra) | ✅ Çalıştırıldı (28 Kasım 2026) |
 
 `exam_self_analysis.sql`, `student_exam_entry.sql`'den **sonra** çalıştırılmalı.
 `daily_entry_pages.sql`, `belletmen_gunluk.sql`'den; `student_reports.sql`, `push_notifications.sql`'den **sonra** çalıştırılmalı.
