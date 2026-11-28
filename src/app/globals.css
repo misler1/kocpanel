@@ -173,7 +173,8 @@ body {
    Sabit açık renk sınıfları (bg-white, gray, renklerin 50/100 tonları, açık hex zeminler) burada koyu karşılıklarına
    çevrilir. Bu blok scripts ile üretildi; yeni bir açık hex zemin eklenirse aşağıya eklenmelidir. */
 @media screen {
-html.dark body:has(.app-shell) {
+/* .student-theme kendi açık renk değişkenlerini tanımlar; koyu değerler onun üstüne de yazılmalı */
+html.dark body:has(.app-shell), html.dark .app-shell.student-theme {
   color-scheme: dark;
   --paper: #0E1524;
   --card: #162033;
