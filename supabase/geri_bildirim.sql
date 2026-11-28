@@ -43,7 +43,7 @@ begin
   select full_name into v_name from profiles where id = new.user_id;
   for r in select id from profiles where coalesce(is_admin, false) and id <> new.user_id loop
     perform notify_user(r.id, 'geri_bildirim',
-      case new.kind when 'sorun' then 'Sorun bildirimi 🐞' when 'oneri' then 'Yeni öneri 💡' else 'Yeni mesaj ✉️' end,
+      case new.kind when 'sorun' then 'Sorun bildirimi ⚠️' when 'oneri' then 'Yeni öneri 💡' else 'Yeni mesaj ✉️' end,
       coalesce(v_name, 'Bir kullanıcı') || ': ' || left(new.message, 140), '/ayarlar/geri-bildirimler', 0);
   end loop;
   return new;

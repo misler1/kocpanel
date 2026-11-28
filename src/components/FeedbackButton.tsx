@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 // Hangi sayfada olduğu ve cihaz/tarayıcı bilgisi kendiliğinden eklenir.
 
 const KINDS = [
-  { id: 'sorun', label: '🐞 Sorun', hint: 'Ne yaparken oldu, ne bekliyordunuz, ne oldu?' },
+  { id: 'sorun', label: '⚠️ Sorun', hint: 'Ne yaparken oldu, ne bekliyordunuz, ne oldu?' },
   { id: 'oneri', label: '💡 Öneri', hint: 'Neyin olmasını ya da değişmesini istersiniz?' },
   { id: 'diger', label: '✉️ Diğer', hint: 'İletmek istediğinizi yazın.' },
 ] as const;

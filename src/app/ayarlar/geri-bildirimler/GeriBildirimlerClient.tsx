@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 // Yönetici: geri bildirim listesi. Durum: Yeni → İnceleniyor → Çözüldü (çözülünce bildirene, notla birlikte bildirim gider).
 
 const KIND: Record<string, { label: string; cls: string }> = {
-  sorun: { label: '🐞 Sorun', cls: 'bg-red-50 text-red-700' },
+  sorun: { label: '⚠️ Sorun', cls: 'bg-red-50 text-red-700' },
   oneri: { label: '💡 Öneri', cls: 'bg-amber-50 text-amber-800' },
   diger: { label: '✉️ Diğer', cls: 'bg-sky-50 text-sky-800' },
 };
