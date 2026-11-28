@@ -11,9 +11,10 @@ import {
   IconChevronDown, IconChevronUp,
   IconCalendar, IconChartBar, IconCheckbox, IconBooks,
   IconUsers, IconSchool, IconTrophy,
-  IconEdit, IconTrash, IconNotebook, IconTarget, IconArrowLeft, IconCalendarPlus, IconUser, IconSparkles,
+  IconEdit, IconTrash, IconNotebook, IconTarget, IconArrowLeft, IconCalendarPlus, IconUser, IconSparkles, IconPlayerPlay,
 } from '@tabler/icons-react';
 import { YapayZekaAsistani } from './YapayZekaAsistani';
+import { IcerikIzleme } from './IcerikIzleme';
 import { avatarColor, initials, trackPill } from '@/lib/ui-colors';
 import { OgrenciProgramlari } from './OgrenciProgramlari';
 import { CalisilanKonular } from './CalisilanKonular';
@@ -374,6 +375,11 @@ export function OgrenciDetayClient({ student, meetings, exams, tasks, stats, ini
               right={<Link href={`/denemeler/yeni?ogrenci=${id}`} className="text-fuchsia-700 hover:underline">+ Ekle</Link>}>
               {examList}
             </Accordion>
+            <div className="lg:col-span-2">
+              <Accordion icon={<IconPlayerPlay size={16} />} title="Paylaşılan içerikler (izlenme)" theme="rose">
+                <IcerikIzleme studentId={id} />
+              </Accordion>
+            </div>
             <div className="lg:col-span-2">
               <Accordion icon={<IconCheckbox size={16} />} title="Bekleyen görevler" theme="amber">
                 {tasks.length > 0 ? (

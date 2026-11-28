@@ -48,6 +48,10 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 
 ## 2. Tamamlananlar (yayında)
 
+### Öğrenci detayında içerik izlenmesi (28 Kasım)
+- Öğrenci detayı → Genel bakış → **Paylaşılan içerikler (izlenme)**: son 7 / 30 / 90 günde öğrenciye gönderilen içerikler (koçu, sorumlu koçu, öğretmenleri), üstte "5 içerikten 3'ünü açtı · videolarda ort. %64 izledi" özeti. Her içerikte YouTube/Vimeo için izlenen yüzde ve süre, diğerlerinde "açtı (2 kez)" ya da "açmadı"; yerine yenisi gelen içerik "yayından kalktı" diye işaretlenir.
+- SQL gerekmez: src/app/api/ogrenci-icerik-izleme/route.ts önce kullanıcının öğrenciyi görebildiğini kontrol eder, sonra kayıtları sunucuda okur. Kart: IcerikIzleme.tsx.
+
 ### Karanlık mod (27–28 Kasım)
 - Koçun ve öğrencinin üst çubuğunda ay/güneş düğmesi (`src/components/ThemeToggle.tsx`); tercih tarayıcıda (`kd:theme`) saklanır, sayfa çizilmeden uygulanır. Yalnızca panel sayfalarında (`.app-shell`); tanıtım sayfaları ve yazdırma açık kalır.
 - Sabit açık renk sınıfları `globals.css` → "Karanlık mod" bölümünde koyu karşılıklarına çevrilir. Yeni bir açık hex zemin eklenirse oraya da eklenmeli.
@@ -243,4 +247,4 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
    - ekip kayıtları (belletmen günlük girince sayfa + bildirim)
    - defter fotoğrafı yükleme ve "Yazıyı oku"
    - sesli dikte (telefon ve bilgisayar)
-2. *(İsteğe bağlı)* Video izlenme bilgisini öğrenci detay sayfasında da göstermek (öğrenci bazında "son 30 günde 5 içerikten 3'ünü izledi").
+2. ~~Video izlenme bilgisini öğrenci detay sayfasında göstermek~~ (28 Kasım'da yapıldı).
