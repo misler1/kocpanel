@@ -1,6 +1,6 @@
 # KoçDefterim — Çalışma notları
 
-Son güncelleme: 23 Kasım 2026
+Son güncelleme: 28 Kasım 2026
 
 Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yapılır; her biri Supabase SQL Editor'da **bir kez** çalıştırılır.
 
@@ -47,6 +47,19 @@ Veritabanı değişiklikleri `supabase/` klasöründeki `.sql` dosyalarıyla yap
 ---
 
 ## 2. Tamamlananlar (yayında)
+
+### Karanlık mod (27–28 Kasım)
+- Koçun ve öğrencinin üst çubuğunda ay/güneş düğmesi (`src/components/ThemeToggle.tsx`); tercih tarayıcıda (`kd:theme`) saklanır, sayfa çizilmeden uygulanır. Yalnızca panel sayfalarında (`.app-shell`); tanıtım sayfaları ve yazdırma açık kalır.
+- Sabit açık renk sınıfları `globals.css` → "Karanlık mod" bölümünde koyu karşılıklarına çevrilir. Yeni bir açık hex zemin eklenirse oraya da eklenmeli.
+- 28 Kasım: öğrenci panelinde çalışmıyordu (`.student-theme` kendi açık renk değişkenleriyle koyu değerleri eziyordu); düzeltildi.
+
+### Yapay zekâ asistanı (27 Kasım)
+- Öğrenci detayı → Genel bakış: haftalık öneri, program taslağı (düzenlenip sonraki program haftasına eklenebilir), görüşme hazırlığı. Görüşme panelinde de "Görüşme hazırlığı".
+- Son denemeler, son 14 gün program/günlük, konu ilerleyişi ve görüşme notları kodda özetlenip gönderilir; öğrenci adı gönderilmez. Son sonuç tarayıcıda saklanır. SQL gerekmez. Kod: `src/lib/ai/studentAssistant.ts`, `src/app/api/ogrenci-asistan/route.ts`.
+
+### PDF karne ve kazanım ekleme (27 Kasım)
+- Okul net listesi + tek sayfalık öğrenci karnesi ("Öğrenci Sıra No / Cevap Anahtarı / Cevaplarınız" düzeni) okunur: şube/ilçe/il sıraları, katılımcı sayıları, soru soru cevaplar, kazanım özeti.
+- Deneme düzenle → **Kazanım yükle (PDF)**: eksikler artık ders ders tamamlanır. Önce yalnız Türkçe/Sosyal kazanımlı karne yüklenip sonra Matematik/Fen kazanımlı karne gelirse eksik dersler eklenir; kayıtlı dersler değiştirilmez.
 
 ### Program uyumu her yerde aynı hesap (27 Kasım)
 - Öğrenci detayındaki özet kartı "Bu hafta program" (bugünü kapsayan programın bütün görevleri, bugünkü ve ileri günler dahil) ile Görüşme kayıtları listesindeki "Son 7 gün program" (dünden geriye 7 gün) farklı şeyler ölçtüğü için farklı yüzde çıkıyordu (ör. %62 / %54).
