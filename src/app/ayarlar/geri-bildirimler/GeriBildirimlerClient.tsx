@@ -3,6 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { feedbackPhotoUrl } from '@/components/FeedbackButton';
 
 // Yönetici: geri bildirim listesi. Durum: Yeni → İnceleniyor → Çözüldü (çözülünce bildirene, notla birlikte bildirim gider).
 
@@ -43,6 +44,7 @@ export function GeriBildirimlerClient({ initial }: { initial: any[] }) {
     if (!confirm('Bu bildirim silinsin mi?')) return;
     const { error } = await supabase.rpc('feedback_admin_delete', { p_id: r.id });
     if (error) { setErr(error.message); return; }
+    for (const p of r.photos ?? []) fetch(feedbackPhotoUrl(p), { method: 'DELETE' }).catch(() => {}); // fotoğraflar da silinir
     setRows((p) => p.filter((x) => x.id !== r.id));
   }
 
@@ -69,6 +71,17 @@ export function GeriBildirimlerClient({ initial }: { initial: any[] }) {
             <span className="ml-auto text-gray-400">{new Date(r.created_at).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           <p className="mt-2 whitespace-pre-wrap text-[14px] text-gray-800">{r.message}</p>
+          {r.photos?.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {r.photos.map((p: string) => (
+                <a key={p} href={feedbackPhotoUrl(p)} target="_blank" rel="noopener" title="Fotoğrafı aç"
+                  className="block h-24 w-24 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 hover:ring-2 hover:ring-[var(--accent)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={feedbackPhotoUrl(p)} alt="Bildirim fotoğrafı" loading="lazy" className="h-full w-full object-cover" />
+                </a>
+              ))}
+            </div>
+          )}
           <p className="mt-1 text-[11.5px] text-gray-400">{[r.page, device(r.user_agent)].filter(Boolean).join(' · ')}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <input value={notes[r.id] ?? ''} onChange={(e) => setNotes({ ...notes, [r.id]: e.target.value })} maxLength={2000}

@@ -53,7 +53,7 @@ async function loadImage(file: File): Promise<CanvasImageSource & { width: numbe
 
 /** Fotoğrafı en uzun kenarı 2000 px olacak şekilde JPEG'e çevirir (gerekirse 4 MB altına inene kadar küçültür).
  *  Tarayıcı açamazsa (ör. bilgisayarda HEIC) küçükse olduğu gibi döner, büyükse null. */
-async function shrink(file: File): Promise<Blob | null> {
+export async function shrink(file: File): Promise<Blob | null> {
   try {
     const img = await loadImage(file);
     for (const [side, q] of [[2000, 0.85], [1600, 0.8], [1280, 0.75]] as const) {

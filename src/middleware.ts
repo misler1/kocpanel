@@ -127,7 +127,8 @@ export async function middleware(request: NextRequest) {
     const isParentArea = pathname === '/veli' || pathname.startsWith('/veli/');
     // Her rolün kullandığı ortak API (telefon bildirimi aboneliği)
     // Hesap silme de her rolün kendi hesabı için (öğrenci / veli dahil)
-    const isSharedApi = pathname.startsWith('/api/push/') || pathname === '/api/hesap/sil';
+    // "Bize bildir" fotoğrafı da her rol için
+    const isSharedApi = pathname.startsWith('/api/push/') || pathname === '/api/hesap/sil' || pathname === '/api/geri-bildirim/foto';
 
     // Giriş yapmış kullanıcı giriş/kayıt sayfasına gelirse rolüne göre yönlendir
     if (isAuthPage && !isResetPage) {
